@@ -6,7 +6,7 @@ class LookupTable:
     rows: Set[int]
     random: int
 
-    def __init__(self, columns: Sequence[str], random: int = 123) -> None:
+    def __init__(self, columns: Sequence[str], random: int = 5566) -> None:
         self.columns = set(columns)
         self.rows = set()
         self.random = random
