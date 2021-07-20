@@ -1,4 +1,4 @@
-from encoding import u256_to_u8s, u8s_to_u256, compare, FIELD_SIZE, SignTable
+from encoding import u256_to_u8s, u8s_to_u256, compare, SignTable
 import pytest
 
 

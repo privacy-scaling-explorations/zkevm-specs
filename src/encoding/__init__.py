@@ -1,2 +1,3 @@
-from .main import *
+from .comparator import *
 from .constants import *
+from .utils import *
