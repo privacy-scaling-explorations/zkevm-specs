@@ -1,4 +1,4 @@
-from encoding import u256_to_u8s, u8s_to_u256, compare, SignTable
+from encoding import u256_to_u8s, u8s_to_u256, compare, SignTable, check_add, AdditionTable
 import pytest
 
 
@@ -14,9 +14,10 @@ def test_u256_and_u8s_conversion(u256, u8s):
 
 def test_table_sizes():
     assert len(SignTable()) == 2**18 - 1
+    assert len(AdditionTable()) == 2**17
 
 
-@pytest.mark.parametrize("a,b", (
+NASTY_AB_VALUES = (
     (0, 0),
     (1, 0),
     (0, 1),
@@ -36,7 +37,10 @@ def test_table_sizes():
     (65536, 65536),
     ((1 << 256) - 1, (1 << 256) - 2),
     ((1 << 256) - 2, (1 << 256) - 1)
-))
+)
+
+
+@pytest.mark.parametrize("a,b", NASTY_AB_VALUES)
 def test_comparator(a, b):
     a8s = u256_to_u8s(a)
     b8s = u256_to_u8s(b)
@@ -57,3 +61,27 @@ def test_comparator(a, b):
         assert sign == 0
     else:
         assert sign == -1
+
+
+@pytest.mark.parametrize("a,b", NASTY_AB_VALUES)
+def test_addition(a, b):
+    a8s = u256_to_u8s(a)
+    b8s = u256_to_u8s(b)
+    addition_table = AdditionTable()
+    _carry = [0] * 17
+    sum8s = [0] * 32
+    for i in range(0, 32, 2):
+        low = a8s[i] + b8s[i] + _carry[i//2]
+        sum8s[i] = low % 256
+        high = low // 256 + a8s[i + 1] + b8s[i + 1]
+        sum8s[i + 1] = high % 256
+        _carry[i//2 + 1] = high // 256
+
+    carry = _carry[1:]
+
+    # Check if the circuit works
+    check_add(a8s, b8s, sum8s, carry, addition_table)
+
+    # Check if the witness works
+    sum256 = u8s_to_u256(sum8s)
+    assert a + b == sum256 + (carry[-1] << 256)
