@@ -39,8 +39,8 @@ def compare(
     result = result[:] + [0]
 
     for i in reversed(range(0, 32, 2)):
-        a16 = a8s[i] + 2 * a8s[i + 1]
-        b16 = b8s[i] + 2 * b8s[i + 1]
+        a16 = a8s[i] + 256 * a8s[i + 1]
+        b16 = b8s[i] + 256 * b8s[i + 1]
 
         diff = (a16 - b16) % FIELD_SIZE
         previous, current = result[i//2+1], result[i // 2]
