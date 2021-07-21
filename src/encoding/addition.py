@@ -19,4 +19,5 @@ def check_add(
     carry = [0] + carry[:]
 
     for i in range(32):
+        assert carry[i + 1] * (carry[i + 1] - 1) == 0, "carry should be 0 or 1"
         assert a8s[i] + b8s[i] + carry[i] == sum8s[i] + (carry[i + 1] << 8)
