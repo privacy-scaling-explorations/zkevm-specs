@@ -66,18 +66,18 @@ def test_comparator(a, b):
 def test_addition(a, b):
     a8s = u256_to_u8s(a)
     b8s = u256_to_u8s(b)
-    _carry = [0] * 33
+    carry33 = [0] * 33
     sum8s = [0] * 32
     for i in range(32):
-        sum9 = a8s[i] + b8s[i] + _carry[i]
+        sum9 = a8s[i] + b8s[i] + carry33[i]
         sum8s[i] = sum9 % 256
-        _carry[i + 1] = sum9 // 256
+        carry33[i + 1] = sum9 // 256
 
-    carry = _carry[1:]
+    carry32 = carry33[1:]
 
     # Check if the circuit works
-    check_add(a8s, b8s, sum8s, carry)
+    check_add(a8s, b8s, sum8s, carry32)
 
     # Check if the witness works
     sum256 = u8s_to_u256(sum8s)
-    assert a + b == sum256 + (carry[-1] << 256)
+    assert a + b == sum256 + (carry32[-1] << 256)
