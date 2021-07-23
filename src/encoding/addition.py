@@ -11,6 +11,11 @@ def check_add(
     sum8s: Sequence[U8],
     carry32: Sequence[bool],
 ):
+    """
+    Check the addition of two length 32 8-bit chunks a8s and b8s
+    Items of a8s and b8s should already be verified to be 8 bits before.
+    Overflow is allowed to match the evm behavior
+    """
     assert len(a8s) == len(b8s) == len(sum8s) == 32
     assert len(carry32) == 32
 
