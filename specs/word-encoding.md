@@ -36,10 +36,40 @@ See `src/encoding/commitment.py::check_commitment`
 
 This checks the validity of `a256 + b256 = c256`
 
+The overflow is supported to match the EVM behavior.
+
+Example:
+
+```
+a8s    ff 0 0 0 0 0 0 0 | 0 0 0 0 0 0 0 0 | 0 0 0 0 0 0 0 0 | 0 0 0 0 0 0 0 0
+b8s     2 1 0 0 0 0 0 0 | 0 0 0 0 0 0 0 0 | 0 0 0 0 0 0 0 0 | 0 0 0 0 0 0 0 0
+carry     1 0 0 0 0 0 0 | 0 0 0 0 0 0 0 0 | 0 0 0 0 0 0 0 0 | 0 0 0 0 0 0 0 0 0
+sum8s   1 2 0 0 0 0 0 0 | 0 0 0 0 0 0 0 0 | 0 0 0 0 0 0 0 0 | 0 0 0 0 0 0 0 0
+```
+
+```
+a8s    ff ff ff ff ff ff ff ff | ff ff ff ff ff ff ff ff | ff ff ff ff ff ff ff ff | ff ff ff ff ff ff ff ff
+b8s     2  0  0  0  0  0  0  0 |  0  0  0  0  0  0  0  0 |  0  0  0  0  0  0  0  0 |  0  0  0  0  0  0  0  0
+carry      1  1  1  1  1  1  1 |  1  1  1  1  1  1  1  1 |  1  1  1  1  1  1  1  1 |  1  1  1  1  1  1  1  1  1
+sum8s   1  0  0  0  0  0  0  0 |  0  0  0  0  0  0  0  0 |  0  0  0  0  0  0  0  0 |  0  0  0  0  0  0  0  0
+```
+
 See `src/encoding/addition.py::check_add`
 
 ## Comparator
 
 This checks the the relations of `a256 > b256`, `a256 < b256`, `a256 == b256`
+
+We group 8 bit chunks to 16 bit chunks to optimize the table.
+
+The `result` carries the conclusion of the comparision from the higher siganificant chunks all the way down.
+
+Example:
+
+```
+a       1 0 0 0 | 0 0 0 0 | 0 0 0 0 | 0 1 0 0 |
+b       1 0 0 0 | 0 0 0 0 | 0 0 0 0 | 0 0 0 0 |
+result  1 1 1 1 | 1 1 1 1 | 1 1 1 1 | 1 1 0 0 |
+```
 
 See `src/encoding/comparator.py::compare`
