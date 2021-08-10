@@ -1,11 +1,11 @@
 # Word Encoding
 
-In the EVM every word is 256 bits. But in the zkevm due to two limitations we need to break the word in 8 bit chunks.
+In the EVM every word is 256 bits. But in the zkevm, we need to break the word in 8 bit chunks due to two limitations.
 
-1. We use the BN254 curve. The largest number the BN254 curve can represent is 254 bits. All arithmatic is done modulo a 254 bit prime.
-2. With plookup we have to do polynomial divisions. Plonk prover uses FFT to efficiently perform polynomial divisions. The BN254 curve allows for FFTs or size 2^28. Some of which are reqruied for constant overhead and custom constrints. So we try and limit all our polynomial degrees at 2^25.
+1. We use the BN254 curve. The largest number the BN254 curve can represent is 254 bits. All arithmetic is done modulo a 254 bit prime.
+2. We perform conditional checks and bitwise operations with plookups. The 2^25 row size limits us to work those in smaller chunks of the word. With plookup we have to do polynomial divisions. Plonk prover uses FFT to efficiently perform polynomial divisions. The BN254 curve allows for FFTs or size 2^28. Some of which are required for constant overhead and custom constraints. So we try and limit all our polynomial degrees at 2^25.
 
-In this document we define the commitment of the 256 bit word, and the operation on them in the circuit.
+In this document, we define the commitment of the 256 bit word, and the operation on them in the circuit.
 
 ## Endianness
 
