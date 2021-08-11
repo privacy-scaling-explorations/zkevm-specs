@@ -4,24 +4,27 @@ from typing import Tuple, Sequence, Set
 class LookupTable:
     columns: Tuple[str]
     rows: Set[int]
-    random: int
 
-    def __init__(self, columns: Sequence[str], random: int = 5566) -> None:
+    def __init__(self, columns: Sequence[str]) -> None:
         self.columns = set(columns)
         self.rows = set()
-        self.random = random
 
-    def __compress(self, **kwargs):
-        assert set(kwargs.keys()) == self.columns
-        return sum(kwargs[col] * self.random ** i for i, col in enumerate(self.columns))
+    def __parse_row(self, **kwargs):
+        if len(kwargs.keys()) != len(self.columns):
+            raise ValueError(
+                f"Columns mismatch: expect {self.columns} but got {kwargs.keys()}"
+            )
+        return tuple(kwargs[col] for col in self.columns)
 
     def add_row(self, **kwargs):
-        self.rows.add(self.__compress(**kwargs))
+        row = self.__parse_row(**kwargs)
+        self.rows.add(row)
 
     def __len__(self):
         return len(self.rows)
 
     def lookup(self, **kwargs) -> bool:
-        if self.__compress(**kwargs) in self.rows:
+        row = self.__parse_row(**kwargs)
+        if row in self.rows:
             return True
         raise ValueError("Row does not exist", kwargs)
