@@ -18,11 +18,11 @@ State proof maintains the read-write part of [random accessible data](./evm-proo
 | [`CallStateStack`](#CallStateStack)   | `{id}.{index}`    | Call's stack as a encoded word array     |
 | [`CallStateMemory`](#CallStateMemory) | `{id}.{index}`    | Call's memory as a byte array            |
 
-The concatenation of **Target** and **Index** becomes the unique index for data. Each record will be attached with a global counter as their accessing timestamp, and the records are constraint to be in group by their unique index first and to be sorted by their global counter increasingly. Then all `Read` records will be constraint to read previous value, and each `Write` records have constraints depending on their target. For example, `AccountNonce` can only increase one at a time, and values in `CallStateMemory` should fit in 8-bit.
+The concatenation of **Target** and **Index** becomes the unique index for data. Each record will be attached with a global counter as their accessing timestamp, and the records are constraint to be in group by their unique index first and to be sorted by their global counter increasingly. Given the access to previous record, each target has their custom constraints, for example, `AccountNonce` always increase by 1, and values in `CallStateMemory` should fit in 8-bit.
 
 ## Circuit Constraints
 
-The following part describes the constraints for each target by a python class.
+The following part describes the custom constraints for each target by a python script.
 
 ### `AccountNonce`
 
@@ -34,25 +34,24 @@ class AccountNonceRecord:
     nonce: int
 
 
-class AccountNonceCircuit:
-    def constraint(prev: AccountNonceRecord, cur: AccountNonceRecord):
-        # address should be valid
-        assert(range_lookup(cur.address, 160))
-        # rw should be a Write
-        assert(cur.rw == RW.Write)
+def account_noncee_constraint(prev: AccountNonceRecord, cur: AccountNonceRecord):
+    # address should be valid
+    assert(range_lookup(cur.address, 160))
+    # rw should be a Write
+    assert(cur.rw == RW.Write)
 
-        if prev is not None:
-            # address should increase (non-strcit)
-            assert(cur.address >= prev.address)
+    if prev is not None:
+        # address should increase (non-strcit)
+        assert(cur.address >= prev.address)
 
-        if prev is None or cur.address != prev.address:
-            # TODO: verify the nonce exist in previous state trie root
-            pass
-        elif cur.address == prev.address:
-            # global counter should increase
-            assert(cur.global_counter > prev.global_counter)
-            # nonce can only increase by 1
-            assert(cur.nonce == prev.nonce + 1)
+    if prev is None or cur.address != prev.address:
+        # TODO: verify the nonce exist in previous state trie root
+        pass
+    elif cur.address == prev.address:
+        # global counter should increase
+        assert(cur.global_counter > prev.global_counter)
+        # nonce can only increase by 1
+        assert(cur.nonce == prev.nonce + 1)
 ```
 
 ### `AccountBalance`
@@ -65,27 +64,26 @@ class AccountBalanceRecord:
     balance: int
 
 
-class AccountBalanceCircuit:
-    def constraint(prev: AccountBalanceRecord, cur: AccountBalanceRecord):
-        # address should be valid
-        assert(range_lookup(cur.address, 160))
-        # rw should be a Read or Write
-        assert(cur.rw == RW.Read or cur.rw == RW.Write)
+def account_balance_constraint(prev: AccountBalanceRecord, cur: AccountBalanceRecord):
+    # address should be valid
+    assert(range_lookup(cur.address, 160))
+    # rw should be a Read or Write
+    assert(cur.rw == RW.Read or cur.rw == RW.Write)
 
-        if prev is not None:
-            # address should increase (non-strcit)
-            assert(cur.address >= prev.address)
+    if prev is not None:
+        # address should increase (non-strcit)
+        assert(cur.address >= prev.address)
 
-        if prev is None or cur.address != prev.address:
-            # TODO: verify the nonce exist in previous state trie root
-            pass
-        elif cur.address == prev.address:
-            # global counter should increase
-            assert(cur.global_counter > prev.global_counter)
+    if prev is None or cur.address != prev.address:
+        # TODO: verify the nonce exist in previous state trie root
+        pass
+    elif cur.address == prev.address:
+        # global counter should increase
+        assert(cur.global_counter > prev.global_counter)
 
-            if cur.rw == RW.Read:
-                # balance should be consistent to previous one
-                assert(cur.balance == prev.balance)
+        if cur.rw == RW.Read:
+            # balance should be consistent to previous one
+            assert(cur.balance == prev.balance)
 ```
 
 ### `AccountCodeHash`
@@ -111,29 +109,28 @@ class CallStateStackRecord:
     value: int
 
 
-class CallStateStackCircuit:
-    def constraint(prev: CallStateStackRecord, cur: CallStateStackRecord):
-        # index should be valid (stack size is 1024)
-        assert(range_lookup(cur.index, 10))
-        # rw should be a Read or Write
-        assert(cur.rw == RW.Read or cur.rw == RW.Write)
+def call_state_stack_constraint(prev: CallStateStackRecord, cur: CallStateStackRecord):
+    # index should be valid (stack size is 1024)
+    assert(range_lookup(cur.index, 10))
+    # rw should be a Read or Write
+    assert(cur.rw == RW.Read or cur.rw == RW.Write)
 
-        if prev is not None:
-            # id should increase (non-strcit)
-            assert(cur.id >= prev.id)
-            # index should increase (non-strcit)
-            assert(cur.index >= prev.index)
+    if prev is not None:
+        # id should increase (non-strcit)
+        assert(cur.id >= prev.id)
+        # index should increase (non-strcit)
+        assert(cur.index >= prev.index)
 
-        if prev is None or cur.index != prev.index:
-            # rw should be a Write for the first row of index
-            assert(cur.rw == RW.Write)
-        elif cur.index == prev.index:
-            # global counter should increase
-            assert(cur.global_counter > prev.global_counter)
+    if prev is None or cur.index != prev.index:
+        # rw should be a Write for the first row of index
+        assert(cur.rw == RW.Write)
+    elif cur.index == prev.index:
+        # global counter should increase
+        assert(cur.global_counter > prev.global_counter)
 
-            if cur.rw == RW.Read:
-                # value should be consistent to previous one
-                assert(cur.value == prev.value)
+        if cur.rw == RW.Read:
+            # value should be consistent to previous one
+            assert(cur.value == prev.value)
 ```
 
 ### `CallStateMemory`
@@ -147,31 +144,34 @@ class CallStateMemoryRecord:
     value: int
 
 
-class CallStateMemoryCircuit:
-    def constraint(prev: CallStateMemoryRecord, cur: CallStateMemoryRecord):
-        # index should be valid (circuit hard bound for memory size, which leads to gas cost 538,443,776)
-        assert(range_lookup(cur.index, 24))
-        # rw should be a Read or Write
-        assert(cur.rw == RW.Read or cur.rw == RW.Write)
-        # value should be a byte
-        assert(range_lookup(cur.value, 8))
+def call_state_memory_constraint(prev: CallStateMemoryRecord, cur: CallStateMemoryRecord):
+    # index should be valid (circuit hard bound for memory size, which leads to gas cost 538,443,776)
+    assert(range_lookup(cur.index, 24))
+    # rw should be a Read or Write
+    assert(cur.rw == RW.Read or cur.rw == RW.Write)
+    # value should be a byte
+    assert(range_lookup(cur.value, 8))
 
-        if prev is not None:
-            # id should increase (non-strcit)
-            assert(cur.id >= prev.id)
-            # index should increase (non-strcit)
-            assert(cur.index >= prev.index)
+    if prev is not None:
+        # id should increase (non-strcit)
+        assert(cur.id >= prev.id)
+        # index should increase (non-strcit)
+        assert(cur.index >= prev.index)
 
-        if prev is None or cur.index != prev.index:
-            # rw should be a Write for the first row of index
-            assert(cur.rw == RW.Write)
-            # value should be 0 for the first row of index
-            assert(cur.value == 0)
-        elif cur.index == prev.index:
-            # global counter should increase
-            assert(cur.global_counter > prev.global_counter)
+    if prev is None or cur.index != prev.index:
+        # rw should be a Write for the first row of index
+        assert(cur.rw == RW.Write)
+        # value should be 0 for the first row of index
+        assert(cur.value == 0)
+    elif cur.index == prev.index:
+        # global counter should increase
+        assert(cur.global_counter > prev.global_counter)
 
-            if cur.rw == RW.Read:
-                # value should be consistent to previous one
-                assert(cur.value == prev.value)
+        if cur.rw == RW.Read:
+            # value should be consistent to previous one
+            assert(cur.value == prev.value)
 ```
+
+## Circuit Layout
+
+**TODO**
