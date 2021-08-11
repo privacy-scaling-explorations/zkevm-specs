@@ -3,13 +3,13 @@ from typing import Tuple, Sequence, Set
 
 class LookupTable:
     columns: Tuple[str]
-    rows: Set[int]
+    rows: Set[Tuple[int, ...]]
 
     def __init__(self, columns: Sequence[str]) -> None:
-        self.columns = set(columns)
+        self.columns = tuple(columns)
         self.rows = set()
 
-    def __parse_row(self, **kwargs):
+    def __parse_row(self, **kwargs) -> Tuple[int, ...]:
         if len(kwargs.keys()) != len(self.columns):
             raise ValueError(
                 f"Columns mismatch: expect {self.columns} but got {kwargs.keys()}"
