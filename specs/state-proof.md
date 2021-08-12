@@ -6,7 +6,7 @@ When state proof is generated, a random access record set is also produced with 
 
 ## Random Read-Write Data
 
-State proof maintains the read-write part of [random accessible data](./evm-proof.md#Random-Accessible-Data) of evm proof:
+State proof maintains the read-write part of [random accessible data](./evm-proof.md#Random-Accessible-Data) of EVM proof:
 
 | Target                                | Index             | Description                              |
 | ------------------------------------- | ----------------- | ---------------------------------------- |
@@ -25,11 +25,8 @@ The concatenation of **Target** and **Index** becomes the unique index for data.
 The following part describes the custom constraints for each target by a python script. There are some common helper class and function:
 
 ```python
-def range_lookup(value: int, range: str):
-    result = re.search('^([(\[])(.+),\s+(.+)([)\]]$)', range)
-    min = eval(result.group(2)) + (1 if result.group(1) == '(' else 0)
-    max = eval(result.group(3)) - (1 if result.group(4) == ')' else 0)
-    return min <= value and value <= max
+def range_lookup(value: int, range: range):
+    return range.start <= value and value < range.stop
 
 
 class RW(Enum):
@@ -55,6 +52,42 @@ class Record:
         if rhs is None:
             return self
         return type(self)(**{field: self.values[field] - rhs.values[field] for field in self.fields})
+
+
+class ReadWriteGate:
+    group_fields: Tuple[(str, Callable)]
+
+    def constraint(self, prev, cur):
+        diff = cur - prev
+
+        is_first_row = prev is None
+        is_first_row_in_group = is_first_row or \
+            any([getattr(diff, field) != 0 for field, _ in self.group_fields])
+
+        # grouping
+        if not is_first_row:
+            for field, group_fn in self.group_fields:
+                assert(group_fn(cur, prev, diff))
+                if getattr(diff, field) != 0:
+                    break
+
+        # rw should be valid
+        assert cur.rw in (RW.Read, RW.Write)
+
+        # global counter should increase in group
+        if not is_first_row_in_group:
+            assert range_lookup(diff.global_counter, range(1, 2**28))
+
+        type(self).constraint_every_row(prev, cur, diff)
+        type(self).constraint_in_group(prev, cur, diff, is_first_row_in_group)
+
+    @abstractclassmethod
+    def constraint_every_row(prev, cur, diff):
+        raise NotImplemented
+
+    @abstractclassmethod
+    def constraint_in_group(prev, cur, diff, is_first_row_in_group):
+        raise NotImplemented
 ```
 
 ### `AccountNonce`
@@ -69,32 +102,28 @@ class AccountNonce(Record):
     fields = ['address', 'nonce']
 
 
-def account_nonce_constraint(prev: AccountNonce, cur: AccountNonce):
-    diff = cur - prev
+class AccountNonceGate(ReadWriteGate):
+    group_fields = [
+        # TODO: check address by 160-bit range lookup or other more efficient method
+        ('address', lambda cur, pre, diff: diff.address >= 0)
+    ]
 
-    # rw should be a Write (currently evm doesn't support read nonce)
-    assert cur.rw == RW.Write
+    def constraint_every_row(prev: AccountNonce, cur: AccountNonce, diff: AccountNonce):
+        # rw should be a Write (currently evm doesn't support read nonce)
+        assert cur.rw == RW.Write
 
-    # NOTE: we don't need to check each address is in [0, 2**160) becasue in
-    #       evm circuit it always decompress the address into bytes, which might
-    #       come from stack or tx. In both case, evm takes masked value, so evm
-    #       circuit only cares first 20 bytes, which will always be in range.
+        # NOTE: we don't need to check each address is in [0, 2**160) becasue in
+        #       evm circuit it always decompress the address into bytes, which might
+        #       come from stack or tx. In both case, evm takes masked value, so evm
+        #       circuit only cares first 20 bytes, which will always be in range.
 
-    # grouping
-    if prev is not None:
-        # address should increase (non-strcit)
-        # TODO: check this by 160-bit range lookup or other more efficient method
-        assert diff.address >= 0
-
-    if prev is None or diff.address != 0:
-        # TODO: verify the nonce exist in previous state trie root or initialized to 0
-        pass
-    elif diff.address == 0:
-        # global counter should increase
-        assert range_lookup(diff.global_counter, '(0, 2**28)')
-
-        # nonce can only increase by 1
-        assert diff.nonce == 1
+    def constraint_in_group(prev: AccountNonce, cur: AccountNonce, diff: AccountNonce, is_first_row_in_group: bool):
+        if is_first_row_in_group:
+            # TODO: verify the nonce exist in previous state trie root or initialized to 0
+            pass
+        else:
+            # nonce can only increase by 1
+            assert diff.nonce == 1
 ```
 
 ### `AccountBalance`
@@ -109,33 +138,27 @@ class AccountBalance(Record):
     fields = ['address', 'balance']
 
 
-def account_balance_constraint(prev: AccountBalance, cur: AccountBalance):
-    diff = cur - prev
+class AccountBalanceGate(ReadWriteGate):
+    group_fields = [
+        # TODO: check address by 160-bit range lookup or other more efficient method
+        ('address', lambda cur, pre, diff: diff.address >= 0)
+    ]
 
-    # rw should be a Read or Write
-    assert cur.rw == RW.Read or cur.rw == RW.Write
-
-    # NOTE: we don't need to check each address is in [0, 2**160) becasue in
-    #       evm circuit it always decompress the address into bytes, which might
-    #       come from stack or tx. In both case, evm takes masked value, so evm
-    #       circuit only cares first 20 bytes, which will always be in range.
-
-    # grouping
-    if prev is not None:
-        # address should increase (non-strcit)
-        # TODO: check this by 160-bit range lookup or other more efficient method
-        assert diff.address >= 0
-
-    if prev is None or diff.address != 0:
-        # TODO: verify the balance exist in previous state trie root or initialized to 0
+    def constraint_every_row(prev: AccountBalance, cur: AccountBalance, diff: AccountBalance):
+        # NOTE: we don't need to check each address (same reason of AccountNonce)
         pass
-    elif diff.address == 0:
-        # global counter should increase
-        assert range_lookup(diff.global_counter, '(0, 2**28)')
 
-        if cur.rw == RW.Read:
-            # balance should be consistent to previous one
-            assert diff.balance == 0
+    def constraint_in_group(prev: AccountBalance, cur: AccountBalance, diff: AccountBalance, is_first_row_in_group: bool):
+        if is_first_row_in_group:
+            # rw should be a Write for the first row in group
+            assert cur.rw == RW.Write
+
+            # TODO: verify the balance exist in previous state trie root or initialized to 0
+            pass
+        else:
+            if cur.rw == RW.Read:
+                # balance should be consistent to previous one
+                assert diff.balance == 0
 ```
 
 ### `AccountCodeHash`
@@ -143,6 +166,8 @@ def account_balance_constraint(prev: AccountBalance, cur: AccountBalance):
 **TODO**
 
 ### `AccountStorage`
+
+**TODO** - add field `is_cold_load` for [`EIP2929`](https://eips.ethereum.org/EIPS/eip-2929) and [`EIP2930`](https://eips.ethereum.org/EIPS/eip-2930).
 
 | Field        | Description                                                         |
 | ------------ | ------------------------------------------------------------------- |
@@ -156,36 +181,32 @@ class AccountStorage(Record):
     fields = ['address', 'key', 'value', 'value_prev']
 
 
-def account_storage_constraint(prev: AccountStorage, cur: AccountStorage):
-    diff = cur - prev
+class AccountStorageGate(ReadWriteGate):
+    group_fields = [
+        # TODO: check address by 160-bit range lookup or other more efficient method
+        ('address', lambda cur, pre, diff: diff.address >= 0),
+        # TODO: check key by bytes comparator in case overflow
+        ('key', lambda cur, pre, diff: diff.key >= 0),
+    ]
 
-    # rw should be a Read or Write
-    assert cur.rw == RW.Read or cur.rw == RW.Write
-
-    # grouping
-    if prev is not None:
-        # address should increase (non-strcit)
-        # TODO: check this by 160-bit range lookup or other more efficient method
-        assert diff.address >= 0
-
-        if diff.address == 0:
-            # key should increase (non-strcit)
-            # TODO: check this by bytes comparator in case overflow
-            assert cur.key >= prev.key
-
-    if prev is None or diff.address != 0 or diff.key != 0:
-        # TODO: verify the storage exist in previous state trie root or initialized to 0
+    def constraint_every_row(prev: AccountStorage, cur: AccountStorage, diff: AccountStorage):
+        # NOTE: we don't need to check each address (same reason of AccountNonce)
         pass
-    elif diff.address == 0 and diff.key == 0:
-        # global counter should increase
-        assert range_lookup(diff.global_counter, '(0, 2**28)')
 
-        if cur.rw == RW.Read:
-            # value and value_prev should be consistent to previous one
-            assert diff.value == 0 and diff.value_prev == 0
-        elif cur.rw == RW.Write:
-            # value_prev should be previous one
-            assert cur.value_prev == prev.value
+    def constraint_in_group(prev: AccountStorage, cur: AccountStorage, diff: AccountStorage, is_first_row_in_group: bool):
+        if is_first_row_in_group:
+            # rw should be a Write for the first row in group
+            assert cur.rw == RW.Write
+
+            # TODO: verify the storage exist in previous state trie root or initialized to 0
+            pass
+        else:
+            if cur.rw == RW.Read:
+                # value and value_prev should be consistent to previous one
+                assert diff.value == 0 and diff.value_prev == 0
+            elif cur.rw == RW.Write:
+                # value_prev should be previous one
+                assert cur.value_prev == prev.value
 ```
 
 ### `CallState`
@@ -215,35 +236,26 @@ class CallState(Record):
     fields = ['id', 'enum', 'value']
 
 
-def call_stat_constraint(prev: CallState, cur: CallState):
-    diff = cur - prev
-
-    # rw should be a Read or Write
-    assert cur.rw == RW.Read or cur.rw == RW.Write
-
-    # enum should be valid
-    assert range_lookup(cur.enum.value, '(0, len(CallStateEnum)]')
-
-    # grouping
-    if prev is not None:
-        # id should increase (non-strcit)
+class CallStateGate(ReadWriteGate):
+    group_fields = [
         # TODO: decide a reasonable call id range circuit should support
-        assert diff.id >= 0
+        ('id', lambda cur, pre, diff: diff.id >= 0),
+        # enum should increase by 1 or remain
+        ('enum', lambda cur, pre, diff: diff.enum in (0, 1)),
+    ]
 
-        if diff.id == 0:
-            # enum should increase by 1 or remain
-            assert diff.enum == 0 or diff.enum == 1
+    def constraint_every_row(prev: CallState, cur: CallState, diff: CallState):
+        # enum should be valid
+        assert range_lookup(cur.enum.value, range(1, len(CallStateEnum) + 1))
 
-    if prev is None or diff.id != 0 or diff.enum != 0:
-        # rw should be a Write for the first row of id
-        assert cur.rw == RW.Write
-    elif diff.id == 0 and diff.enum == 0:
-        # global counter should increase
-        assert range_lookup(diff.global_counter, '(0, 2**28)')
-
-        if cur.rw == RW.Read:
-            # value should be consistent to previous one
-            assert diff.value == 0
+    def constraint_in_group(prev: CallState, cur: CallState, diff: CallState, is_first_row_in_group: bool):
+        if is_first_row_in_group:
+            # rw should be a Write for the first row in group
+            assert cur.rw == RW.Write
+        else:
+            if cur.rw == RW.Read:
+                # value should be consistent to previous one
+                assert diff.value == 0
 ```
 
 ### `CallStateStack`
@@ -259,35 +271,26 @@ class CallStateStack(Record):
     fields = ['id', 'index', 'value']
 
 
-def call_state_stack_constraint(prev: CallStateStack, cur: CallStateStack):
-    diff = cur - prev
-
-    # rw should be a Read or Write
-    assert cur.rw == RW.Read or cur.rw == RW.Write
-
-    # index should be valid (avoid malicious prover to conceal stack overflow / underflow error)
-    assert range_lookup(cur.index, '[0, 2**10)')
-
-    # grouping
-    if prev is not None:
-        # id should increase (non-strcit)
+class CallStateStackGate(ReadWriteGate):
+    group_fields = [
         # TODO: decide a reasonable call id range circuit should support
-        assert diff.id >= 0
+        ('id', lambda cur, pre, diff: diff.id >= 0),
+        # index should increase by 1 or remain
+        ('index', lambda cur, pre, diff: diff.index in (0, 1)),
+    ]
 
-        if diff.id == 0:
-            # index should increase by 1 or remain
-            assert diff.index == 0 or diff.index == 1
+    def constraint_every_row(prev: CallStateStack, cur: CallStateStack, diff: CallStateStack):
+        # index should be valid (avoid malicious prover to conceal stack overflow / underflow error)
+        assert range_lookup(cur.index, range(0, 2**10))
 
-    if prev is None or diff.id != 0 or diff.index != 0:
-        # rw should be a Write for the first row of index
-        assert cur.rw == RW.Write
-    elif diff.id == 0 and diff.index == 0:
-        # global counter should increase
-        assert range_lookup(diff.global_counter, '(0, 2**28)')
-
-        if cur.rw == RW.Read:
-            # value should be consistent to previous one
-            assert diff.value == 0
+    def constraint_in_group(prev: CallStateStack, cur: CallStateStack, diff: CallStateStack, is_first_row_in_group: bool):
+        if is_first_row_in_group:
+            # rw should be a Write for the first row in group
+            assert cur.rw == RW.Write
+        else:
+            if cur.rw == RW.Read:
+                # value should be consistent to previous one
+                assert diff.value == 0
 ```
 
 ### `CallStateMemory`
@@ -303,47 +306,39 @@ class CallStateMemory(Record):
     fields = ['id', 'index', 'value']
 
 
-def call_state_memory_constraint(prev: CallStateMemory, cur: CallStateMemory):
-    diff = cur - prev
-
-    # rw should be a Read or Write
-    assert cur.rw == RW.Read or cur.rw == RW.Write
-
-    # TODO: decide where to check memory index range, we have 2 choices:
-    #       1. check in state circuit: we decide a reasonable hard bound and do
-    #          range_lookup check
-    #       2. check in evm circuit: memory index always comes from stack, so it
-    #          will be decompress into bytes in evm circuit, we can just pick the
-    #          first n bytes (say 3 bytes) to recompose the memory index and
-    #          lookup bus mapping. When the left 32-n bytes are non-zero, it
-    #          should always cause an out-of-gas error (expansion of memory size 
-    #          to 2**24 leads to gas cost 538,443,776).
-
-    # value should be a byte
-    assert range_lookup(cur.value, '[0, 2**8)')
-
-    # grouping
-    if prev is not None:
-        # id should increase (non-strcit)
+class CallStateMemoryGate(ReadWriteGate):
+    group_fields = [
         # TODO: decide a reasonable call id range circuit should support
-        assert diff.id >= 0
+        ('id', lambda cur, pre, diff: diff.id >= 0),
+        # TODO: decide a reasonable memory index range circuit should support
+        ('index', lambda cur, pre, diff: diff.index >= 0),
+    ]
 
-        if diff.id == 0:
-            # TODO: decide a reasonable memory index range circuit should support
-            assert diff.index >= 0
+    def constraint_every_row(prev: CallStateMemory, cur: CallStateMemory, diff: CallStateMemory):
+        # TODO: decide where to check memory index range, we have 2 choices:
+        #       1. check in state circuit: we decide a reasonable hard bound and do
+        #          range_lookup check
+        #       2. check in evm circuit: memory index always comes from stack, so it
+        #          will be decompress into bytes in evm circuit, we can just pick the
+        #          first n bytes (say 3 bytes) to recompose the memory index and
+        #          lookup bus mapping. When the left 32-n bytes are non-zero, it
+        #          should always cause an out-of-gas error (expansion of memory size
+        #          to 2**24 leads to gas cost 538,443,776).
 
-    if prev is None or diff.id != 0 or diff.index != 0:
-        # rw should be a Write for the first row of index
-        assert cur.rw == RW.Write
-        # value should be 0 for the first row of index
-        assert cur.value == 0
-    elif diff.id == 0 and diff.index == 0:
-        # global counter should increase
-        assert range_lookup(diff.global_counter, '(0, 2**28)')
+        # value should be a byte
+        assert range_lookup(cur.value, range(0, 2**8))
 
-        if cur.rw == RW.Read:
-            # value should be consistent to previous one
-            assert diff.value == 0
+    def constraint_in_group(prev: CallStateMemory, cur: CallStateMemory, diff: CallStateMemory, is_first_row_in_group: bool):
+        if is_first_row_in_group:
+            # rw should be a Write for the first row in group
+            assert cur.rw == RW.Write
+
+            # value should be 0 for the first row in group
+            assert cur.value == 0
+        else:
+            if cur.rw == RW.Read:
+                # value should be consistent to previous one
+                assert diff.value == 0
 ```
 
 ## Circuit Layout
