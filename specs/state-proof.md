@@ -27,8 +27,8 @@ The following part describes the custom constraints for each target by a python 
 ```python
 def range_lookup(value: int, range: str):
     result = re.search('^([(\[])(.+),\s+(.+)([)\]]$)', range)
-    min = eval(result.group(2)) + (1 if result.group(1) == "(" else 0)
-    max = eval(result.group(3)) - (1 if result.group(4) == ")" else 0)
+    min = eval(result.group(2)) + (1 if result.group(1) == '(' else 0)
+    max = eval(result.group(3)) - (1 if result.group(4) == ')' else 0)
     return min <= value and value <= max
 
 
@@ -46,7 +46,7 @@ class Record:
 
     def __init__(self, **kwargs) -> None:
         self.values = {}
-        self.fields = tuple(["global_counter", "rw"] + self.fields)
+        self.fields = tuple(['global_counter', 'rw'] + self.fields)
         for field in self.fields:
             self.values[field] = kwargs[field]
             setattr(self, field, self.values[field])
@@ -198,7 +198,6 @@ def account_storage_constraint(prev: AccountStorage, cur: AccountStorage):
 
 ```python
 class CallStateEnum(Enum):
-    Empty = 0  # Empty only for substraction result
     ProgramCounter = 1
     StackPointer = 2
     MemeorySize = 3
@@ -223,7 +222,7 @@ def call_stat_constraint(prev: CallState, cur: CallState):
     assert cur.rw == RW.Read or cur.rw == RW.Write
 
     # enum should be valid
-    assert range_lookup(cur.enum.value, "(0, len(CallStateEnum)]")
+    assert range_lookup(cur.enum.value, '(0, len(CallStateEnum)]')
 
     # grouping
     if prev is not None:
