@@ -26,7 +26,7 @@ The following part describes the custom constraints for each target by a python 
 
 ```python
 def range_lookup(value: int, range: str):
-    result = re.search('([(\[])(.+),\s+(.+)([)\]])', range)
+    result = re.search('^([(\[])(.+),\s+(.+)([)\]]$)', range)
     min = eval(result.group(2)) + (1 if result.group(1) == "(" else 0)
     max = eval(result.group(3)) - (1 if result.group(4) == ")" else 0)
     return min <= value and value <= max
@@ -144,11 +144,108 @@ def account_balance_constraint(prev: AccountBalance, cur: AccountBalance):
 
 ### `AccountStorage`
 
-**TODO**
+| Field        | Description                                                         |
+| ------------ | ------------------------------------------------------------------- |
+| `address`    | account address                                                     |
+| `key`        | storage key (encoded word)                                          |
+| `value`      | storage value (encoded word)                                        |
+| `value_prev` | storage value in previous record, used for reverting (encoded word) |
+
+```python
+class AccountStorage(Record):
+    fields = ['address', 'key', 'value', 'value_prev']
+
+
+def account_storage_constraint(prev: AccountStorage, cur: AccountStorage):
+    diff = cur - prev
+
+    # rw should be a Read or Write
+    assert cur.rw == RW.Read or cur.rw == RW.Write
+
+    # grouping
+    if prev is not None:
+        # address should increase (non-strcit)
+        # TODO: check this by 160-bit range lookup or other more efficient method
+        assert diff.address >= 0
+
+        if diff.address == 0:
+            # key should increase (non-strcit)
+            # TODO: check this by bytes comparator in case overflow
+            assert cur.key >= prev.key
+
+    if prev is None or diff.address != 0 or diff.key != 0:
+        # TODO: verify the storage exist in previous state trie root or initialized to 0
+        pass
+    elif diff.address == 0 and diff.key == 0:
+        # global counter should increase
+        assert range_lookup(diff.global_counter, '(0, 2**28)')
+
+        if cur.rw == RW.Read:
+            # value and value_prev should be consistent to previous one
+            assert diff.value == 0 and diff.value_prev == 0
+        elif cur.rw == RW.Write:
+            # value_prev should be previous one
+            assert cur.value_prev == prev.value
+```
 
 ### `CallState`
 
-**TODO**
+| Field   | Description                             |
+| ------- | --------------------------------------- |
+| `id`    | call id                                 |
+| `enum`  | state field as a enum (`CallStateEnum`) |
+| `value` | state value (encoded word)              |
+
+```python
+class CallStateEnum(Enum):
+    Empty = 0  # Empty only for substraction result
+    ProgramCounter = 1
+    StackPointer = 2
+    MemeorySize = 3
+    GasCounter = 4
+    StateWriteCounter = 5
+    CalleeId = 6
+    ReturndataOffset = 7
+    ReturndataSize = 8
+
+    def __sub__(self, rhs):
+        return self.value - rhs.value
+
+
+class CallState(Record):
+    fields = ['id', 'enum', 'value']
+
+
+def call_stat_constraint(prev: CallState, cur: CallState):
+    diff = cur - prev
+
+    # rw should be a Read or Write
+    assert cur.rw == RW.Read or cur.rw == RW.Write
+
+    # enum should be valid
+    assert range_lookup(cur.enum.value, "(0, len(CallStateEnum)]")
+
+    # grouping
+    if prev is not None:
+        # id should increase (non-strcit)
+        # TODO: decide a reasonable call id range circuit should support
+        assert diff.id >= 0
+
+        if diff.id == 0:
+            # enum should increase by 1 or remain
+            assert diff.enum == 0 or diff.enum == 1
+
+    if prev is None or diff.id != 0 or diff.enum != 0:
+        # rw should be a Write for the first row of id
+        assert cur.rw == RW.Write
+    elif diff.id == 0 and diff.enum == 0:
+        # global counter should increase
+        assert range_lookup(diff.global_counter, '(0, 2**28)')
+
+        if cur.rw == RW.Read:
+            # value should be consistent to previous one
+            assert diff.value == 0
+```
 
 ### `CallStateStack`
 
