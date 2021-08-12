@@ -310,7 +310,7 @@ def call_state_memory_constraint(prev: CallStateMemory, cur: CallStateMemory):
     assert cur.rw == RW.Read or cur.rw == RW.Write
 
     # TODO: decide where to check memory index range, we have 2 choices:
-    #       1. check in state circuit: we pick a reasonable hard bound and do
+    #       1. check in state circuit: we decide a reasonable hard bound and do
     #          range_lookup check
     #       2. check in evm circuit: memory index always comes from stack, so it
     #          will be decompress into bytes in evm circuit, we can just pick the
@@ -329,8 +329,8 @@ def call_state_memory_constraint(prev: CallStateMemory, cur: CallStateMemory):
         assert diff.id >= 0
 
         if diff.id == 0:
-            # index should increase by 1 or remain
-            assert diff.index == 0 or diff.index == 1
+            # TODO: decide a reasonable memory index range circuit should support
+            assert diff.index >= 0
 
     if prev is None or diff.id != 0 or diff.index != 0:
         # rw should be a Write for the first row of index
