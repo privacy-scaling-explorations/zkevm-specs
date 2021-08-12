@@ -59,6 +59,11 @@ class Record:
 
 ### `AccountNonce`
 
+| Field     | Description     |
+| --------- | --------------- |
+| `address` | account address |
+| `nonce`   | account nonce   |
+
 ```python
 class AccountNonce(Record):
     fields = ['address', 'nonce']
@@ -93,6 +98,11 @@ def account_nonce_constraint(prev: AccountNonce, cur: AccountNonce):
 ```
 
 ### `AccountBalance`
+
+| Field     | Description                    |
+| --------- | ------------------------------ |
+| `address` | account address                |
+| `balance` | account balance (encoded word) |
 
 ```python
 class AccountBalance(Record):
@@ -142,6 +152,12 @@ def account_balance_constraint(prev: AccountBalance, cur: AccountBalance):
 
 ### `CallStateStack`
 
+| Field   | Description                |
+| ------- | -------------------------- |
+| `id`    | call id                    |
+| `index` | stack index                |
+| `value` | stack value (encoded word) |
+
 ```python
 class CallStateStack(Record):
     fields = ['id', 'index', 'value']
@@ -159,7 +175,8 @@ def call_state_stack_constraint(prev: CallStateStack, cur: CallStateStack):
     # grouping
     if prev is not None:
         # id should increase (non-strcit)
-        assert range_lookup(diff.id, '[0, 2**28)')
+        # TODO: decide a reasonable call id range circuit should support
+        assert diff.id >= 0
 
         if diff.id == 0:
             # index should increase by 1 or remain
@@ -178,6 +195,12 @@ def call_state_stack_constraint(prev: CallStateStack, cur: CallStateStack):
 ```
 
 ### `CallStateMemory`
+
+| Field   | Description                 |
+| ------- | --------------------------- |
+| `id`    | call id                     |
+| `index` | memory index                |
+| `value` | memory value (encoded word) |
 
 ```python
 class CallStateMemory(Record):
@@ -206,7 +229,8 @@ def call_state_memory_constraint(prev: CallStateMemory, cur: CallStateMemory):
     # grouping
     if prev is not None:
         # id should increase (non-strcit)
-        assert range_lookup(diff.id, '[0, 2**28)')
+        # TODO: decide a reasonable call id range circuit should support
+        assert diff.id >= 0
 
         if diff.id == 0:
             # index should increase by 1 or remain
