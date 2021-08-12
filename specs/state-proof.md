@@ -125,7 +125,7 @@ def account_balance_constraint(prev: AccountBalance, cur: AccountBalance):
 
         if cur.rw == RW.Read:
             # balance should be consistent to previous one
-            assert cur.balance == prev.balance
+            assert diff.balance == 0
 ```
 
 ### `AccountCodeHash`
@@ -161,20 +161,20 @@ def call_state_stack_constraint(prev: CallStateStack, cur: CallStateStack):
         # id should increase (non-strcit)
         assert range_lookup(diff.id, '[0, 2**28)')
 
-        if cur.id == prev.id:
+        if diff.id == 0:
             # index should increase by 1 or remain
             assert diff.index == 0 or diff.index == 1
 
-    if prev is None or diff.index != 0:
+    if prev is None or diff.id != 0 or diff.index != 0:
         # rw should be a Write for the first row of index
         assert cur.rw == RW.Write
-    elif diff.index == 0:
+    elif diff.id == 0 and diff.index == 0:
         # global counter should increase
         assert range_lookup(diff.global_counter, '(0, 2**28)')
 
         if cur.rw == RW.Read:
             # value should be consistent to previous one
-            assert cur.value == prev.value
+            assert diff.value == 0
 ```
 
 ### `CallStateMemory`
@@ -208,22 +208,22 @@ def call_state_memory_constraint(prev: CallStateMemory, cur: CallStateMemory):
         # id should increase (non-strcit)
         assert range_lookup(diff.id, '[0, 2**28)')
 
-        if cur.id == prev.id:
+        if diff.id == 0:
             # index should increase by 1 or remain
             assert diff.index == 0 or diff.index == 1
 
-    if prev is None or cur.index != prev.index:
+    if prev is None or diff.id != 0 or diff.index != 0:
         # rw should be a Write for the first row of index
         assert cur.rw == RW.Write
         # value should be 0 for the first row of index
         assert cur.value == 0
-    elif cur.index == prev.index:
+    elif diff.id == 0 and diff.index == 0:
         # global counter should increase
         assert range_lookup(diff.global_counter, '(0, 2**28)')
 
         if cur.rw == RW.Read:
             # value should be consistent to previous one
-            assert cur.value == prev.value
+            assert diff.value == 0
 ```
 
 ## Circuit Layout
