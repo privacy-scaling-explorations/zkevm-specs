@@ -1,8 +1,6 @@
 # State Proof
 
-In EVM the interpreter has ability to do any random read-write access to data like account balance, account storage, or stack and memory in current scope, but it's hard for a circuit to keep tracking these data to ensure their consistency from time to time. So the state proof helps EVM proof to check all the random read-write access records are valid, throgh grouping them by their unique index first, and then sorting them by order of access. We call the order of access **global counter**, which counts the number of access records and also serves as an unique identifier for a record.
-
-When state proof is generated, a random access record set is also produced with the global counter as each record's unique identifier, we called this set **bus mapping** because it acts like the bus in computer which transfers data between components. The bus mapping will be shared to EVM proof, then EVM proof can do random read-write access to anything inside the set at any time, with extra subset arguments to argue those accesses indeed form a subset of the one prodced by state proof.
+The state proof helps EVM proof to check all the random read-write access records are valid, throgh grouping them by their unique index first, and then sorting them by order of access. We call the order of access `GlobalCounter`, which counts the number of access records and also serves as an unique identifier for a record. When state proof is generated, the `BusMapping` is also produced and will be shared to EVM proof as a lookup table.
 
 ## Random Read-Write Data
 
@@ -18,25 +16,21 @@ State proof maintains the read-write part of [random accessible data](./evm-proo
 | [`CallStateStack`](#CallStateStack)   | `{id}.{index}`    | Call's stack as a encoded word array     |
 | [`CallStateMemory`](#CallStateMemory) | `{id}.{index}`    | Call's memory as a byte array            |
 
-The concatenation of **Target** and **Index** becomes the unique index for data. Each record will be attached with a global counter, and the records are constraint to be in group by their unique index first and to be sorted by their global counter increasingly. Given the access to previous record, each target has their own format and rules to update, for example, `AccountNonce` always increase by 1, and values in `CallStateMemory` should fit in 8-bit.
+The concatenation of **Target** and **Index** becomes the unique index for data. Each record will be attached with a `GlobalCounter`, and the records are constraint to be in group by their unique index first and to be sorted by their `GlobalCounter` increasingly. Given the access to previous record, each target has their own format and rules to update, for example, `AccountNonce` always increase by 1, and values in `CallStateMemory` should fit in 8-bit.
 
 ## Constants
 
-| Name                 | Type               |
-| -------------------- | ------------------ |
-| `MAX_U8`             | `2**8 - 1 (255)`   |
-| `MAX_STACK_INDEX`    | `2**10 - 1 (1023)` |
-| `MAX_GLOBAL_COUNTER` | `2**28`            |
+| Name                 | Value              | Description                                                                               |
+| -------------------- | ------------------ | ----------------------------------------------------------------------------------------- |
+| `MAX_U8`             | `2**8 - 1 (255)`   | Maximum value of u8 (byte)                                                                |
+| `MAX_STACK_INDEX`    | `2**10 - 1 (1023)` | Maximum index of stack (EVM has maximum stack size 1024)                                  |
+| `MAX_GLOBAL_COUNTER` | `2**25 - 1`        | Maximum number of `GlobalCounter`, which is also the maximum degree of polynomial allowed |
 
 ## Circuit Constraints
 
 The following part describes the custom constraints for each target by a python script. There are some common helper class and function:
 
 ```python
-def range_lookup(value: int, range: range):
-    return range.start <= value and value <= range.stop
-
-
 class RW(Enum):
     Read: int = 0
     Write: int = 1
@@ -84,13 +78,13 @@ class ReadWriteGate:
 
         # global counter should increase in group
         if not is_first_row_in_group:
-            assert range_lookup(diff.global_counter, range(1, MAX_GLOBAL_COUNTER))
+            assert 0 < diff.global_counter <= MAX_GLOBAL_COUNTER
 
-        type(self).constraint_every_row(prev, cur, diff)
+        type(self).constraint_every_row(cur)
         type(self).constraint_in_group(prev, cur, diff, is_first_row_in_group)
 
     @abstractclassmethod
-    def constraint_every_row(prev, cur, diff):
+    def constraint_every_row(cur):
         raise NotImplemented
 
     @abstractclassmethod
@@ -102,8 +96,8 @@ class ReadWriteGate:
 
 | Field     | Description     |
 | --------- | --------------- |
-| `address` | account address |
-| `nonce`   | account nonce   |
+| `address` | Account address |
+| `nonce`   | Account nonce   |
 
 ```python
 class AccountNonce(Record):
@@ -116,7 +110,7 @@ class AccountNonceGate(ReadWriteGate):
         ('address', lambda cur, prev, diff: diff.address >= 0)
     ]
 
-    def constraint_every_row(prev: AccountNonce, cur: AccountNonce, diff: AccountNonce):
+    def constraint_every_row(cur: AccountNonce):
         # rw should be a Write (currently evm doesn't support read nonce)
         assert cur.rw == RW.Write
 
@@ -138,8 +132,8 @@ class AccountNonceGate(ReadWriteGate):
 
 | Field     | Description                    |
 | --------- | ------------------------------ |
-| `address` | account address                |
-| `balance` | account balance (encoded word) |
+| `address` | Account address                |
+| `balance` | Account balance (encoded word) |
 
 ```python
 class AccountBalance(Record):
@@ -152,7 +146,7 @@ class AccountBalanceGate(ReadWriteGate):
         ('address', lambda cur, prev, diff: diff.address >= 0)
     ]
 
-    def constraint_every_row(prev: AccountBalance, cur: AccountBalance, diff: AccountBalance):
+    def constraint_every_row(cur: AccountBalance):
         # NOTE: we don't need to check each address (same reason of AccountNonce)
         pass
 
@@ -178,10 +172,10 @@ class AccountBalanceGate(ReadWriteGate):
 
 | Field        | Description                                                         |
 | ------------ | ------------------------------------------------------------------- |
-| `address`    | account address                                                     |
-| `key`        | storage key (encoded word)                                          |
-| `value`      | storage value (encoded word)                                        |
-| `value_prev` | storage value in previous record, used for reverting (encoded word) |
+| `address`    | Account address                                                     |
+| `key`        | Storage key (encoded word)                                          |
+| `value`      | Storage value (encoded word)                                        |
+| `value_prev` | Storage value in previous record, used for reverting (encoded word) |
 
 ```python
 class AccountStorage(Record):
@@ -196,7 +190,7 @@ class AccountStorageGate(ReadWriteGate):
         ('key', lambda cur, prev, diff: cur.key >= prev.key),
     ]
 
-    def constraint_every_row(prev: AccountStorage, cur: AccountStorage, diff: AccountStorage):
+    def constraint_every_row(cur: AccountStorage):
         # NOTE: we don't need to check each address (same reason of AccountNonce)
         pass
 
@@ -219,9 +213,9 @@ class AccountStorageGate(ReadWriteGate):
 
 | Field   | Description                             |
 | ------- | --------------------------------------- |
-| `id`    | call id                                 |
-| `enum`  | state field as a enum (`CallStateEnum`) |
-| `value` | state value (encoded word)              |
+| `id`    | Call id                                 |
+| `enum`  | State field as a enum (`CallStateEnum`) |
+| `value` | State value (encoded word)              |
 
 ```python
 class CallStateEnum(Enum):
@@ -250,9 +244,9 @@ class CallStateGate(ReadWriteGate):
         ('enum', lambda cur, prev, diff: diff.enum in (0, 1)),
     ]
 
-    def constraint_every_row(prev: CallState, cur: CallState, diff: CallState):
+    def constraint_every_row(cur: CallState):
         # enum should be valid
-        assert range_lookup(cur.enum.value, range(1, len(CallStateEnum)))
+        assert 0 < cur.enum.value <= len(CallStateEnum)
 
     def constraint_in_group(prev: CallState, cur: CallState, diff: CallState, is_first_row_in_group: bool):
         if is_first_row_in_group:
@@ -268,9 +262,9 @@ class CallStateGate(ReadWriteGate):
 
 | Field   | Description                |
 | ------- | -------------------------- |
-| `id`    | call id                    |
-| `index` | stack index                |
-| `value` | stack value (encoded word) |
+| `id`    | Call id                    |
+| `index` | Stack index                |
+| `value` | Stack value (encoded word) |
 
 ```python
 class CallStateStack(Record):
@@ -285,9 +279,9 @@ class CallStateStackGate(ReadWriteGate):
         ('index', lambda cur, prev, diff: diff.index in (0, 1)),
     ]
 
-    def constraint_every_row(prev: CallStateStack, cur: CallStateStack, diff: CallStateStack):
+    def constraint_every_row(cur: CallStateStack):
         # index should be valid (avoid malicious prover to conceal stack overflow / underflow error)
-        assert range_lookup(cur.index, range(0, MAX_STACK_INDEX))
+        assert 0 <= cur.index <= MAX_STACK_INDEX
 
     def constraint_in_group(prev: CallStateStack, cur: CallStateStack, diff: CallStateStack, is_first_row_in_group: bool):
         if is_first_row_in_group:
@@ -303,9 +297,9 @@ class CallStateStackGate(ReadWriteGate):
 
 | Field   | Description                 |
 | ------- | --------------------------- |
-| `id`    | call id                     |
-| `index` | memory index                |
-| `value` | memory value (encoded word) |
+| `id`    | Call id                     |
+| `index` | Memory index                |
+| `value` | Memory value (encoded word) |
 
 ```python
 class CallStateMemory(Record):
@@ -320,10 +314,10 @@ class CallStateMemoryGate(ReadWriteGate):
         ('index', lambda cur, prev, diff: diff.index >= 0),
     ]
 
-    def constraint_every_row(prev: CallStateMemory, cur: CallStateMemory, diff: CallStateMemory):
+    def constraint_every_row(cur: CallStateMemory):
         # TODO: decide where to check memory index range, we have 2 choices:
         #       1. check in state circuit: we decide a reasonable hard bound and do
-        #          range_lookup check
+        #          range lookup check
         #       2. check in evm circuit: memory index always comes from stack, so it
         #          will be decompress into bytes in evm circuit, we can just pick the
         #          first n bytes (say 3 bytes) to recompose the memory index and
@@ -332,7 +326,7 @@ class CallStateMemoryGate(ReadWriteGate):
         #          to 2**24 leads to gas cost 538,443,776).
 
         # value should be a byte
-        assert range_lookup(cur.value, range(0, MAX_U8))
+        assert 0 <= cur.value <= MAX_U8
 
     def constraint_in_group(prev: CallStateMemory, cur: CallStateMemory, diff: CallStateMemory, is_first_row_in_group: bool):
         if is_first_row_in_group:
