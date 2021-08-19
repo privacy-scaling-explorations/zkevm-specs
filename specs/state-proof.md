@@ -295,11 +295,11 @@ class CallStateStackGate(ReadWriteGate):
 
 ### `CallStateMemory`
 
-| Field   | Description                 |
-| ------- | --------------------------- |
-| `id`    | Call id                     |
-| `index` | Memory index                |
-| `value` | Memory value (encoded word) |
+| Field   | Description         |
+| ------- | ------------------- |
+| `id`    | Call id             |
+| `index` | Memory index        |
+| `value` | Memory value (byte) |
 
 ```python
 class CallStateMemory(Record):
