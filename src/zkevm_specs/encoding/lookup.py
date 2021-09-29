@@ -1,6 +1,5 @@
 from typing import Tuple, Sequence, Set
 
-
 class LookupTable:
     columns: Tuple[str]
     rows: Set[Tuple[int, ...]]

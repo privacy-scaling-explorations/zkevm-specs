@@ -1,6 +1,5 @@
 from typing import Sequence, Tuple
 
-from typing import Sequence
 from .typing import U256, U8
 from .utils import is_circuit_code, u256_to_u8s
 from .lookup import LookupTable

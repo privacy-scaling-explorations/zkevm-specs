@@ -1,9 +1,6 @@
 from typing import Sequence
-from .constants import FIELD_SIZE
-from .lookup import LookupTable
-from .utils import is_circuit_code
-from .typing import U8, Sign
 
+from ..encoding import FIELD_SIZE, LookupTable, is_circuit_code, U8, Sign
 
 class SignTable(LookupTable):
     """
