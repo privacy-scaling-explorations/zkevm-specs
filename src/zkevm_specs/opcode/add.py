@@ -1,7 +1,6 @@
 from typing import Sequence
 
-from .utils import is_circuit_code
-from .typing import U8
+from ..encoding import U8, is_circuit_code
 
 
 @is_circuit_code
