@@ -14,11 +14,17 @@ def check_byte(
     msb_sum_zero = sum(i8s[1:]) == 0
 
     # Byte 0:
-    r = r8s[0]
+    # Check byte per byte if we need to copy the value
+    # to result. We're only directly checking the LSB byte
+    # of the index here, so also make sure the byte
+    # is only copied when index < 256.
+    r = 0
     for i in range(32):
         selected = i8s[0] == i
-        r = r - (v8s[i] * msb_sum_zero * selected)
-    assert(r == 0)
+        r += (v8s[i] * msb_sum_zero * selected)
+    # Result needs to match the selected byte
+    # (or equal to 0 when index >= 32)
+    assert(r == r8s[0])
 
     # Byte 1 to 31:
     for i in range(1, 32):

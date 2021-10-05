@@ -2,7 +2,7 @@
 
 ## Procedure
 
-The `BYTE` opcode retrieves a single byte from a value. This is done by popping two values, first the `index` and then the `value`, from the stack. The byte at position `index`, with the position starting at `0` at the MSB in `value`, will be copied to the LSB of `result`. `result` is then pushed on the stack.
+The `BYTE` opcode retrieves a single byte from a value. This is done by popping two values, first the `index` and then the `value`, from the stack. The byte at position `index`, with the position starting at `0` at the MSB in `value`, will be copied to the LSB of `result`. `result` is then pushed on the stack. If `index >= 32` no byte will be copied and `result` will be `0`.
 
 ## Constraints
 
@@ -24,4 +24,4 @@ The `BYTE` opcode retrieves a single byte from a value. This is done by popping 
 
 ## Code
 
-Please refer to `src/opcode/byte.py`
+Please refer to `src/opcode/byte.py`.
