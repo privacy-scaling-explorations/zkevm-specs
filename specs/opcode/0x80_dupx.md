@@ -16,7 +16,8 @@
 
 ## Exceptions
    1. gas out: remaining gas is not enough
-   2. stack overflow: when stack is full, which means stack pointer is 0 before dupx
+   2. stack overflow: when stack is full, which means stack pointer is 0 before dupx  
+   3. stack underflow: when stack length is less than dup position 'x'  
  
 ## Code  
    refer to src/zkevm_specs/opcode/stack.py
