@@ -1,6 +1,6 @@
 # DUPX op code
 ## Procedure
-   dupx represents op codes of dup1....dup16. which picks up value at 'x' position inside the stack, then push the value to stack. 
+   dupx represents op codes of dup1....dup16. which picks up value at 'x' position inside the stack, then push the value to stack.
 
 ## Constraints
    1. opId = OpcodeId(0x80...0x16)
@@ -15,7 +15,8 @@
       position 'x' value equals stack top value when this operation done
 
 ## Exceptions
-   1. gas out: remaining gas is not enough 
+   1. gas out: remaining gas is not enough
    2. stack overflow: when stack is full, which means stack pointer is 0 before dupx
  
- ## Simulation code refer to src/stack/stack.py
+## Code  
+   refer to src/zkevm_specs/opcode/stack.py
