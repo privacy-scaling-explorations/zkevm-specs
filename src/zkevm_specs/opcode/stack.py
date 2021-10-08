@@ -49,18 +49,3 @@ def check_dupx():
     assert(word2 == evm_stack.peek())
     evm_stack.dupx(2)
     assert(word1 == evm_stack.peek())
-
-
-if __name__ == "__main__":
-    evm_stack = Stack()
-    word1 = 20
-    word2 = 30
-    evm_stack.push(word1)
-    evm_stack.push(word2)
-    assert(word2 == evm_stack.peek())
-    evm_stack.dupx(2)
-    assert(word1 == evm_stack.peek())
-    evm_stack.pop()
-    evm_stack.pop()
-    evm_stack.pop()
-    assert(evm_stack.is_empty())
