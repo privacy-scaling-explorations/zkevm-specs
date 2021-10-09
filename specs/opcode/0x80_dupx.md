@@ -3,7 +3,7 @@
    dupx represents op codes of dup1....dup16. which picks up value at 'x' position inside the stack, then push the value to stack.
 
 ## Constraints
-   1. opId = OpcodeId(0x80...0x16)
+   1. opId = OpcodeId(0x80...0x8F)
    2. state transition:  
        gc + 2 (read + write)  
       stack_pointer - 1  
