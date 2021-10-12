@@ -2,7 +2,7 @@
 
 ## Procedure  
 
-A stack initalize empty with stack pointer to 1024, pop operation can only happen when stack is not empty, and it will increase by 1 of stack pointer.  
+A stack initalize empty with stack pointer to 1024, XOR operation can only happen when stack is not empty, and it will increase by 1 of stack pointer.  
 
 The Xor-ed value will be dropped directly without no any more checking & utilizing.
 
