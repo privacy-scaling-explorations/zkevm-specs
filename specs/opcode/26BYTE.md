@@ -24,4 +24,4 @@ The `BYTE` opcode retrieves a single byte from a value. This is done by popping 
 
 ## Code
 
-Please refer to `src/opcode/byte.py`.
+Please refer to `src/zkevm-specs/opcode/byte.py`.

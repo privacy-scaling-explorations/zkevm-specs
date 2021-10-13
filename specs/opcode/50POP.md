@@ -21,35 +21,6 @@ The poped value will be dropped directly without no any more checking & utilizin
 1. stack underflow: when stack is empty
 2. gas out: remaining gas is not enough 
 
-## Stack pseudo code
+## Code
 
-```python
-class Stack():
-    def __init__(self):
-         self.items = [0] * 1024
-         self.top = 1024
-
-    def is_empty(self):
-        return self.top == 1024
-
-    def size(self):
-        return 1024 ## fixed size
-
-    def push(self, evm_word):
-        if self.top == 0:
-            return  ## or throw error
-
-        self.top -= 1
-        self.items[self.top] = evm_word
-
-    def peek(self):
-        # self.items.append(item)
-        return self.items[self.top]
-
-    def pop(self):
-        if self.top == 1024:
-            return ## or throw error
-
-        self.items[self.top] = 0
-        self.top += 1
-```
+Please refer to `src/zkevm-specs/opcode/stack.py`.
