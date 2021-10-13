@@ -9,6 +9,7 @@ EMPTY_CODE_HASH = bytearray.fromhex(
 
 class FixedTableTag(IntEnum):
     Range32 = auto()
+    Range64 = auto()
     Range256 = auto()
     Range512 = auto()
     Range1024 = auto()
@@ -72,9 +73,9 @@ class CallStateTag(IntEnum):
 class Tables:
     fixed_table: Set[Tuple[
         int,  # tag
-        int,  # v1
-        int,  # v2
-        int,  # v3
+        int,  # value1
+        int,  # value2
+        int,  # value3
     ]]
     tx_table: Set[Tuple[
         int,  # tx_id
@@ -96,11 +97,11 @@ class Tables:
         int,  # rw_counter
         int,  # is_write
         int,  # tag
-        int,  # v1
-        int,  # v2
-        int,  # v3
-        int,  # v4
-        int,  # v5
+        int,  # value1
+        int,  # value2
+        int,  # value3
+        int,  # value4
+        int,  # value5
     ]]
 
     def fixed_lookup(self, inputs: Union[Tuple[int, int, int, int], Sequence[int]]) -> bool:
@@ -164,9 +165,9 @@ class Step:
     execution_result: ExecutionResult
     call_state: CallState
     allocation: Sequence[int]
-    # helper table
+    # lookup tables
     tables: Tables
-    # helper constant
+    # helper numbers
     rw_counter_diff: int
     state_write_counter_diff: int
     allocation_offset: int
@@ -207,11 +208,14 @@ class Step:
     def decompress(self, value: int, n: int, r: int) -> Sequence[int]:
         allocation = self.allocate(n)
 
-        assert value == random_linear_combine(allocation, r)
+        assert value == linear_combine(allocation, r)
         for byte in allocation:
             self.byte_range_lookup(byte)
 
         return allocation
+
+    def bytes_range_lookup(self, value: int, n: int):
+        self.decompress(value, n, 256)
 
     def byte_range_lookup(self, input: int):
         assert self.tables.fixed_lookup([FixedTableTag.Range256, input, 0, 0])
@@ -315,19 +319,19 @@ class Step:
 
         return allocation[3+len(inputs):]
 
-    def lookup_opcode(self) -> Opcode:
+    def opcode_lookup(self) -> Opcode:
         if self.call_state.is_create:
             if self.call_state.is_root:
-                return self.tx_lookup(TxTableTag.Calldata, [
+                return Opcode(self.tx_lookup(TxTableTag.Calldata, [
                     self.call_state.opcode_source,
                     self.call_state.program_counter,
-                ])
+                ]))
             else:
-                # TODO: Add offsize and verify creation code length
-                return self.r_lookup(RWTableTag.Memory, [
+                # TODO: Add offset and verify creation code length
+                return Opcode(self.r_lookup(RWTableTag.Memory, [
                     self.call_state.opcode_source,
                     self.call_state.program_counter,
-                ])
+                ])[0])
         else:
             return self.bytecode_lookup([
                 self.call_state.opcode_source,
@@ -338,13 +342,10 @@ class Step:
 def le_to_int(bytes: Sequence[int]) -> int:
     assert len(bytes) < 32
 
-    ret = 0
-    for byte in reversed(bytes):
-        ret = (ret * 256) + byte
-    return ret
+    return linear_combine(bytes, 256)
 
 
-def random_linear_combine(bytes: Sequence[int], r: int) -> int:
+def linear_combine(bytes: Sequence[int], r: int) -> int:
     ret = 0
     for byte in reversed(bytes):
         ret = (ret * r + byte) % FQ
@@ -430,13 +431,10 @@ def assert_step_transition(curr: Step, next: Step, **kwargs):
 
 
 def main(curr: Step, next: Step, r: int, is_first_step: bool):
-    if is_first_step:
-        assert curr.execution_result == ExecutionResult.BEGIN_TX
-
-    if curr.execution_result == ExecutionResult.BEGIN_TX:
+    if is_first_step or curr.execution_result == ExecutionResult.BEGIN_TX:
         begin_tx(curr, next, r, is_first_step)
     else:
-        opcode = curr.lookup_opcode()
+        opcode = curr.opcode_lookup()
 
         if curr.execution_result == ExecutionResult.ADD:
             add(curr, next, r, opcode)
@@ -479,12 +477,12 @@ def begin_tx(curr: Step, next: Step, r: int, is_first_step: bool):
 
     # TODO: Buy intrinsic gas (EIP 2930)
     tx_gas = curr.tx_lookup(TxTableTag.Gas, tx_id)
-    curr.decompress(tx_gas, 8, 256)
+    curr.bytes_range_lookup(tx_gas, 8)
 
     # Verify transfer
     is_zero_value = curr.is_zero(value)
     if not is_zero_value:
-        bytes_value = curr.decompress(value, 8, 256)
+        bytes_value = curr.bytes_range_lookup(value, 8)
         assert_transfer(curr, caller_address, callee_address, bytes_value, r)
 
     if tx_is_create:
@@ -494,9 +492,11 @@ def begin_tx(curr: Step, next: Step, r: int, is_first_step: bool):
     else:
         code_hash = curr.r_lookup(RWTableTag.AccountCodeHash,
                                   [callee_address])
+        is_empty_cost_hash = curr.is_zero(
+            code_hash - linear_combine(EMPTY_CODE_HASH, r))
 
         # TODO: Handle precompile
-        if code_hash == random_linear_combine(EMPTY_CODE_HASH, r):
+        if is_empty_cost_hash:
             assert_step_transition(
                 rw_counter_diff=curr.rw_counter_diff,
                 execution_result=ExecutionResult.BEGIN_TX,
@@ -532,7 +532,7 @@ def add(curr: Step, next: Step, r: int, opcode: Opcode):
 
     # Verify gas
     next_gas_left = curr.call_state.gas_left - 3
-    curr.decompress(next_gas_left, 8, 256)
+    curr.bytes_range_lookup(next_gas_left, 8)
 
     a = curr.r_lookup(RWTableTag.Stack,
                       [curr.call_state.call_id, curr.call_state.stack_pointer])[0]
@@ -590,6 +590,8 @@ def call(curr: Step, next: Step, r: int, opcode: Opcode):
     bytes_rd_length = curr.decompress(rd_length, 5, r)
     assert_bool(result)
 
+    callee_address = le_to_int(bytes_callee_address[:20])
+
     # Verify transfer
     is_zero_value = curr.is_zero(value)
     if not is_zero_value:
@@ -600,56 +602,82 @@ def call(curr: Step, next: Step, r: int, opcode: Opcode):
     # Verify memory expansion
     is_nonzero_cd_length = not curr.is_zero(le_to_int(bytes_cd_length))
     is_nonzero_rd_length = not curr.is_zero(le_to_int(bytes_rd_length))
-    new_memory_size = curr.allocate(1)[0]
-    bytes_new_memory_size_cd = curr.allocate_byte(4)
-    bytes_new_memory_size_rd = curr.allocate_byte(4)
-    new_memory_size_cd = is_nonzero_cd_length * \
-        le_to_int(bytes_new_memory_size_cd)
-    new_memory_size_rd = is_nonzero_rd_length * \
-        le_to_int(bytes_new_memory_size_rd)
-    # Verify new_memory_size_cd is correct
+    next_memory_size = curr.allocate(1)[0]
+    bytes_next_memory_size_cd = curr.allocate_byte(4)
+    bytes_next_memory_size_rd = curr.allocate_byte(4)
+    next_memory_size_cd = is_nonzero_cd_length * \
+        le_to_int(bytes_next_memory_size_cd)
+    next_memory_size_rd = is_nonzero_rd_length * \
+        le_to_int(bytes_next_memory_size_rd)
+    # Verify next_memory_size_cd is correct
     if is_nonzero_cd_length:
         assert sum(bytes_cd_offset[5:]) == 0
         curr.fixed_lookup(FixedTableTag.Range32,
-                          [32 * new_memory_size_cd - (le_to_int(bytes_cd_offset) + le_to_int(bytes_cd_length))])
-    # Verify new_memory_size_rd is correct
+                          [32 * next_memory_size_cd - (le_to_int(bytes_cd_offset) + le_to_int(bytes_cd_length))])
+    # Verify next_memory_size_rd is correct
     if is_nonzero_rd_length:
         assert sum(bytes_rd_offset[5:]) == 0
         curr.fixed_lookup(FixedTableTag.Range32,
-                          [32 * new_memory_size_rd - (le_to_int(bytes_rd_offset) + le_to_int(bytes_rd_length))])
-    # Verify new_memory_size == \
-    #   max(curr.call_state.memory_size, new_memory_size_cd, new_memory_size_rd)
-    assert new_memory_size in [
+                          [32 * next_memory_size_rd - (le_to_int(bytes_rd_offset) + le_to_int(bytes_rd_length))])
+    # Verify next_memory_size == \
+    #   max(curr.call_state.memory_size, next_memory_size_cd, next_memory_size_rd)
+    assert next_memory_size in [
         curr.call_state.memory_size,
-        new_memory_size_cd,
-        new_memory_size_rd,
+        next_memory_size_cd,
+        next_memory_size_rd,
     ]
-    curr.decompress(new_memory_size - curr.call_state.memory_size, 4, 256)
-    curr.decompress(new_memory_size - new_memory_size_cd, 4, 256)
-    curr.decompress(new_memory_size - new_memory_size_rd, 4, 256)
+    curr.bytes_range_lookup(next_memory_size - curr.call_state.memory_size, 4)
+    curr.bytes_range_lookup(next_memory_size - next_memory_size_cd, 4)
+    curr.bytes_range_lookup(next_memory_size - next_memory_size_rd, 4)
     # Verify memory_gas_cost is correct
-    curr_quad_memory_gas_cost = curr.allocate_byte(8)
-    next_quad_memory_gas_cost = curr.allocate_byte(8)
+    curr_quad_memory_gas_cost = le_to_int(curr.allocate_byte(8))
+    next_quad_memory_gas_cost = le_to_int(curr.allocate_byte(8))
     curr.fixed_lookup(FixedTableTag.Range512,
                       [512 * curr_quad_memory_gas_cost - curr.call_state.memory_size * curr.call_state.memory_size])
     curr.fixed_lookup(FixedTableTag.Range512,
-                      [512 * next_quad_memory_gas_cost - new_memory_size * new_memory_size])
+                      [512 * next_quad_memory_gas_cost - next_memory_size * next_memory_size])
     memory_gas_cost = next_quad_memory_gas_cost - curr_quad_memory_gas_cost + \
-        3 * (new_memory_size - curr.call_state.memory_size)
+        3 * (next_memory_size - curr.call_state.memory_size)
 
-    # TODO: Handle EIP 150
-    callee_gas_left = le_to_int(bytes_gas)
+    # Verify gas cost
+    tx_id = curr.call_lookup(CallTableTag.TxId)
+    is_cold_access = 1 - \
+        curr.w_lookup(RWTableTag.TxAccessListAccount,
+                      [tx_id, callee_address, 1])[0]
+    code_hash = curr.r_lookup(RWTableTag.AccountCodeHash, [callee_address])[0]
+    is_empty_cost_hash = curr.is_zero(
+        code_hash - linear_combine(EMPTY_CODE_HASH, r))
+    is_account_empty = curr.is_zero(curr.r_lookup(RWTableTag.AccountNonce, [callee_address])[0]) * \
+        curr.is_zero(curr.r_lookup(RWTableTag.AccountBalance, [callee_address])[0]) * \
+        is_empty_cost_hash
+    base_gas_cost = 100 + \
+        is_cold_access * 2500 + \
+        + is_account_empty * 25000 + \
+        (not is_zero_value) * 9000 + \
+        memory_gas_cost
 
-    # TODO: Verify gas (memory expansion and EIP 2929)
-    next_gas_left = curr.call_state.gas_left - \
-        (100 + callee_gas_left + memory_gas_cost)
-    curr.decompress(next_gas_left, 8, 256)
+    available_gas = curr.call_state.gas_left - base_gas_cost
+    one_64th_available_gas = le_to_int(curr.allocate_byte(8))
+    curr.fixed_lookup(FixedTableTag.Range64, [
+                      available_gas - 64 * one_64th_available_gas])
 
-    code_hash = curr.r_lookup(RWTableTag.AccountCodeHash,
-                              [le_to_int(bytes_callee_address[:20])])[0]
+    is_capped = curr.allocate_bool(1)[0]
+    is_uint64 = curr.is_zero(sum(bytes_gas[8:]))
+    callee_gas_left = available_gas - one_64th_available_gas
+    if is_uint64:
+        if is_capped:
+            curr.bytes_range_lookup(le_to_int(bytes_gas) - callee_gas_left, 8)
+        else:
+            curr.bytes_range_lookup(callee_gas_left - le_to_int(bytes_gas), 8)
+            callee_gas_left = le_to_int(bytes_gas)
+    else:
+        assert is_capped
+
+    next_gas_left = curr.call_state.gas_left - base_gas_cost - callee_gas_left
+    curr.bytes_range_lookup(next_gas_left, 8)
 
     # TODO: Handle precompile
-    if code_hash == random_linear_combine(EMPTY_CODE_HASH, r):
+    if is_empty_cost_hash:
         assert result == 1
 
         assert_step_transition(
@@ -660,7 +688,7 @@ def call(curr: Step, next: Step, r: int, opcode: Opcode):
             program_counter_diff=1,
             stack_pointer_diff=6,
             gas_left=next_gas_left,
-            memory_size=new_memory_size,
+            memory_size=next_memory_size,
         )
     else:
         # Save caller's call state
@@ -680,7 +708,6 @@ def call(curr: Step, next: Step, r: int, opcode: Opcode):
         # Setup callee's context
         rw_counter_end_of_revert = curr.call_lookup(
             CallTableTag.RWCounterEndOfRevert)
-        tx_id = curr.call_lookup(CallTableTag.TxId)
         caller_address = curr.call_lookup(CallTableTag.CalleeAddress)
         is_persistent = curr.call_lookup(CallTableTag.IsPersistent)
         is_static = curr.call_lookup(CallTableTag.IsStatic)
