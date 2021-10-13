@@ -1,6 +1,6 @@
 import pytest
 
-from zkevm_specs.encoding import u256_to_u8s, u8s_to_u256, U256
+from zkevm_specs.encoding import u256_to_u8s, u8s_to_u256
 from zkevm_specs.opcode import check_add, SignTable, compare
 from zkevm_specs.opcode.stack import Stack
 
@@ -77,7 +77,7 @@ WORD_TWO_VALUES = (
 
 
 @pytest.mark.parametrize("word1,word2", WORD_TWO_VALUES)
-def test_comparator1(word1, word2):
+def test_pop(word1, word2):
     evm_stack = Stack()
     evm_stack.push(word1)
     evm_stack.push(word2)
