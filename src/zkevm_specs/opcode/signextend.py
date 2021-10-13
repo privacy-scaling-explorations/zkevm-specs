@@ -26,7 +26,7 @@ def check_signextend(
     assert len(v8s) == len(i8s) == len(r8s) == 32
     assert len(selectors) == 31
 
-    # Any index value >= 256 always returns all zeros
+    # Any index value >= 256 always returns the same value
     is_msb_sum_zero = sum(i8s[1:]) == 0
     # Check byte per byte to see if the byte was selected.
     # We're only directly checking the LSB byte
