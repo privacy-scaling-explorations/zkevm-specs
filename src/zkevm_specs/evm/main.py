@@ -8,11 +8,14 @@ EMPTY_CODE_HASH = bytearray.fromhex(
 
 
 class FixedTableTag(IntEnum):
-    Range32 = auto()
-    Range64 = auto()
-    Range256 = auto()
-    Range512 = auto()
-    Range1024 = auto()
+    Range32 = auto()  # value, 0, 0
+    Range64 = auto()  # value, 0, 0
+    Range256 = auto()  # value, 0, 0
+    Range512 = auto()  # value, 0, 0
+    Range1024 = auto()  # value, 0, 0
+    InvalidOpcode = auto()  # opcode, 0, 0
+    StackUnderflow = auto()  # opcode, stack_pointer, 0
+    StackOverflow = auto()  # opcode, stack_pointer, 0
 
 
 class TxTableTag(IntEnum):
@@ -130,18 +133,119 @@ class Opcode(IntEnum):
 class ExecutionResult(IntEnum):
     BEGIN_TX = auto()
 
-    # opcodes
+    # opcode's successful cases
     STOP = auto()
     ADD = auto()
-    CALL = auto()
+    MUL = auto()
+    DIV = auto()
+    SDIV = auto()
+    MOD = auto()
+    SMOD = auto()
+    ADDMOD = auto()
+    MULMOD = auto()
+    EXP = auto()
+    SIGNEXTEND = auto()
+    LT = auto()
+    SLT = auto()
+    EQ = auto()
+    ISZERO = auto()
+    AND = auto()
+    OR = auto()
+    XOR = auto()
+    NOT = auto()
+    BYTE = auto()
+    SHL = auto()
+    SHR = auto()
+    SAR = auto()
+    SHA3 = auto()
+    ADDRESS = auto()
+    BALANCE = auto()
+    ORIGIN = auto()
+    CALLER = auto()
+    CALLVALUE = auto()
+    CALLDATALOAD = auto()
+    CALLDATASIZE = auto()
+    CALLDATACOPY = auto()
+    CODESIZE = auto()
+    CODECOPY = auto()
+    GASPRICE = auto()
+    EXTCODESIZE = auto()
+    EXTCODECOPY = auto()
+    RETURNDATASIZE = auto()
+    RETURNDATACOPY = auto()
+    EXTCODEHASH = auto()
+    BLOCKHASH = auto()
+    COINBASE = auto()
+    TIMESTAMP = auto()
+    NUMBER = auto()
+    DIFFICULTY = auto()
+    GASLIMIT = auto()
+    CHAINID = auto()
+    SELFBALANCE = auto()
+    BASEFEE = auto()
+    POP = auto()
+    MLOAD = auto()
+    MSTORE = auto()
+    MSTORE8 = auto()
+    SLOAD = auto()
+    SSTORE = auto()
+    JUMP = auto()
+    JUMPI = auto()
+    PC = auto()
+    MSIZE = auto()
+    GAS = auto()
     PUSH = auto()
-    # more...
+    DUP = auto()
+    SWAP = auto()
+    LOG = auto()
+    CREATE = auto()
+    CALL = auto()
+    CALLCODE = auto()
+    RETURN = auto()
+    DELEGATECALL = auto()
+    CREATE2 = auto()
+    STATICCALL = auto()
+    REVERT = auto()
+    SELFDESTRUCT = auto()
 
-    # errors
-    ERROR_OUT_OF_GAS = auto()
-    ERROR_STACK_UNDERFLOW = auto()
+    # error cases
+    ERROR_INVALID_OPCODE = auto()
+    # for opcodes who push more than pop
     ERROR_STACK_OVERFLOW = auto()
-    # more...
+    # for opcodes who pop and DUP, SWAP who peek deeper element directly
+    ERROR_STACK_UNDERFLOW = auto()
+    # for opcodes who have non-zero constant gas cost
+    ERROR_OOG_CONSTANT = auto()
+    # for opcodes MLOAD, MSTORE, MSTORE8, CREATE, RETURN, REVERT, who have pure memory expansion gas cost
+    ERROR_OOG_PURE_MEMORY = auto()
+    # for opcodes who have dynamic gas usage rather than pure memory expansion
+    ERROR_OOG_SHA3 = auto()
+    ERROR_OOG_CALLDATACOPY = auto()
+    ERROR_OOG_CODECOPY = auto()
+    ERROR_OOG_EXTCODECOPY = auto()
+    ERROR_OOG_RETURNDATACOPY = auto()
+    ERROR_OOG_LOG = auto()
+    ERROR_OOG_CALL = auto()
+    ERROR_OOG_CALLCODE = auto()
+    ERROR_OOG_DELEGATECALL = auto()
+    ERROR_OOG_CREATE2 = auto()
+    ERROR_OOG_STATICCALL = auto()
+    # for SSTORE, LOG0, LOG1, LOG2, LOG3, LOG4, CREATE, CALL, CREATE2, SELFDESTRUCT
+    ERROR_WRITE_PROTECTION = auto()
+    # for CALL, CALLCODE, DELEGATECALL, STATICCALL
+    ERROR_DEPTH = auto()
+    # for CALL, CALLCODE
+    ERROR_INSUFFICIENT_BALANCE = auto()
+    # for CREATE, CREATE2
+    ERROR_CONTRACT_ADDRESS_COLLISION = auto()
+    ERROR_MAX_CODE_SIZE_EXCEEDED = auto()
+    ERROR_INVALID_CODE = auto()
+    # for REVERT
+    ERROR_EXECUTION_REVERTED = auto()
+    # for JUMP, JUMPI
+    ERROR_INVALID_JUMP = auto()
+    # for RETURNDATACOPY
+    ERROR_RETURN_DATA_OUT_OF_BOUNDS = auto()
 
 
 class CallState:
@@ -169,6 +273,7 @@ class Step:
     tables: Tables
     # helper numbers
     rw_counter_diff: int
+    stack_pointer_diff: int
     state_write_counter_diff: int
     allocation_offset: int
 
@@ -204,6 +309,9 @@ class Step:
         assert value_inv * is_zero == 0
 
         return is_zero
+
+    def is_equal(self, lhs: int, rhs: int) -> bool:
+        return self.is_zero(lhs - rhs)
 
     def decompress(self, value: int, n: int, r: int) -> Sequence[int]:
         allocation = self.allocate(n)
@@ -338,6 +446,21 @@ class Step:
                 self.call_state.program_counter,
             ])
 
+    def stack_pop_lookup(self) -> int:
+        value = self.r_lookup(RWTableTag.Stack, [
+            self.call_state.call_id,
+            self.call_state.stack_pointer + self.stack_pointer_diff
+        ])[0]
+        self.self.stack_pointer_diff += 1
+        return value
+
+    def stack_push_lookup(self) -> int:
+        self.self.stack_pointer_diff -= 1
+        return self.w_lookup(RWTableTag.Stack, [
+            self.call_state.call_id,
+            self.call_state.stack_pointer + self.stack_pointer_diff
+        ])[0]
+
 
 def le_to_int(bytes: Sequence[int]) -> int:
     assert len(bytes) < 32
@@ -397,6 +520,60 @@ def assert_transfer(curr: Step, caller_address: int, callee_address: int, bytes_
     assert callee_carries[31] == 0
 
 
+def assert_memory_expansion(
+    curr: Step,
+    bytes_cd_offset: Sequence[int],
+    bytes_cd_length: Sequence[int],
+    bytes_rd_offset: Sequence[int],
+    bytes_rd_length: Sequence[int],
+) -> Tuple[int, int]:
+    next_memory_size = curr.allocate(1)[0]
+
+    is_nonzero_cd_length = not curr.is_zero(le_to_int(bytes_cd_length))
+    is_nonzero_rd_length = not curr.is_zero(le_to_int(bytes_rd_length))
+    bytes_next_memory_size_cd = curr.allocate_byte(4)
+    bytes_next_memory_size_rd = curr.allocate_byte(4)
+    next_memory_size_cd = is_nonzero_cd_length * \
+        le_to_int(bytes_next_memory_size_cd)
+    next_memory_size_rd = is_nonzero_rd_length * \
+        le_to_int(bytes_next_memory_size_rd)
+
+    # Verify next_memory_size_cd is correct
+    if is_nonzero_cd_length:
+        assert sum(bytes_cd_offset[5:]) == 0
+        curr.fixed_lookup(FixedTableTag.Range32,
+                          [32 * next_memory_size_cd - (le_to_int(bytes_cd_offset) + le_to_int(bytes_cd_length))])
+
+    # Verify next_memory_size_rd is correct
+    if is_nonzero_rd_length:
+        assert sum(bytes_rd_offset[5:]) == 0
+        curr.fixed_lookup(FixedTableTag.Range32,
+                          [32 * next_memory_size_rd - (le_to_int(bytes_rd_offset) + le_to_int(bytes_rd_length))])
+
+    # Verify next_memory_size == \
+    #   max(curr.call_state.memory_size, next_memory_size_cd, next_memory_size_rd)
+    assert next_memory_size in [
+        curr.call_state.memory_size,
+        next_memory_size_cd,
+        next_memory_size_rd,
+    ]
+    curr.bytes_range_lookup(next_memory_size - curr.call_state.memory_size, 4)
+    curr.bytes_range_lookup(next_memory_size - next_memory_size_cd, 4)
+    curr.bytes_range_lookup(next_memory_size - next_memory_size_rd, 4)
+
+    # Verify memory_gas_cost is correct
+    curr_quad_memory_gas_cost = le_to_int(curr.allocate_byte(8))
+    next_quad_memory_gas_cost = le_to_int(curr.allocate_byte(8))
+    curr.fixed_lookup(FixedTableTag.Range512,
+                      [512 * curr_quad_memory_gas_cost - curr.call_state.memory_size * curr.call_state.memory_size])
+    curr.fixed_lookup(FixedTableTag.Range512,
+                      [512 * next_quad_memory_gas_cost - next_memory_size * next_memory_size])
+    memory_gas_cost = next_quad_memory_gas_cost - curr_quad_memory_gas_cost + \
+        3 * (next_memory_size - curr.call_state.memory_size)
+
+    return next_memory_size, memory_gas_cost
+
+
 def assert_step_transition(curr: Step, next: Step, **kwargs):
     def assert_transition(obj_curr: Any, obj_next: Any, keys: Sequence[str]):
         for key in keys:
@@ -428,20 +605,6 @@ def assert_step_transition(curr: Step, next: Step, **kwargs):
         'last_callee_returndata_offset',
         'last_callee_returndata_length',
     ])
-
-
-def main(curr: Step, next: Step, r: int, is_first_step: bool):
-    if is_first_step or curr.execution_result == ExecutionResult.BEGIN_TX:
-        begin_tx(curr, next, r, is_first_step)
-    else:
-        opcode = curr.opcode_lookup()
-
-        if curr.execution_result == ExecutionResult.ADD:
-            add(curr, next, r, opcode)
-        elif curr.execution_result == ExecutionResult.CALL:
-            call(curr, next, r, opcode)
-        else:
-            raise NotImplementedError
 
 
 def begin_tx(curr: Step, next: Step, r: int, is_first_step: bool):
@@ -492,8 +655,8 @@ def begin_tx(curr: Step, next: Step, r: int, is_first_step: bool):
     else:
         code_hash = curr.r_lookup(RWTableTag.AccountCodeHash,
                                   [callee_address])
-        is_empty_cost_hash = curr.is_zero(
-            code_hash - linear_combine(EMPTY_CODE_HASH, r))
+        is_empty_cost_hash = curr.is_equal(
+            code_hash, linear_combine(EMPTY_CODE_HASH, r))
 
         # TODO: Handle precompile
         if is_empty_cost_hash:
@@ -534,12 +697,9 @@ def add(curr: Step, next: Step, r: int, opcode: Opcode):
     next_gas_left = curr.call_state.gas_left - 3
     curr.bytes_range_lookup(next_gas_left, 8)
 
-    a = curr.r_lookup(RWTableTag.Stack,
-                      [curr.call_state.call_id, curr.call_state.stack_pointer])[0]
-    b = curr.r_lookup(RWTableTag.Stack,
-                      [curr.call_state.call_id, curr.call_state.stack_pointer + 1])[0]
-    c = curr.w_lookup(RWTableTag.Stack,
-                      [curr.call_state.call_id, curr.call_state.stack_pointer + 1])[0]
+    a = curr.stack_pop_lookup()
+    b = curr.stack_pop_lookup()
+    c = curr.stack_push_lookup()
     bytes_a = curr.decompress(a, 32, r)
     bytes_b = curr.decompress(c if swap else b, 32, r)
     bytes_c = curr.decompress(b if swap else c, 32, r)
@@ -551,7 +711,7 @@ def add(curr: Step, next: Step, r: int, opcode: Opcode):
         rw_counter_diff=curr.rw_counter_diff,
         execution_result_not=ExecutionResult.BEGIN_TX,
         program_counter_diff=1,
-        stack_pointer_diff=1,
+        stack_pointer_diff=curr.stack_pointer_diff,
         gas_left=next_gas_left,
     )
 
@@ -564,30 +724,16 @@ def call(curr: Step, next: Step, r: int, opcode: Opcode):
     depth = curr.call_lookup(CallTableTag.Depth)
     curr.fixed_lookup(FixedTableTag.Range1024, [depth])
 
-    gas = curr.r_lookup(RWTableTag.Stack,
-                        [curr.call_state.call_id, curr.call_state.stack_pointer])[0]
-    callee_address = curr.r_lookup(RWTableTag.Stack,
-                                   [curr.call_state.call_id, curr.call_state.stack_pointer + 1])[0]
-    value = curr.r_lookup(RWTableTag.Stack,
-                          [curr.call_state.call_id, curr.call_state.stack_pointer + 2])[0]
-    cd_offset = curr.r_lookup(RWTableTag.Stack,
-                              [curr.call_state.call_id, curr.call_state.stack_pointer + 3])[0]
-    cd_length = curr.r_lookup(RWTableTag.Stack,
-                              [curr.call_state.call_id, curr.call_state.stack_pointer + 4])[0]
-    rd_offset = curr.r_lookup(RWTableTag.Stack,
-                              [curr.call_state.call_id, curr.call_state.stack_pointer + 5])[0]
-    rd_length = curr.r_lookup(RWTableTag.Stack,
-                              [curr.call_state.call_id, curr.call_state.stack_pointer + 6])[0]
-    result = curr.w_lookup(RWTableTag.Stack,
-                           [curr.call_state.call_id, curr.call_state.stack_pointer + 6])[0]
-
-    # Need full decompression due to EIP 150
-    bytes_gas = curr.decompress(gas, 32, r)
-    bytes_callee_address = curr.decompress(callee_address, 32, r)
-    bytes_cd_offset = curr.decompress(cd_offset, 32, r)
-    bytes_cd_length = curr.decompress(cd_length, 5, r)
-    bytes_rd_offset = curr.decompress(rd_offset, 32, r)
-    bytes_rd_length = curr.decompress(rd_length, 5, r)
+    # Gas needs full decompression due to EIP 150
+    bytes_gas = curr.decompress(curr.stack_pop_lookup(), 32, r)
+    bytes_callee_address = curr.decompress(curr.stack_pop_lookup(), 32, r)
+    value = curr.stack_pop_lookup()
+    bytes_value = curr.decompress(value, 32, r)
+    bytes_cd_offset = curr.decompress(curr.stack_pop_lookup(), 32, r)
+    bytes_cd_length = curr.decompress(curr.stack_pop_lookup(), 5, r)
+    bytes_rd_offset = curr.decompress(curr.stack_pop_lookup(), 32, r)
+    bytes_rd_length = curr.decompress(curr.stack_pop_lookup(), 5, r)
+    result = curr.stack_push_lookup()
     assert_bool(result)
 
     callee_address = le_to_int(bytes_callee_address[:20])
@@ -596,48 +742,10 @@ def call(curr: Step, next: Step, r: int, opcode: Opcode):
     is_zero_value = curr.is_zero(value)
     if not is_zero_value:
         caller_address = curr.call_lookup(CallTableTag.CalleeAddress)
-        bytes_value = curr.decompress(value, 32, r)
         assert_transfer(curr, caller_address, callee_address, bytes_value, r)
 
     # Verify memory expansion
-    is_nonzero_cd_length = not curr.is_zero(le_to_int(bytes_cd_length))
-    is_nonzero_rd_length = not curr.is_zero(le_to_int(bytes_rd_length))
-    next_memory_size = curr.allocate(1)[0]
-    bytes_next_memory_size_cd = curr.allocate_byte(4)
-    bytes_next_memory_size_rd = curr.allocate_byte(4)
-    next_memory_size_cd = is_nonzero_cd_length * \
-        le_to_int(bytes_next_memory_size_cd)
-    next_memory_size_rd = is_nonzero_rd_length * \
-        le_to_int(bytes_next_memory_size_rd)
-    # Verify next_memory_size_cd is correct
-    if is_nonzero_cd_length:
-        assert sum(bytes_cd_offset[5:]) == 0
-        curr.fixed_lookup(FixedTableTag.Range32,
-                          [32 * next_memory_size_cd - (le_to_int(bytes_cd_offset) + le_to_int(bytes_cd_length))])
-    # Verify next_memory_size_rd is correct
-    if is_nonzero_rd_length:
-        assert sum(bytes_rd_offset[5:]) == 0
-        curr.fixed_lookup(FixedTableTag.Range32,
-                          [32 * next_memory_size_rd - (le_to_int(bytes_rd_offset) + le_to_int(bytes_rd_length))])
-    # Verify next_memory_size == \
-    #   max(curr.call_state.memory_size, next_memory_size_cd, next_memory_size_rd)
-    assert next_memory_size in [
-        curr.call_state.memory_size,
-        next_memory_size_cd,
-        next_memory_size_rd,
-    ]
-    curr.bytes_range_lookup(next_memory_size - curr.call_state.memory_size, 4)
-    curr.bytes_range_lookup(next_memory_size - next_memory_size_cd, 4)
-    curr.bytes_range_lookup(next_memory_size - next_memory_size_rd, 4)
-    # Verify memory_gas_cost is correct
-    curr_quad_memory_gas_cost = le_to_int(curr.allocate_byte(8))
-    next_quad_memory_gas_cost = le_to_int(curr.allocate_byte(8))
-    curr.fixed_lookup(FixedTableTag.Range512,
-                      [512 * curr_quad_memory_gas_cost - curr.call_state.memory_size * curr.call_state.memory_size])
-    curr.fixed_lookup(FixedTableTag.Range512,
-                      [512 * next_quad_memory_gas_cost - next_memory_size * next_memory_size])
-    memory_gas_cost = next_quad_memory_gas_cost - curr_quad_memory_gas_cost + \
-        3 * (next_memory_size - curr.call_state.memory_size)
+    next_memory_size, memory_gas_cost = assert_memory_expansion(curr)
 
     # Verify gas cost
     tx_id = curr.call_lookup(CallTableTag.TxId)
@@ -645,10 +753,13 @@ def call(curr: Step, next: Step, r: int, opcode: Opcode):
         curr.w_lookup(RWTableTag.TxAccessListAccount,
                       [tx_id, callee_address, 1])[0]
     code_hash = curr.r_lookup(RWTableTag.AccountCodeHash, [callee_address])[0]
-    is_empty_cost_hash = curr.is_zero(
-        code_hash - linear_combine(EMPTY_CODE_HASH, r))
-    is_account_empty = curr.is_zero(curr.r_lookup(RWTableTag.AccountNonce, [callee_address])[0]) * \
-        curr.is_zero(curr.r_lookup(RWTableTag.AccountBalance, [callee_address])[0]) * \
+    is_empty_cost_hash = curr.is_equal(
+        code_hash, linear_combine(EMPTY_CODE_HASH, r))
+    callee_nonce = curr.r_lookup(RWTableTag.AccountNonce, [callee_address])[0]
+    callee_balance = curr.r_lookup(
+        RWTableTag.AccountBalance, [callee_address])[0]
+    is_account_empty = curr.is_zero(callee_nonce) and \
+        curr.is_zero(callee_balance) and \
         is_empty_cost_hash
     base_gas_cost = 100 + \
         is_cold_access * 2500 + \
@@ -686,7 +797,7 @@ def call(curr: Step, next: Step, r: int, opcode: Opcode):
             execution_result_not=ExecutionResult.BEGIN_TX,
             state_write_counter_diff=curr.state_write_counter_diff,
             program_counter_diff=1,
-            stack_pointer_diff=6,
+            stack_pointer_diff=curr.stack_pointer_diff,
             gas_left=next_gas_left,
             memory_size=next_memory_size,
         )
@@ -696,11 +807,13 @@ def call(curr: Step, next: Step, r: int, opcode: Opcode):
             (CallTableTag.IsRoot, curr.call_state.is_root),
             (CallTableTag.IsCreate, curr.call_state.is_create),
             (CallTableTag.OpcodeSource, curr.call_state.opcode_source),
-            (CallTableTag.ProgramCounter, curr.call_state.program_counter),
-            (CallTableTag.StackPointer, curr.call_state.stack_pointer),
-            (CallTableTag.GasLeft, curr.call_state.gas_left),
-            (CallTableTag.MemorySize, curr.call_state.memory_size),
-            (CallTableTag.StateWriteCounter, curr.call_state.state_write_counter),
+            (CallTableTag.ProgramCounter, curr.call_state.program_counter + 1),
+            (CallTableTag.StackPointer,
+             curr.call_state.stack_pointer + curr.stack_pointer_diff),
+            (CallTableTag.GasLeft, next_gas_left),
+            (CallTableTag.MemorySize, next_memory_size),
+            (CallTableTag.StateWriteCounter,
+             curr.call_state.state_write_counter + curr.state_write_counter_diff),
         ]:
             curr.w_lookup(RWTableTag.CallState,
                           [curr.call_state.call_id, tag, value])
@@ -787,3 +900,60 @@ def call(curr: Step, next: Step, r: int, opcode: Opcode):
             last_callee_returndata_offset=0,
             last_callee_returndata_length=0,
         )
+
+
+def error_invalid_opcode(curr: Step, next: Step, r: int, opcode: Opcode):
+    curr.fixed_lookup(FixedTableTag.InvalidOpcode, [opcode])
+
+    # TODO: return to caller's state or go to next tx
+
+
+def error_stack_overflow(curr: Step, next: Step, r: int, opcode: Opcode):
+    curr.fixed_lookup(FixedTableTag.StackOverflow,
+                      [opcode, curr.call_state.stack_pointer])
+
+    # TODO: return to caller's state or go to next tx
+
+
+def error_stack_underflow(curr: Step, next: Step, r: int, opcode: Opcode):
+    curr.fixed_lookup(FixedTableTag.StackUnderflow,
+                      [opcode, curr.call_state.stack_pointer])
+
+    # TODO: return to caller's state or go to next tx
+
+
+def error_depth(curr: Step, next: Step, r: int, opcode: Opcode):
+    assert opcode in [Opcode.CALL, Opcode.CALLCODE,
+                      Opcode.DELEGATECALL, Opcode.STATICCALL]
+
+    depth = curr.call_lookup(CallTableTag.Depth)
+    assert depth == 1024
+
+    # TODO: return to caller's state or go to next tx
+
+
+def main(curr: Step, next: Step, r: int, is_first_step: bool, is_final_step: bool):
+    if is_first_step or curr.execution_result == ExecutionResult.BEGIN_TX:
+        begin_tx(curr, next, r, is_first_step)
+    else:
+        opcode = curr.opcode_lookup()
+
+        # opcode's successful cases
+        if curr.execution_result == ExecutionResult.ADD:
+            add(curr, next, r, opcode)
+        elif curr.execution_result == ExecutionResult.CALL:
+            call(curr, next, r, opcode)
+        # error cases
+        elif curr.execution_result == ExecutionResult.ERROR_INVALID_CODE:
+            error_invalid_opcode(curr, next, r, opcode)
+        elif curr.execution_result == ExecutionResult.ERROR_STACK_OVERFLOW:
+            error_stack_overflow(curr, next, r, opcode)
+        elif curr.execution_result == ExecutionResult.ERROR_STACK_UNDERFLOW:
+            error_stack_underflow(curr, next, r, opcode)
+        elif curr.execution_result == ExecutionResult.ERROR_DEPTH:
+            error_depth(curr, next, r, opcode)
+        else:
+            raise NotImplementedError
+
+    if is_final_step:
+        assert curr.rw_counter == len(curr.tables.rw_table)
