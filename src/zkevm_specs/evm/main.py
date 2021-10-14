@@ -126,8 +126,146 @@ class Tables:
 class Opcode(IntEnum):
     STOP = int(0x00)
     ADD = int(0x01)
+    MUL = int(0x02)
     SUB = int(0x03)
+    DIV = int(0x04)
+    SDIV = int(0x05)
+    MOD = int(0x06)
+    SMOD = int(0x07)
+    ADDMOD = int(0x08)
+    MULMOD = int(0x09)
+    EXP = int(0x0a)
+    SIGNEXTEND = int(0x0b)
+    LT = int(0x10)
+    GT = int(0x11)
+    SLT = int(0x12)
+    SGT = int(0x13)
+    EQ = int(0x14)
+    ISZERO = int(0x15)
+    AND = int(0x16)
+    OR = int(0x17)
+    XOR = int(0x18)
+    NOT = int(0x19)
+    BYTE = int(0x1a)
+    SHL = int(0x1b)
+    SHR = int(0x1c)
+    SAR = int(0x1d)
+    SHA3 = int(0x20)
+    ADDRESS = int(0x30)
+    BALANCE = int(0x31)
+    ORIGIN = int(0x32)
+    CALLER = int(0x33)
+    CALLVALUE = int(0x34)
+    CALLDATALOAD = int(0x35)
+    CALLDATASIZE = int(0x36)
+    CALLDATACOPY = int(0x37)
+    CODESIZE = int(0x38)
+    CODECOPY = int(0x39)
+    GASPRICE = int(0x3a)
+    EXTCODESIZE = int(0x3b)
+    EXTCODECOPY = int(0x3c)
+    RETURNDATASIZE = int(0x3d)
+    RETURNDATACOPY = int(0x3e)
+    EXTCODEHASH = int(0x3f)
+    BLOCKHASH = int(0x40)
+    COINBASE = int(0x41)
+    TIMESTAMP = int(0x42)
+    NUMBER = int(0x43)
+    DIFFICULTY = int(0x44)
+    GASLIMIT = int(0x45)
+    CHAINID = int(0x46)
+    SELFBALANCE = int(0x47)
+    BASEFEE = int(0x48)
+    POP = int(0x50)
+    MLOAD = int(0x51)
+    MSTORE = int(0x52)
+    MSTORE8 = int(0x53)
+    SLOAD = int(0x54)
+    SSTORE = int(0x55)
+    JUMP = int(0x56)
+    JUMPI = int(0x57)
+    PC = int(0x58)
+    MSIZE = int(0x59)
+    GAS = int(0x5a)
+    JUMPDEST = int(0x5b)
+    PUSH1 = int(0x60)
+    PUSH2 = int(0x61)
+    PUSH3 = int(0x62)
+    PUSH4 = int(0x63)
+    PUSH5 = int(0x64)
+    PUSH6 = int(0x65)
+    PUSH7 = int(0x66)
+    PUSH8 = int(0x67)
+    PUSH9 = int(0x68)
+    PUSH10 = int(0x69)
+    PUSH11 = int(0x6a)
+    PUSH12 = int(0x6b)
+    PUSH13 = int(0x6c)
+    PUSH14 = int(0x6d)
+    PUSH15 = int(0x6e)
+    PUSH16 = int(0x6f)
+    PUSH17 = int(0x70)
+    PUSH18 = int(0x71)
+    PUSH19 = int(0x72)
+    PUSH20 = int(0x73)
+    PUSH21 = int(0x74)
+    PUSH22 = int(0x75)
+    PUSH23 = int(0x76)
+    PUSH24 = int(0x77)
+    PUSH25 = int(0x78)
+    PUSH26 = int(0x79)
+    PUSH27 = int(0x7a)
+    PUSH28 = int(0x7b)
+    PUSH29 = int(0x7c)
+    PUSH30 = int(0x7d)
+    PUSH31 = int(0x7e)
+    PUSH32 = int(0x7f)
+    DUP1 = int(0x80)
+    DUP2 = int(0x81)
+    DUP3 = int(0x82)
+    DUP4 = int(0x83)
+    DUP5 = int(0x84)
+    DUP6 = int(0x85)
+    DUP7 = int(0x86)
+    DUP8 = int(0x87)
+    DUP9 = int(0x88)
+    DUP10 = int(0x89)
+    DUP11 = int(0x8a)
+    DUP12 = int(0x8b)
+    DUP13 = int(0x8c)
+    DUP14 = int(0x8d)
+    DUP15 = int(0x8e)
+    DUP16 = int(0x8f)
+    SWAP1 = int(0x90)
+    SWAP2 = int(0x91)
+    SWAP3 = int(0x92)
+    SWAP4 = int(0x93)
+    SWAP5 = int(0x94)
+    SWAP6 = int(0x95)
+    SWAP7 = int(0x96)
+    SWAP8 = int(0x97)
+    SWAP9 = int(0x98)
+    SWAP10 = int(0x99)
+    SWAP11 = int(0x9a)
+    SWAP12 = int(0x9b)
+    SWAP13 = int(0x9c)
+    SWAP14 = int(0x9d)
+    SWAP15 = int(0x9e)
+    SWAP16 = int(0x9f)
+    LOG0 = int(0xa0)
+    LOG1 = int(0xa1)
+    LOG2 = int(0xa2)
+    LOG3 = int(0xa3)
+    LOG4 = int(0xa4)
+    CREATE = int(0xf0)
     CALL = int(0xf1)
+    CALLCODE = int(0xf2)
+    RETURN = int(0xf3)
+    DELEGATECALL = int(0xf4)
+    CREATE2 = int(0xf5)
+    STATICCALL = int(0xfa)
+    REVERT = int(0xfd)
+    SELFDESTRUCT = int(0xff)
 
 
 class ExecutionResult(IntEnum):
@@ -427,23 +565,23 @@ class Step:
 
         return allocation[3+len(inputs):]
 
-    def opcode_lookup(self) -> Opcode:
+    def opcode_lookup(self, offset: int) -> Opcode:
         if self.call_state.is_create:
             if self.call_state.is_root:
                 return Opcode(self.tx_lookup(TxTableTag.Calldata, [
                     self.call_state.opcode_source,
-                    self.call_state.program_counter,
+                    self.call_state.program_counter + offset,
                 ]))
             else:
                 # TODO: Add offset and verify creation code length
                 return Opcode(self.r_lookup(RWTableTag.Memory, [
                     self.call_state.opcode_source,
-                    self.call_state.program_counter,
+                    self.call_state.program_counter + offset,
                 ])[0])
         else:
             return self.bytecode_lookup([
                 self.call_state.opcode_source,
-                self.call_state.program_counter,
+                self.call_state.program_counter + offset,
             ])
 
     def stack_pop_lookup(self) -> int:
@@ -716,6 +854,39 @@ def add(curr: Step, next: Step, r: int, opcode: Opcode):
     )
 
 
+def push(curr: Step, next: Step, r: int, opcode: Opcode):
+    selectors = curr.allocate_bool(32)
+
+    # Verify opcode
+    num_pushed = opcode - Opcode.PUSH1 + 1
+    curr.fixed_lookup(FixedTableTag.Range32, [num_pushed])
+
+    # Verify gas
+    next_gas_left = curr.call_state.gas_left - 3
+    curr.bytes_range_lookup(next_gas_left, 8)
+
+    value = curr.stack_push_lookup()
+    bytes_value = curr.decompress(value, 32, r)
+
+    assert sum(selectors) == num_pushed
+    for i, byte in enumerate(bytes_value):
+        if i > 0:
+            assert_bool(selectors[i] - selectors[i - 1])
+        if selectors[i]:
+            assert byte == curr.opcode_lookup(i + 1)
+        else:
+            assert bytes_value[i] == 0
+
+    assert_step_transition(
+        curr, next,
+        rw_counter_diff=curr.rw_counter_diff,
+        execution_result_not=ExecutionResult.BEGIN_TX,
+        program_counter_diff=num_pushed + 1,
+        stack_pointer_diff=curr.stack_pointer_diff,
+        gas_left=next_gas_left,
+    )
+
+
 def call(curr: Step, next: Step, r: int, opcode: Opcode):
     # Verify opcode
     assert opcode == Opcode.CALL
@@ -905,21 +1076,21 @@ def call(curr: Step, next: Step, r: int, opcode: Opcode):
 def error_invalid_opcode(curr: Step, next: Step, r: int, opcode: Opcode):
     curr.fixed_lookup(FixedTableTag.InvalidOpcode, [opcode])
 
-    # TODO: return to caller's state or go to next tx
+    # TODO: Return to caller's state or go to next tx
 
 
 def error_stack_overflow(curr: Step, next: Step, r: int, opcode: Opcode):
     curr.fixed_lookup(FixedTableTag.StackOverflow,
                       [opcode, curr.call_state.stack_pointer])
 
-    # TODO: return to caller's state or go to next tx
+    # TODO: Return to caller's state or go to next tx
 
 
 def error_stack_underflow(curr: Step, next: Step, r: int, opcode: Opcode):
     curr.fixed_lookup(FixedTableTag.StackUnderflow,
                       [opcode, curr.call_state.stack_pointer])
 
-    # TODO: return to caller's state or go to next tx
+    # TODO: Return to caller's state or go to next tx
 
 
 def error_depth(curr: Step, next: Step, r: int, opcode: Opcode):
@@ -929,7 +1100,7 @@ def error_depth(curr: Step, next: Step, r: int, opcode: Opcode):
     depth = curr.call_lookup(CallTableTag.Depth)
     assert depth == 1024
 
-    # TODO: return to caller's state or go to next tx
+    # TODO: Return to caller's state or go to next tx
 
 
 def main(curr: Step, next: Step, r: int, is_first_step: bool, is_final_step: bool):
@@ -941,6 +1112,8 @@ def main(curr: Step, next: Step, r: int, is_first_step: bool, is_final_step: boo
         # opcode's successful cases
         if curr.execution_result == ExecutionResult.ADD:
             add(curr, next, r, opcode)
+        if curr.execution_result == ExecutionResult.PUSH:
+            push(curr, next, r, opcode)
         elif curr.execution_result == ExecutionResult.CALL:
             call(curr, next, r, opcode)
         # error cases
@@ -956,4 +1129,8 @@ def main(curr: Step, next: Step, r: int, is_first_step: bool, is_final_step: boo
             raise NotImplementedError
 
     if is_final_step:
+        # Verify no malicious insertion
         assert curr.rw_counter == len(curr.tables.rw_table)
+
+        # TODO: Verify final step is a padding
+        # TODO: Verify final step has the tx_id identical to the amount in tx_table
