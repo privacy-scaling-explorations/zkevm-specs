@@ -69,9 +69,26 @@ def test_comparator(a, b):
     else:
         assert sign == -1
 
+@pytest.mark.parametrize("word1,word2", WORD_TWO_VALUES)
+def test_pop(word1, word2):
+    evm_stack = Stack()
+    evm_stack.push(word1)
+    evm_stack.push(word2)
+    assert word2 == evm_stack.peek()
+
 WORD_TWO_VALUES = (
     (20, 30),
 )
+
+@pytest.mark.parametrize("word1,word2", WORD_TWO_VALUES)
+def test_pop(word1, word2):
+    evm_stack = Stack()
+    evm_stack.push(word1)
+    evm_stack.push(word2)
+    assert word2 == evm_stack.peek()
+    evm_stack.pop()
+    assert word1 == evm_stack.peek()
+
 @pytest.mark.parametrize("word1,word2", WORD_TWO_VALUES)
 def check_dupx(word1, word2):
     evm_stack = Stack()
