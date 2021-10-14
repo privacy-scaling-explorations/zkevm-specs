@@ -50,4 +50,3 @@ class Stack():
         swap_word = self.items[self.top + pos]
         self.items[self.top] = swap_word
         self.items[self.top + pos] = top_word
-
