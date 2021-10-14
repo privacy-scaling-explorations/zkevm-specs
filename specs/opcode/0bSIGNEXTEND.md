@@ -29,4 +29,4 @@ The `SIGNEXTEND` opcode extends the length of a signed integer. This is done by 
 
 ## Code
 
-Please refer to `src/opcode/signbyte.py`.
+Please refer to `src/zkevm_specs/opcode/signextend.py`.
