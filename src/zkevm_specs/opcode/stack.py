@@ -24,7 +24,7 @@ class Stack():
     def peek(self):
         # self.items.append(item)
         return self.items[self.top]
-
+    
     # simulate evm pop op code
     def pop(self):
         if self.top == 1024:
@@ -41,14 +41,12 @@ class Stack():
         evm_word = self.items[self.top + pos - 1]
         self.push(evm_word)
 
+    # simulate evm swapx op code from swap1 to swap16
+    def swapx(self, pos):
+        if pos < 1 or pos > 16:
+            return # or throw error
 
-@is_circuit_code
-def check_dupx():
-    evm_stack = Stack()
-    word1: U256 = 20
-    word2: U256 = 30
-    evm_stack.push(word1)
-    evm_stack.push(word2)
-    assert(word2 == evm_stack.peek())
-    evm_stack.dupx(2)
-    assert(word1 == evm_stack.peek())
+        top_word = self.items[self.top]
+        swap_word = self.items[self.top + pos]
+        self.items[self.top] = swap_word
+        self.items[self.top + pos] = top_word
