@@ -1,10 +1,20 @@
 from enum import IntEnum, auto
 from typing import Any, Sequence, Set, Tuple, Union
-from sha3 import keccak_256
+from Crypto.Hash import keccak
 
 FQ = 21888242871839275222246405745257275088548364400416034343698204186575808495617
-EMPTY_CODE_HASH = bytearray.fromhex(
-    'c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470')
+EMPTY_CODE_HASH = bytes.fromhex('c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470')
+
+
+def keccak256(data: Union[str, bytes]) -> bytes:
+    if type(data) == str:
+        data = bytes.fromhex(data)
+    return keccak.new(digest_bits=256).update(data).digest()
+
+
+def fq_add(a: int, b: int) -> int: return (a + b) % FQ
+def fq_mul(a: int, b: int) -> int: return (a * b) % FQ
+def fq_inv(value: int) -> int: return pow(value, -1, FQ)
 
 
 class FixedTableTag(IntEnum):
@@ -65,8 +75,8 @@ class RWTableTag(IntEnum):
 class CallStateTag(IntEnum):
     IsRoot = auto()
     IsCreate = auto()
-    ProgramCounter = auto()
     OpcodeSource = auto()
+    ProgramCounter = auto()
     StackPointer = auto()
     GasLeft = auto()
     MemorySize = auto()
@@ -79,7 +89,13 @@ class Tables:
         int,  # value1
         int,  # value2
         int,  # value3
-    ]]
+    ]] = set(
+        [(FixedTableTag.Range32, i, 0, 0) for i in range(32)] +
+        [(FixedTableTag.Range64, i, 0, 0) for i in range(64)] +
+        [(FixedTableTag.Range256, i, 0, 0) for i in range(256)] +
+        [(FixedTableTag.Range512, i, 0, 0) for i in range(512)] +
+        [(FixedTableTag.Range1024, i, 0, 0) for i in range(1024)]
+    )
     tx_table: Set[Tuple[
         int,  # tx_id
         int,  # tag
@@ -109,13 +125,11 @@ class Tables:
 
     def __init__(
         self,
-        fixed_table,
         tx_table,
         call_table,
         bytecode_table,
         rw_table,
     ) -> None:
-        self.fixed_table = fixed_table
         self.tx_table = tx_table
         self.call_table = call_table
         self.bytecode_table = bytecode_table
@@ -483,22 +497,22 @@ class Step:
     def allocate_bool(self, n: int) -> Sequence[int]:
         allocation = self.allocate(n)
 
-        for bool in allocation:
-            assert_bool(bool)
+        for i in range(n):
+            assert_bool(allocation[i])
 
         return allocation
 
     def allocate_byte(self, n: int) -> Sequence[int]:
         allocation = self.allocate(n)
 
-        for byte in allocation:
-            self.byte_range_lookup(byte)
+        for i in range(n):
+            self.byte_range_lookup(allocation[i])
 
         return allocation
 
     def is_zero(self, value: int) -> bool:
         value_inv = self.allocate(1)[0]
-        is_zero = 1 - value * value_inv
+        is_zero = 1 - fq_mul(value, value_inv)
 
         assert value * is_zero == 0
         assert value_inv * is_zero == 0
@@ -512,8 +526,8 @@ class Step:
         allocation = self.allocate(n)
 
         assert value == linear_combine(allocation, r)
-        for byte in allocation:
-            self.byte_range_lookup(byte)
+        for i in range(n):
+            self.byte_range_lookup(allocation[i])
 
         return allocation
 
@@ -540,7 +554,7 @@ class Step:
 
         return allocation[3]
 
-    def call_lookup(self, tag: CallTableTag, call_id: int) -> int:
+    def call_lookup(self, tag: CallTableTag, call_id: Union[int, None] = None) -> int:
         allocation = self.allocate(3)
 
         assert allocation[0] == call_id or self.call_state.call_id
@@ -581,44 +595,54 @@ class Step:
 
         self.rw_counter_diff += 1
 
-        if rw_counter_end_of_revert is not None:
+        if tag in [
+            RWTableTag.TxAccessListAccount,
+            RWTableTag.TxAccessListStorageSlot,
+            RWTableTag.TxRefund,
+            RWTableTag.AccountNonce,
+            RWTableTag.AccountBalance,
+            RWTableTag.AccountCodeHash,
+            RWTableTag.AccountStorage,
+            RWTableTag.AccountSelfDestructed,
+        ]:
             allocation_revert = self.allocate(8)
 
-            assert allocation_revert[0] == rw_counter_end_of_revert - \
-                (self.call_state.state_write_counter + self.state_write_counter_diff)
-            assert allocation_revert[1] == True
-            assert allocation_revert[2] == tag
-            if tag == RWTableTag.TxAccessListAccount:
-                assert allocation_revert[3] == allocation[3]  # tx_id
-                assert allocation_revert[4] == allocation[4]  # account address
-                assert allocation_revert[5] == allocation[6]  # revert value
-            elif tag == RWTableTag.TxAccessListStorageSlot:
-                assert allocation_revert[3] == allocation[3]  # tx_id
-                assert allocation_revert[4] == allocation[4]  # account address
-                assert allocation_revert[5] == allocation[5]  # storage slot
-                assert allocation_revert[6] == allocation[7]  # revert value
-            elif tag == RWTableTag.TxRefund:
-                assert allocation_revert[3] == allocation[3]  # tx_id
-                assert allocation_revert[4] == allocation[5]  # revert value
-            elif tag == RWTableTag.AccountNonce:
-                assert allocation_revert[3] == allocation[3]  # account address
-                assert allocation_revert[4] == allocation[5]  # revert value
-            elif tag == RWTableTag.AccountBalance:
-                assert allocation_revert[3] == allocation[3]  # account address
-                assert allocation_revert[4] == allocation[5]  # revert value
-            elif tag == RWTableTag.AccountCodeHash:
-                assert allocation_revert[3] == allocation[3]  # account address
-                assert allocation_revert[4] == allocation[5]  # revert value
-            elif tag == RWTableTag.AccountStorage:
-                assert allocation_revert[3] == allocation[3]  # account address
-                assert allocation_revert[4] == allocation[4]  # storage slot
-                assert allocation_revert[5] == allocation[6]  # revert value
-            elif tag == RWTableTag.AccountSelfDestructed:
-                assert allocation_revert[3] == allocation[3]  # account address
-                assert allocation_revert[4] == allocation[5]  # revert value
-            assert self.tables.rw_lookup(allocation_revert)
+            if rw_counter_end_of_revert is not None:
+                assert allocation_revert[0] == rw_counter_end_of_revert - \
+                    (self.call_state.state_write_counter + self.state_write_counter_diff)
+                assert allocation_revert[1] == True
+                assert allocation_revert[2] == tag
+                if tag == RWTableTag.TxAccessListAccount:
+                    assert allocation_revert[3] == allocation[3]  # tx_id
+                    assert allocation_revert[4] == allocation[4]  # account address
+                    assert allocation_revert[5] == allocation[6]  # revert value
+                elif tag == RWTableTag.TxAccessListStorageSlot:
+                    assert allocation_revert[3] == allocation[3]  # tx_id
+                    assert allocation_revert[4] == allocation[4]  # account address
+                    assert allocation_revert[5] == allocation[5]  # storage slot
+                    assert allocation_revert[6] == allocation[7]  # revert value
+                elif tag == RWTableTag.TxRefund:
+                    assert allocation_revert[3] == allocation[3]  # tx_id
+                    assert allocation_revert[4] == allocation[5]  # revert value
+                elif tag == RWTableTag.AccountNonce:
+                    assert allocation_revert[3] == allocation[3]  # account address
+                    assert allocation_revert[4] == allocation[5]  # revert value
+                elif tag == RWTableTag.AccountBalance:
+                    assert allocation_revert[3] == allocation[3]  # account address
+                    assert allocation_revert[4] == allocation[5]  # revert value
+                elif tag == RWTableTag.AccountCodeHash:
+                    assert allocation_revert[3] == allocation[3]  # account address
+                    assert allocation_revert[4] == allocation[5]  # revert value
+                elif tag == RWTableTag.AccountStorage:
+                    assert allocation_revert[3] == allocation[3]  # account address
+                    assert allocation_revert[4] == allocation[4]  # storage slot
+                    assert allocation_revert[5] == allocation[6]  # revert value
+                elif tag == RWTableTag.AccountSelfDestructed:
+                    assert allocation_revert[3] == allocation[3]  # account address
+                    assert allocation_revert[4] == allocation[5]  # revert value
+                assert self.tables.rw_lookup(allocation_revert)
 
-            self.state_write_counter_diff += 1
+                self.state_write_counter_diff += 1
 
         return allocation[3+len(inputs):]
 
@@ -659,14 +683,13 @@ class Step:
 
 def le_to_int(bytes: Sequence[int]) -> int:
     assert len(bytes) < 32
-
     return linear_combine(bytes, 256)
 
 
 def linear_combine(bytes: Sequence[int], r: int) -> int:
     ret = 0
     for byte in reversed(bytes):
-        ret = (ret * r + byte) % FQ
+        ret = fq_add(fq_mul(ret, r), byte)
     return ret
 
 
@@ -679,39 +702,31 @@ def assert_addition(bytes_a: Sequence[int], bytes_b: Sequence[int], bytes_c: Seq
         assert carry * 256 + c == a + b + (0 if idx == 0 else carries[idx - 1])
 
 
-def assert_transfer(curr: Step, caller_address: int, callee_address: int, bytes_value: Sequence[int], r: int):
-    is_static = curr.call_lookup(CallTableTag.IsStatic)
-    assert is_static == False
-
-    is_persistent = curr.call_lookup(CallTableTag.IsPersistent)
-    rw_counter_end_of_revert = None if is_persistent else \
-        curr.call_lookup(CallTableTag.RWCounterEndOfRevert)
-
-    caller_prev_balance = curr.r_lookup(RWTableTag.AccountBalance,
-                                        [caller_address])[0]
-    callee_prev_balance = curr.r_lookup(RWTableTag.AccountBalance,
-                                        [callee_address])[0]
-    caller_new_balance = curr.w_lookup(RWTableTag.AccountBalance,
-                                       [caller_address],
-                                       rw_counter_end_of_revert)[0]
-    callee_new_balance = curr.w_lookup(RWTableTag.AccountBalance,
-                                       [callee_address],
-                                       rw_counter_end_of_revert)[0]
+def assert_transfer(
+    curr: Step,
+    caller_address: int,
+    callee_address: int,
+    bytes_value: Sequence[int],
+    r: int,
+    rw_counter_end_of_revert: Union[int, None] = None,
+):
+    caller_new_balance, caller_prev_balance = curr.w_lookup(
+        RWTableTag.AccountBalance, [caller_address], rw_counter_end_of_revert)[:2]
+    callee_new_balance, callee_prev_balance = curr.w_lookup(
+        RWTableTag.AccountBalance, [callee_address], rw_counter_end_of_revert)[:2]
 
     # Verify caller's new balance is subtracted by value and not underflow
     bytes_caller_prev_balance = curr.decompress(caller_prev_balance, 32, r)
     bytes_caller_new_balance = curr.decompress(caller_new_balance, 32, r)
     caller_carries = curr.allocate_bool(32)
-    assert_addition(bytes_caller_new_balance, bytes_value,
-                    bytes_caller_prev_balance, caller_carries)
+    assert_addition(bytes_caller_new_balance, bytes_value, bytes_caller_prev_balance, caller_carries)
     assert caller_carries[31] == 0
 
     # Verify callee's new balance is added by value and not overflow
     bytes_callee_prev_balance = curr.decompress(callee_prev_balance, 32, r)
     bytes_callee_new_balance = curr.decompress(callee_new_balance, 32, r)
     callee_carries = curr.allocate_bool(32)
-    assert_addition(bytes_callee_prev_balance, bytes_value,
-                    bytes_callee_new_balance, callee_carries)
+    assert_addition(bytes_callee_prev_balance, bytes_value, bytes_callee_new_balance, callee_carries)
     assert callee_carries[31] == 0
 
 
@@ -722,36 +737,33 @@ def assert_memory_expansion(
     bytes_rd_offset: Sequence[int],
     bytes_rd_length: Sequence[int],
 ) -> Tuple[int, int]:
+    cd_offset = le_to_int(bytes_cd_offset[:5])
+    cd_length = le_to_int(bytes_cd_length)
+    rd_offset = le_to_int(bytes_rd_offset[:5])
+    rd_length = le_to_int(bytes_rd_length)
+
     next_memory_size = curr.allocate(1)[0]
 
-    is_nonzero_cd_length = not curr.is_zero(le_to_int(bytes_cd_length))
-    is_nonzero_rd_length = not curr.is_zero(le_to_int(bytes_rd_length))
+    has_cd_length = not curr.is_zero(cd_length)
+    has_rd_length = not curr.is_zero(rd_length)
     bytes_next_memory_size_cd = curr.allocate_byte(4)
     bytes_next_memory_size_rd = curr.allocate_byte(4)
-    next_memory_size_cd = is_nonzero_cd_length * \
-        le_to_int(bytes_next_memory_size_cd)
-    next_memory_size_rd = is_nonzero_rd_length * \
-        le_to_int(bytes_next_memory_size_rd)
+    next_memory_size_cd = has_cd_length * le_to_int(bytes_next_memory_size_cd)
+    next_memory_size_rd = has_rd_length * le_to_int(bytes_next_memory_size_rd)
 
     # Verify next_memory_size_cd is correct
-    if is_nonzero_cd_length:
+    if has_cd_length:
         assert sum(bytes_cd_offset[5:]) == 0
-        curr.fixed_lookup(FixedTableTag.Range32,
-                          [32 * next_memory_size_cd - (le_to_int(bytes_cd_offset) + le_to_int(bytes_cd_length))])
+    curr.fixed_lookup(FixedTableTag.Range32, [32 * next_memory_size_cd - has_cd_length * (cd_offset + cd_length)])
 
     # Verify next_memory_size_rd is correct
-    if is_nonzero_rd_length:
+    if has_rd_length:
         assert sum(bytes_rd_offset[5:]) == 0
-        curr.fixed_lookup(FixedTableTag.Range32,
-                          [32 * next_memory_size_rd - (le_to_int(bytes_rd_offset) + le_to_int(bytes_rd_length))])
+    curr.fixed_lookup(FixedTableTag.Range32, [32 * next_memory_size_rd - has_rd_length * (rd_offset + rd_length)])
 
     # Verify next_memory_size == \
     #   max(curr.call_state.memory_size, next_memory_size_cd, next_memory_size_rd)
-    assert next_memory_size in [
-        curr.call_state.memory_size,
-        next_memory_size_cd,
-        next_memory_size_rd,
-    ]
+    assert next_memory_size in [curr.call_state.memory_size, next_memory_size_cd, next_memory_size_rd]
     curr.bytes_range_lookup(next_memory_size - curr.call_state.memory_size, 4)
     curr.bytes_range_lookup(next_memory_size - next_memory_size_cd, 4)
     curr.bytes_range_lookup(next_memory_size - next_memory_size_rd, 4)
@@ -760,9 +772,9 @@ def assert_memory_expansion(
     curr_quad_memory_gas_cost = le_to_int(curr.allocate_byte(8))
     next_quad_memory_gas_cost = le_to_int(curr.allocate_byte(8))
     curr.fixed_lookup(FixedTableTag.Range512,
-                      [512 * curr_quad_memory_gas_cost - curr.call_state.memory_size * curr.call_state.memory_size])
+                      [curr.call_state.memory_size * curr.call_state.memory_size - 512 * curr_quad_memory_gas_cost])
     curr.fixed_lookup(FixedTableTag.Range512,
-                      [512 * next_quad_memory_gas_cost - next_memory_size * next_memory_size])
+                      [next_memory_size * next_memory_size - 512 * next_quad_memory_gas_cost])
     memory_gas_cost = next_quad_memory_gas_cost - curr_quad_memory_gas_cost + \
         3 * (next_memory_size - curr.call_state.memory_size)
 
@@ -825,6 +837,7 @@ def begin_tx(curr: Step, next: Step, r: int, is_first_step: bool):
     calldata_offset = curr.call_lookup(CallTableTag.CalldataOffset)
     calldata_length = curr.call_lookup(CallTableTag.CalldataLength)
     value = curr.call_lookup(CallTableTag.Value)
+    bytes_value = curr.bytes_range_lookup(value, 8)
     assert caller_address == tx_caller_address
     assert callee_address == tx_callee_address
     assert value == tx_value
@@ -840,20 +853,19 @@ def begin_tx(curr: Step, next: Step, r: int, is_first_step: bool):
     curr.bytes_range_lookup(tx_gas, 8)
 
     # Verify transfer
-    is_zero_value = curr.is_zero(value)
-    if not is_zero_value:
-        bytes_value = curr.bytes_range_lookup(value, 8)
-        assert_transfer(curr, caller_address, callee_address, bytes_value, r)
+    rw_counter_end_of_revert = curr.call_lookup(CallTableTag.RWCounterEndOfRevert)
+    is_persistent = curr.call_lookup(CallTableTag.IsPersistent)
+
+    assert_transfer(curr, caller_address, callee_address, bytes_value, r,
+                    None if is_persistent else rw_counter_end_of_revert)
 
     if tx_is_create:
         # TODO: Verify receiver address
         # TODO: Set next.call_state.opcode_source to tx_id
         raise NotImplementedError
     else:
-        code_hash = curr.r_lookup(RWTableTag.AccountCodeHash,
-                                  [callee_address])
-        is_empty_code_hash = curr.is_equal(
-            code_hash, linear_combine(EMPTY_CODE_HASH, r))
+        code_hash = curr.r_lookup(RWTableTag.AccountCodeHash, [callee_address])
+        is_empty_code_hash = curr.is_equal(code_hash, linear_combine(EMPTY_CODE_HASH, r))
 
         # TODO: Handle precompile
         if is_empty_code_hash:
@@ -957,8 +969,7 @@ def call(curr: Step, next: Step, r: int, opcode: Opcode):
     # Gas needs full decompression due to EIP 150
     bytes_gas = curr.decompress(curr.stack_pop_lookup(), 32, r)
     bytes_callee_address = curr.decompress(curr.stack_pop_lookup(), 32, r)
-    value = curr.stack_pop_lookup()
-    bytes_value = curr.decompress(value, 32, r)
+    bytes_value = curr.decompress(curr.stack_pop_lookup(), 32, r)
     bytes_cd_offset = curr.decompress(curr.stack_pop_lookup(), 32, r)
     bytes_cd_length = curr.decompress(curr.stack_pop_lookup(), 5, r)
     bytes_rd_offset = curr.decompress(curr.stack_pop_lookup(), 32, r)
@@ -967,55 +978,57 @@ def call(curr: Step, next: Step, r: int, opcode: Opcode):
     assert_bool(result)
 
     callee_address = le_to_int(bytes_callee_address[:20])
+    gas = le_to_int(bytes_gas[:8])
 
     # Verify transfer
-    is_zero_value = curr.is_zero(value)
-    if not is_zero_value:
-        caller_address = curr.call_lookup(CallTableTag.CalleeAddress)
-        assert_transfer(curr, caller_address, callee_address, bytes_value, r)
+    rw_counter_end_of_revert = curr.call_lookup(CallTableTag.RWCounterEndOfRevert)
+    caller_address = curr.call_lookup(CallTableTag.CalleeAddress)
+    is_persistent = curr.call_lookup(CallTableTag.IsPersistent)
+    is_static = curr.call_lookup(CallTableTag.IsStatic)
+
+    has_value = not curr.is_zero(sum(bytes_value))
+    if has_value:
+        assert is_static == False
+    assert_transfer(curr, caller_address, callee_address, bytes_value, r,
+                    None if is_persistent else rw_counter_end_of_revert)
 
     # Verify memory expansion
-    next_memory_size, memory_gas_cost = assert_memory_expansion(curr)
+    next_memory_size, memory_gas_cost = assert_memory_expansion(
+        curr, bytes_cd_offset, bytes_cd_length, bytes_rd_offset, bytes_rd_length)
 
     # Verify gas cost
     tx_id = curr.call_lookup(CallTableTag.TxId)
-    is_cold_access = 1 - \
-        curr.w_lookup(RWTableTag.TxAccessListAccount,
-                      [tx_id, callee_address, 1])[0]
+    is_cold_access = 1 - curr.w_lookup(RWTableTag.TxAccessListAccount, [tx_id, callee_address, 1])[0]
     code_hash = curr.r_lookup(RWTableTag.AccountCodeHash, [callee_address])[0]
-    is_empty_code_hash = curr.is_equal(
-        code_hash, linear_combine(EMPTY_CODE_HASH, r))
+    is_empty_code_hash = curr.is_equal(code_hash, linear_combine(EMPTY_CODE_HASH, r))
     callee_nonce = curr.r_lookup(RWTableTag.AccountNonce, [callee_address])[0]
-    callee_balance = curr.r_lookup(
-        RWTableTag.AccountBalance, [callee_address])[0]
-    is_account_empty = curr.is_zero(callee_nonce) and \
-        curr.is_zero(callee_balance) and \
-        is_empty_code_hash
+    callee_balance = curr.r_lookup(RWTableTag.AccountBalance, [callee_address])[0]
+    is_zero_nonce = curr.is_zero(callee_nonce)
+    is_zero_balance = curr.is_zero(callee_balance)
+    is_account_empty = is_zero_nonce and is_zero_balance and is_empty_code_hash
     base_gas_cost = 100 + \
         is_cold_access * 2500 + \
-        + is_account_empty * 25000 + \
-        (not is_zero_value) * 9000 + \
+        is_account_empty * 25000 + \
+        has_value * 9000 + \
         memory_gas_cost
 
-    available_gas = curr.call_state.gas_left - base_gas_cost
+    gas_available = curr.call_state.gas_left - base_gas_cost
     one_64th_available_gas = le_to_int(curr.allocate_byte(8))
-    curr.fixed_lookup(FixedTableTag.Range64, [
-                      available_gas - 64 * one_64th_available_gas])
+    curr.fixed_lookup(FixedTableTag.Range64, [gas_available - 64 * one_64th_available_gas])
 
     is_capped = curr.allocate_bool(1)[0]
     is_uint64 = curr.is_zero(sum(bytes_gas[8:]))
-    callee_gas_left = available_gas - one_64th_available_gas
+    callee_gas_left = gas_available - one_64th_available_gas
     if is_uint64:
         if is_capped:
-            curr.bytes_range_lookup(le_to_int(bytes_gas) - callee_gas_left, 8)
+            curr.bytes_range_lookup(gas - callee_gas_left, 8)
         else:
-            curr.bytes_range_lookup(callee_gas_left - le_to_int(bytes_gas), 8)
-            callee_gas_left = le_to_int(bytes_gas)
+            curr.bytes_range_lookup(callee_gas_left - gas, 8)
+            callee_gas_left = gas
     else:
         assert is_capped
 
     next_gas_left = curr.call_state.gas_left - base_gas_cost - callee_gas_left
-    curr.bytes_range_lookup(next_gas_left, 8)
 
     # TODO: Handle precompile
     if is_empty_code_hash:
@@ -1034,27 +1047,20 @@ def call(curr: Step, next: Step, r: int, opcode: Opcode):
     else:
         # Save caller's call state
         for (tag, value) in [
-            (CallTableTag.IsRoot, curr.call_state.is_root),
-            (CallTableTag.IsCreate, curr.call_state.is_create),
-            (CallTableTag.OpcodeSource, curr.call_state.opcode_source),
-            (CallTableTag.ProgramCounter, curr.call_state.program_counter + 1),
-            (CallTableTag.StackPointer,
+            (CallStateTag.IsRoot, curr.call_state.is_root),
+            (CallStateTag.IsCreate, curr.call_state.is_create),
+            (CallStateTag.OpcodeSource, curr.call_state.opcode_source),
+            (CallStateTag.ProgramCounter, curr.call_state.program_counter + 1),
+            (CallStateTag.StackPointer,
              curr.call_state.stack_pointer + curr.stack_pointer_diff),
-            (CallTableTag.GasLeft, next_gas_left),
-            (CallTableTag.MemorySize, next_memory_size),
-            (CallTableTag.StateWriteCounter,
+            (CallStateTag.GasLeft, next_gas_left),
+            (CallStateTag.MemorySize, next_memory_size),
+            (CallStateTag.StateWriteCounter,
              curr.call_state.state_write_counter + curr.state_write_counter_diff),
         ]:
-            curr.w_lookup(RWTableTag.CallState,
-                          [curr.call_state.call_id, tag, value])
+            curr.w_lookup(RWTableTag.CallState, [curr.call_state.call_id, tag, value])
 
         # Setup callee's context
-        rw_counter_end_of_revert = curr.call_lookup(
-            CallTableTag.RWCounterEndOfRevert)
-        caller_address = curr.call_lookup(CallTableTag.CalleeAddress)
-        is_persistent = curr.call_lookup(CallTableTag.IsPersistent)
-        is_static = curr.call_lookup(CallTableTag.IsStatic)
-
         [
             callee_rw_counter_end_of_revert,
             callee_caller_call_id,
@@ -1070,7 +1076,6 @@ def call(curr: Step, next: Step, r: int, opcode: Opcode):
             callee_result,
             callee_is_persistent,
             callee_is_static,
-            callee_is_create
         ] = [
             curr.call_lookup(tag, next.call_state.call_id) for tag in [
                 CallTableTag.RWCounterEndOfRevert,
@@ -1087,7 +1092,6 @@ def call(curr: Step, next: Step, r: int, opcode: Opcode):
                 CallTableTag.Result,
                 CallTableTag.IsPersistent,
                 CallTableTag.IsStatic,
-                CallTableTag.IsCreate,
             ]
         ]
 
@@ -1096,15 +1100,14 @@ def call(curr: Step, next: Step, r: int, opcode: Opcode):
         assert callee_depth == depth + 1
         assert callee_caller_address == caller_address
         assert callee_callee_address == le_to_int(bytes_callee_address[:20])
-        assert callee_calldata_offset == le_to_int(bytes_cd_offset)
+        assert callee_calldata_offset == le_to_int(bytes_cd_offset[:5])
         assert callee_calldata_length == le_to_int(bytes_cd_length)
-        assert callee_returndata_offset == le_to_int(bytes_rd_offset)
+        assert callee_returndata_offset == le_to_int(bytes_rd_offset[:5])
         assert callee_returndata_length == le_to_int(bytes_rd_length)
         assert callee_value == value
         assert callee_result == result
         assert callee_is_persistent == is_persistent * result
         assert callee_is_static == is_static
-        assert callee_is_create == False
 
         callee_state_write_counter = 0
         # Callee succeed but one of callers reverts at some point
@@ -1123,7 +1126,7 @@ def call(curr: Step, next: Step, r: int, opcode: Opcode):
             opcode_source=code_hash,
             program_counter=0,
             stack_pointer=1024,
-            gas_left=callee_gas_left + (0 if is_zero_value else 2300),
+            gas_left=callee_gas_left + (2300 if has_value else 0),
             memory_size=0,
             state_write_counter=callee_state_write_counter,
             last_callee_id=0,
@@ -1139,22 +1142,19 @@ def error_invalid_opcode(curr: Step, next: Step, r: int, opcode: Opcode):
 
 
 def error_stack_overflow(curr: Step, next: Step, r: int, opcode: Opcode):
-    curr.fixed_lookup(FixedTableTag.StackOverflow,
-                      [opcode, curr.call_state.stack_pointer])
+    curr.fixed_lookup(FixedTableTag.StackOverflow, [opcode, curr.call_state.stack_pointer])
 
     # TODO: Return to caller's state or go to next tx
 
 
 def error_stack_underflow(curr: Step, next: Step, r: int, opcode: Opcode):
-    curr.fixed_lookup(FixedTableTag.StackUnderflow,
-                      [opcode, curr.call_state.stack_pointer])
+    curr.fixed_lookup(FixedTableTag.StackUnderflow, [opcode, curr.call_state.stack_pointer])
 
     # TODO: Return to caller's state or go to next tx
 
 
 def error_depth(curr: Step, next: Step, r: int, opcode: Opcode):
-    assert opcode in [Opcode.CALL, Opcode.CALLCODE,
-                      Opcode.DELEGATECALL, Opcode.STATICCALL]
+    assert opcode in [Opcode.CALL, Opcode.CALLCODE, Opcode.DELEGATECALL, Opcode.STATICCALL]
 
     depth = curr.call_lookup(CallTableTag.Depth)
     assert depth == 1024
@@ -1195,24 +1195,20 @@ def main(curr: Step, next: Step, r: int, is_first_step: bool, is_final_step: boo
         # TODO: Verify final step has the tx_id identical to the amount in tx_table
 
 
-# TODO: Refactor
 def test_add():
     r = 1
-    bytecode = bytearray.fromhex('602060400100')
-    bytecode_hash = linear_combine(keccak_256(bytecode).digest(), r)
+    bytecode = bytes.fromhex('602060400100')
+    bytecode_hash = linear_combine(keccak256(bytecode), r)
     tables = Tables(
-        fixed_table=set(
-            [(FixedTableTag.Range256, i, 0, 0) for i in range(256)]
-        ),
         tx_table=set(),
         call_table=set(),
         bytecode_table=set(
             [(bytecode_hash, i, byte) for (i, byte) in enumerate(bytecode)],
         ),
         rw_table=set([
-            (9, False, RWTableTag.Stack, 1, 1022, 0x40, 0, 0),
+            (9,  False, RWTableTag.Stack, 1, 1022, 0x40, 0, 0),
             (10, False, RWTableTag.Stack, 1, 1023, 0x20, 0, 0),
-            (11, True, RWTableTag.Stack, 1, 1023, 0x60, 0, 0),
+            (11,  True, RWTableTag.Stack, 1, 1023, 0x60, 0, 0),
         ]),
     )
 
@@ -1236,14 +1232,14 @@ def test_add():
         allocation=[
             bytecode_hash, 4, Opcode.ADD,  # bytecode lookup
             0,  # swap
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  # carry
+            *32*[0],  # carry
             0, 0, 0, 0, 0, 0, 0, 0,  # next gas_left decompression
-            9, False, RWTableTag.Stack, 1, 1022, 0x40, 0, 0,  # stack pop (a)
+            9,  False, RWTableTag.Stack, 1, 1022, 0x40, 0, 0,  # stack pop (a)
             10, False, RWTableTag.Stack, 1, 1023, 0x20, 0, 0,  # stack pop (b)
-            11, True, RWTableTag.Stack, 1, 1023, 0x60, 0, 0,  # stack push (c)
-            0x40, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  # a decompression
-            0x20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  # b decompression
-            0x60, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  # c decompression
+            11,  True, RWTableTag.Stack, 1, 1023, 0x60, 0, 0,  # stack push (c)
+            0x40, *31*[0],  # decompression (a)
+            0x20, *31*[0],  # decompression (b)
+            0x60, *31*[0],  # decompression (c)
         ],
         tables=tables,
     )
@@ -1258,6 +1254,184 @@ def test_add():
             program_counter=5,
             stack_pointer=1023,
             gas_left=0,
+            memory_size=0,
+            state_write_counter=0,
+            last_callee_id=0,
+            last_callee_returndata_offset=0,
+            last_callee_returndata_length=0,
+        ),
+        allocation=[],
+        tables=tables,
+    )
+
+    main(curr, next, r, is_first_step=False, is_final_step=False)
+
+
+def test_call():
+    r = 1
+    bytecode = bytes.fromhex('6000604060406040600060ff61fffff100')
+    bytecode_hash = linear_combine(keccak256(bytecode), r)
+    callee_bytecode = bytes.fromhex('00')
+    callee_bytecode_hash = linear_combine(keccak256(callee_bytecode), r)
+    tables = Tables(
+        tx_table=set(),
+        call_table=set([
+            (1, CallTableTag.Depth, 1),
+            (1, CallTableTag.TxId, 1),
+            (1, CallTableTag.RWCounterEndOfRevert, 0),
+            (1, CallTableTag.CalleeAddress, 0xfe),
+            (1, CallTableTag.IsPersistent, 1),
+            (1, CallTableTag.IsStatic, 0),
+            (36, CallTableTag.RWCounterEndOfRevert, 0),
+            (36, CallTableTag.CallerCallId, 1),
+            (36, CallTableTag.TxId, 1),
+            (36, CallTableTag.Depth, 2),
+            (36, CallTableTag.CallerAddress, 0xfe),
+            (36, CallTableTag.CalleeAddress, 0xff),
+            (36, CallTableTag.CalldataOffset, 0x40),
+            (36, CallTableTag.CalldataLength, 0x40),
+            (36, CallTableTag.ReturndataOffset, 0x40),
+            (36, CallTableTag.ReturndataLength, 0),
+            (36, CallTableTag.Value, 0),
+            (36, CallTableTag.Result, 1),
+            (36, CallTableTag.IsPersistent, 1),
+            (36, CallTableTag.IsStatic, 0),
+        ]),
+        bytecode_table=set(
+            [(bytecode_hash, i, byte) for (i, byte) in enumerate(bytecode)],
+        ),
+        rw_table=set([
+            (14, False, RWTableTag.Stack, 1, 1017, linear_combine(2*[0xff], r), 0, 0),
+            (15, False, RWTableTag.Stack, 1, 1018, 0xff, 0, 0),
+            (16, False, RWTableTag.Stack, 1, 1019,    0, 0, 0),
+            (17, False, RWTableTag.Stack, 1, 1020, 0x40, 0, 0),
+            (18, False, RWTableTag.Stack, 1, 1021, 0x40, 0, 0),
+            (19, False, RWTableTag.Stack, 1, 1022, 0x40, 0, 0),
+            (20, False, RWTableTag.Stack, 1, 1023,    0, 0, 0),
+            (21,  True, RWTableTag.Stack, 1, 1023,    1, 0, 0),
+            (22, True, RWTableTag.AccountBalance, 0xfe, 0, 0, 0, 0),
+            (23, True, RWTableTag.AccountBalance, 0xff, 0, 0, 0, 0),
+            (24, True, RWTableTag.TxAccessListAccount, 1, 0xff, 1, 0, 0),
+            (25, False, RWTableTag.AccountCodeHash, 0xff, callee_bytecode_hash, callee_bytecode_hash, 0, 0),
+            (26, False, RWTableTag.AccountNonce, 0xff, 1, 0, 0, 0),
+            (27, False, RWTableTag.AccountBalance, 0xff, 0, 0, 0, 0),
+            (28, True, RWTableTag.CallState, 1, CallStateTag.IsRoot, 1, 0, 0),
+            (29, True, RWTableTag.CallState, 1, CallStateTag.IsCreate, 0, 0, 0),
+            (30, True, RWTableTag.CallState, 1, CallStateTag.OpcodeSource, bytecode_hash, 0, 0),
+            (31, True, RWTableTag.CallState, 1, CallStateTag.ProgramCounter, 16, 0, 0),
+            (32, True, RWTableTag.CallState, 1, CallStateTag.StackPointer, 1023, 0, 0),
+            (33, True, RWTableTag.CallState, 1, CallStateTag.GasLeft, 1, 0, 0),
+            (34, True, RWTableTag.CallState, 1, CallStateTag.MemorySize, 4, 0, 0),
+            (35, True, RWTableTag.CallState, 1, CallStateTag.StateWriteCounter, 0, 0, 0),
+        ]),
+    )
+
+    curr = Step(
+        rw_counter=14,
+        execution_result=ExecutionResult.CALL,
+        call_state=CallState(
+            call_id=1,
+            is_root=True,
+            is_create=False,
+            opcode_source=bytecode_hash,
+            program_counter=15,
+            stack_pointer=1017,
+            gas_left=2700,
+            memory_size=0,
+            state_write_counter=0,
+            last_callee_id=0,
+            last_callee_returndata_offset=0,
+            last_callee_returndata_length=0,
+        ),
+        allocation=[
+            bytecode_hash, 15, Opcode.CALL,  # bytecode
+            1, CallTableTag.Depth, 1,
+            FixedTableTag.Range1024, 1, 0, 0,  # depth range
+            14, False, RWTableTag.Stack, 1, 1017, linear_combine(2*[0xff], r), 0, 0,  # stack pop (gas)
+            0xff, 0xff, *30*[0],  # decompression (gas)
+            15, False, RWTableTag.Stack, 1, 1018, 0xff, 0, 0, 0xff, *31*[0],  # stack pop + decompression (address)
+            16, False, RWTableTag.Stack, 1, 1019,    0, 0, 0,       *32*[0],  # stack pop + decompression (value)
+            17, False, RWTableTag.Stack, 1, 1020, 0x40, 0, 0, 0x40, *31*[0],  # stack pop + decompression (cd_offset)
+            18, False, RWTableTag.Stack, 1, 1021, 0x40, 0, 0, 0x40,  *4*[0],  # stack pop + decompression (cd_length)
+            19, False, RWTableTag.Stack, 1, 1022, 0x40, 0, 0, 0x40, *31*[0],  # stack pop + decompression (rd_offset)
+            20, False, RWTableTag.Stack, 1, 1023,    0, 0, 0,        *5*[0],  # stack pop + decompression (rd_length)
+            21,  True, RWTableTag.Stack, 1, 1023,    1, 0, 0,                 # stack push (result)
+            1, CallTableTag.RWCounterEndOfRevert, 0,
+            1, CallTableTag.CalleeAddress, 0xfe,
+            1, CallTableTag.IsPersistent, 1,
+            1, CallTableTag.IsStatic, 0,
+            0,  # inv0(sum_of_bytes_value)
+            22, True, RWTableTag.AccountBalance, 0xfe, 0, 0, 0, 0, *8*[0],  # caller balance + dummy revert
+            23, True, RWTableTag.AccountBalance, 0xff, 0, 0, 0, 0, *8*[0],  # callee balance + dummy revert
+            *32*[0],  # caller_prev_balance
+            *32*[0],  # caller_new_balance
+            *32*[0],  # carries
+            *32*[0],  # callee_prev_balance
+            *32*[0],  # callee_new_balance
+            *32*[0],  # carries
+            4,  # next_memory_size
+            fq_inv(0x40),  # inv0(cd_length)
+            0,  # inv0(rd_length)
+            4, 0, 0, 0,  # next_memory_size_cd
+            0, 0, 0, 0,  # next_memory_size_rd
+            FixedTableTag.Range32, 0, 0, 0,  # next_memory_size_cd remainder
+            FixedTableTag.Range32, 0, 0, 0,  # next_memory_size_rd remainder
+            4, 0, 0, 0,  # next_memory_size - memory_size
+            0, 0, 0, 0,  # next_memory_size - next_memory_size_cd
+            4, 0, 0, 0,  # next_memory_size - next_memory_size_rd
+            0, 0, 0, 0, 0, 0, 0, 0,  # curr_quad_memory_gas_cost quotient
+            0, 0, 0, 0, 0, 0, 0, 0,  # next_quad_memory_gas_cost quotient
+            FixedTableTag.Range512, 0, 0, 0,  # curr_quad_memory_gas_cost remainder
+            FixedTableTag.Range512, 16, 0, 0,  # next_quad_memory_gas_cost remainder
+            1, CallTableTag.TxId, 1,  # call tx_id
+            24, True, RWTableTag.TxAccessListAccount, 1, 0xff, 1, 0, 0, *8*[0],  # account access_list + dummy revert
+            25, False, RWTableTag.AccountCodeHash, 0xff, callee_bytecode_hash, callee_bytecode_hash, 0, 0,  # account code_hash
+            fq_inv(callee_bytecode_hash - linear_combine(EMPTY_CODE_HASH, r)),  # code_hash_diff_or_zero
+            26, False, RWTableTag.AccountNonce, 0xff, 1, 0, 0, 0,  # account nonce
+            27, False, RWTableTag.AccountBalance, 0xff, 0, 0, 0, 0,  # account balance
+            1,  # inv0(nonce)
+            0,  # inv0(balance)
+            1, 0, 0, 0, 0, 0, 0, 0,  # one_64th_available_gas
+            FixedTableTag.Range64, 24, 0, 0,  # one_64th_available_gas floor
+            1,  # is_capped
+            0,  # inv0(sum_of_bytes_gas_high_part)
+            0xa8, 0xff, 0, 0, 0, 0, 0, 0,  # gas - gas_available
+            28, True, RWTableTag.CallState, 1, CallStateTag.IsRoot, 1, 0, 0,  # save caller's call_state
+            29, True, RWTableTag.CallState, 1, CallStateTag.IsCreate, 0, 0, 0,
+            30, True, RWTableTag.CallState, 1, CallStateTag.OpcodeSource, bytecode_hash, 0, 0,
+            31, True, RWTableTag.CallState, 1, CallStateTag.ProgramCounter, 16, 0, 0,
+            32, True, RWTableTag.CallState, 1, CallStateTag.StackPointer, 1023, 0, 0,
+            33, True, RWTableTag.CallState, 1, CallStateTag.GasLeft, 1, 0, 0,
+            34, True, RWTableTag.CallState, 1, CallStateTag.MemorySize, 4, 0, 0,
+            35, True, RWTableTag.CallState, 1, CallStateTag.StateWriteCounter, 0, 0, 0,
+            36, CallTableTag.RWCounterEndOfRevert, 0,  # setup callee's context
+            36, CallTableTag.CallerCallId, 1,
+            36, CallTableTag.TxId, 1,
+            36, CallTableTag.Depth, 2,
+            36, CallTableTag.CallerAddress, 0xfe,
+            36, CallTableTag.CalleeAddress, 0xff,
+            36, CallTableTag.CalldataOffset, 0x40,
+            36, CallTableTag.CalldataLength, 0x40,
+            36, CallTableTag.ReturndataOffset, 0x40,
+            36, CallTableTag.ReturndataLength, 0,
+            36, CallTableTag.Value, 0,
+            36, CallTableTag.Result, 1,
+            36, CallTableTag.IsPersistent, 1,
+            36, CallTableTag.IsStatic, 0,
+        ],
+        tables=tables,
+    )
+    next = Step(
+        rw_counter=36,
+        execution_result=ExecutionResult.STOP,
+        call_state=CallState(
+            call_id=36,
+            is_root=False,
+            is_create=False,
+            opcode_source=callee_bytecode_hash,
+            program_counter=0,
+            stack_pointer=1024,
+            gas_left=87,
             memory_size=0,
             state_write_counter=0,
             last_callee_id=0,
