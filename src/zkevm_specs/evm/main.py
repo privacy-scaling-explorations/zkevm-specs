@@ -1,5 +1,5 @@
 from enum import IntEnum, auto
-from typing import Any, Sequence, Set, Tuple, Union
+from typing import Any, Mapping, Sequence, Set, Tuple, Union
 from Crypto.Hash import keccak
 
 FQ = 21888242871839275222246405745257275088548364400416034343698204186575808495617
@@ -15,140 +15,6 @@ def keccak256(data: Union[str, bytes]) -> bytes:
 def fq_add(a: int, b: int) -> int: return (a + b) % FQ
 def fq_mul(a: int, b: int) -> int: return (a * b) % FQ
 def fq_inv(value: int) -> int: return pow(value, -1, FQ)
-
-
-class FixedTableTag(IntEnum):
-    Range32 = auto()  # value, 0, 0
-    Range64 = auto()  # value, 0, 0
-    Range256 = auto()  # value, 0, 0
-    Range512 = auto()  # value, 0, 0
-    Range1024 = auto()  # value, 0, 0
-    InvalidOpcode = auto()  # opcode, 0, 0
-    StackUnderflow = auto()  # opcode, stack_pointer, 0
-    StackOverflow = auto()  # opcode, stack_pointer, 0
-
-
-class TxTableTag(IntEnum):
-    Nonce = auto()
-    Gas = auto()
-    GasTipCap = auto()
-    GasFeeCap = auto()
-    CallerAddress = auto()
-    CalleeAddress = auto()
-    IsCreate = auto()
-    Value = auto()
-    CalldataLength = auto()
-    Calldata = auto()
-
-
-class CallTableTag(IntEnum):
-    RWCounterEndOfRevert = auto()  # to know reversion section
-    CallerCallId = auto()  # to return to caller's state
-    TxId = auto()  # to lookup tx context
-    Depth = auto()  # to know if call too deep
-    CallerAddress = auto()
-    CalleeAddress = auto()
-    CalldataOffset = auto()
-    CalldataLength = auto()
-    ReturndataOffset = auto()  # for callee to set returndata to caller's memeory
-    ReturndataLength = auto()
-    Value = auto()
-    Result = auto()  # to peek result in the future
-    IsPersistent = auto()  # to know if current call is within reverted call or not
-    IsStatic = auto()  # to know if state modification is within static call or not
-
-
-class RWTableTag(IntEnum):
-    TxAccessListAccount = auto()
-    TxAccessListStorageSlot = auto()
-    TxRefund = auto()
-    CallState = auto()
-    Stack = auto()
-    Memory = auto()
-    AccountNonce = auto()
-    AccountBalance = auto()
-    AccountCodeHash = auto()
-    AccountStorage = auto()
-    AccountSelfDestructed = auto()
-
-
-class CallStateTag(IntEnum):
-    IsRoot = auto()
-    IsCreate = auto()
-    OpcodeSource = auto()
-    ProgramCounter = auto()
-    StackPointer = auto()
-    GasLeft = auto()
-    MemorySize = auto()
-    StateWriteCounter = auto()
-
-
-class Tables:
-    fixed_table: Set[Tuple[
-        int,  # tag
-        int,  # value1
-        int,  # value2
-        int,  # value3
-    ]] = set(
-        [(FixedTableTag.Range32, i, 0, 0) for i in range(32)] +
-        [(FixedTableTag.Range64, i, 0, 0) for i in range(64)] +
-        [(FixedTableTag.Range256, i, 0, 0) for i in range(256)] +
-        [(FixedTableTag.Range512, i, 0, 0) for i in range(512)] +
-        [(FixedTableTag.Range1024, i, 0, 0) for i in range(1024)]
-    )
-    tx_table: Set[Tuple[
-        int,  # tx_id
-        int,  # tag
-        int,  # index (or 0)
-        int,  # value
-    ]]
-    call_table: Set[Tuple[
-        int,  # call_id
-        int,  # tag
-        int,  # value
-    ]]
-    bytecode_table: Set[Tuple[
-        int,  # bytecode_hash
-        int,  # index
-        int,  # byte
-    ]]
-    rw_table: Set[Tuple[
-        int,  # rw_counter
-        int,  # is_write
-        int,  # tag
-        int,  # value1
-        int,  # value2
-        int,  # value3
-        int,  # value4
-        int,  # value5
-    ]]
-
-    def __init__(
-        self,
-        tx_table,
-        call_table,
-        bytecode_table,
-        rw_table,
-    ) -> None:
-        self.tx_table = tx_table
-        self.call_table = call_table
-        self.bytecode_table = bytecode_table
-        self.rw_table = rw_table
-
-    def fixed_lookup(self, inputs: Union[Tuple[int, int, int, int], Sequence[int]]) -> bool:
-        return tuple(inputs) in self.fixed_table
-
-    def tx_lookup(self, inputs: Union[Tuple[int, int, int, int], Sequence[int]]) -> bool:
-        return tuple(inputs) in self.tx_table
-
-    def call_lookup(self, inputs: Union[Tuple[int, int, int], Sequence[int]]) -> bool:
-        return tuple(inputs) in self.call_table
-
-    def bytecode_lookup(self, inputs: Union[Tuple[int, int, int], Sequence[int]]) -> bool:
-        return tuple(inputs) in self.bytecode_table
-
-    def rw_lookup(self, inputs: Union[Tuple[int, int, int, int, int, int, int, int], Sequence[int]]) -> bool:
-        return tuple(inputs) in self.rw_table
 
 
 class Opcode(IntEnum):
@@ -294,6 +160,380 @@ class Opcode(IntEnum):
     STATICCALL = int(0xfa)
     REVERT = int(0xfd)
     SELFDESTRUCT = int(0xff)
+
+
+class OpcodeInfo:
+    min_stack_pointer: int
+    max_stack_pointer: int
+    constant_gas: int
+    has_dynamic_gas: bool
+    pure_memory_expansion_info: Tuple[
+        int,  # offset stack_pointer_offset
+        int,  # length stack_pointer_offset
+        int,  # constant length
+    ]
+
+    def __init__(
+        self,
+        min_stack_pointer: int,
+        max_stack_pointer: int,
+        constant_gas: int,
+        has_dynamic_gas: bool = False,
+        pure_memory_expansion_info: Union[Tuple[int, int, int], None] = None,
+    ) -> None:
+        self.min_stack_pointer = min_stack_pointer
+        self.max_stack_pointer = max_stack_pointer
+        self.constant_gas = constant_gas
+        self.has_dynamic_gas = has_dynamic_gas
+        self.pure_memory_expansion_info = pure_memory_expansion_info
+
+
+opcode_info_map: Mapping[Opcode, OpcodeInfo] = dict({
+    Opcode.STOP: OpcodeInfo(0, 1024, 0),
+    Opcode.ADD: OpcodeInfo(-1, 1022, 3),
+    Opcode.MUL: OpcodeInfo(-1, 1022, 5),
+    Opcode.SUB: OpcodeInfo(-1, 1022, 3),
+    Opcode.DIV: OpcodeInfo(-1, 1022, 5),
+    Opcode.SDIV: OpcodeInfo(-1, 1022, 5),
+    Opcode.MOD: OpcodeInfo(-1, 1022, 5),
+    Opcode.SMOD: OpcodeInfo(-1, 1022, 5),
+    Opcode.ADDMOD: OpcodeInfo(-2, 1021, 8),
+    Opcode.MULMOD: OpcodeInfo(-2, 1021, 8),
+    Opcode.EXP: OpcodeInfo(-1, 1022, 0, True),
+    Opcode.SIGNEXTEND: OpcodeInfo(-1, 1022, 5),
+    Opcode.LT: OpcodeInfo(-1, 1022, 3),
+    Opcode.GT: OpcodeInfo(-1, 1022, 3),
+    Opcode.SLT: OpcodeInfo(-1, 1022, 3),
+    Opcode.SGT: OpcodeInfo(-1, 1022, 3),
+    Opcode.EQ: OpcodeInfo(-1, 1022, 3),
+    Opcode.ISZERO: OpcodeInfo(0, 1023, 3),
+    Opcode.AND: OpcodeInfo(-1, 1022, 3),
+    Opcode.OR: OpcodeInfo(-1, 1022, 3),
+    Opcode.XOR: OpcodeInfo(-1, 1022, 3),
+    Opcode.NOT: OpcodeInfo(0, 1023, 3),
+    Opcode.BYTE: OpcodeInfo(-1, 1022, 3),
+    Opcode.SHL: OpcodeInfo(-1, 1022, 3),
+    Opcode.SHR: OpcodeInfo(-1, 1022, 3),
+    Opcode.SAR: OpcodeInfo(-1, 1022, 3),
+    Opcode.SHA3: OpcodeInfo(-1, 1022, 30, True),
+    Opcode.ADDRESS: OpcodeInfo(1, 1024, 2),
+    Opcode.BALANCE: OpcodeInfo(0, 1023, 100, True),
+    Opcode.ORIGIN: OpcodeInfo(1, 1024, 2),
+    Opcode.CALLER: OpcodeInfo(1, 1024, 2),
+    Opcode.CALLVALUE: OpcodeInfo(1, 1024, 2),
+    Opcode.CALLDATALOAD: OpcodeInfo(0, 1023, 3),
+    Opcode.CALLDATASIZE: OpcodeInfo(1, 1024, 2),
+    Opcode.CALLDATACOPY: OpcodeInfo(-3, 1021, 3, True),
+    Opcode.CODESIZE: OpcodeInfo(1, 1024, 2),
+    Opcode.CODECOPY: OpcodeInfo(-3, 1021, 3, True),
+    Opcode.GASPRICE: OpcodeInfo(1, 1024, 2),
+    Opcode.EXTCODESIZE: OpcodeInfo(0, 1023, 100, True),
+    Opcode.EXTCODECOPY: OpcodeInfo(-4, 1020, 100, True),
+    Opcode.RETURNDATASIZE: OpcodeInfo(1, 1024, 2),
+    Opcode.RETURNDATACOPY: OpcodeInfo(-3, 1021, 3, True),
+    Opcode.EXTCODEHASH: OpcodeInfo(0, 1023, 100, True),
+    Opcode.BLOCKHASH: OpcodeInfo(0, 1023, 20),
+    Opcode.COINBASE: OpcodeInfo(1, 1024, 2),
+    Opcode.TIMESTAMP: OpcodeInfo(1, 1024, 2),
+    Opcode.NUMBER: OpcodeInfo(1, 1024, 2),
+    Opcode.DIFFICULTY: OpcodeInfo(1, 1024, 2),
+    Opcode.GASLIMIT: OpcodeInfo(1, 1024, 2),
+    Opcode.CHAINID: OpcodeInfo(1, 1024, 2),
+    Opcode.SELFBALANCE: OpcodeInfo(1, 1024, 5),
+    Opcode.BASEFEE: OpcodeInfo(1, 1024, 2),
+    Opcode.POP: OpcodeInfo(-1, 1023, 2),
+    Opcode.MLOAD: OpcodeInfo(0, 1023, 3, True, (0, 0, 32)),
+    Opcode.MSTORE: OpcodeInfo(-2, 1022, 3, True, (0, 0, 32)),
+    Opcode.MSTORE8: OpcodeInfo(-2, 1022, 3, True, (0, 0, 1)),
+    Opcode.SLOAD: OpcodeInfo(0, 1023, 0, True),
+    Opcode.SSTORE: OpcodeInfo(-2, 1022, 0, True),
+    Opcode.JUMP: OpcodeInfo(-1, 1023, 8),
+    Opcode.JUMPI: OpcodeInfo(-2, 1022, 10),
+    Opcode.PC: OpcodeInfo(1, 1024, 2),
+    Opcode.MSIZE: OpcodeInfo(1, 1024, 2),
+    Opcode.GAS: OpcodeInfo(1, 1024, 2),
+    Opcode.JUMPDEST: OpcodeInfo(0, 1024, 1),
+    Opcode.PUSH1: OpcodeInfo(1, 1024, 3),
+    Opcode.PUSH2: OpcodeInfo(1, 1024, 3),
+    Opcode.PUSH3: OpcodeInfo(1, 1024, 3),
+    Opcode.PUSH4: OpcodeInfo(1, 1024, 3),
+    Opcode.PUSH5: OpcodeInfo(1, 1024, 3),
+    Opcode.PUSH6: OpcodeInfo(1, 1024, 3),
+    Opcode.PUSH7: OpcodeInfo(1, 1024, 3),
+    Opcode.PUSH8: OpcodeInfo(1, 1024, 3),
+    Opcode.PUSH9: OpcodeInfo(1, 1024, 3),
+    Opcode.PUSH10: OpcodeInfo(1, 1024, 3),
+    Opcode.PUSH11: OpcodeInfo(1, 1024, 3),
+    Opcode.PUSH12: OpcodeInfo(1, 1024, 3),
+    Opcode.PUSH13: OpcodeInfo(1, 1024, 3),
+    Opcode.PUSH14: OpcodeInfo(1, 1024, 3),
+    Opcode.PUSH15: OpcodeInfo(1, 1024, 3),
+    Opcode.PUSH16: OpcodeInfo(1, 1024, 3),
+    Opcode.PUSH17: OpcodeInfo(1, 1024, 3),
+    Opcode.PUSH18: OpcodeInfo(1, 1024, 3),
+    Opcode.PUSH19: OpcodeInfo(1, 1024, 3),
+    Opcode.PUSH20: OpcodeInfo(1, 1024, 3),
+    Opcode.PUSH21: OpcodeInfo(1, 1024, 3),
+    Opcode.PUSH22: OpcodeInfo(1, 1024, 3),
+    Opcode.PUSH23: OpcodeInfo(1, 1024, 3),
+    Opcode.PUSH24: OpcodeInfo(1, 1024, 3),
+    Opcode.PUSH25: OpcodeInfo(1, 1024, 3),
+    Opcode.PUSH26: OpcodeInfo(1, 1024, 3),
+    Opcode.PUSH27: OpcodeInfo(1, 1024, 3),
+    Opcode.PUSH28: OpcodeInfo(1, 1024, 3),
+    Opcode.PUSH29: OpcodeInfo(1, 1024, 3),
+    Opcode.PUSH30: OpcodeInfo(1, 1024, 3),
+    Opcode.PUSH31: OpcodeInfo(1, 1024, 3),
+    Opcode.PUSH32: OpcodeInfo(1, 1024, 3),
+    Opcode.DUP1: OpcodeInfo(1, 1023, 3),
+    Opcode.DUP2: OpcodeInfo(1, 1022, 3),
+    Opcode.DUP3: OpcodeInfo(1, 1021, 3),
+    Opcode.DUP4: OpcodeInfo(1, 1020, 3),
+    Opcode.DUP5: OpcodeInfo(1, 1019, 3),
+    Opcode.DUP6: OpcodeInfo(1, 1018, 3),
+    Opcode.DUP7: OpcodeInfo(1, 1017, 3),
+    Opcode.DUP8: OpcodeInfo(1, 1016, 3),
+    Opcode.DUP9: OpcodeInfo(1, 1015, 3),
+    Opcode.DUP10: OpcodeInfo(1, 1014, 3),
+    Opcode.DUP11: OpcodeInfo(1, 1013, 3),
+    Opcode.DUP12: OpcodeInfo(1, 1012, 3),
+    Opcode.DUP13: OpcodeInfo(1, 1011, 3),
+    Opcode.DUP14: OpcodeInfo(1, 1010, 3),
+    Opcode.DUP15: OpcodeInfo(1, 1009, 3),
+    Opcode.DUP16: OpcodeInfo(1, 1008, 3),
+    Opcode.SWAP1: OpcodeInfo(0, 1022, 3),
+    Opcode.SWAP2: OpcodeInfo(0, 1021, 3),
+    Opcode.SWAP3: OpcodeInfo(0, 1020, 3),
+    Opcode.SWAP4: OpcodeInfo(0, 1019, 3),
+    Opcode.SWAP5: OpcodeInfo(0, 1018, 3),
+    Opcode.SWAP6: OpcodeInfo(0, 1017, 3),
+    Opcode.SWAP7: OpcodeInfo(0, 1016, 3),
+    Opcode.SWAP8: OpcodeInfo(0, 1015, 3),
+    Opcode.SWAP9: OpcodeInfo(0, 1014, 3),
+    Opcode.SWAP10: OpcodeInfo(0, 1013, 3),
+    Opcode.SWAP11: OpcodeInfo(0, 1012, 3),
+    Opcode.SWAP12: OpcodeInfo(0, 1011, 3),
+    Opcode.SWAP13: OpcodeInfo(0, 1010, 3),
+    Opcode.SWAP14: OpcodeInfo(0, 1009, 3),
+    Opcode.SWAP15: OpcodeInfo(0, 1008, 3),
+    Opcode.SWAP16: OpcodeInfo(0, 1007, 3),
+    Opcode.LOG0: OpcodeInfo(-2, 1022, 0, True),
+    Opcode.LOG1: OpcodeInfo(-3, 1021, 0, True),
+    Opcode.LOG2: OpcodeInfo(-4, 1020, 0, True),
+    Opcode.LOG3: OpcodeInfo(-5, 1019, 0, True),
+    Opcode.LOG4: OpcodeInfo(-6, 1018, 0, True),
+    Opcode.CREATE: OpcodeInfo(-2, 1021, 32000, True, (1, 2, 0)),
+    Opcode.CALL: OpcodeInfo(-6, 1017, 100, True),
+    Opcode.CALLCODE: OpcodeInfo(-6, 1017, 100, True),
+    Opcode.RETURN: OpcodeInfo(-2, 1022, 0, True, (0, 1, 0)),
+    Opcode.DELEGATECALL: OpcodeInfo(-5, 1018, 100, True),
+    Opcode.CREATE2: OpcodeInfo(-3, 1020, 32000, True),
+    Opcode.STATICCALL: OpcodeInfo(-5, 1018, 100, True),
+    Opcode.REVERT: OpcodeInfo(-2, 1022, 0, True, (0, 1, 0)),
+    Opcode.SELFDESTRUCT: OpcodeInfo(-1, 1023, 5000, True),
+})
+
+
+def valid_opcodes() -> Sequence[int]:
+    return list(Opcode)
+
+
+def invalid_opcodes() -> Sequence[int]:
+    return [opcode for opcode in range(256) if opcode not in opcode_info_map]
+
+
+def stack_underflow_pairs() -> Sequence[Tuple[int, int]]:
+    pairs = []
+    for opcode in valid_opcodes():
+        opcode_info = opcode_info_map[opcode]
+        if opcode_info.max_stack_pointer < 1024:
+            for stack_pointer in range(opcode_info.max_stack_pointer, 1024):
+                pairs.append((opcode, stack_pointer + 1))
+    return pairs
+
+
+def stack_overflow_pairs() -> Sequence[Tuple[int, int]]:
+    pairs = []
+    for opcode in valid_opcodes():
+        opcode_info = opcode_info_map[opcode]
+        if opcode_info.min_stack_pointer > 0:
+            for stack_pointer in range(opcode_info.min_stack_pointer):
+                pairs.append((opcode, stack_pointer))
+    return pairs
+
+
+def oog_constant_pairs() -> Sequence[Tuple[int, int]]:
+    pairs = []
+    for opcode in valid_opcodes():
+        opcode_info = opcode_info_map[opcode]
+        if opcode_info.constant_gas > 0 and not opcode_info.has_dynamic_gas:
+            for gas in range(opcode_info.constant_gas):
+                pairs.append((opcode, gas))
+    return pairs
+
+
+def state_write_opcodes() -> Sequence[int]:
+    return [
+        Opcode.SSTORE, Opcode.LOG0, Opcode.LOG1, Opcode.LOG2, Opcode.LOG3, Opcode.LOG4,
+        Opcode.CREATE, Opcode.CALL, Opcode.CREATE2, Opcode.SELFDESTRUCT,
+    ]
+
+
+def call_opcodes() -> Sequence[int]:
+    return [Opcode.CALL, Opcode.CALLCODE, Opcode.DELEGATECALL, Opcode.STATICCALL]
+
+
+def ether_transfer_opcdes() -> Sequence[int]:
+    return [Opcode.CALL, Opcode.CALLCODE]
+
+
+def create_opcodes() -> Sequence[int]:
+    return [Opcode.CREATE, Opcode.CREATE2]
+
+
+def jump_opcodes() -> Sequence[int]:
+    return [Opcode.JUMP, Opcode.JUMPI]
+
+
+class FixedTableTag(IntEnum):
+    Range32 = auto()  # value, 0, 0
+    Range64 = auto()  # value, 0, 0
+    Range256 = auto()  # value, 0, 0
+    Range512 = auto()  # value, 0, 0
+    Range1024 = auto()  # value, 0, 0
+    InvalidOpcode = auto()  # opcode, 0, 0
+    StateWriteOpcode = auto()  # opcode, 0, 0
+    StackUnderflow = auto()  # opcode, stack_pointer, 0
+    StackOverflow = auto()  # opcode, stack_pointer, 0
+    OOGConstant = auto()  # opcode, gas, 0
+
+
+class TxTableTag(IntEnum):
+    Nonce = auto()
+    Gas = auto()
+    GasTipCap = auto()
+    GasFeeCap = auto()
+    CallerAddress = auto()
+    CalleeAddress = auto()
+    IsCreate = auto()
+    Value = auto()
+    CalldataLength = auto()
+    Calldata = auto()
+
+
+class CallTableTag(IntEnum):
+    RWCounterEndOfRevert = auto()  # to know reversion section
+    CallerCallId = auto()  # to return to caller's state
+    TxId = auto()  # to lookup tx context
+    Depth = auto()  # to know if call too deep
+    CallerAddress = auto()
+    CalleeAddress = auto()
+    CalldataOffset = auto()
+    CalldataLength = auto()
+    ReturndataOffset = auto()  # for callee to set returndata to caller's memeory
+    ReturndataLength = auto()
+    Value = auto()
+    Result = auto()  # to peek result in the future
+    IsPersistent = auto()  # to know if current call is within reverted call or not
+    IsStatic = auto()  # to know if state modification is within static call or not
+
+
+class RWTableTag(IntEnum):
+    TxAccessListAccount = auto()
+    TxAccessListStorageSlot = auto()
+    TxRefund = auto()
+    CallState = auto()
+    Stack = auto()
+    Memory = auto()
+    AccountNonce = auto()
+    AccountBalance = auto()
+    AccountCodeHash = auto()
+    AccountStorage = auto()
+    AccountSelfDestructed = auto()
+
+
+class CallStateTag(IntEnum):
+    IsRoot = auto()
+    IsCreate = auto()
+    OpcodeSource = auto()
+    ProgramCounter = auto()
+    StackPointer = auto()
+    GasLeft = auto()
+    MemorySize = auto()
+    StateWriteCounter = auto()
+
+
+class Tables:
+    fixed_table: Set[Tuple[
+        int,  # tag
+        int,  # value1
+        int,  # value2
+        int,  # value3
+    ]] = set(
+        [(FixedTableTag.Range32, i, 0, 0) for i in range(32)] +
+        [(FixedTableTag.Range64, i, 0, 0) for i in range(64)] +
+        [(FixedTableTag.Range256, i, 0, 0) for i in range(256)] +
+        [(FixedTableTag.Range512, i, 0, 0) for i in range(512)] +
+        [(FixedTableTag.Range1024, i, 0, 0) for i in range(1024)] +
+        [(FixedTableTag.InvalidOpcode, opcode, 0, 0) for opcode in invalid_opcodes()] +
+        [(FixedTableTag.StateWriteOpcode, opcode, 0, 0) for opcode in state_write_opcodes()] +
+        [(FixedTableTag.StackUnderflow, opcode, stack_pointer, 0) for (opcode, stack_pointer) in stack_underflow_pairs()] +
+        [(FixedTableTag.StackOverflow, opcode, stack_pointer, 0) for (opcode, stack_pointer) in stack_overflow_pairs()] +
+        [(FixedTableTag.OOGConstant, opcode, gas, 0) for (opcode, gas) in oog_constant_pairs()]
+    )
+    tx_table: Set[Tuple[
+        int,  # tx_id
+        int,  # tag
+        int,  # index (or 0)
+        int,  # value
+    ]]
+    call_table: Set[Tuple[
+        int,  # call_id
+        int,  # tag
+        int,  # value
+    ]]
+    bytecode_table: Set[Tuple[
+        int,  # bytecode_hash
+        int,  # index
+        int,  # byte
+    ]]
+    rw_table: Set[Tuple[
+        int,  # rw_counter
+        int,  # is_write
+        int,  # tag
+        int,  # value1
+        int,  # value2
+        int,  # value3
+        int,  # value4
+        int,  # value5
+    ]]
+
+    def __init__(
+        self,
+        tx_table,
+        call_table,
+        bytecode_table,
+        rw_table,
+    ) -> None:
+        self.tx_table = tx_table
+        self.call_table = call_table
+        self.bytecode_table = bytecode_table
+        self.rw_table = rw_table
+
+    def fixed_lookup(self, inputs: Union[Tuple[int, int, int, int], Sequence[int]]) -> bool:
+        return tuple(inputs) in self.fixed_table
+
+    def tx_lookup(self, inputs: Union[Tuple[int, int, int, int], Sequence[int]]) -> bool:
+        return tuple(inputs) in self.tx_table
+
+    def call_lookup(self, inputs: Union[Tuple[int, int, int], Sequence[int]]) -> bool:
+        return tuple(inputs) in self.call_table
+
+    def bytecode_lookup(self, inputs: Union[Tuple[int, int, int], Sequence[int]]) -> bool:
+        return tuple(inputs) in self.bytecode_table
+
+    def rw_lookup(self, inputs: Union[Tuple[int, int, int, int, int, int, int, int], Sequence[int]]) -> bool:
+        return tuple(inputs) in self.rw_table
 
 
 class ExecutionResult(IntEnum):
@@ -1141,14 +1381,14 @@ def error_invalid_opcode(curr: Step, next: Step, r: int, opcode: Opcode):
     # TODO: Return to caller's state or go to next tx
 
 
-def error_stack_overflow(curr: Step, next: Step, r: int, opcode: Opcode):
-    curr.fixed_lookup(FixedTableTag.StackOverflow, [opcode, curr.call_state.stack_pointer])
+def error_stack_underflow(curr: Step, next: Step, r: int, opcode: Opcode):
+    curr.fixed_lookup(FixedTableTag.StackUnderflow, [opcode, curr.call_state.stack_pointer])
 
     # TODO: Return to caller's state or go to next tx
 
 
-def error_stack_underflow(curr: Step, next: Step, r: int, opcode: Opcode):
-    curr.fixed_lookup(FixedTableTag.StackUnderflow, [opcode, curr.call_state.stack_pointer])
+def error_stack_overflow(curr: Step, next: Step, r: int, opcode: Opcode):
+    curr.fixed_lookup(FixedTableTag.StackOverflow, [opcode, curr.call_state.stack_pointer])
 
     # TODO: Return to caller's state or go to next tx
 
