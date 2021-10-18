@@ -1182,7 +1182,7 @@ def push(curr: Step, next: Step, r: int, opcode: Opcode):
     assert sum(selectors) == num_pushed
     for i, byte in enumerate(bytes_value):
         if i > 0:
-            assert_bool(selectors[i] - selectors[i - 1])
+            assert_bool(selectors[i - 1] - selectors[i])
         if selectors[i]:
             assert byte == curr.opcode_lookup(i + 1)
         else:
@@ -1507,10 +1507,76 @@ def test_add():
     main(curr, next, r, is_first_step=False, is_final_step=False)
 
 
+def test_push():
+    r = 1
+    bytecode = bytes.fromhex('602060400100')
+    bytecode_hash = linear_combine(keccak256(bytecode), r)
+    tables = Tables(
+        tx_table=set(),
+        call_table=set(),
+        bytecode_table=set(
+            [(bytecode_hash, i, byte) for (i, byte) in enumerate(bytecode)],
+        ),
+        rw_table=set([
+            (8,  True, RWTableTag.Stack, 1, 1022, 0x40, 0, 0),
+        ]),
+    )
+
+    curr = Step(
+        rw_counter=8,
+        execution_result=ExecutionResult.PUSH,
+        call_state=CallState(
+            call_id=1,
+            is_root=True,
+            is_create=False,
+            opcode_source=bytecode_hash,
+            program_counter=2,
+            stack_pointer=1023,
+            gas_left=6,
+            memory_size=0,
+            state_write_counter=0,
+            last_callee_id=0,
+            last_callee_returndata_offset=0,
+            last_callee_returndata_length=0,
+        ),
+        allocation=[
+            bytecode_hash, 2, Opcode.PUSH1,  # bytecode lookup
+            1, *31*[0],  # selectors
+            FixedTableTag.Range32, 1, 0, 0,  # num_pushed
+            3, 0, 0, 0, 0, 0, 0, 0,  # next gas_left decompression
+            8,  True, RWTableTag.Stack, 1, 1022, 0x40, 0, 0, 0x40, *31*[0],  # stack push + decompression (value)
+            bytecode_hash, 3, 0x40,  # bytecode lookup
+        ],
+        tables=tables,
+    )
+    next = Step(
+        rw_counter=9,
+        execution_result=ExecutionResult.ADD,
+        call_state=CallState(
+            call_id=1,
+            is_root=True,
+            is_create=False,
+            opcode_source=bytecode_hash,
+            program_counter=4,
+            stack_pointer=1022,
+            gas_left=3,
+            memory_size=0,
+            state_write_counter=0,
+            last_callee_id=0,
+            last_callee_returndata_offset=0,
+            last_callee_returndata_length=0,
+        ),
+        allocation=[],
+        tables=tables,
+    )
+
+    main(curr, next, r, is_first_step=False, is_final_step=False)
+
+
 def test_call():
     r = 1
-    bytecode = bytes.fromhex('6000604060406040600060ff61fffff100')
-    bytecode_hash = linear_combine(keccak256(bytecode), r)
+    caller_bytecode = bytes.fromhex('6000604060406040600060ff61fffff100')
+    caller_bytecode_hash = linear_combine(keccak256(caller_bytecode), r)
     callee_bytecode = bytes.fromhex('00')
     callee_bytecode_hash = linear_combine(keccak256(callee_bytecode), r)
     tables = Tables(
@@ -1538,7 +1604,7 @@ def test_call():
             (36, CallTableTag.IsStatic, 0),
         ]),
         bytecode_table=set(
-            [(bytecode_hash, i, byte) for (i, byte) in enumerate(bytecode)],
+            [(caller_bytecode_hash, i, byte) for (i, byte) in enumerate(caller_bytecode)],
         ),
         rw_table=set([
             (14, False, RWTableTag.Stack, 1, 1017, linear_combine(2*[0xff], r), 0, 0),
@@ -1557,7 +1623,7 @@ def test_call():
             (27, False, RWTableTag.AccountBalance, 0xff, 0, 0, 0, 0),
             (28, True, RWTableTag.CallState, 1, CallStateTag.IsRoot, 1, 0, 0),
             (29, True, RWTableTag.CallState, 1, CallStateTag.IsCreate, 0, 0, 0),
-            (30, True, RWTableTag.CallState, 1, CallStateTag.OpcodeSource, bytecode_hash, 0, 0),
+            (30, True, RWTableTag.CallState, 1, CallStateTag.OpcodeSource, caller_bytecode_hash, 0, 0),
             (31, True, RWTableTag.CallState, 1, CallStateTag.ProgramCounter, 16, 0, 0),
             (32, True, RWTableTag.CallState, 1, CallStateTag.StackPointer, 1023, 0, 0),
             (33, True, RWTableTag.CallState, 1, CallStateTag.GasLeft, 1, 0, 0),
@@ -1573,7 +1639,7 @@ def test_call():
             call_id=1,
             is_root=True,
             is_create=False,
-            opcode_source=bytecode_hash,
+            opcode_source=caller_bytecode_hash,
             program_counter=15,
             stack_pointer=1017,
             gas_left=2700,
@@ -1584,7 +1650,7 @@ def test_call():
             last_callee_returndata_length=0,
         ),
         allocation=[
-            bytecode_hash, 15, Opcode.CALL,  # bytecode
+            caller_bytecode_hash, 15, Opcode.CALL,  # bytecode
             1, CallTableTag.Depth, 1,
             FixedTableTag.Range1024, 1, 0, 0,  # depth range
             14, False, RWTableTag.Stack, 1, 1017, linear_combine(2*[0xff], r), 0, 0,  # stack pop (gas)
@@ -1638,7 +1704,7 @@ def test_call():
             0xa8, 0xff, 0, 0, 0, 0, 0, 0,  # gas - gas_available
             28, True, RWTableTag.CallState, 1, CallStateTag.IsRoot, 1, 0, 0,  # save caller's call_state
             29, True, RWTableTag.CallState, 1, CallStateTag.IsCreate, 0, 0, 0,
-            30, True, RWTableTag.CallState, 1, CallStateTag.OpcodeSource, bytecode_hash, 0, 0,
+            30, True, RWTableTag.CallState, 1, CallStateTag.OpcodeSource, caller_bytecode_hash, 0, 0,
             31, True, RWTableTag.CallState, 1, CallStateTag.ProgramCounter, 16, 0, 0,
             32, True, RWTableTag.CallState, 1, CallStateTag.StackPointer, 1023, 0, 0,
             33, True, RWTableTag.CallState, 1, CallStateTag.GasLeft, 1, 0, 0,
