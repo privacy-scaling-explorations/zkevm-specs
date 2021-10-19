@@ -118,3 +118,5 @@ class ExecutionResult(IntEnum):
     ERROR_INVALID_JUMP = auto()
     # For RETURNDATACOPY
     ERROR_RETURN_DATA_OUT_OF_BOUNDS = auto()
+
+    # TODO: Precompile success and error cases
