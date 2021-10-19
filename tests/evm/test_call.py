@@ -21,20 +21,20 @@ def test_call():
             (1, CallTableTag.CalleeAddress, 0xfe),
             (1, CallTableTag.IsPersistent, 1),
             (1, CallTableTag.IsStatic, 0),
-            (36, CallTableTag.RWCounterEndOfRevert, 0),
-            (36, CallTableTag.CallerCallId, 1),
-            (36, CallTableTag.TxId, 1),
-            (36, CallTableTag.Depth, 2),
-            (36, CallTableTag.CallerAddress, 0xfe),
-            (36, CallTableTag.CalleeAddress, 0xff),
-            (36, CallTableTag.CalldataOffset, 0x40),
-            (36, CallTableTag.CalldataLength, 0x40),
-            (36, CallTableTag.ReturndataOffset, 0x40),
-            (36, CallTableTag.ReturndataLength, 0),
-            (36, CallTableTag.Value, 0),
-            (36, CallTableTag.Result, 1),
-            (36, CallTableTag.IsPersistent, 1),
-            (36, CallTableTag.IsStatic, 0),
+            (14, CallTableTag.RWCounterEndOfRevert, 0),
+            (14, CallTableTag.CallerCallId, 1),
+            (14, CallTableTag.TxId, 1),
+            (14, CallTableTag.Depth, 2),
+            (14, CallTableTag.CallerAddress, 0xfe),
+            (14, CallTableTag.CalleeAddress, 0xff),
+            (14, CallTableTag.CalldataOffset, 0x40),
+            (14, CallTableTag.CalldataLength, 0x40),
+            (14, CallTableTag.ReturndataOffset, 0x40),
+            (14, CallTableTag.ReturndataLength, 0),
+            (14, CallTableTag.Value, 0),
+            (14, CallTableTag.Result, 1),
+            (14, CallTableTag.IsPersistent, 1),
+            (14, CallTableTag.IsStatic, 0),
         ]),
         bytecode_table=set(
             [(caller_bytecode_hash, i, byte) for (i, byte) in enumerate(caller_bytecode)],
@@ -120,7 +120,7 @@ def test_call():
             1, CallTableTag.TxId, 1,  # call tx_id
             24, True, RWTableTag.TxAccessListAccount, 1, 0xff, 1, 0, 0, *8*[0],  # account access_list + dummy revert
             25, False, RWTableTag.AccountCodeHash, 0xff, callee_bytecode_hash, callee_bytecode_hash, 0, 0,  # account code_hash
-            fp_inv(callee_bytecode_hash - linear_combine(EMPTY_CODE_HASH, r)),  # code_hash_diff_or_zero
+            fp_inv(callee_bytecode_hash - linear_combine(EMPTY_CODE_HASH, r)),  # code_hash_diff_inv_or_zero
             26, False, RWTableTag.AccountNonce, 0xff, 1, 0, 0, 0,  # account nonce
             27, False, RWTableTag.AccountBalance, 0xff, 0, 0, 0, 0,  # account balance
             1,  # inv0(nonce)
@@ -138,20 +138,20 @@ def test_call():
             33, True, RWTableTag.CallState, 1, CallStateTag.GasLeft, 1, 0, 0,
             34, True, RWTableTag.CallState, 1, CallStateTag.MemorySize, 4, 0, 0,
             35, True, RWTableTag.CallState, 1, CallStateTag.StateWriteCounter, 0, 0, 0,
-            36, CallTableTag.RWCounterEndOfRevert, 0,  # setup callee's context
-            36, CallTableTag.CallerCallId, 1,
-            36, CallTableTag.TxId, 1,
-            36, CallTableTag.Depth, 2,
-            36, CallTableTag.CallerAddress, 0xfe,
-            36, CallTableTag.CalleeAddress, 0xff,
-            36, CallTableTag.CalldataOffset, 0x40,
-            36, CallTableTag.CalldataLength, 0x40,
-            36, CallTableTag.ReturndataOffset, 0x40,
-            36, CallTableTag.ReturndataLength, 0,
-            36, CallTableTag.Value, 0,
-            36, CallTableTag.Result, 1,
-            36, CallTableTag.IsPersistent, 1,
-            36, CallTableTag.IsStatic, 0,
+            14, CallTableTag.RWCounterEndOfRevert, 0,  # setup next call's context
+            14, CallTableTag.CallerCallId, 1,
+            14, CallTableTag.TxId, 1,
+            14, CallTableTag.Depth, 2,
+            14, CallTableTag.CallerAddress, 0xfe,
+            14, CallTableTag.CalleeAddress, 0xff,
+            14, CallTableTag.CalldataOffset, 0x40,
+            14, CallTableTag.CalldataLength, 0x40,
+            14, CallTableTag.ReturndataOffset, 0x40,
+            14, CallTableTag.ReturndataLength, 0,
+            14, CallTableTag.Value, 0,
+            14, CallTableTag.Result, 1,
+            14, CallTableTag.IsPersistent, 1,
+            14, CallTableTag.IsStatic, 0,
         ],
         tables=tables,
     )
@@ -159,7 +159,7 @@ def test_call():
         rw_counter=36,
         execution_result=ExecutionResult.STOP,
         call_state=CallState(
-            call_id=36,
+            call_id=14,
             is_root=False,
             is_create=False,
             opcode_source=callee_bytecode_hash,

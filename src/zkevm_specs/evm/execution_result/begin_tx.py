@@ -5,42 +5,54 @@ from .execution_result import ExecutionResult
 
 
 def begin_tx(curr: Step, next: Step, r: int, is_first_step: bool):
+    assert curr.call_state.call_id == curr.rw_counter
+
     tx_id = curr.call_lookup(CallTableTag.TxId)
     depth = curr.call_lookup(CallTableTag.Depth)
 
     if is_first_step:
         assert curr.rw_counter == 1
-        assert curr.call_state.call_id == 1
         assert tx_id == 1
         assert depth == 1
 
-    tx_caller_address = curr.tx_lookup(TxTableTag.CallerAddress, tx_id)
-    tx_callee_address = curr.tx_lookup(TxTableTag.CalleeAddress, tx_id)
-    tx_value = curr.tx_lookup(TxTableTag.Value, tx_id)
-    bytes_value = curr.bytes_range_lookup(tx_value, 32)
-    tx_is_create = curr.tx_lookup(TxTableTag.IsCreate, tx_id)
+    tx_caller_address = curr.tx_lookup(tx_id, TxTableTag.CallerAddress)
+    tx_callee_address = curr.tx_lookup(tx_id, TxTableTag.CalleeAddress)
+    tx_value = curr.tx_lookup(tx_id, TxTableTag.Value)
+    bytes_value = curr.decompress(tx_value, 32, r)
+    tx_is_create = curr.tx_lookup(tx_id, TxTableTag.IsCreate)
 
     # Verify nonce
-    tx_nonce = curr.tx_lookup(TxTableTag.Nonce, tx_id)
-    assert curr.w_lookup(RWTableTag.AccountNonce, [tx_caller_address, tx_nonce])
+    tx_nonce = curr.tx_lookup(tx_id, TxTableTag.Nonce)
+    nonce_prev = curr.w_lookup(RWTableTag.AccountNonce, [tx_caller_address])[1]
+    assert tx_nonce == nonce_prev
 
-    # TODO: Buy intrinsic gas (EIP 2930)
-    tx_gas = curr.tx_lookup(TxTableTag.Gas, tx_id)
-    curr.bytes_range_lookup(tx_gas, 8)
+    # TODO: Buy gas (EIP 1559)
+    tx_gas = curr.tx_lookup(tx_id, TxTableTag.Gas)
+
+    # TODO: Use intrinsic gas (EIP 2028, 2930)
+    next_gas_left = tx_gas \
+        - (53000 if tx_is_create else 21000)
+    curr.bytes_range_lookup(next_gas_left, 8)
+
+    # Prepare access list of caller
+    curr.w_lookup(RWTableTag.TxAccessListAccount, [tx_id, tx_caller_address, 1])
 
     # Verify transfer
     rw_counter_end_of_revert = curr.call_lookup(CallTableTag.RWCounterEndOfRevert)
     is_persistent = curr.call_lookup(CallTableTag.IsPersistent)
 
-    curr.assert_transfer(tx_caller_address, tx_callee_address, bytes_value, r,
-                         None if is_persistent else rw_counter_end_of_revert)
+    curr.assert_transfer(tx_caller_address, tx_callee_address, bytes_value,
+                         is_persistent, rw_counter_end_of_revert, r)
 
     if tx_is_create:
         # TODO: Verify receiver address
         # TODO: Set next.call_state.opcode_source to tx_id
         raise NotImplementedError
     else:
-        code_hash = curr.r_lookup(RWTableTag.AccountCodeHash, [tx_callee_address])
+        # Prepare access list of callee
+        curr.w_lookup(RWTableTag.TxAccessListAccount, [tx_id, tx_callee_address, 1])
+
+        code_hash = curr.r_lookup(RWTableTag.AccountCodeHash, [tx_callee_address])[0]
         is_empty_code_hash = curr.is_equal(code_hash, linear_combine(EMPTY_CODE_HASH, r))
 
         # TODO: Handle precompile
@@ -56,7 +68,7 @@ def begin_tx(curr: Step, next: Step, r: int, is_first_step: bool):
             # TODO: Refund caller and tip coinbase
         else:
             # Setup next call's context
-            tx_calldata_length = curr.tx_lookup(TxTableTag.CalldataLength, tx_id)
+            tx_calldata_length = curr.tx_lookup(tx_id, TxTableTag.CalldataLength)
 
             [
                 caller_address,
@@ -66,7 +78,7 @@ def begin_tx(curr: Step, next: Step, r: int, is_first_step: bool):
                 value,
                 is_static,
             ] = [
-                curr.call_lookup(tag, next.call_state.call_id) for tag in [
+                curr.call_lookup(tag) for tag in [
                     CallTableTag.CallerAddress,
                     CallTableTag.CalleeAddress,
                     CallTableTag.CalldataOffset,
@@ -92,7 +104,7 @@ def begin_tx(curr: Step, next: Step, r: int, is_first_step: bool):
                 opcode_source=code_hash,
                 program_counter=0,
                 stack_pointer=1024,
-                gas_left=tx_gas,
+                gas_left=next_gas_left,
                 memory_size=0,
                 state_write_counter=0,
                 last_callee_id=0,

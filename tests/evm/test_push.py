@@ -38,7 +38,7 @@ def test_push():
             1, *31*[0],  # selectors
             FixedTableTag.Range32, 1, 0, 0,  # num_pushed
             3, 0, 0, 0, 0, 0, 0, 0,  # next gas_left decompression
-            8,  True, RWTableTag.Stack, 1, 1022, 0x40, 0, 0, 0x40, *31*[0],  # stack push + decompression (value)
+            8, True, RWTableTag.Stack, 1, 1022, 0x40, 0, 0, 0x40, *31*[0],  # stack push + decompression (value)
             bytecode_hash, 3, 0x40,  # bytecode lookup
         ],
         tables=tables,

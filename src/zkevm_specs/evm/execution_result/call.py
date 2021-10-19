@@ -37,8 +37,8 @@ def call(curr: Step, next: Step, r: int, opcode: Opcode):
     has_value = not curr.is_zero(sum(bytes_value))
     if has_value:
         assert is_static == False
-    curr.assert_transfer(caller_address, callee_address, bytes_value, r,
-                         None if is_persistent else rw_counter_end_of_revert)
+    curr.assert_transfer(caller_address, callee_address, bytes_value,
+                         is_persistent, rw_counter_end_of_revert, r)
 
     # Verify memory expansion
     next_memory_size, memory_gas_cost = curr.assert_memory_expansion(
@@ -46,7 +46,8 @@ def call(curr: Step, next: Step, r: int, opcode: Opcode):
 
     # Verify gas cost
     tx_id = curr.call_lookup(CallTableTag.TxId)
-    is_cold_access = 1 - curr.w_lookup(RWTableTag.TxAccessListAccount, [tx_id, callee_address, 1])[0]
+    is_cold_access = 1 - curr.w_lookup(RWTableTag.TxAccessListAccount, [tx_id, callee_address, 1],
+                                       is_persistent, rw_counter_end_of_revert)[0]
     code_hash = curr.r_lookup(RWTableTag.AccountCodeHash, [callee_address])[0]
     is_empty_code_hash = curr.is_equal(code_hash, linear_combine(EMPTY_CODE_HASH, r))
     callee_nonce = curr.r_lookup(RWTableTag.AccountNonce, [callee_address])[0]
@@ -54,11 +55,11 @@ def call(curr: Step, next: Step, r: int, opcode: Opcode):
     is_zero_nonce = curr.is_zero(callee_nonce)
     is_zero_balance = curr.is_zero(callee_balance)
     is_account_empty = is_zero_nonce and is_zero_balance and is_empty_code_hash
-    base_gas_cost = 100 + \
-        is_cold_access * 2500 + \
-        is_account_empty * 25000 + \
-        has_value * 9000 + \
-        memory_gas_cost
+    base_gas_cost = 100 \
+        + is_cold_access * 2500 \
+        + is_account_empty * 25000 \
+        + has_value * 9000 \
+        + memory_gas_cost
 
     gas_available = curr.call_state.gas_left - base_gas_cost
     one_64th_available_gas = le_to_int(curr.allocate_byte(8))
@@ -168,7 +169,7 @@ def call(curr: Step, next: Step, r: int, opcode: Opcode):
             next,
             rw_counter_diff=curr.rw_counter_diff,
             execution_result_not=ExecutionResult.BEGIN_TX,
-            call_id=next.rw_counter,
+            call_id=curr.rw_counter,
             is_root=False,
             is_create=False,
             opcode_source=code_hash,

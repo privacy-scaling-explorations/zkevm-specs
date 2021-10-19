@@ -132,16 +132,18 @@ class Step:
     def fixed_lookup(self, tag: FixedTableTag, inputs: Sequence[int]):
         allocation = self.allocate(4)
 
-        assert allocation[0] == tag.value
+        assert allocation[0] == tag
         assert allocation[1:1+len(inputs)] == inputs
         assert self.tables.fixed_lookup(allocation)
 
-    def tx_lookup(self, tag: TxTableTag, tx_id: int, index: int) -> int:
+    def tx_lookup(self, tx_id: int, tag: TxTableTag, index: Union[int, None] = None) -> int:
         allocation = self.allocate(4)
 
         assert allocation[0] == tx_id
-        assert allocation[1] == tag.value
-        assert allocation[2] == index
+        assert allocation[1] == tag
+        if index is not None:
+            assert tag == TxTableTag.Calldata
+            assert allocation[2] == index
         assert self.tables.tx_lookup(allocation)
 
         return allocation[3]
@@ -150,7 +152,7 @@ class Step:
         allocation = self.allocate(3)
 
         assert allocation[0] == call_id or self.call_state.call_id
-        assert allocation[1] == tag.value
+        assert allocation[1] == tag
         assert self.tables.call_lookup(allocation)
 
         return allocation[2]
@@ -176,7 +178,13 @@ class Step:
 
         return allocation[3+len(inputs):]
 
-    def w_lookup(self, tag: RWTableTag, inputs: Sequence[int], rw_counter_end_of_revert: Union[int, None] = None) -> Sequence[int]:
+    def w_lookup(
+        self,
+        tag: RWTableTag,
+        inputs: Sequence[int],
+        is_persistent: Union[int, None] = None,
+        rw_counter_end_of_revert: Union[int, None] = None,
+    ) -> Sequence[int]:
         allocation = self.allocate(8)
 
         assert allocation[0] == self.rw_counter + self.rw_counter_diff
@@ -187,7 +195,7 @@ class Step:
 
         self.rw_counter_diff += 1
 
-        if tag in [
+        if is_persistent is not None and tag in [
             RWTableTag.TxAccessListAccount,
             RWTableTag.TxAccessListStorageSlot,
             RWTableTag.TxRefund,
@@ -197,9 +205,11 @@ class Step:
             RWTableTag.AccountStorage,
             RWTableTag.AccountDestructed,
         ]:
+            assert rw_counter_end_of_revert is not None
+
             allocation_revert = self.allocate(8)
 
-            if rw_counter_end_of_revert is not None:
+            if not is_persistent:
                 assert allocation_revert[0] == rw_counter_end_of_revert - \
                     (self.call_state.state_write_counter + self.state_write_counter_diff)
                 assert allocation_revert[1] == True
@@ -282,13 +292,14 @@ class Step:
         caller_address: int,
         callee_address: int,
         bytes_value: Sequence[int],
+        is_persistent: int,
+        rw_counter_end_of_revert: int,
         r: int,
-        rw_counter_end_of_revert: Union[int, None] = None,
     ):
         caller_new_balance, caller_prev_balance = self.w_lookup(
-            RWTableTag.AccountBalance, [caller_address], rw_counter_end_of_revert)[:2]
+            RWTableTag.AccountBalance, [caller_address], is_persistent, rw_counter_end_of_revert)[:2]
         callee_new_balance, callee_prev_balance = self.w_lookup(
-            RWTableTag.AccountBalance, [callee_address], rw_counter_end_of_revert)[:2]
+            RWTableTag.AccountBalance, [callee_address], is_persistent, rw_counter_end_of_revert)[:2]
 
         # Verify caller's new balance is subtracted by value and not underflow
         bytes_caller_prev_balance = self.decompress(caller_prev_balance, 32, r)
