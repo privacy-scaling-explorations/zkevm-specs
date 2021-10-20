@@ -100,64 +100,32 @@ def call(curr: Step, next: Step, r: int, opcode: Opcode):
             (CallStateTag.IsCreate, curr.call_state.is_create),
             (CallStateTag.OpcodeSource, curr.call_state.opcode_source),
             (CallStateTag.ProgramCounter, curr.call_state.program_counter + 1),
-            (CallStateTag.StackPointer,
-             curr.call_state.stack_pointer + curr.stack_pointer_diff),
+            (CallStateTag.StackPointer, curr.call_state.stack_pointer + curr.stack_pointer_diff),
             (CallStateTag.GasLeft, next_gas_left),
             (CallStateTag.MemorySize, next_memory_size),
-            (CallStateTag.StateWriteCounter,
-             curr.call_state.state_write_counter + curr.state_write_counter_diff),
+            (CallStateTag.StateWriteCounter, curr.call_state.state_write_counter + curr.state_write_counter_diff),
         ]:
             curr.w_lookup(RWTableTag.CallState, [curr.call_state.call_id, tag, value])
 
         # Setup next call's context
-        [
-            callee_rw_counter_end_of_revert,
-            callee_caller_call_id,
-            callee_tx_id,
-            callee_depth,
-            callee_caller_address,
-            callee_callee_address,
-            callee_calldata_offset,
-            callee_calldata_length,
-            callee_returndata_offset,
-            callee_returndata_length,
-            callee_value,
-            callee_result,
-            callee_is_persistent,
-            callee_is_static,
-        ] = [
-            curr.call_lookup(tag, next.call_state.call_id) for tag in [
-                CallTableTag.RWCounterEndOfRevert,
-                CallTableTag.CallerCallId,
-                CallTableTag.TxId,
-                CallTableTag.Depth,
-                CallTableTag.CallerAddress,
-                CallTableTag.CalleeAddress,
-                CallTableTag.CalldataOffset,
-                CallTableTag.CalldataLength,
-                CallTableTag.ReturndataOffset,
-                CallTableTag.ReturndataLength,
-                CallTableTag.Value,
-                CallTableTag.Result,
-                CallTableTag.IsPersistent,
-                CallTableTag.IsStatic,
-            ]
-        ]
+        for (tag, value) in [
+            (CallTableTag.CallerCallId, curr.call_state.call_id),
+            (CallTableTag.TxId, tx_id),
+            (CallTableTag.Depth, depth + 1),
+            (CallTableTag.CallerAddress, caller_address),
+            (CallTableTag.CalleeAddress, callee_address),
+            (CallTableTag.CalldataOffset, le_to_int(bytes_cd_offset[:5])),
+            (CallTableTag.CalldataLength, le_to_int(bytes_cd_length)),
+            (CallTableTag.ReturndataOffset, le_to_int(bytes_rd_offset[:5])),
+            (CallTableTag.ReturndataLength, le_to_int(bytes_rd_length)),
+            (CallTableTag.Value, value),
+            (CallTableTag.Result, result),
+            (CallTableTag.IsPersistent, is_persistent * result),
+            (CallTableTag.IsStatic, is_static),
+        ]:
+            assert curr.call_lookup(tag, next.call_state.call_id) == value
 
-        assert callee_caller_call_id == curr.call_state.call_id
-        assert callee_tx_id == tx_id
-        assert callee_depth == depth + 1
-        assert callee_caller_address == caller_address
-        assert callee_callee_address == le_to_int(bytes_callee_address[:20])
-        assert callee_calldata_offset == le_to_int(bytes_cd_offset[:5])
-        assert callee_calldata_length == le_to_int(bytes_cd_length)
-        assert callee_returndata_offset == le_to_int(bytes_rd_offset[:5])
-        assert callee_returndata_length == le_to_int(bytes_rd_length)
-        assert callee_value == value
-        assert callee_result == result
-        assert callee_is_persistent == is_persistent * result
-        assert callee_is_static == is_static
-
+        callee_rw_counter_end_of_revert = curr.call_lookup(CallTableTag.RWCounterEndOfRevert, next.call_state.call_id)
         callee_state_write_counter = 0
         # Callee succeed but one of callers reverts at some point
         if result and not is_persistent:

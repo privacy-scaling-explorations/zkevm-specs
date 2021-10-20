@@ -138,8 +138,7 @@ def test_call():
             33, True, RWTableTag.CallState, 1, CallStateTag.GasLeft, 1, 0, 0,
             34, True, RWTableTag.CallState, 1, CallStateTag.MemorySize, 4, 0, 0,
             35, True, RWTableTag.CallState, 1, CallStateTag.StateWriteCounter, 0, 0, 0,
-            14, CallTableTag.RWCounterEndOfRevert, 0,  # setup next call's context
-            14, CallTableTag.CallerCallId, 1,
+            14, CallTableTag.CallerCallId, 1,  # setup next call's context
             14, CallTableTag.TxId, 1,
             14, CallTableTag.Depth, 2,
             14, CallTableTag.CallerAddress, 0xfe,
@@ -152,6 +151,7 @@ def test_call():
             14, CallTableTag.Result, 1,
             14, CallTableTag.IsPersistent, 1,
             14, CallTableTag.IsStatic, 0,
+            14, CallTableTag.RWCounterEndOfRevert, 0,
         ],
         tables=tables,
     )
