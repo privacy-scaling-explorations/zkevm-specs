@@ -32,8 +32,7 @@
        none
 
 ## Exceptions
-   1. gas out:   
-   remaining gas is not enough
+   1. gas out:   remaining gas is not enough
  
 ## Code  
    none
