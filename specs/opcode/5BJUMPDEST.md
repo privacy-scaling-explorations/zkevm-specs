@@ -3,8 +3,9 @@
    JUMPDEST is a special opcode which only marks an address that can be jumped to.   in other words it is an metadata to annotate possible jump destinations.  
 
    For example,  blow op code sequences, JUMPDEST marks '004D' can be jumped to, if there is no JUMPDEST annotation, Jumping to '004D' will fail as jump op code will require JUMPDEST as valid destination.  
-   
-     "004D    5B  JUMPDEST  
+
+```
+      004D    5B  JUMPDEST  
       004E    34  CALLVALUE  
       004F    80  DUP1  
       0050    15  ISZERO  
@@ -20,16 +21,17 @@
       005E    35  CALLDATALOAD  
       005F    60  PUSH1 0x86  
       0061    56  *JUMP"  
+```
 
 ## Constraints
    1. opId = OpcodeId(0x5B)
    2. state transition:  
-      gc
-      stack_pointer  
-      pc + 1  
-      gas + 1  
+      - gc
+      - stack_pointer  
+      - pc + 1  
+      - gas + 1  
    3. lookups: 
-       none
+       none (since there is no operands required)
 
 ## Exceptions
    1. gas out:   remaining gas is not enough
