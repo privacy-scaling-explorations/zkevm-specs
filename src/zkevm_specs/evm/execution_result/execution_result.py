@@ -2,6 +2,10 @@ from enum import IntEnum, auto
 
 
 class ExecutionResult(IntEnum):
+    """
+    All possible execution results an EVM step could encounter.
+    """
+
     BEGIN_TX = auto()
 
     # Opcode's successful cases
