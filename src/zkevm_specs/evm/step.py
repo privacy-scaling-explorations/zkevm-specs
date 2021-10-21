@@ -30,16 +30,31 @@ class CoreState:
 
 class CallState:
     """
-    Call's mutable state EVM circuit tracks step by step, where each field could
-    be further moved into rw_table if we find they are not often used.
+    Call state EVM circuit tracks step by step, it includes fields that are used
+    from beginning to end like is_root, is_create and opcode_source.
+    It also includes call's mutable states which change almost every step like
+    program_counter and stack_pointer.
     """
 
+    # The following 3 fields decide the source of opcode. There are 3 possible
+    # cases:
+    # 1. Tx contract deployment (is_root and is_create)
+    #   We set opcode_source to tx_id and lookup calldata in tx_table.
+    # 2. CREATE and CREATE2 (not is_root and is_create)
+    #   We set opcode_source to caller_id and lookup memory in rw_table.
+    # 3. Contract execution (not is_create)
+    #   We set opcode_source to bytecode_hash and lookup bytecode_table.
     is_root: bool
     is_create: bool
     opcode_source: int
+
+    # The following fields change almost every step.
     program_counter: int
     stack_pointer: int
     gas_left: int
+
+    # The following fields could be further moved into rw_table if we find them
+    # not often used.
     memory_size: int
     state_write_counter: int
     last_callee_id: int
