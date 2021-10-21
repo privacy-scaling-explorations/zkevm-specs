@@ -20,7 +20,7 @@
    1. gas out:   
    remaining gas is not enough
    2. stack underflow:   
-   when stack length is less than swap position 'x + 1', i.e stack have 3 elements but the op is swap3, swap4, ..., swap16.".
+   when stack length is less than swap position 'x + 1', i.e stack have 3 elements but the op is swap3, swap4, ..., swap16. Underflow condition for `swap_x`: `0 <= x +  stack_pointer - 1024 <= 16`, which requires a `Range17` lookup check.
  
 ## Code  
    refer to src/zkevm_specs/opcode/stack.py
