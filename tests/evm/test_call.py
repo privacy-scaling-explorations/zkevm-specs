@@ -1,5 +1,5 @@
 from zkevm_specs.evm import (
-    main, Opcode, ExecutionResult, CallState, Step,
+    main, Opcode, ExecutionResult, CoreState, CallState, Step,
     Tables, FixedTableTag, CallTableTag, RWTableTag, CallStateTag
 )
 from zkevm_specs.util import fp_inv, linear_combine, keccak256, EMPTY_CODE_HASH
@@ -66,10 +66,12 @@ def test_call():
     )
 
     curr = Step(
-        rw_counter=14,
-        execution_result=ExecutionResult.CALL,
-        call_state=CallState(
+        core=CoreState(
+            rw_counter=14,
+            execution_result=ExecutionResult.CALL,
             call_id=1,
+        ),
+        call=CallState(
             is_root=True,
             is_create=False,
             opcode_source=caller_bytecode_hash,
@@ -77,7 +79,7 @@ def test_call():
             stack_pointer=1017,
             gas_left=2700,
         ),
-        allocation=[
+        allocations=[
             caller_bytecode_hash, 15, Opcode.CALL,  # bytecode
             1, CallTableTag.Depth, 1,
             FixedTableTag.Range1024, 1, 0, 0,  # depth range
@@ -156,10 +158,12 @@ def test_call():
         tables=tables,
     )
     next = Step(
-        rw_counter=36,
-        execution_result=ExecutionResult.STOP,
-        call_state=CallState(
+        core=CoreState(
+            rw_counter=36,
+            execution_result=ExecutionResult.STOP,
             call_id=14,
+        ),
+        call=CallState(
             is_root=False,
             is_create=False,
             opcode_source=callee_bytecode_hash,
@@ -167,7 +171,7 @@ def test_call():
             stack_pointer=1024,
             gas_left=87,
         ),
-        allocation=[],
+        allocations=[],
         tables=tables,
     )
 

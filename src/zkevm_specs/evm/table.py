@@ -11,6 +11,11 @@ from .opcode import (
 
 
 class FixedTableTag(IntEnum):
+    """
+    Tag for fixed_table lookup, where the fixed_table is a prebuilt fixed-column
+    table.
+    """
+
     Range32 = auto()  # value, 0, 0
     Range64 = auto()  # value, 0, 0
     Range256 = auto()  # value, 0, 0
@@ -24,6 +29,11 @@ class FixedTableTag(IntEnum):
 
 
 class TxTableTag(IntEnum):
+    """
+    Tag for tx_table lookup, where the tx_table is an instance-column table
+    where part of it will be built by verifier.
+    """
+
     Nonce = auto()
     Gas = auto()
     GasTipCap = auto()
@@ -37,6 +47,12 @@ class TxTableTag(IntEnum):
 
 
 class CallTableTag(IntEnum):
+    """
+    Tag for call_table lookup, where the call_table an advice-column table
+    built by prover, which will be put constraint sto ensure each field of call
+    is unique.
+    """
+
     RWCounterEndOfRevert = auto()  # to know reversion section
     CallerCallId = auto()  # to return to caller's state
     TxId = auto()  # to lookup tx context
@@ -54,6 +70,12 @@ class CallTableTag(IntEnum):
 
 
 class RWTableTag(IntEnum):
+    """
+    Tag for rw_table lookup, where the rw_table an advice-column table built by
+    prover, which will be part of State circuit and each unit read-write data
+    will be verified to be consistent between each write.
+    """
+
     TxAccessListAccount = auto()
     TxAccessListStorageSlot = auto()
     TxRefund = auto()
@@ -68,6 +90,11 @@ class RWTableTag(IntEnum):
 
 
 class CallStateTag(IntEnum):
+    """
+    Tag for rw_table lookup with tag CallState, which is used to index specific
+    field of CallState.
+    """
+
     IsRoot = auto()
     IsCreate = auto()
     OpcodeSource = auto()
@@ -79,6 +106,10 @@ class CallStateTag(IntEnum):
 
 
 class Tables:
+    """
+    A collection of lookup tables used in EVM circuit.
+    """
+
     fixed_table: Set[Tuple[
         int,  # tag
         int,  # value1
@@ -125,10 +156,10 @@ class Tables:
 
     def __init__(
         self,
-        tx_table,
-        call_table,
-        bytecode_table,
-        rw_table,
+        tx_table: Set[Tuple[int, int, int, int]],
+        call_table: Set[Tuple[int, int, int]],
+        bytecode_table: Set[Tuple[int, int, int]],
+        rw_table: Set[Tuple[int, int, int, int, int, int, int, int]],
     ) -> None:
         self.tx_table = tx_table
         self.call_table = call_table

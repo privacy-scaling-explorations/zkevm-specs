@@ -1,5 +1,5 @@
 from zkevm_specs.evm import (
-    main, Opcode, ExecutionResult, CallState, Step,
+    main, Opcode, ExecutionResult, CoreState, CallState, Step,
     Tables, FixedTableTag, RWTableTag
 )
 from zkevm_specs.util import linear_combine, keccak256
@@ -22,10 +22,12 @@ def test_push():
     )
 
     curr = Step(
-        rw_counter=8,
-        execution_result=ExecutionResult.PUSH,
-        call_state=CallState(
+        core=CoreState(
+            rw_counter=8,
+            execution_result=ExecutionResult.PUSH,
             call_id=1,
+        ),
+        call=CallState(
             is_root=True,
             is_create=False,
             opcode_source=bytecode_hash,
@@ -33,7 +35,7 @@ def test_push():
             stack_pointer=1023,
             gas_left=6,
         ),
-        allocation=[
+        allocations=[
             bytecode_hash, 2, Opcode.PUSH1,  # bytecode lookup
             1, *31*[0],  # selectors
             FixedTableTag.Range32, 1, 0, 0,  # num_pushed
@@ -44,10 +46,12 @@ def test_push():
         tables=tables,
     )
     next = Step(
-        rw_counter=9,
-        execution_result=ExecutionResult.ADD,
-        call_state=CallState(
+        core=CoreState(
+            rw_counter=9,
+            execution_result=ExecutionResult.ADD,
             call_id=1,
+        ),
+        call=CallState(
             is_root=True,
             is_create=False,
             opcode_source=bytecode_hash,
@@ -55,7 +59,7 @@ def test_push():
             stack_pointer=1022,
             gas_left=3,
         ),
-        allocation=[],
+        allocations=[],
         tables=tables,
     )
 

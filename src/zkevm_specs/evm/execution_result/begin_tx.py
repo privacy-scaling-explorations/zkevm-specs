@@ -5,13 +5,13 @@ from .execution_result import ExecutionResult
 
 
 def begin_tx(curr: Step, next: Step, r: int, is_first_step: bool):
-    assert curr.call_state.call_id == curr.rw_counter
+    assert curr.core.call_id == curr.core.rw_counter
 
     tx_id = curr.call_lookup(CallTableTag.TxId)
     depth = curr.call_lookup(CallTableTag.Depth)
 
     if is_first_step:
-        assert curr.rw_counter == 1
+        assert curr.core.rw_counter == 1
         assert tx_id == 1
         assert depth == 1
 
@@ -46,7 +46,7 @@ def begin_tx(curr: Step, next: Step, r: int, is_first_step: bool):
 
     if tx_is_create:
         # TODO: Verify receiver address
-        # TODO: Set next.call_state.opcode_source to tx_id
+        # TODO: Set next.call.opcode_source to tx_id
         raise NotImplementedError
     else:
         # Prepare access list of callee
@@ -61,7 +61,7 @@ def begin_tx(curr: Step, next: Step, r: int, is_first_step: bool):
                 next,
                 rw_counter_diff=curr.rw_counter_diff,
                 execution_result=ExecutionResult.BEGIN_TX,
-                call_id=next.rw_counter,
+                call_id=next.core.rw_counter,
             )
             assert next.peek_allocation(2) == tx_id + 1
 

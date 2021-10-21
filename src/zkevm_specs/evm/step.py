@@ -7,8 +7,33 @@ from .table import Tables, FixedTableTag, TxTableTag, CallTableTag, RWTableTag, 
 from .opcode import Opcode, OPCODE_INFO_MAP
 
 
-class CallState:
+class CoreState:
+    """
+    Core state of EVM circuit tracks step by step and used to ensure the
+    execution trace is verified continuously and chronologically.
+    """
+
+    rw_counter: int
+    execution_result: ExecutionResult
     call_id: int
+
+    def __init__(
+        self,
+        rw_counter: int,
+        execution_result: ExecutionResult,
+        call_id: int,
+    ):
+        self.rw_counter = rw_counter
+        self.execution_result = execution_result
+        self.call_id = call_id
+
+
+class CallState:
+    """
+    Call's mutable state EVM circuit tracks step by step, where each field could
+    be further moved into rw_table if we find they are not often used.
+    """
+
     is_root: bool
     is_create: bool
     opcode_source: int
@@ -23,7 +48,6 @@ class CallState:
 
     def __init__(
         self,
-        call_id: int,
         is_root: bool,
         is_create: bool,
         opcode_source: int,
@@ -36,7 +60,6 @@ class CallState:
         last_callee_returndata_offset: int = 0,
         last_callee_returndata_length: int = 0,
     ) -> None:
-        self.call_id = call_id
         self.is_root = is_root
         self.is_create = is_create
         self.opcode_source = opcode_source
@@ -51,11 +74,15 @@ class CallState:
 
 
 class Step:
-    # witness
-    rw_counter: int
-    execution_result: ExecutionResult
-    call_state: CallState
-    allocation: Sequence[int]
+    """
+    The region each execution result expects to working on, which contains the
+    CoreState, CallState and auxiliary witnesses (allocations)
+    """
+
+    # witnesses
+    core: CoreState
+    call: CallState
+    allocations: Sequence[int]
     # lookup tables
     tables: Tables
     # helper numbers
@@ -66,41 +93,39 @@ class Step:
 
     def __init__(
         self,
-        rw_counter: int,
-        execution_result: ExecutionResult,
-        call_state: CallState,
-        allocation: Sequence[int],
+        core: CoreState,
+        call: CallState,
+        allocations: Sequence[int],
         tables: Tables,
     ) -> None:
-        self.rw_counter = rw_counter
-        self.execution_result = execution_result
-        self.call_state = call_state
-        self.allocation = allocation
+        self.core = core
+        self.call = call
+        self.allocations = allocations
         self.tables = tables
 
     def peek_allocation(self, idx: int) -> int:
-        return self.allocation[idx]
+        return self.allocations[idx]
 
     def allocate(self, n: int) -> Sequence[int]:
-        allocation = self.allocation[self.allocation_offset:self.allocation_offset+n]
+        allocations = self.allocations[self.allocation_offset:self.allocation_offset+n]
         self.allocation_offset += n
-        return allocation
+        return allocations
 
     def allocate_bool(self, n: int) -> Sequence[int]:
-        allocation = self.allocate(n)
+        allocations = self.allocate(n)
 
         for i in range(n):
-            assert_bool(allocation[i])
+            assert_bool(allocations[i])
 
-        return allocation
+        return allocations
 
     def allocate_byte(self, n: int) -> Sequence[int]:
-        allocation = self.allocate(n)
+        allocations = self.allocate(n)
 
         for i in range(n):
-            self.byte_range_lookup(allocation[i])
+            self.byte_range_lookup(allocations[i])
 
-        return allocation
+        return allocations
 
     def is_zero(self, value: int) -> bool:
         value_inv = self.allocate(1)[0]
@@ -115,13 +140,13 @@ class Step:
         return self.is_zero(lhs - rhs)
 
     def decompress(self, value: int, n: int, r: int) -> Sequence[int]:
-        allocation = self.allocate(n)
+        allocations = self.allocate(n)
 
-        assert value == linear_combine(allocation, r)
+        assert value == linear_combine(allocations, r)
         for i in range(n):
-            self.byte_range_lookup(allocation[i])
+            self.byte_range_lookup(allocations[i])
 
-        return allocation
+        return allocations
 
     def bytes_range_lookup(self, value: int, n: int):
         self.decompress(value, n, 256)
@@ -130,53 +155,53 @@ class Step:
         assert self.tables.fixed_lookup([FixedTableTag.Range256, input, 0, 0])
 
     def fixed_lookup(self, tag: FixedTableTag, inputs: Sequence[int]):
-        allocation = self.allocate(4)
+        allocations = self.allocate(4)
 
-        assert allocation[0] == tag
-        assert allocation[1:1+len(inputs)] == inputs
-        assert self.tables.fixed_lookup(allocation)
+        assert allocations[0] == tag
+        assert allocations[1:1+len(inputs)] == inputs
+        assert self.tables.fixed_lookup(allocations)
 
     def tx_lookup(self, tx_id: int, tag: TxTableTag, index: Union[int, None] = None) -> int:
-        allocation = self.allocate(4)
+        allocations = self.allocate(4)
 
-        assert allocation[0] == tx_id
-        assert allocation[1] == tag
+        assert allocations[0] == tx_id
+        assert allocations[1] == tag
         if index is not None:
             assert tag == TxTableTag.Calldata
-            assert allocation[2] == index
-        assert self.tables.tx_lookup(allocation)
+            assert allocations[2] == index
+        assert self.tables.tx_lookup(allocations)
 
-        return allocation[3]
+        return allocations[3]
 
     def call_lookup(self, tag: CallTableTag, call_id: Union[int, None] = None) -> int:
-        allocation = self.allocate(3)
+        allocations = self.allocate(3)
 
-        assert allocation[0] == call_id or self.call_state.call_id
-        assert allocation[1] == tag
-        assert self.tables.call_lookup(allocation)
+        assert allocations[0] == call_id or self.core.call_id
+        assert allocations[1] == tag
+        assert self.tables.call_lookup(allocations)
 
-        return allocation[2]
+        return allocations[2]
 
     def bytecode_lookup(self, inputs: Sequence[int]) -> Opcode:
-        allocation = self.allocate(3)
+        allocations = self.allocate(3)
 
-        assert allocation[:len(inputs)] == inputs
-        assert self.tables.bytecode_lookup(allocation)
+        assert allocations[:len(inputs)] == inputs
+        assert self.tables.bytecode_lookup(allocations)
 
-        return Opcode(allocation[2])
+        return Opcode(allocations[2])
 
     def r_lookup(self, tag: RWTableTag, inputs: Sequence[int]) -> Sequence[int]:
-        allocation = self.allocate(8)
+        allocations = self.allocate(8)
 
-        assert allocation[0] == self.rw_counter + self.rw_counter_diff
-        assert allocation[1] == False
-        assert allocation[2] == tag
-        assert allocation[3:3+len(inputs)] == inputs
-        assert self.tables.rw_lookup(allocation)
+        assert allocations[0] == self.core.rw_counter + self.rw_counter_diff
+        assert allocations[1] == False
+        assert allocations[2] == tag
+        assert allocations[3:3+len(inputs)] == inputs
+        assert self.tables.rw_lookup(allocations)
 
         self.rw_counter_diff += 1
 
-        return allocation[3+len(inputs):]
+        return allocations[3+len(inputs):]
 
     def w_lookup(
         self,
@@ -185,13 +210,13 @@ class Step:
         is_persistent: Union[int, None] = None,
         rw_counter_end_of_revert: Union[int, None] = None,
     ) -> Sequence[int]:
-        allocation = self.allocate(8)
+        allocations = self.allocate(8)
 
-        assert allocation[0] == self.rw_counter + self.rw_counter_diff
-        assert allocation[1] == True
-        assert allocation[2] == tag
-        assert allocation[3:3+len(inputs)] == inputs
-        assert self.tables.rw_lookup(allocation)
+        assert allocations[0] == self.core.rw_counter + self.rw_counter_diff
+        assert allocations[1] == True
+        assert allocations[2] == tag
+        assert allocations[3:3+len(inputs)] == inputs
+        assert self.tables.rw_lookup(allocations)
 
         self.rw_counter_diff += 1
 
@@ -211,66 +236,66 @@ class Step:
 
             if not is_persistent:
                 assert allocation_revert[0] == rw_counter_end_of_revert - \
-                    (self.call_state.state_write_counter + self.state_write_counter_diff)
+                    (self.call.state_write_counter + self.state_write_counter_diff)
                 assert allocation_revert[1] == True
                 assert allocation_revert[2] == tag
                 if tag == RWTableTag.TxAccessListAccount:
-                    assert allocation_revert[3] == allocation[3]  # tx_id
-                    assert allocation_revert[4] == allocation[4]  # account address
-                    assert allocation_revert[5] == allocation[6]  # revert value
+                    assert allocation_revert[3] == allocations[3]  # tx_id
+                    assert allocation_revert[4] == allocations[4]  # account address
+                    assert allocation_revert[5] == allocations[6]  # revert value
                 elif tag == RWTableTag.TxAccessListStorageSlot:
-                    assert allocation_revert[3] == allocation[3]  # tx_id
-                    assert allocation_revert[4] == allocation[4]  # account address
-                    assert allocation_revert[5] == allocation[5]  # storage slot
-                    assert allocation_revert[6] == allocation[7]  # revert value
+                    assert allocation_revert[3] == allocations[3]  # tx_id
+                    assert allocation_revert[4] == allocations[4]  # account address
+                    assert allocation_revert[5] == allocations[5]  # storage slot
+                    assert allocation_revert[6] == allocations[7]  # revert value
                 elif tag == RWTableTag.TxRefund:
-                    assert allocation_revert[3] == allocation[3]  # tx_id
-                    assert allocation_revert[4] == allocation[5]  # revert value
+                    assert allocation_revert[3] == allocations[3]  # tx_id
+                    assert allocation_revert[4] == allocations[5]  # revert value
                 elif tag == RWTableTag.AccountNonce:
-                    assert allocation_revert[3] == allocation[3]  # account address
-                    assert allocation_revert[4] == allocation[5]  # revert value
+                    assert allocation_revert[3] == allocations[3]  # account address
+                    assert allocation_revert[4] == allocations[5]  # revert value
                 elif tag == RWTableTag.AccountBalance:
-                    assert allocation_revert[3] == allocation[3]  # account address
-                    assert allocation_revert[4] == allocation[5]  # revert value
+                    assert allocation_revert[3] == allocations[3]  # account address
+                    assert allocation_revert[4] == allocations[5]  # revert value
                 elif tag == RWTableTag.AccountCodeHash:
-                    assert allocation_revert[3] == allocation[3]  # account address
-                    assert allocation_revert[4] == allocation[5]  # revert value
+                    assert allocation_revert[3] == allocations[3]  # account address
+                    assert allocation_revert[4] == allocations[5]  # revert value
                 elif tag == RWTableTag.AccountStorage:
-                    assert allocation_revert[3] == allocation[3]  # account address
-                    assert allocation_revert[4] == allocation[4]  # storage slot
-                    assert allocation_revert[5] == allocation[6]  # revert value
+                    assert allocation_revert[3] == allocations[3]  # account address
+                    assert allocation_revert[4] == allocations[4]  # storage slot
+                    assert allocation_revert[5] == allocations[6]  # revert value
                 elif tag == RWTableTag.AccountDestructed:
-                    assert allocation_revert[3] == allocation[3]  # account address
-                    assert allocation_revert[4] == allocation[5]  # revert value
+                    assert allocation_revert[3] == allocations[3]  # account address
+                    assert allocation_revert[4] == allocations[5]  # revert value
                 assert self.tables.rw_lookup(allocation_revert)
 
                 self.state_write_counter_diff += 1
 
-        return allocation[3+len(inputs):]
+        return allocations[3+len(inputs):]
 
     def opcode_lookup(self, offset: int = 0) -> Opcode:
-        if self.call_state.is_create:
-            if self.call_state.is_root:
+        if self.call.is_create:
+            if self.call.is_root:
                 return Opcode(self.tx_lookup(TxTableTag.Calldata, [
-                    self.call_state.opcode_source,
-                    self.call_state.program_counter + offset,
+                    self.call.opcode_source,
+                    self.call.program_counter + offset,
                 ]))
             else:
                 # TODO: Add offset and verify creation code length when dealing with create
                 return Opcode(self.r_lookup(RWTableTag.Memory, [
-                    self.call_state.opcode_source,
-                    self.call_state.program_counter + offset,
+                    self.call.opcode_source,
+                    self.call.program_counter + offset,
                 ])[0])
         else:
             return self.bytecode_lookup([
-                self.call_state.opcode_source,
-                self.call_state.program_counter + offset,
+                self.call.opcode_source,
+                self.call.program_counter + offset,
             ])
 
     def stack_pop_lookup(self) -> int:
         value = self.r_lookup(RWTableTag.Stack, [
-            self.call_state.call_id,
-            self.call_state.stack_pointer + self.stack_pointer_diff
+            self.core.call_id,
+            self.call.stack_pointer + self.stack_pointer_diff
         ])[0]
         self.stack_pointer_diff += 1
         return value
@@ -278,12 +303,12 @@ class Step:
     def stack_push_lookup(self) -> int:
         self.stack_pointer_diff -= 1
         return self.w_lookup(RWTableTag.Stack, [
-            self.call_state.call_id,
-            self.call_state.stack_pointer + self.stack_pointer_diff
+            self.core.call_id,
+            self.call.stack_pointer + self.stack_pointer_diff
         ])[0]
 
     def assert_sufficient_constant_gas(self, opcode: Opcode) -> int:
-        next_gas_left = self.call_state.gas_left - OPCODE_INFO_MAP[opcode].constant_gas
+        next_gas_left = self.call.gas_left - OPCODE_INFO_MAP[opcode].constant_gas
         self.bytes_range_lookup(next_gas_left, 8)
         return next_gas_left
 
@@ -347,9 +372,9 @@ class Step:
         self.fixed_lookup(FixedTableTag.Range32, [32 * next_memory_size_rd - has_rd_length * (rd_offset + rd_length)])
 
         # Verify next_memory_size == \
-        #   max(self.call_state.memory_size, next_memory_size_cd, next_memory_size_rd)
-        assert next_memory_size in [self.call_state.memory_size, next_memory_size_cd, next_memory_size_rd]
-        self.bytes_range_lookup(next_memory_size - self.call_state.memory_size, 4)
+        #   max(self.call.memory_size, next_memory_size_cd, next_memory_size_rd)
+        assert next_memory_size in [self.call.memory_size, next_memory_size_cd, next_memory_size_rd]
+        self.bytes_range_lookup(next_memory_size - self.call.memory_size, 4)
         self.bytes_range_lookup(next_memory_size - next_memory_size_cd, 4)
         self.bytes_range_lookup(next_memory_size - next_memory_size_rd, 4)
 
@@ -357,11 +382,11 @@ class Step:
         curr_quad_memory_gas_cost = le_to_int(self.allocate_byte(8))
         next_quad_memory_gas_cost = le_to_int(self.allocate_byte(8))
         self.fixed_lookup(FixedTableTag.Range512,
-                          [self.call_state.memory_size * self.call_state.memory_size - 512 * curr_quad_memory_gas_cost])
+                          [self.call.memory_size * self.call.memory_size - 512 * curr_quad_memory_gas_cost])
         self.fixed_lookup(FixedTableTag.Range512,
                           [next_memory_size * next_memory_size - 512 * next_quad_memory_gas_cost])
         memory_gas_cost = next_quad_memory_gas_cost - curr_quad_memory_gas_cost + \
-            3 * (next_memory_size - self.call_state.memory_size)
+            3 * (next_memory_size - self.call.memory_size)
 
         return next_memory_size, memory_gas_cost
 
@@ -383,9 +408,8 @@ class Step:
                 else:
                     assert next == curr
 
-        assert_transition(self, next, ['rw_counter', 'execution_result'])
-        assert_transition(self.call_state, next.call_state, [
-            'call_id',
+        assert_transition(self.core, next.core, ['rw_counter', 'execution_result', 'call_id'])
+        assert_transition(self.call, next.call, [
             'is_root',
             'is_create',
             'opcode_source',
