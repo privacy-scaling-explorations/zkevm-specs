@@ -1,6 +1,6 @@
 from zkevm_specs.evm import (
-    main, ExecutionResult, CallState, Step,
-    Tables, TxTableTag, CallTableTag, RWTableTag
+    main, ExecutionResult, CoreState, CallState, Step,
+    Tables, TxTableTag, CallTableTag, RWTableTag,
 )
 from zkevm_specs.util import fp_inv, linear_combine, keccak256, EMPTY_CODE_HASH
 
@@ -46,10 +46,12 @@ def test_begin_tx():
     )
 
     curr = Step(
-        rw_counter=1,
-        execution_result=ExecutionResult.BEGIN_TX,
-        call_state=CallState(
+        core=CoreState(
+            rw_counter=1,
+            execution_result=ExecutionResult.BEGIN_TX,
             call_id=1,
+        ),
+        call=CallState(
             is_root=0,
             is_create=0,
             opcode_source=0,
@@ -57,7 +59,7 @@ def test_begin_tx():
             stack_pointer=0,
             gas_left=0,
         ),
-        allocation=[
+        allocations=[
             1, CallTableTag.TxId, 1,
             1, CallTableTag.Depth, 1,
             1, TxTableTag.CallerAddress, 0, 0xfe,  # caller_address
@@ -93,10 +95,12 @@ def test_begin_tx():
         tables=tables,
     )
     next = Step(
-        rw_counter=7,
-        execution_result=ExecutionResult.STOP,
-        call_state=CallState(
+        core=CoreState(
+            rw_counter=7,
+            execution_result=ExecutionResult.STOP,
             call_id=1,
+        ),
+        call=CallState(
             is_root=True,
             is_create=False,
             opcode_source=bytecode_hash,
@@ -104,7 +108,7 @@ def test_begin_tx():
             stack_pointer=1024,
             gas_left=0,
         ),
-        allocation=[],
+        allocations=[],
         tables=tables,
     )
 

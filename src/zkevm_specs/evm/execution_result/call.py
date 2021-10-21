@@ -61,7 +61,7 @@ def call(curr: Step, next: Step, r: int, opcode: Opcode):
         + has_value * 9000 \
         + memory_gas_cost
 
-    gas_available = curr.call_state.gas_left - base_gas_cost
+    gas_available = curr.call.gas_left - base_gas_cost
     one_64th_available_gas = le_to_int(curr.allocate_byte(8))
     curr.fixed_lookup(FixedTableTag.Range64, [gas_available - 64 * one_64th_available_gas])
 
@@ -77,7 +77,7 @@ def call(curr: Step, next: Step, r: int, opcode: Opcode):
     else:
         assert is_capped
 
-    next_gas_left = curr.call_state.gas_left - base_gas_cost - callee_gas_left
+    next_gas_left = curr.call.gas_left - base_gas_cost - callee_gas_left
 
     # TODO: Handle precompile
     if is_empty_code_hash:
@@ -96,20 +96,20 @@ def call(curr: Step, next: Step, r: int, opcode: Opcode):
     else:
         # Save caller's call state
         for (tag, value) in [
-            (CallStateTag.IsRoot, curr.call_state.is_root),
-            (CallStateTag.IsCreate, curr.call_state.is_create),
-            (CallStateTag.OpcodeSource, curr.call_state.opcode_source),
-            (CallStateTag.ProgramCounter, curr.call_state.program_counter + 1),
-            (CallStateTag.StackPointer, curr.call_state.stack_pointer + curr.stack_pointer_diff),
+            (CallStateTag.IsRoot, curr.call.is_root),
+            (CallStateTag.IsCreate, curr.call.is_create),
+            (CallStateTag.OpcodeSource, curr.call.opcode_source),
+            (CallStateTag.ProgramCounter, curr.call.program_counter + 1),
+            (CallStateTag.StackPointer, curr.call.stack_pointer + curr.stack_pointer_diff),
             (CallStateTag.GasLeft, next_gas_left),
             (CallStateTag.MemorySize, next_memory_size),
-            (CallStateTag.StateWriteCounter, curr.call_state.state_write_counter + curr.state_write_counter_diff),
+            (CallStateTag.StateWriteCounter, curr.call.state_write_counter + curr.state_write_counter_diff),
         ]:
-            curr.w_lookup(RWTableTag.CallState, [curr.call_state.call_id, tag, value])
+            curr.w_lookup(RWTableTag.CallState, [curr.core.call_id, tag, value])
 
         # Setup next call's context
         for (tag, value) in [
-            (CallTableTag.CallerCallId, curr.call_state.call_id),
+            (CallTableTag.CallerCallId, curr.core.call_id),
             (CallTableTag.TxId, tx_id),
             (CallTableTag.Depth, depth + 1),
             (CallTableTag.CallerAddress, caller_address),
@@ -123,21 +123,21 @@ def call(curr: Step, next: Step, r: int, opcode: Opcode):
             (CallTableTag.IsPersistent, is_persistent * result),
             (CallTableTag.IsStatic, is_static),
         ]:
-            assert curr.call_lookup(tag, next.call_state.call_id) == value
+            assert curr.call_lookup(tag, next.core.call_id) == value
 
-        callee_rw_counter_end_of_revert = curr.call_lookup(CallTableTag.RWCounterEndOfRevert, next.call_state.call_id)
+        callee_rw_counter_end_of_revert = curr.call_lookup(CallTableTag.RWCounterEndOfRevert, next.core.call_id)
         callee_state_write_counter = 0
         # Callee succeed but one of callers reverts at some point
         if result and not is_persistent:
             assert rw_counter_end_of_revert == callee_rw_counter_end_of_revert
             assert callee_state_write_counter == \
-                curr.call_state.state_write_counter + curr.state_write_counter_diff
+                curr.call.state_write_counter + curr.state_write_counter_diff
 
         curr.assert_step_transition(
             next,
             rw_counter_diff=curr.rw_counter_diff,
             execution_result_not=ExecutionResult.BEGIN_TX,
-            call_id=curr.rw_counter,
+            call_id=curr.core.rw_counter,
             is_root=False,
             is_create=False,
             opcode_source=code_hash,
