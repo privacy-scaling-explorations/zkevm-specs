@@ -79,14 +79,14 @@ class RWTableTag(IntEnum):
     TxAccessListAccount = auto()
     TxAccessListStorageSlot = auto()
     TxRefund = auto()
-    CallState = auto()
-    Stack = auto()
-    Memory = auto()
     AccountNonce = auto()
     AccountBalance = auto()
     AccountCodeHash = auto()
     AccountStorage = auto()
     AccountDestructed = auto()
+    CallState = auto()
+    Stack = auto()
+    Memory = auto()
 
 
 class CallStateTag(IntEnum):
