@@ -4,8 +4,7 @@
 
 A stack initalize empty with stack pointer to 1024, pop operation can only happen when stack is not empty, and it will increase by 1 of stack pointer.
 
-The poped value will be dropped directly without no any more checking & utilizing.
-
+Even the popped value will never be used, it still does lookup to ensure the stack pointer is in range, since we don't explicitly verify stack pointer is in range each step, we instead let state circuit to verify that.
 
 ## Constraints
 
@@ -15,6 +14,8 @@ The poped value will be dropped directly without no any more checking & utilizin
     - stack_pointer + 1
     - pc + 1
     - gas + 2
+3. Lookups: 1 busmapping lookups
+   - A value is indeed at the top of the stack
 
 ## Exceptions
 
