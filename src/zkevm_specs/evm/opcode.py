@@ -1,5 +1,5 @@
 from enum import IntEnum
-from typing import Final, Mapping, Sequence, Tuple, Union
+from typing import Final, Dict, Sequence, Tuple, Union
 
 
 class Opcode(IntEnum):
@@ -177,7 +177,7 @@ class OpcodeInfo:
         self.pure_memory_expansion_info = pure_memory_expansion_info
 
 
-OPCODE_INFO_MAP: Final[Mapping[Opcode, OpcodeInfo]] = dict({
+OPCODE_INFO_MAP: Final[Dict[Opcode, OpcodeInfo]] = dict({
     Opcode.STOP: OpcodeInfo(0, 1024, 0),
     Opcode.ADD: OpcodeInfo(-1, 1022, 3),
     Opcode.MUL: OpcodeInfo(-1, 1022, 5),
