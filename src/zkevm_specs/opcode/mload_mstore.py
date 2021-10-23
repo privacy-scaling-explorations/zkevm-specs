@@ -100,7 +100,7 @@ def memory_expansion(
 
 @is_circuit_code
 def check_memory_ops(
-    opcode: U16,
+    opcode: U8,
     memory: Memory,
     address8s: Sequence[U8],
     value8s: Sequence[U8],

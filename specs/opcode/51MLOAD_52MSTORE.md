@@ -66,7 +66,7 @@ For the 32 memory busmapping lookups (1 lookup needed for each byte accessed) th
             - is pushed on top of the stack for `MLOAD`
             - is popped off the top of the stack for `MSTORE`
         - The 32 bytes of `value` are read/written from/to memory at `address`.
-    - 33 fixed lookups
+    - 29 fixed lookups
 
 ## Exceptions
 
