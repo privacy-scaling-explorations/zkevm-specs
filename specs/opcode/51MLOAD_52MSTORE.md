@@ -30,7 +30,7 @@ memory_gas_cost := memory_cost(next_memory_size) - memory_cost(curr_memory_size)
 
 ### Circuit behavior
 
-The `MemoryGadget` takes arguments `address: [u8;32]`, `value: [u8;32]`, `curr_memory_size: u64`, `opcode: u16`. There are also some additional helper inputs used by the general gadgets used for the implementation.
+The `MemoryGadget` takes arguments `address: [u8;32]`, `value: [u8;32]`, `curr_memory_size: u64`, `opcode: u8`. There are also some additional helper inputs used by the general gadgets used for the implementation.
 
 There is a check if `opcode` is the value for `MLOAD` or `MSTORE`, which is used to slightly change some operations so the correct logic for each opcode is done.
 

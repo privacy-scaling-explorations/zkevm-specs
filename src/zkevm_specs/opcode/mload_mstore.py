@@ -1,7 +1,7 @@
 from typing import Sequence, Tuple
 from zkevm_specs.encoding.utils import u256_to_u8s
 from zkevm_specs.opcode.memory import Memory
-from ..encoding import U8, U16, U64, U128, U256, is_circuit_code
+from ..encoding import U8, U64, U128, U256, is_circuit_code
 
 OP_MLOAD = 0x51
 OP_MSTORE = 0x52
