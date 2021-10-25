@@ -29,7 +29,7 @@ def call(curr: Step, next: Step, r: int, opcode: Opcode):
     gas = le_to_int(bytes_gas[:8])
 
     # Verify transfer
-    rw_counter_end_of_revert = curr.call_lookup(CallTableTag.RWCounterEndOfRevert)
+    rw_counter_end_of_reversion = curr.call_lookup(CallTableTag.RWCounterEndOfReversion)
     caller_address = curr.call_lookup(CallTableTag.CalleeAddress)
     is_persistent = curr.call_lookup(CallTableTag.IsPersistent)
     is_static = curr.call_lookup(CallTableTag.IsStatic)
@@ -38,7 +38,7 @@ def call(curr: Step, next: Step, r: int, opcode: Opcode):
     if has_value:
         assert is_static == False
     curr.assert_transfer(caller_address, callee_address, bytes_value,
-                         is_persistent, rw_counter_end_of_revert, r)
+                         is_persistent, rw_counter_end_of_reversion, r)
 
     # Verify memory expansion
     next_memory_size, memory_gas_cost = curr.assert_memory_expansion(
@@ -47,7 +47,7 @@ def call(curr: Step, next: Step, r: int, opcode: Opcode):
     # Verify gas cost
     tx_id = curr.call_lookup(CallTableTag.TxId)
     is_cold_access = 1 - curr.w_lookup(RWTableTag.TxAccessListAccount, [tx_id, callee_address, 1],
-                                       is_persistent, rw_counter_end_of_revert)[0]
+                                       is_persistent, rw_counter_end_of_reversion)[0]
     code_hash = curr.r_lookup(RWTableTag.AccountCodeHash, [callee_address])[0]
     is_empty_code_hash = curr.is_equal(code_hash, linear_combine(EMPTY_CODE_HASH, r))
     callee_nonce = curr.r_lookup(RWTableTag.AccountNonce, [callee_address])[0]
@@ -125,11 +125,11 @@ def call(curr: Step, next: Step, r: int, opcode: Opcode):
         ]:
             assert curr.call_lookup(tag, next.core.call_id) == value
 
-        callee_rw_counter_end_of_revert = curr.call_lookup(CallTableTag.RWCounterEndOfRevert, next.core.call_id)
+        callee_rw_counter_end_of_reversion = curr.call_lookup(CallTableTag.RWCounterEndOfReversion, next.core.call_id)
         callee_state_write_counter = 0
         # Callee succeed but one of callers reverts at some point
         if result and not is_persistent:
-            assert rw_counter_end_of_revert == callee_rw_counter_end_of_revert
+            assert rw_counter_end_of_reversion == callee_rw_counter_end_of_reversion
             assert callee_state_write_counter == \
                 curr.call.state_write_counter + curr.state_write_counter_diff
 

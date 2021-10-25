@@ -223,7 +223,7 @@ class Step:
         tag: RWTableTag,
         inputs: Sequence[int],
         is_persistent: Union[int, None] = None,
-        rw_counter_end_of_revert: Union[int, None] = None,
+        rw_counter_end_of_reversion: Union[int, None] = None,
     ) -> Sequence[int]:
         allocations = self.allocate(8)
 
@@ -245,12 +245,12 @@ class Step:
             RWTableTag.AccountStorage,
             RWTableTag.AccountDestructed,
         ]:
-            assert rw_counter_end_of_revert is not None
+            assert rw_counter_end_of_reversion is not None
 
             allocation_revert = self.allocate(8)
 
             if not is_persistent:
-                assert allocation_revert[0] == rw_counter_end_of_revert - \
+                assert allocation_revert[0] == rw_counter_end_of_reversion - \
                     (self.call.state_write_counter + self.state_write_counter_diff)
                 assert allocation_revert[1] == True
                 assert allocation_revert[2] == tag
@@ -333,13 +333,13 @@ class Step:
         callee_address: int,
         bytes_value: Sequence[int],
         is_persistent: int,
-        rw_counter_end_of_revert: int,
+        rw_counter_end_of_reversion: int,
         r: int,
     ):
         caller_new_balance, caller_prev_balance = self.w_lookup(
-            RWTableTag.AccountBalance, [caller_address], is_persistent, rw_counter_end_of_revert)[:2]
+            RWTableTag.AccountBalance, [caller_address], is_persistent, rw_counter_end_of_reversion)[:2]
         callee_new_balance, callee_prev_balance = self.w_lookup(
-            RWTableTag.AccountBalance, [callee_address], is_persistent, rw_counter_end_of_revert)[:2]
+            RWTableTag.AccountBalance, [callee_address], is_persistent, rw_counter_end_of_reversion)[:2]
 
         # Verify caller's new balance is subtracted by value and not underflow
         bytes_caller_prev_balance = self.decompress(caller_prev_balance, 32, r)

@@ -38,11 +38,11 @@ def begin_tx(curr: Step, next: Step, r: int, is_first_step: bool):
     curr.w_lookup(RWTableTag.TxAccessListAccount, [tx_id, tx_caller_address, 1])
 
     # Verify transfer
-    rw_counter_end_of_revert = curr.call_lookup(CallTableTag.RWCounterEndOfRevert)
+    rw_counter_end_of_reversion = curr.call_lookup(CallTableTag.RWCounterEndOfReversion)
     is_persistent = curr.call_lookup(CallTableTag.IsPersistent)
 
     curr.assert_transfer(tx_caller_address, tx_callee_address, bytes_value,
-                         is_persistent, rw_counter_end_of_revert, r)
+                         is_persistent, rw_counter_end_of_reversion, r)
 
     if tx_is_create:
         # TODO: Verify receiver address

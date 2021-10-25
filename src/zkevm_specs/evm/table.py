@@ -53,7 +53,7 @@ class CallTableTag(IntEnum):
     is unique.
     """
 
-    RWCounterEndOfRevert = auto()  # to know reversion section
+    RWCounterEndOfReversion = auto()  # to know at which point in the future we should revert
     CallerCallId = auto()  # to return to caller's state
     TxId = auto()  # to lookup tx context
     Depth = auto()  # to know if call too deep
