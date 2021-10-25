@@ -21,7 +21,7 @@ def test_begin_tx():
             (1, TxTableTag.CalldataLength, 0, 0),
         ]),
         call_table=set([
-            (1, CallTableTag.RWCounterEndOfRevert, 0),
+            (1, CallTableTag.RWCounterEndOfReversion, 0),
             (1, CallTableTag.TxId, 1),
             (1, CallTableTag.Depth, 1),
             (1, CallTableTag.IsPersistent, 1),
@@ -71,7 +71,7 @@ def test_begin_tx():
             1, TxTableTag.Gas, 0, 21000,  # gas
             *8*[0],  # gas decompression
             2, True, RWTableTag.TxAccessListAccount, 1, 0xfe, 1, 0, 0,  # account access_list (caller)
-            1, CallTableTag.RWCounterEndOfRevert, 0,
+            1, CallTableTag.RWCounterEndOfReversion, 0,
             1, CallTableTag.IsPersistent, 1,
             3, True, RWTableTag.AccountBalance, 0xfe, 0, 0, 0, 0, *8*[0],  # caller balance + dummy revert
             4, True, RWTableTag.AccountBalance, 0xff, 0, 0, 0, 0, *8*[0],  # callee balance + dummy revert

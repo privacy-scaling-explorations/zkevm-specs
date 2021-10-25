@@ -17,11 +17,11 @@ def test_call():
         call_table=set([
             (1, CallTableTag.Depth, 1),
             (1, CallTableTag.TxId, 1),
-            (1, CallTableTag.RWCounterEndOfRevert, 0),
+            (1, CallTableTag.RWCounterEndOfReversion, 0),
             (1, CallTableTag.CalleeAddress, 0xfe),
             (1, CallTableTag.IsPersistent, 1),
             (1, CallTableTag.IsStatic, 0),
-            (14, CallTableTag.RWCounterEndOfRevert, 0),
+            (14, CallTableTag.RWCounterEndOfReversion, 0),
             (14, CallTableTag.CallerCallId, 1),
             (14, CallTableTag.TxId, 1),
             (14, CallTableTag.Depth, 2),
@@ -92,7 +92,7 @@ def test_call():
             19, False, RWTableTag.Stack, 1, 1022, 0x40, 0, 0, 0x40, *31*[0],  # stack pop + decompression (rd_offset)
             20, False, RWTableTag.Stack, 1, 1023,    0, 0, 0,        *5*[0],  # stack pop + decompression (rd_length)
             21,  True, RWTableTag.Stack, 1, 1023,    1, 0, 0,                 # stack push (result)
-            1, CallTableTag.RWCounterEndOfRevert, 0,
+            1, CallTableTag.RWCounterEndOfReversion, 0,
             1, CallTableTag.CalleeAddress, 0xfe,
             1, CallTableTag.IsPersistent, 1,
             1, CallTableTag.IsStatic, 0,
@@ -153,7 +153,7 @@ def test_call():
             14, CallTableTag.Result, 1,
             14, CallTableTag.IsPersistent, 1,
             14, CallTableTag.IsStatic, 0,
-            14, CallTableTag.RWCounterEndOfRevert, 0,
+            14, CallTableTag.RWCounterEndOfReversion, 0,
         ],
         tables=tables,
     )
