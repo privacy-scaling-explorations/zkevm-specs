@@ -10,12 +10,12 @@ Pop two EVM words `a` and `b` from the stack. Compute
 
 ### Circuit behavior
 
-The AddGadget takes argument of `a: [u8;32]`, `x: [u8;32]`, `y: [u8;32]`, `is_add: bool`.
+The AddGadget takes argument of `a: [u8;32]`, `x: [u8;32]`, `y: [u8;32]`, `is_sub: bool`.
 
 It always computes `y = (a + x) % 2**256`,
 
-- when it's ADD (`is_add==True`), we annotate stack as [a, x, ...] and [y, ...],
-- when it's SUB (`is_add==False`), we annotate stack as [a, y, ...] and [x, ...].
+- when it's ADD (`is_sub == False`), we annotate stack as [a, x, ...] and [y, ...],
+- when it's SUB (`is_sub == True`), we annotate stack as [a, y, ...] and [x, ...].
 
 ## Constraints
 

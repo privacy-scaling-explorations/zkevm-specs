@@ -40,7 +40,7 @@ def test_addition(a, b):
     carry32 = carry33[1:]
 
     # Check if the circuit works
-    check_add(a8s, b8s, sum8s, True, carry32)
+    check_add(a8s, b8s, sum8s, False, carry32)
 
     # Check if the witness works
     sum256 = u8s_to_u256(sum8s)
