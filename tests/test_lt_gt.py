@@ -10,9 +10,8 @@ def gen_lt_gt_witness(a: U256, b: U256, is_gt: bool):
     b8s = u256_to_u8s(b)
     result8s = [0] * 32
 
-    swap = True if is_gt else False
-    aa = b if swap else a
-    bb = a if swap else b
+    aa = b if is_gt else a
+    bb = a if is_gt else b
     c = bb - aa
     if c < 0:
         c += 1 << 256
@@ -25,19 +24,19 @@ def gen_lt_gt_witness(a: U256, b: U256, is_gt: bool):
 
     aa_low128 = aa % (1<<128)
     bb_low128 = bb % (1<<128)
-    carry = True if bb_low128 - aa_low128 < 0 else False
-    return a8s, b8s, result8s, c8s, swap, carry
+    carry = 1 if bb_low128 - aa_low128 < 0 else 0
+    return a8s, b8s, result8s, c8s, carry
 
 
 @pytest.mark.parametrize("a,b", NASTY_AB_VALUES)
 def test_lt(a, b):
-    a8s, b8s, result8s, c8s, swap, carry = gen_lt_gt_witness(a, b, False)
-    check_lt(a8s, b8s, result8s, c8s, swap, carry)
+    a8s, b8s, result8s, c8s, carry = gen_lt_gt_witness(a, b, False)
+    check_lt(a8s, b8s, result8s, c8s, carry, False)
     assert int(a < b) == result8s[0]
 
 
 @pytest.mark.parametrize("a,b", NASTY_AB_VALUES)
 def test_gt(a, b):
-    a8s, b8s, result8s, c8s, swap, carry = gen_lt_gt_witness(a, b, True)
+    a8s, b8s, result8s, c8s, carry = gen_lt_gt_witness(a, b, True)
     assert int(a > b) == result8s[0]
-    check_gt(a8s, b8s, result8s, c8s, swap, carry)
+    check_gt(a8s, b8s, result8s, c8s, carry, True)
