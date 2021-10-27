@@ -141,7 +141,7 @@ def test_check_memory_ops():
     # Read the memory at address 1
     check_memory_ops(OP_MLOAD, memory, u256_to_u8s(1), list(range(2, 33)) + [0], 1, 2, G_MEM)
     # Read the memory at address 32
-    check_memory_ops(OP_MLOAD, memory, u256_to_u8s(32), [0] * 32, 1, 2, G_MEM)
+    check_memory_ops(OP_MLOAD, memory, u256_to_u8s(32), [0] * 32, 2, 2, 0)
 
     # Test against some values acquired from traces
     memory = Memory()
