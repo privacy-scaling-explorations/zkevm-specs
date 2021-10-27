@@ -1,8 +1,35 @@
 import pytest
 
 from zkevm_specs.encoding import u256_to_u8s, u8s_to_u256
-from zkevm_specs.opcode import check_add, SignTable, compare
+from zkevm_specs.opcode import check_add, check_sub, SignTable, compare
 from common import NASTY_AB_VALUES
+
+
+def test_check_add_basic():
+    a8s = [1] + [0] * 31
+    b8s = [2] + [0] * 31
+    sum8s = [3] + [0] * 31
+    carry32 = [0] * 32
+    check_add(a8s, b8s, sum8s, False, carry32)
+    check_sub(sum8s, b8s, a8s, True, carry32)
+
+
+def test_check_add_simple_carry():
+    a8s = [255] + [0] * 31
+    b8s = [2] + [0] * 31
+    sum8s = [1, 1] + [0] * 30
+    carry32 = [1] + [0] * 31
+    check_add(a8s, b8s, sum8s, False, carry32)
+    check_sub(sum8s, b8s, a8s, True, carry32)
+
+
+def test_check_add_overflow():
+    a8s = [255] * 32
+    b8s = [2] + [0] * 31
+    sum8s = [1] + [0] * 31
+    carry32 = [1] * 32
+    check_add(a8s, b8s, sum8s, False, carry32)
+    check_sub(sum8s, b8s, a8s, True, carry32)
 
 
 @pytest.mark.parametrize("a,b", NASTY_AB_VALUES)
@@ -20,6 +47,7 @@ def test_add(a, b):
 
     # Check if the circuit works
     check_add(a8s, b8s, sum8s, False, carry32)
+    check_sub(sum8s, b8s, a8s, True, carry32)
 
     # Check if the witness works
     sum256 = u8s_to_u256(sum8s)

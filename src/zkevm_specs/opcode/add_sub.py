@@ -35,31 +35,4 @@ def check_add(a8s, b8s, sum8s, is_sub, carry32):
 @is_circuit_code
 def check_sub(a8s, b8s, diff8s, is_sub, carry32):
     assert is_sub
-    add_sub_common(a8s, diff8s, b8s, carry32)
-
-
-def test_check_add_basic():
-    a8s = [1] + [0] * 31
-    b8s = [2] + [0] * 31
-    sum8s = [3] + [0] * 31
-    carry32 = [0] * 32
-    check_add(a8s, b8s, sum8s, False, carry32)
-    check_sub(sum8s, b8s, a8s, True, carry32)
-
-
-def test_check_add_simple_carry():
-    a8s = [255] + [0] * 31
-    b8s = [2] + [0] * 31
-    sum8s = [1, 1] + [0] * 30
-    carry32 = [1] + [0] * 32
-    check_add(a8s, b8s, sum8s, False, carry32)
-    check_sub(sum8s, b8s, a8s, True, carry32)
-
-
-def test_check_add_overflow():
-    a8s = [255] * 32
-    b8s = [2] + [0] * 31
-    sum8s = [1] + [0] * 31
-    carry32 = [1] * 32
-    check_add(a8s, b8s, sum8s, False, carry32)
-    check_sub(sum8s, b8s, a8s, True, carry32)
+    add_sub_common(b8s, diff8s, a8s, carry32)
