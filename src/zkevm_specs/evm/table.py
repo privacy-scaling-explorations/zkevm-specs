@@ -88,6 +88,27 @@ class RWTableTag(IntEnum):
     Stack = auto()
     Memory = auto()
 
+    # For state writes which affect future execution before reversion, we need
+    # to write them with reversion when the write might fail.
+    def write_with_reversion(self) -> bool:
+        return self in [
+            RWTableTag.TxAccessListAccount,
+            RWTableTag.TxAccessListStorageSlot,
+            RWTableTag.AccountNonce,
+            RWTableTag.AccountBalance,
+            RWTableTag.AccountCodeHash,
+            RWTableTag.AccountStorage,
+        ]
+
+    # For state writes which don't affect future execution before reversion, we
+    # don't need to write them with reversion, instead we only need to write
+    # them (enable the lookup) when is_persistent is True.
+    def write_only_persistent(self) -> bool:
+        return self in [
+            RWTableTag.TxRefund,
+            RWTableTag.AccountDestructed,
+        ]
+
 
 class CallStateTag(IntEnum):
     """
