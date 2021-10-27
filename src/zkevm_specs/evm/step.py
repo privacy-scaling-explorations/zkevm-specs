@@ -222,10 +222,16 @@ class Step:
         self,
         tag: RWTableTag,
         inputs: Sequence[int],
+        # When is_persistent is not given (is None), we assume it is persistent
+        # and won't allocate reversion lookup, even it's write_with_reversion.
+        # For example, nonce increment of tx will never be reverted.
         is_persistent: Union[int, None] = None,
         rw_counter_end_of_reversion: Union[int, None] = None,
     ) -> Sequence[int]:
         allocations = self.allocate(8)
+
+        if tag.write_only_persistent() and is_persistent is False:
+            return allocations[3+len(inputs):]
 
         assert allocations[0] == self.core.rw_counter + self.rw_counter_diff
         assert allocations[1] == True
@@ -235,16 +241,7 @@ class Step:
 
         self.rw_counter_diff += 1
 
-        if is_persistent is not None and tag in [
-            RWTableTag.TxAccessListAccount,
-            RWTableTag.TxAccessListStorageSlot,
-            RWTableTag.TxRefund,
-            RWTableTag.AccountNonce,
-            RWTableTag.AccountBalance,
-            RWTableTag.AccountCodeHash,
-            RWTableTag.AccountStorage,
-            RWTableTag.AccountDestructed,
-        ]:
+        if tag.write_with_reversion() and is_persistent is not None:
             assert rw_counter_end_of_reversion is not None
 
             allocation_revert = self.allocate(8)
@@ -263,9 +260,6 @@ class Step:
                     assert allocation_revert[4] == allocations[4]  # account address
                     assert allocation_revert[5] == allocations[5]  # storage slot
                     assert allocation_revert[6] == allocations[7]  # revert value
-                elif tag == RWTableTag.TxRefund:
-                    assert allocation_revert[3] == allocations[3]  # tx_id
-                    assert allocation_revert[4] == allocations[5]  # revert value
                 elif tag == RWTableTag.AccountNonce:
                     assert allocation_revert[3] == allocations[3]  # account address
                     assert allocation_revert[4] == allocations[5]  # revert value
@@ -279,9 +273,6 @@ class Step:
                     assert allocation_revert[3] == allocations[3]  # account address
                     assert allocation_revert[4] == allocations[4]  # storage slot
                     assert allocation_revert[5] == allocations[6]  # revert value
-                elif tag == RWTableTag.AccountDestructed:
-                    assert allocation_revert[3] == allocations[3]  # account address
-                    assert allocation_revert[4] == allocations[5]  # revert value
                 assert self.tables.rw_lookup(allocation_revert)
 
                 self.state_write_counter_diff += 1
