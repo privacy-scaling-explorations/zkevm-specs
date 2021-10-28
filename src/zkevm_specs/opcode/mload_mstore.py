@@ -109,6 +109,7 @@ def check_memory_ops(
     expected_memory_cost: U128,
 ):
     assert len(address8s) == len(value8s) == 32
+    assert memory.memory_size() == curr_memory_size
 
     # Check if this is an MLOAD or an MSTORE
     is_mload = opcode == OP_MLOAD
@@ -129,6 +130,9 @@ def check_memory_ops(
     # Read/Write the value from memory at the specified address
     for i in range(0, 32):
         memory.op(address + i, value8s[i], is_mstore)
+
+    # Also verify the expected memory size against the one calculated by Memory
+    assert(expected_next_memory_size == memory.memory_size())
 
 
 def test_check_memory_ops():
