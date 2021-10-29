@@ -122,6 +122,8 @@ class Step:
         return self.allocations[idx]
 
     def allocate(self, n: int) -> Sequence[int]:
+        assert self.allocation_offset + n <= len(self.allocations), "Out of allocations"
+
         allocations = self.allocations[self.allocation_offset:self.allocation_offset+n]
         self.allocation_offset += n
         return allocations
