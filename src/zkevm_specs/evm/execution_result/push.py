@@ -10,7 +10,7 @@ def push(curr: Step, next: Step, r: int, opcode: Opcode):
 
     # Verify opcode
     num_pushed = opcode - Opcode.PUSH1 + 1
-    curr.fixed_lookup(FixedTableTag.Range32, [num_pushed])
+    curr.fixed_lookup(FixedTableTag.Range32, [num_pushed - 1])
 
     # Verify gas
     next_gas_left = curr.assert_sufficient_constant_gas(opcode)
