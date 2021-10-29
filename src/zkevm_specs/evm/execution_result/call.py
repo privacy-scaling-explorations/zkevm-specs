@@ -137,6 +137,7 @@ def call(curr: Step, next: Step, r: int, opcode: Opcode):
             next,
             rw_counter_diff=curr.rw_counter_diff,
             execution_result_not=ExecutionResult.BEGIN_TX,
+            # Set next call_id to beginning rw_counter of current step
             call_id=curr.core.rw_counter,
             is_root=False,
             is_create=False,

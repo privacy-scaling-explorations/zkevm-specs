@@ -61,7 +61,9 @@ def begin_tx(curr: Step, next: Step, r: int, is_first_step: bool):
                 next,
                 rw_counter_diff=curr.rw_counter_diff,
                 execution_result=ExecutionResult.BEGIN_TX,
-                call_id=next.core.rw_counter,
+                # We don't need to explicitly constrain next's call_id since we
+                # know next step will be BEGIN_TX, which already constrains
+                # call_id to be equal to rw_counter
             )
             assert next.peek_allocation(2) == tx_id + 1
 
@@ -99,6 +101,8 @@ def begin_tx(curr: Step, next: Step, r: int, is_first_step: bool):
                 next,
                 rw_counter_diff=curr.rw_counter_diff,
                 execution_result_not=ExecutionResult.BEGIN_TX,
+                # Constrain next call_id to be equal to current one (asserted
+                # implicitly in assert_step_transition)
                 is_root=True,
                 is_create=tx_is_create,
                 opcode_source=code_hash,
