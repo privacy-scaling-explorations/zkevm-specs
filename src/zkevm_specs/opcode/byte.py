@@ -1,6 +1,6 @@
 from typing import Sequence
 
-from ..encoding import U8, is_circuit_code, u8s_to_u256, u256_to_u8s
+from ..encoding import U8, is_circuit_code
 
 @is_circuit_code
 def check_byte(
@@ -29,11 +29,3 @@ def check_byte(
     # Byte 1 to 31:
     for i in range(1, 32):
         assert r8s[i] == 0
-
-
-def test_check_byte():
-    value = range(1, 33)
-    for i in range(1024):
-        i8s = u256_to_u8s(i)
-        r8s = [i + 1 if i < 32 else 0] + [0] * 31
-        check_byte(value, i8s, r8s)
