@@ -12,7 +12,7 @@ from .opcode import (
 
 class FixedTableTag(IntEnum):
     """
-    Tag for fixed_table lookup, where the fixed_table is a prebuilt fixed-column
+    Tag for FixedTable lookup, where the FixedTable is a prebuilt fixed-column
     table.
     """
 
@@ -30,8 +30,8 @@ class FixedTableTag(IntEnum):
 
 class TxTableTag(IntEnum):
     """
-    Tag for tx_table lookup, where the tx_table is an instance-column table
-    where part of it will be built by verifier.
+    Tag for TxTable lookup, where the TxTable is an instance-column table where
+    part of it will be built by verifier.
     """
 
     Nonce = auto()
@@ -46,32 +46,9 @@ class TxTableTag(IntEnum):
     Calldata = auto()
 
 
-class CallTableTag(IntEnum):
-    """
-    Tag for call_table lookup, where the call_table an advice-column table
-    built by prover, which will be put constraint sto ensure each field of call
-    is unique.
-    """
-
-    RWCounterEndOfReversion = auto()  # to know at which point in the future we should revert
-    CallerCallId = auto()  # to return to caller's state
-    TxId = auto()  # to lookup tx context
-    Depth = auto()  # to know if call too deep
-    CallerAddress = auto()
-    CalleeAddress = auto()
-    CalldataOffset = auto()
-    CalldataLength = auto()
-    ReturndataOffset = auto()  # for callee to set returndata to caller's memeory
-    ReturndataLength = auto()
-    Value = auto()
-    Result = auto()  # to peek result in the future
-    IsPersistent = auto()  # to know if current call is within reverted call or not
-    IsStatic = auto()  # to know if state modification is within static call or not
-
-
 class RWTableTag(IntEnum):
     """
-    Tag for rw_table lookup, where the rw_table an advice-column table built by
+    Tag for RWTable lookup, where the RWTable an advice-column table built by
     prover, which will be part of State circuit and each unit read-write data
     will be verified to be consistent between each write.
     """
@@ -79,12 +56,14 @@ class RWTableTag(IntEnum):
     TxAccessListAccount = auto()
     TxAccessListStorageSlot = auto()
     TxRefund = auto()
+
     AccountNonce = auto()
     AccountBalance = auto()
     AccountCodeHash = auto()
     AccountStorage = auto()
     AccountDestructed = auto()
-    CallState = auto()
+
+    CallContext = auto()
     Stack = auto()
     Memory = auto()
 
@@ -110,12 +89,39 @@ class RWTableTag(IntEnum):
         ]
 
 
-class CallStateTag(IntEnum):
+class CallContextTag(IntEnum):
     """
-    Tag for rw_table lookup with tag CallState, which is used to index specific
-    field of CallState.
+    Tag for RWTable lookup with tag CallContext, which is used to index specific
+    field of CallContext.
     """
 
+    # The following are read-only data inside a call, they will be written in
+    # State circuit directly in their first row, and most of them will be
+    # read and checked to be agreed with caller before the beginning of call.
+    # It's not like transaction or bytecode that require specifically friendly
+    # layout for verification, so maintaining the consistency directly in
+    # RWTable seems more intuitive than creating another table for it.
+    RWCounterEndOfReversion = auto()  # to know at which point in the future we should revert
+    CallerCallId = auto()  # to know caller's id
+    TxId = auto()  # to know tx's id
+    Depth = auto()  # to know if call too deep
+    CallerAddress = auto()
+    CalleeAddress = auto()
+    CalldataOffset = auto()
+    CalldataLength = auto()
+    ReturndataOffset = auto()  # for callee to set returndata to caller's memeory
+    ReturndataLength = auto()
+    Value = auto()
+    Result = auto()  # to peek result in the future
+    IsPersistent = auto()  # to know if current call is within reverted call or not
+    IsStatic = auto()  # to know if state modification is within static call or not
+
+    # The following are used by caller to save its own CallState when it's
+    # going to dive into another call, and will be read out to restore caller's
+    # CallState in the end by callee.
+    # Note that stack and memory could also be included here, but since they
+    # need extra constraints on their data format, so we separate them to be
+    # different kinds of RWTableTag.
     IsRoot = auto()
     IsCreate = auto()
     OpcodeSource = auto()
@@ -154,11 +160,6 @@ class Tables:
         int,  # index (or 0)
         int,  # value
     ]]
-    call_table: Set[Tuple[
-        int,  # call_id
-        int,  # tag
-        int,  # value
-    ]]
     bytecode_table: Set[Tuple[
         int,  # bytecode_hash
         int,  # index
@@ -178,12 +179,10 @@ class Tables:
     def __init__(
         self,
         tx_table: Set[Tuple[int, int, int, int]],
-        call_table: Set[Tuple[int, int, int]],
         bytecode_table: Set[Tuple[int, int, int]],
         rw_table: Set[Tuple[int, int, int, int, int, int, int, int]],
     ) -> None:
         self.tx_table = tx_table
-        self.call_table = call_table
         self.bytecode_table = bytecode_table
         self.rw_table = rw_table
 
@@ -192,9 +191,6 @@ class Tables:
 
     def tx_lookup(self, inputs: Union[Tuple[int, int, int, int], Sequence[int]]) -> bool:
         return tuple(inputs) in self.tx_table
-
-    def call_lookup(self, inputs: Union[Tuple[int, int, int], Sequence[int]]) -> bool:
-        return tuple(inputs) in self.call_table
 
     def bytecode_lookup(self, inputs: Union[Tuple[int, int, int], Sequence[int]]) -> bool:
         return tuple(inputs) in self.bytecode_table

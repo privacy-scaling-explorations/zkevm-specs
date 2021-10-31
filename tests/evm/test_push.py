@@ -12,7 +12,6 @@ def test_push():
     bytecode_hash = linear_combine(keccak256(bytecode), r)
     tables = Tables(
         tx_table=set(),
-        call_table=set(),
         bytecode_table=set(
             [(bytecode_hash, i, byte) for (i, byte) in enumerate(bytecode)],
         ),

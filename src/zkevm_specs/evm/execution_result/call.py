@@ -1,7 +1,7 @@
 from ...util import linear_combine, le_to_int, EMPTY_CODE_HASH
 from ..common_assert import assert_bool
 from ..step import Step
-from ..table import FixedTableTag, CallTableTag, RWTableTag, CallStateTag
+from ..table import FixedTableTag, RWTableTag, CallContextTag
 from ..opcode import Opcode
 from .execution_result import ExecutionResult
 
@@ -11,7 +11,7 @@ def call(curr: Step, next: Step, r: int, opcode: Opcode):
     assert opcode == Opcode.CALL
 
     # Verify depth
-    depth = curr.call_lookup(CallTableTag.Depth)
+    depth = curr.call_context_lookup(CallContextTag.Depth)
     curr.fixed_lookup(FixedTableTag.Range1024, [depth])
 
     # Gas needs full decompression due to EIP 150
@@ -29,10 +29,10 @@ def call(curr: Step, next: Step, r: int, opcode: Opcode):
     gas = le_to_int(bytes_gas[:8])
 
     # Verify transfer
-    rw_counter_end_of_reversion = curr.call_lookup(CallTableTag.RWCounterEndOfReversion)
-    caller_address = curr.call_lookup(CallTableTag.CalleeAddress)
-    is_persistent = curr.call_lookup(CallTableTag.IsPersistent)
-    is_static = curr.call_lookup(CallTableTag.IsStatic)
+    rw_counter_end_of_reversion = curr.call_context_lookup(CallContextTag.RWCounterEndOfReversion)
+    caller_address = curr.call_context_lookup(CallContextTag.CalleeAddress)
+    is_persistent = curr.call_context_lookup(CallContextTag.IsPersistent)
+    is_static = curr.call_context_lookup(CallContextTag.IsStatic)
 
     has_value = not curr.is_zero(sum(bytes_value))
     if has_value:
@@ -45,7 +45,7 @@ def call(curr: Step, next: Step, r: int, opcode: Opcode):
         bytes_cd_offset, bytes_cd_length, bytes_rd_offset, bytes_rd_length)
 
     # Verify gas cost
-    tx_id = curr.call_lookup(CallTableTag.TxId)
+    tx_id = curr.call_context_lookup(CallContextTag.TxId)
     is_cold_access = 1 - curr.w_lookup(RWTableTag.TxAccessListAccount, [tx_id, callee_address, 1],
                                        is_persistent, rw_counter_end_of_reversion)[0]
     code_hash = curr.r_lookup(RWTableTag.AccountCodeHash, [callee_address])[0]
@@ -96,41 +96,44 @@ def call(curr: Step, next: Step, r: int, opcode: Opcode):
     else:
         # Save caller's call state
         for (tag, value) in [
-            (CallStateTag.IsRoot, curr.call.is_root),
-            (CallStateTag.IsCreate, curr.call.is_create),
-            (CallStateTag.OpcodeSource, curr.call.opcode_source),
-            (CallStateTag.ProgramCounter, curr.call.program_counter + 1),
-            (CallStateTag.StackPointer, curr.call.stack_pointer + curr.stack_pointer_diff),
-            (CallStateTag.GasLeft, next_gas_left),
-            (CallStateTag.MemorySize, next_memory_size),
-            (CallStateTag.StateWriteCounter, curr.call.state_write_counter + curr.state_write_counter_diff),
+            (CallContextTag.IsRoot, curr.call.is_root),
+            (CallContextTag.IsCreate, curr.call.is_create),
+            (CallContextTag.OpcodeSource, curr.call.opcode_source),
+            (CallContextTag.ProgramCounter, curr.call.program_counter + 1),
+            (CallContextTag.StackPointer, curr.call.stack_pointer + curr.stack_pointer_diff),
+            (CallContextTag.GasLeft, next_gas_left),
+            (CallContextTag.MemorySize, next_memory_size),
+            (CallContextTag.StateWriteCounter, curr.call.state_write_counter + curr.state_write_counter_diff),
         ]:
-            curr.w_lookup(RWTableTag.CallState, [curr.core.call_id, tag, value])
+            assert curr.call_context_lookup(tag, is_write=True) == value
 
         # Setup next call's context
         for (tag, value) in [
-            (CallTableTag.CallerCallId, curr.core.call_id),
-            (CallTableTag.TxId, tx_id),
-            (CallTableTag.Depth, depth + 1),
-            (CallTableTag.CallerAddress, caller_address),
-            (CallTableTag.CalleeAddress, callee_address),
-            (CallTableTag.CalldataOffset, le_to_int(bytes_cd_offset[:5])),
-            (CallTableTag.CalldataLength, le_to_int(bytes_cd_length)),
-            (CallTableTag.ReturndataOffset, le_to_int(bytes_rd_offset[:5])),
-            (CallTableTag.ReturndataLength, le_to_int(bytes_rd_length)),
-            (CallTableTag.Value, value),
-            (CallTableTag.Result, result),
-            (CallTableTag.IsPersistent, is_persistent * result),
-            (CallTableTag.IsStatic, is_static),
+            (CallContextTag.CallerCallId, curr.core.call_id),
+            (CallContextTag.TxId, tx_id),
+            (CallContextTag.Depth, depth + 1),
+            (CallContextTag.CallerAddress, caller_address),
+            (CallContextTag.CalleeAddress, callee_address),
+            (CallContextTag.CalldataOffset, le_to_int(bytes_cd_offset[:5])),
+            (CallContextTag.CalldataLength, le_to_int(bytes_cd_length)),
+            (CallContextTag.ReturndataOffset, le_to_int(bytes_rd_offset[:5])),
+            (CallContextTag.ReturndataLength, le_to_int(bytes_rd_length)),
+            (CallContextTag.Value, value),
+            (CallContextTag.Result, result),
+            (CallContextTag.IsPersistent, is_persistent * result),
+            (CallContextTag.IsStatic, is_static),
         ]:
-            assert curr.call_lookup(tag, next.core.call_id) == value
+            assert curr.call_context_lookup(tag, call_id=next.core.call_id) == value
 
-        callee_rw_counter_end_of_reversion = curr.call_lookup(CallTableTag.RWCounterEndOfReversion, next.core.call_id)
+        callee_rw_counter_end_of_reversion = curr.call_context_lookup(
+            CallContextTag.RWCounterEndOfReversion, call_id=next.core.call_id)
         callee_state_write_counter = 0
         # Callee succeed but one of callers reverts at some point
         if result and not is_persistent:
+            # Propagate the rw_counter in the end of reversion
             assert rw_counter_end_of_reversion == callee_rw_counter_end_of_reversion
-            assert callee_state_write_counter == \
+            # Propagate the state_write_counter
+            callee_state_write_counter = \
                 curr.call.state_write_counter + curr.state_write_counter_diff
 
         curr.assert_step_transition(

@@ -1,14 +1,14 @@
 from ...util import linear_combine, EMPTY_CODE_HASH
 from ..step import Step
-from ..table import TxTableTag, CallTableTag, RWTableTag
+from ..table import TxTableTag, RWTableTag, CallContextTag
 from .execution_result import ExecutionResult
 
 
 def begin_tx(curr: Step, next: Step, r: int, is_first_step: bool):
     assert curr.core.call_id == curr.core.rw_counter
 
-    tx_id = curr.call_lookup(CallTableTag.TxId)
-    depth = curr.call_lookup(CallTableTag.Depth)
+    tx_id = curr.call_context_lookup(CallContextTag.TxId)
+    depth = curr.call_context_lookup(CallContextTag.Depth)
 
     if is_first_step:
         assert curr.core.rw_counter == 1
@@ -38,8 +38,8 @@ def begin_tx(curr: Step, next: Step, r: int, is_first_step: bool):
     curr.w_lookup(RWTableTag.TxAccessListAccount, [tx_id, tx_caller_address, 1])
 
     # Verify transfer
-    rw_counter_end_of_reversion = curr.call_lookup(CallTableTag.RWCounterEndOfReversion)
-    is_persistent = curr.call_lookup(CallTableTag.IsPersistent)
+    rw_counter_end_of_reversion = curr.call_context_lookup(CallContextTag.RWCounterEndOfReversion)
+    is_persistent = curr.call_context_lookup(CallContextTag.IsPersistent)
 
     curr.assert_transfer(tx_caller_address, tx_callee_address, bytes_value,
                          is_persistent, rw_counter_end_of_reversion, r)
@@ -72,30 +72,20 @@ def begin_tx(curr: Step, next: Step, r: int, is_first_step: bool):
             # Setup next call's context
             tx_calldata_length = curr.tx_lookup(tx_id, TxTableTag.CalldataLength)
 
-            [
-                caller_address,
-                callee_address,
-                calldata_offset,
-                calldata_length,
-                value,
-                is_static,
-            ] = [
-                curr.call_lookup(tag) for tag in [
-                    CallTableTag.CallerAddress,
-                    CallTableTag.CalleeAddress,
-                    CallTableTag.CalldataOffset,
-                    CallTableTag.CalldataLength,
-                    CallTableTag.Value,
-                    CallTableTag.IsStatic,
-                ]
-            ]
-
-            assert caller_address == tx_caller_address
-            assert callee_address == tx_callee_address
-            assert value == tx_value
-            assert calldata_offset == 0
-            assert calldata_length == tx_calldata_length
-            assert is_static == False
+            # Note that:
+            # - CallerCallId, ReturndataOffset, ReturndataLength, Result
+            #   should never be used in root call, so unnecessary to check
+            # - TxId, Depth are already checked above
+            # - IsPersistent will only be used in the end of tx
+            for (tag, value) in [
+                (CallContextTag.CallerAddress, tx_caller_address),
+                (CallContextTag.CalleeAddress, tx_callee_address),
+                (CallContextTag.CalldataOffset, tx_value),
+                (CallContextTag.CalldataLength, 0),
+                (CallContextTag.Value, tx_calldata_length),
+                (CallContextTag.IsStatic, False),
+            ]:
+                assert curr.call_context_lookup(tag) == value
 
             curr.assert_step_transition(
                 next,

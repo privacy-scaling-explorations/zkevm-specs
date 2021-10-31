@@ -19,11 +19,11 @@ def push(curr: Step, next: Step, r: int, opcode: Opcode):
     bytes_value = curr.decompress(value, 32, r)
 
     assert sum(selectors) == num_pushed
-    for i, byte in enumerate(bytes_value):
-        if i > 0:
-            assert_bool(selectors[i - 1] - selectors[i])
+    assert selectors[0] == 1
+    for i in range(1, 32):
+        assert_bool(selectors[i - 1] - selectors[i])
         if selectors[i]:
-            assert byte == curr.opcode_lookup(i + 1)
+            assert bytes_value[i] == curr.opcode_lookup(i + 1)
         else:
             assert bytes_value[i] == 0
 
