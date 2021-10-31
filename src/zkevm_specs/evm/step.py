@@ -3,7 +3,7 @@ from typing import Any, Sequence, Tuple, Union
 from ..util import fp_mul, le_to_int, linear_combine
 from .common_assert import assert_bool, assert_addition
 from .execution_result.execution_result import ExecutionResult
-from .table import Tables, FixedTableTag, TxTableTag, CallTableTag, RWTableTag, Tables
+from .table import Tables, FixedTableTag, TxTableTag, RWTableTag, CallContextTag, Tables
 from .opcode import Opcode, OPCODE_INFO_MAP
 
 
@@ -190,15 +190,6 @@ class Step:
 
         return allocations[3]
 
-    def call_lookup(self, tag: CallTableTag, call_id: Union[int, None] = None) -> int:
-        allocations = self.allocate(3)
-
-        assert allocations[0] == call_id or self.core.call_id
-        assert allocations[1] == tag
-        assert self.tables.call_lookup(allocations)
-
-        return allocations[2]
-
     def bytecode_lookup(self, inputs: Sequence[int]) -> Opcode:
         allocations = self.allocate(3)
 
@@ -299,6 +290,15 @@ class Step:
                 self.call.opcode_source,
                 self.call.program_counter + offset,
             ])
+
+    def call_context_lookup(self, tag: CallContextTag, is_write: bool = False, call_id: Union[int, None] = None) -> int:
+        if call_id is None:
+            call_id = self.core.call_id
+
+        if is_write:
+            return self.w_lookup(RWTableTag.CallContext, [call_id, tag])[0]
+        else:
+            return self.r_lookup(RWTableTag.CallContext, [call_id, tag])[0]
 
     def stack_pop_lookup(self) -> int:
         value = self.r_lookup(RWTableTag.Stack, [
