@@ -10,7 +10,7 @@ def fp_inv(value: int) -> int: return pow(value, -1, FP)
 
 
 def le_to_int(bytes: Sequence[int]) -> int:
-    assert len(bytes) < 32
+    assert len(bytes) <= 31, "too many bytes to composite an integer in field"
     return linear_combine(bytes, 256)
 
 
