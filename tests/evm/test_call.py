@@ -80,7 +80,7 @@ def test_call():
         allocations=[
             caller_bytecode_hash, 15, Opcode.CALL,  # bytecode
             14, False, RWTableTag.CallContext, 1, CallContextTag.Depth, 1, 0, 0,
-            FixedTableTag.Range1024, 1, 0, 0,  # depth range
+            FixedTableTag.Range1024, 0, 0, 0,  # depth
             15, False, RWTableTag.Stack, 1, 1017, linear_combine(2*[0xff], r), 0, 0,  # stack pop (gas)
             0xff, 0xff, *30*[0],  # decompression (gas)
             16, False, RWTableTag.Stack, 1, 1018, 0xff, 0, 0, 0xff, *31*[0],  # stack pop + decompression (address)
