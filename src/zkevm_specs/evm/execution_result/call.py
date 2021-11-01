@@ -12,7 +12,7 @@ def call(curr: Step, next: Step, r: int, opcode: Opcode):
 
     # Verify depth
     depth = curr.call_context_lookup(CallContextTag.Depth)
-    curr.fixed_lookup(FixedTableTag.Range1024, [depth])
+    curr.fixed_lookup(FixedTableTag.Range1024, [depth - 1])
 
     # Gas needs full decompression due to EIP 150
     bytes_gas = curr.decompress(curr.stack_pop_lookup(), 32, r)
