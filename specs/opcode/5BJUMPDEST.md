@@ -1,8 +1,8 @@
 # JUMPDEST op code
 ## Procedure
-   JUMPDEST is a special opcode which only marks an address that can be jumped to.   in other words it is an metadata to annotate possible jump destinations.  
+   JUMPDEST is a special opcode which only marks an address that can be jumped to. In other words, it is metadata to annotate possible jump destinations.  
 
-   For example,  in the below op code sequences, JUMPDEST marks '004D' can be jumped to, if there is no JUMPDEST annotation, Jumping to '004D' will fail as jump op code will require JUMPDEST as valid destination.  
+   For example, in the below opcode sequences, JUMPDEST marks '004D' can be jumped to, if there is no JUMPDEST annotation, Jumping to '004D' will fail as jump opcode will require JUMPDEST as a valid destination.  
 
 ```
       004D    5B  JUMPDEST  
