@@ -17,7 +17,8 @@ def calldatacopy(curr: Step, next: Step, r: int, opcode: Opcode):
     # when data_offset+i is out of bound, bound_dist should be 0
     bound_dist = curr.allocate(MAX_COPY_LENGTH)
     bound_dist_iszero = [curr.is_zero(diff) for diff in bound_diff]
-    # call data length
+    # get call data length
+    tx_id = curr.call_context_lookup(CallContextTag.TxId)
     cd_length = curr.tx_lookup(tx_id, TxTableTag.CalldataLength) if curr.call.is_root \
         else curr.call_context_lookup(CallContextTag.CalldataLength)
 
@@ -34,7 +35,8 @@ def calldatacopy(curr: Step, next: Step, r: int, opcode: Opcode):
         assert_bool(diff)
     # make sure the number of bytes copied not exceed the remaining length
     # here we assume that length can be up to 5 bytes
-    lt, eq = curr.compare(sum(selectors), length, 5)
+    num_bytes = sum(selectors)
+    lt, eq = curr.compare(num_bytes, length, 5)
     assert (1-lt) * (1-eq) == 0
     finished = eq
 
@@ -66,9 +68,6 @@ def calldatacopy(curr: Step, next: Step, r: int, opcode: Opcode):
         assert length == le_to_int(length)
 
     if curr.call.is_root:
-        tx_id = curr.call_context_lookup(CallContextTag.TxId)
-        call_data_length = curr.tx_lookup(tx_id, TxTableTag.CalldataLength)
-
         for i in range(MAX_COPY_LENGTH):
             if selectors[i] == 1:
                 # Address is out of bound
@@ -76,10 +75,10 @@ def calldatacopy(curr: Step, next: Step, r: int, opcode: Opcode):
                 if bound_dist_iszero[i] == 0:
                     assert data[i] == curr.tx_lookup(tx_id, TxTableTag.Calldata, data_offset+i)
                     assert data[i] == curr.memory_w_lookup(mem_offset+i)
+            else:
+                assert data[i] == 0
     else:
         cd_offset = curr.call_context_lookup(CallContextTag.CalldataOffset)
-        cd_length = curr.call_context_lookup(CallContextTag.CalldataLength)
-
         for i in range(MAX_COPY_LENGTH):
             if selectors[i] == 1:
                 # Address is out of bound
@@ -87,6 +86,8 @@ def calldatacopy(curr: Step, next: Step, r: int, opcode: Opcode):
                 if bound_dist_iszero[i] == 0:
                     assert data[i] == curr.memory_r_lookup(cd_offset+data_offset+i)
                     assert data[i] == curr.memory_w_lookup(mem_offset+i)
+            else:
+                assert data[i] == 0
 
     # check the state in the next step if CallDataCopy has not finished
     if not finished:
@@ -99,4 +100,10 @@ def calldatacopy(curr: Step, next: Step, r: int, opcode: Opcode):
         assert next_data_offset == data_offset + MAX_COPY_LENGTH
         assert next_length == length - MAX_COPY_LENGTH
 
-    # TODO: step transition
+    # 3 stack pops in the first step of CallDataCopy
+    # num_bytes read from memory in the internal call
+    rw_counter = curr.core.rw_counter + num_bytes + 3*first + num_bytes*(1-curr.call.is_root)
+    stack_pointer = curr.call.stack_pointer + 3*first
+    pc = curr.call.program_counter + 1*finished
+    # TODO: estimate gas
+    # TODO: call step transition
