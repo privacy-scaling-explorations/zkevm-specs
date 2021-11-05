@@ -156,6 +156,10 @@ class Step:
     def is_equal(self, lhs: int, rhs: int) -> bool:
         return self.is_zero(lhs - rhs)
 
+    def compare(self, lhs: int, rhs: int, bytes: int) -> bool:
+        # TODO: do this properly
+        return lhs < rhs, lhs == rhs
+
     def decompress(self, value: int, n: int, r: int) -> Sequence[int]:
         allocations = self.allocate(n)
 
@@ -314,6 +318,12 @@ class Step:
             self.core.call_id,
             self.call.stack_pointer + self.stack_pointer_diff
         ])[0]
+
+    def memory_r_lookup(self, addr: int) -> int:
+        return self.r_lookup(RWTableTag.Memory, [self.core.call_id, addr])[0]
+
+    def memory_w_lookup(self, addr: int) -> int:
+        return self.r_lookup(RWTableTag.Memory, [self.core.call_id, addr])[0]
 
     def assert_sufficient_constant_gas(self, opcode: Opcode) -> int:
         next_gas_left = self.call.gas_left - OPCODE_INFO_MAP[opcode].constant_gas
