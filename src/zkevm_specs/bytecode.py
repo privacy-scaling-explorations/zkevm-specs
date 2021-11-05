@@ -1,6 +1,6 @@
 from typing import Sequence, Union, Tuple, Set
 from collections import namedtuple
-from .util import keccak256, fp_add, fp_mul, RLC
+from .util import keccak256, FpNum, RLC
 from .evm.opcode import get_push_size
 from .encoding import U8, U256, is_circuit_code
 
@@ -31,6 +31,7 @@ def select(
 def check_bytecode_row(
     row: Row, prev_row: Row, push_table: Set[Tuple[int, int]], keccak_table: Set[Tuple[int, int, int]], r: int
 ):
+    row = Row([FpNum(v) for v in row])
     if not row.q_first and not prev_row.is_final:
         # Continue
         # index needs to increase by 1
@@ -38,7 +39,7 @@ def check_bytecode_row(
         # is_code := push_data_left_prev == 0
         assert row.is_code == (prev_row.push_data_left == 0)
         # hash_rlc := hash_rlc_prev * r + byte
-        assert row.hash_rlc == fp_add(fp_mul(prev_row.hash_rlc, r), row.byte)
+        assert row.hash_rlc == prev_row.hash_rlc * r + row.byte
 
         # padding needs to remain the same
         assert row.padding == prev_row.padding

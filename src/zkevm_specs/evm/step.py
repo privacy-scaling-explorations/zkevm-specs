@@ -1,4 +1,6 @@
+from typing import Any, Sequence
 from .execution_state import ExecutionState
+from ..util import FpNum, RLC
 
 
 class StepState:
@@ -46,20 +48,20 @@ class StepState:
         is_root: bool = False,
         is_create: bool = False,
         code_source: int = 0,
-        program_counter: int = 0,
+        program_counter: FpNum = FpNum(0),
         stack_pointer: int = 1024,
         gas_left: int = 0,
         memory_size: int = 0,
         state_write_counter: int = 0,
     ) -> None:
         self.execution_state = execution_state
-        self.rw_counter = rw_counter
-        self.call_id = call_id
+        self.rw_counter = FpNum(rw_counter)
+        self.call_id = FpNum(call_id)
         self.is_root = is_root
         self.is_create = is_create
         self.code_source = code_source
-        self.program_counter = program_counter
-        self.stack_pointer = stack_pointer
-        self.gas_left = gas_left
-        self.memory_size = memory_size
-        self.state_write_counter = state_write_counter
+        self.program_counter = FpNum(program_counter)
+        self.stack_pointer = FpNum(stack_pointer)
+        self.gas_left = FpNum(gas_left)
+        self.memory_size = FpNum(memory_size)
+        self.state_write_counter = FpNum(state_write_counter)
