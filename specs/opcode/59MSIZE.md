@@ -2,7 +2,7 @@
 
 ## Procedure
 
-The `MSIZE` opcode return the memory size of the current contract and place it on the top of the stack.
+The `MSIZE` opcode return the memory size of the current contract and place it on the top of the stack. The memory size returned by the opcode is in bytes, while internally the memory size is stored in words, so the opcode needs to multiply the state variable by `32`.
 
 ## Constraints
 
