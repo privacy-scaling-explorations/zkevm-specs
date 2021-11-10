@@ -1,7 +1,7 @@
 import secrets
 
 from src.zkevm_specs.encoding import u256_to_u8s, U256, u8s_to_u64s, U8
-from src.zkevm_specs.opcode.shr_sar import check_shr_sar
+from src.zkevm_specs.opcode.shr_sar import check_shr, check_sar, BitslevelTable, Pow64Table
 
 
 def generate_high(shift_mod_by_64_div_by_8, shift_mod_by_8):
@@ -14,10 +14,10 @@ def result_generate(a, shift):
     a8s = u256_to_u8s(U256(a))
     b8s = u256_to_u8s(U256(b))
     if a8s[31] >= 128:
-        signed_num = 1
+        is_sar = 1
     else:
-        signed_num = 0
-    print("signed_sum:", signed_num)
+        is_sar = 0
+
     shift_div_by_64 = shift // 64
     shift_mod_by_64_div_by_8 = shift % 64 // 8
     shift_mod_by_64 = shift % 64
@@ -32,7 +32,7 @@ def result_generate(a, shift):
     print("shift_mod_by_8 : ", shift_mod_by_8)
     high_cell = shift_div_by_64 * 8 + shift_mod_by_64_div_by_8
     b1 = list(b8s)
-    if signed_num == 1:
+    if is_sar == 1:
         idx = 0
         while idx != high_cell:
             b1[31 - idx] = 255
@@ -50,8 +50,8 @@ def result_generate(a, shift):
         else:
             slice_back = a64s[virtual_idx] % (1 << shift_mod_by_64)
             slice_front = a64s[virtual_idx] // (1 << shift_mod_by_64)
-        assert slice_front * (1 << shift_mod_by_64) + slice_back == a64s[virtual_idx] \
- \
+        assert slice_front * (1 << shift_mod_by_64) + slice_back == a64s[virtual_idx]
+
         for idx in range(0, 8):
             now_idx = virtual_idx * 8 + idx
             a_slice_back[now_idx] = U8(slice_back % (1 << 8))
@@ -71,14 +71,15 @@ def result_generate(a, shift):
             shift_mod_by_64_decpow,
             shift_mod_by_64_pow,
             shift_mod_by_8,
-            signed_num,
+            is_sar,
             high_pow,
             m256)
 
 
 def test_shr_sar():
-    # 随机生成大整数
     a = secrets.randbelow(2 ** 256)
+    bitsleveltable = BitslevelTable()
+    pow64table = Pow64Table()
     print()
     print("a8s:", u256_to_u8s(U256(a)))
     a_bits = len(bin(a)) - 2
@@ -93,11 +94,12 @@ def test_shr_sar():
      shift_mod_by_64_decpow,
      shift_mod_by_64_pow,
      shift_mod_by_8,
-     signed_sum,
+     is_sar,
      high_pow,
      m256) = result_generate(a, shift)
 
-    check_shr_sar(u256_to_u8s(U256(a)),
+    if is_sar == 0:
+        check_shr(u256_to_u8s(U256(a)),
                   b,
                   U8(shift),
                   a_slice_front,
@@ -107,6 +109,24 @@ def test_shr_sar():
                   shift_mod_by_64_decpow,
                   shift_mod_by_64_pow,
                   shift_mod_by_8,
-                  signed_sum,
+                  is_sar,
                   high_pow,
-                  m256)
+                  m256,
+                  bitsleveltable,
+                  pow64table)
+    else:
+        check_sar(u256_to_u8s(U256(a)),
+                  b,
+                  U8(shift),
+                  a_slice_front,
+                  a_slice_back,
+                  shift_div_by_64,
+                  shift_mod_by_64_div_by_8,
+                  shift_mod_by_64_decpow,
+                  shift_mod_by_64_pow,
+                  shift_mod_by_8,
+                  is_sar,
+                  high_pow,
+                  m256,
+                  bitsleveltable,
+                  pow64table)
