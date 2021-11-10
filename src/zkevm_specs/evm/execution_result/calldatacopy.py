@@ -10,8 +10,32 @@ MAX_COPY_LENGTH = 64
 def calldatacopy(curr: Step, next: Step, r: int, opcode: Opcode):
     assert opcode == Opcode.CALLDATACOPY
 
-    first, mem_offset, data_offset, length = curr.allocate(4)
-    data = curr.allocate(MAX_COPY_LENGTH)
+    first = curr.allocate(1)[0]
+    assert_bool(first)
+    # Verify the first == 1 for the first CallDataCopy slot
+    prev_opcode = curr.bytecode_lookup(
+        [curr.call.opcode_source, curr.call.program_counter-1])
+    is_calldatacopy = curr.is_zero(prev_opcode - Opcode.CALLDATACOPY)
+    assert (1 - is_calldatacopy) * (1 - first) == 0
+
+    # get the memory offset, data offset, and remaining length
+    if first:
+        bytes_mem_offset = curr.decompress(curr.stack_pop_lookup(), 32, r)
+        bytes_data_offset = curr.decompress(curr.stack_pop_lookup(), 32, r)
+        bytes_length = curr.decompress(curr.stack_pop_lookup(), 5, r)
+
+        mem_offset = le_to_int(bytes_mem_offset[:5])
+        data_offset = le_to_int(bytes_mem_offset[:5])
+        length = le_to_int(length)
+
+        next_memory_words = curr.calc_memory_words(bytes_mem_offset, bytes_length)
+        memory_gas_cost = curr.calc_memory_gas_cost(next_memory_words)
+    else:
+        mem_offset, data_offset, length = curr.allocate(3)
+        memory_gas_cost = 0
+
+    # allocate data, selectors, boundary check witness
+    data = curr.allocate_byte(MAX_COPY_LENGTH)
     selectors = curr.allocate(MAX_COPY_LENGTH)
     # bound_dist[i] = max(call_data_length - data_offset - i, 0)
     # when data_offset+i is out of bound, bound_dist should be 0
@@ -22,54 +46,40 @@ def calldatacopy(curr: Step, next: Step, r: int, opcode: Opcode):
     cd_length = curr.tx_lookup(tx_id, TxTableTag.CalldataLength) if curr.call.is_root \
         else curr.call_context_lookup(CallContextTag.CalldataLength)
 
-    assert_bool(first)
-    # byte within [0, 256)
-    for byte in data:
-        curr.byte_range_lookup(byte)
-    # selectors need to be boolean
+    # Constraints for selectors
+    # 1. selectors need to be boolean
+    # 2. selectors sequence is non-increasing
     for s in selectors:
         assert_bool(s)
-    # prove selectors are non-increasing
     for i in range(1, MAX_COPY_LENGTH):
         diff = selectors[i-1] - selectors[i]
         assert_bool(diff)
-    # make sure the number of bytes copied not exceed the remaining length
-    # here we assume that length can be up to 5 bytes
+
+    # Verify that the number of bytes copied doesn't not exceed the remaining length
+    # We assume that length can be up to 5 bytes
     num_bytes = sum(selectors)
     lt, eq = curr.compare(num_bytes, length, 5)
     assert (1-lt) * (1-eq) == 0
     finished = eq
 
-    # bound_dist[0] == 0 || bound_dist[0] == cd_length - data_offset
-    # TODO: check bound_dist[0] is within a certain range
+    # The constraints for the first boundary distance:
+    # 1. bound_dist[0] == 0 || bound_dist[0] == cd_length - data_offset
+    # 2. bound_dist[0] \in 0..2^40-1
     assert bound_dist[0] * (cd_length-data_offset-bound_dist[0]) == 0
+    self.bytes_range_lookup(bound_dist[0], 4)
+    # We can simplify the constraints for the rest boundary distance by checking the diff
+    # 1. diff == 0 or 1
+    # 2. diff == 1 when bound_dist[i-1] != 0 & bound_dist_iszero[i-1] == 0
+    # 3. diff == 0 when bound_dist[i-1] == 0 & bound_dist_iszero[i-1] == 1
     for i in range(1, MAX_COPY_LENGTH):
         diff = bound_dist[i-1] - bound_dist[i]
         assert_bool(diff)
-        # diff == 1 when bound_dist[i-1] != 0 & bound_dist_iszero[i-1] == 0
-        # diff == 0 when bound_dist[i-1] == 0 & bound_dist_iszero[i-1] == 1
         assert (1-bound_dist_iszero[i-1]) * (1-diff) == 0
         assert bound_dist_iszero[i-1] * diff == 0
 
-    if first == 1:
-        # Previous opcode cannot be CallDataCopy
-        prev_opcode = curr.bytecode_lookup(
-            [curr.call.opcode_source, curr.call.program_counter-1])
-        not_calldatacopy = curr.is_zero(prev_opcode - Opcode.CALLDATACOPY)
-        assert not_calldatacopy == 0
-
-        bytes_mem_offset = curr.decompress(curr.stack_pop_lookup(), 32, r)
-        bytes_data_offset = curr.decompress(curr.stack_pop_lookup(), 32, r)
-        bytes_length = curr.decompress(curr.stack_pop_lookup(), 8, r)
-
-        assert mem_offset == le_to_int(bytes_mem_offset[:8])
-        # TODO: handle data_offset overflow case
-        assert data_offset == le_to_int(bytes_mem_offset[:8])
-        assert length == le_to_int(length)
-
     if curr.call.is_root:
         for i in range(MAX_COPY_LENGTH):
-            if selectors[i] == 1:
+            if selectors[i]:
                 # Address is out of bound
                 assert bound_dist_iszero[i] * data[i] == 0
                 if bound_dist_iszero[i] == 0:
@@ -80,7 +90,7 @@ def calldatacopy(curr: Step, next: Step, r: int, opcode: Opcode):
     else:
         cd_offset = curr.call_context_lookup(CallContextTag.CalldataOffset)
         for i in range(MAX_COPY_LENGTH):
-            if selectors[i] == 1:
+            if selectors[i]:
                 # Address is out of bound
                 assert bound_dist_iszero[i] * data[i] == 0
                 if bound_dist_iszero[i] == 0:
@@ -102,8 +112,16 @@ def calldatacopy(curr: Step, next: Step, r: int, opcode: Opcode):
 
     # 3 stack pops in the first step of CallDataCopy
     # num_bytes read from memory in the internal call
-    rw_counter = curr.core.rw_counter + num_bytes + 3*first + num_bytes*(1-curr.call.is_root)
-    stack_pointer = curr.call.stack_pointer + 3*first
-    pc = curr.call.program_counter + 1*finished
-    # TODO: estimate gas
-    # TODO: call step transition
+    assert curr.rw_counter_diff == first * (3 + num_bytes * (2 - curr.call.is_root))
+    assert curr.stack_pointer_diff == first * 3
+    next_gas_left = curr.call.gas_left - first * (GAS_FASTEST_STEP + memory_gas_cost)
+    curr.bytes_range_lookup(next_gas_left, 8)
+
+    curr.assert_step_transition(
+        next,
+        rw_counter_diff=curr.rw_counter_diff,
+        execution_result_not=ExecutionResult.BEGIN_TX,
+        program_counter_diff=finished,
+        stack_pointer_diff=curr.stack_pointer_diff,
+        gas_left=next_gas_left,
+    )

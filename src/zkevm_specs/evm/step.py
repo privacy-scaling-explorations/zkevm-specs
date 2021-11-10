@@ -157,8 +157,13 @@ class Step:
         return self.is_zero(lhs - rhs)
 
     def compare(self, lhs: int, rhs: int, bytes: int) -> bool:
-        # TODO: do this properly
-        return lhs < rhs, lhs == rhs
+        max_range = 2 ** bytes
+        bytes_diff = self.allocate_byte(bytes)
+        lt = self.allocate(1)[0]
+        assert_bool(lt)
+        assert lhs - rhs == le_to_int(bytes_diff) - lt * max_range
+        eq = self.is_zero(sum(bytes_diff))
+        return lt, eq
 
     def decompress(self, value: int, n: int, r: int) -> Sequence[int]:
         allocations = self.allocate(n)
@@ -358,6 +363,30 @@ class Step:
         assert_addition(bytes_callee_prev_balance, bytes_value, bytes_callee_new_balance, callee_carries)
         assert callee_carries[31] == 0
 
+    def calc_memory_words(self, bytes_offset: Sequence[int], bytes_length: Sequence[int]):
+        offset = le_to_int(bytes_offset[:5])
+        length = le_to_int(bytes_length)
+        has_length = not self.is_zero(length)
+        bytes_next_memory_words = self.allocate_byte(4)
+        next_memory_words = has_length * le_to_int(bytes_next_memory_words)
+        # Verify next_memory_words is correct
+        if has_length:
+            assert sum(bytes_offset[5:]) == 0
+        self.fixed_lookup(FixedTableTag.Range32, [32 * next_memory_words - has_length * (offset + length)])
+        return next_memory_words
+
+    def calc_memory_gas_cost(self, next_memory_words: int):
+        # Verify memory_gas_cost is correct
+        curr_quad_memory_gas_cost = le_to_int(self.allocate_byte(8))
+        next_quad_memory_gas_cost = le_to_int(self.allocate_byte(8))
+        self.fixed_lookup(FixedTableTag.Range512,
+                          [self.call.memory_size * self.call.memory_size - 512 * curr_quad_memory_gas_cost])
+        self.fixed_lookup(FixedTableTag.Range512,
+                          [next_memory_words * next_memory_words - 512 * next_quad_memory_gas_cost])
+        memory_gas_cost = next_quad_memory_gas_cost - curr_quad_memory_gas_cost + \
+            3 * (next_memory_words - self.call.memory_size)
+        return memory_gas_cost
+
     def assert_memory_expansion(
         self,
         bytes_cd_offset: Sequence[int],
@@ -365,30 +394,10 @@ class Step:
         bytes_rd_offset: Sequence[int],
         bytes_rd_length: Sequence[int],
     ) -> Tuple[int, int]:
-        cd_offset = le_to_int(bytes_cd_offset[:5])
-        cd_length = le_to_int(bytes_cd_length)
-        rd_offset = le_to_int(bytes_rd_offset[:5])
-        rd_length = le_to_int(bytes_rd_length)
+        next_memory_size_cd = self.calc_memory_words(bytes_cd_offset, bytes_cd_length)
+        next_memory_size_rd = self.calc_memory_words(bytes_rd_offset, bytes_rd_length)
 
         next_memory_size = self.allocate(1)[0]
-
-        has_cd_length = not self.is_zero(cd_length)
-        has_rd_length = not self.is_zero(rd_length)
-        bytes_next_memory_size_cd = self.allocate_byte(4)
-        bytes_next_memory_size_rd = self.allocate_byte(4)
-        next_memory_size_cd = has_cd_length * le_to_int(bytes_next_memory_size_cd)
-        next_memory_size_rd = has_rd_length * le_to_int(bytes_next_memory_size_rd)
-
-        # Verify next_memory_size_cd is correct
-        if has_cd_length:
-            assert sum(bytes_cd_offset[5:]) == 0
-        self.fixed_lookup(FixedTableTag.Range32, [32 * next_memory_size_cd - has_cd_length * (cd_offset + cd_length)])
-
-        # Verify next_memory_size_rd is correct
-        if has_rd_length:
-            assert sum(bytes_rd_offset[5:]) == 0
-        self.fixed_lookup(FixedTableTag.Range32, [32 * next_memory_size_rd - has_rd_length * (rd_offset + rd_length)])
-
         # Verify next_memory_size == \
         #   max(self.call.memory_size, next_memory_size_cd, next_memory_size_rd)
         assert next_memory_size in [self.call.memory_size, next_memory_size_cd, next_memory_size_rd]
@@ -396,16 +405,7 @@ class Step:
         self.bytes_range_lookup(next_memory_size - next_memory_size_cd, 4)
         self.bytes_range_lookup(next_memory_size - next_memory_size_rd, 4)
 
-        # Verify memory_gas_cost is correct
-        curr_quad_memory_gas_cost = le_to_int(self.allocate_byte(8))
-        next_quad_memory_gas_cost = le_to_int(self.allocate_byte(8))
-        self.fixed_lookup(FixedTableTag.Range512,
-                          [self.call.memory_size * self.call.memory_size - 512 * curr_quad_memory_gas_cost])
-        self.fixed_lookup(FixedTableTag.Range512,
-                          [next_memory_size * next_memory_size - 512 * next_quad_memory_gas_cost])
-        memory_gas_cost = next_quad_memory_gas_cost - curr_quad_memory_gas_cost + \
-            3 * (next_memory_size - self.call.memory_size)
-
+        memory_gas_cost = self.calc_memory_gas_cost(next_memory_size)
         return next_memory_size, memory_gas_cost
 
     def assert_step_transition(self, next, **kwargs):
