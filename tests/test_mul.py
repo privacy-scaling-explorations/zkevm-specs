@@ -2,7 +2,7 @@ from typing import Sequence, List
 
 import pytest
 
-from src.zkevm_specs.encoding import u256_to_u8s, U64, U256, U8, u8s_to_u64s, u256_to_u64s
+from src.zkevm_specs.encoding import u256_to_u8s, U256, u8s_to_u64s
 from src.zkevm_specs.opcode.mul import check_mul
 from tests.common import NASTY_AB_VALUES
 
