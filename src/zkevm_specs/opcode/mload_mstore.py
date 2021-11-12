@@ -1,10 +1,10 @@
 from typing import Sequence, Tuple
-from zkevm_specs.encoding.utils import u256_to_u8s
 from zkevm_specs.opcode.memory import Memory
 from ..encoding import U8, U64, U128, U256, is_circuit_code
 
 OP_MLOAD = 0x51
 OP_MSTORE = 0x52
+OP_MSTORE8 = 0x53
 
 G_MEM = 3
 
@@ -111,9 +111,11 @@ def check_memory_ops(
     assert len(address8s) == len(value8s) == 32
     assert memory.memory_size() == curr_memory_size
 
-    # Check if this is an MLOAD or an MSTORE
+    # Check if this is an MLOAD, MSTORE or MSTORE8
     is_mload = opcode == OP_MLOAD
-    is_mstore = 1 - is_mload
+    is_mstore8 = opcode == OP_MSTORE8
+    is_store = 1 - is_mload
+    is_not_mstore8 = 1 - is_mstore8
 
     # Not all address bytes are used to calculate the gas cost for the memory access,
     # so make sure this success case is disabled if any of those address bytes
@@ -123,44 +125,21 @@ def check_memory_ops(
     address = address_low(address8s)
 
     # Calculate the next memory size and the gas cost for this memory access
-    (next_memory_size, memory_cost) = memory_expansion(curr_memory_size, address + 32)
+    (next_memory_size, memory_cost) = memory_expansion(
+        curr_memory_size,
+        address + 1 + is_not_mstore8 * 31
+    )
     assert(next_memory_size == expected_next_memory_size)
     assert(memory_cost == expected_memory_cost)
 
     # Read/Write the value from memory at the specified address
     for i in range(0, 32):
-        memory.op(address + i, value8s[i], is_mstore)
+        # For MSTORE8 we write the LSB of value 32x times to the same address
+        # For MLOAD and MSTORE we read/write all the bytes of value
+        # at an increasing address value.
+        byte = value8s[0] if i == 31 else select(is_mstore8, value8s[0], value8s[31-i])
+        offset = 0 if i == 0 else is_not_mstore8 * i
+        memory.op(address + offset, byte, is_store)
 
     # Also verify the expected memory size against the one calculated by Memory
     assert(expected_next_memory_size == memory.memory_size())
-
-
-def test_check_memory_ops():
-
-    memory = Memory()
-    # Store a value at address 0
-    check_memory_ops(OP_MSTORE, memory, u256_to_u8s(0), range(1, 33), 0, 1, G_MEM)
-    # Check if the value is indeed stored in memory
-    check_memory_ops(OP_MLOAD, memory, u256_to_u8s(0), range(1, 33), 1, 1, 0)
-    # Read the memory at address 1
-    check_memory_ops(OP_MLOAD, memory, u256_to_u8s(1), list(range(2, 33)) + [0], 1, 2, G_MEM)
-    # Read the memory at address 32
-    check_memory_ops(OP_MLOAD, memory, u256_to_u8s(32), [0] * 32, 2, 2, 0)
-
-    # Test against some values acquired from traces
-    memory = Memory()
-    # Store a value at address 0x12FFFF
-    check_memory_ops(OP_MSTORE, memory, u256_to_u8s(0x12FFFF), range(1, 33), 0, 1_245_216//32, 3_074_203)
-    # Load a value at address 0x230212
-    check_memory_ops(OP_MLOAD, memory, u256_to_u8s(0x230212), [0] * 32, 1_245_216//32, 2_294_336//32, 7_181_131)
-    # Store a value at address 0x131541
-    check_memory_ops(OP_MSTORE, memory, u256_to_u8s(0x131541), range(1, 33), 2_294_336//32, 2_294_336//32, 0)
-
-    # Verify Geth max allowed address
-    memory = Memory()
-    check_memory_ops(OP_MLOAD, memory, u256_to_u8s(0x1FFFFFFFC0), [0] * 32, 0, 0xFFFFFFFF, 0x800002fefffffd)
-
-    # Verify zkEVM max allowed address
-    memory = Memory()
-    check_memory_ops(OP_MLOAD, memory, u256_to_u8s(0xFFFFFFFFFF), [0] * 32, 0, 0x800000001, 0x2000001808000003)
-
