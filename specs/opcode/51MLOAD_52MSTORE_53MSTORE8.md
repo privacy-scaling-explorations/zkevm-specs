@@ -26,7 +26,7 @@ memory_cost(memory_size) := Gmem * memory_size + floor(memory_size * memory_size
 
 The gas cost charged for the op is the additional `memory_size` needed:
 ```
-MLOAD/MSTORE: offset := 32, MSTORE8 := offset := 1
+MLOAD/MSTORE: offset := 32, MSTORE8: offset := 1
 next_memory_size := max(curr_memory_size, memory_size(address + offset))
 memory_gas_cost := memory_cost(next_memory_size) - memory_cost(curr_memory_size)
 ```
