@@ -17,19 +17,12 @@ def result_generate(a, shift):
         is_sar = 1
     else:
         is_sar = 0
-
     shift_div_by_64 = shift // 64
     shift_mod_by_64_div_by_8 = shift % 64 // 8
     shift_mod_by_64 = shift % 64
     shift_mod_by_64_pow = 1 << shift_mod_by_64
     shift_mod_by_64_decpow = (1 << 64) // shift_mod_by_64_pow
     shift_mod_by_8 = shift % 8
-    print("shift_div_by_64 : ", shift_div_by_64)
-    print("shift_mod_by_64 : ", shift_mod_by_64)
-    print("shift_mod_by_64_div_by_8 : ", shift_mod_by_64_div_by_8)
-    print("shift_mod_by_64_pow: ", shift_mod_by_64_pow)
-    print("shift_mod_by_64_decpow: ", shift_mod_by_64_decpow)
-    print("shift_mod_by_8 : ", shift_mod_by_8)
     high_cell = shift_div_by_64 * 8 + shift_mod_by_64_div_by_8
     b1 = list(b8s)
     if is_sar == 1:
@@ -105,8 +98,8 @@ def test_shr_sar():
                   a_slice_front,
                   a_slice_back,
                   shift_div_by_64,
-                  shift_mod_by_64_div_by_8,
                   shift_mod_by_64_decpow,
+                  shift_mod_by_64_div_by_8,
                   shift_mod_by_64_pow,
                   shift_mod_by_8,
                   is_sar,

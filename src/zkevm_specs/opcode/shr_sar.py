@@ -8,8 +8,6 @@ class BitslevelTable(LookupTable):
         for level in range(0, 9):
             for idx in range(0, 1 << level):
                 self.add_row(powtag=level, value=idx)
-
-
 class Pow64Table(LookupTable):
     def __init__(self):
         super().__init__(["value", "value_pow", "value_depow"])
@@ -19,7 +17,6 @@ class Pow64Table(LookupTable):
                 value_pow=1 << idx,
                 value_depow=(1 << (64 - idx))
             )
-
 
 def shr_sar_common(a: Sequence[U8],
                    b: Sequence[U8],
@@ -46,8 +43,6 @@ def shr_sar_common(a: Sequence[U8],
     b_digits = u8s_to_u64s(b)
     a_slice_back_digits = u8s_to_u64s(a_slice_back)
     a_slice_front_digits = u8s_to_u64s(a_slice_front)
-    print("a_digits:", a_digits)
-    print("b_digits:", b_digits)
 
     # shr_sar_constraints
     for transplacement in range(4):
