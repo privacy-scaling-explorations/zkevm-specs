@@ -32,7 +32,7 @@ def mul_common(
                 tmp_x = 0
             cir_t[total_idx] += tmp_a * tmp_x
 
-    # check
+    
     assert t0 == cir_t[0]
     assert t1 == cir_t[1]
     assert t2 == cir_t[2]
