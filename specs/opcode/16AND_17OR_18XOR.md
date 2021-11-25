@@ -7,7 +7,7 @@ the stack.
 
 `a`, `b`, and `c` are all EVM words. We break three EVM words into 32 bytes and
 apply the lookup to the 32 chunks of `a`, `b`, and `c` to see if
-`a[i] OP b[i] == c[i]` holds for `i = 0..31`, where `OP` belongs to
+`a[i] OP b[i] == c[i]` holds for `i = 0..32`, where `OP` belongs to
 `[AND, OR, XOR]`.
 
 ## Constraints
@@ -26,7 +26,7 @@ apply the lookup to the 32 chunks of `a`, `b`, and `c` to see if
     - `b` is at the second position of the stack
     - `c`, the result, is at the new top of the stack
     - Apply the lookup to 32 tuples of `a, b, c` chunks,
-        `(a[i], b[i], c[i]), i = 0..31`, with opcode corresponding table
+        `(a[i], b[i], c[i]), i = 0..32`, with opcode corresponding table
         (`BitwiseAnd`, `BitwiseOr`, and `BitwiseXor`).
 
 ## Exceptions
