@@ -1,12 +1,13 @@
-from typing import Sequence, Set, Tuple, Union
+from typing import Sequence, Set, Tuple
 from enum import IntEnum, auto
 
+from ..util import Array3, Array4, Array8
+from .execution_result import ExecutionResult
 from .opcode import (
     invalid_opcodes,
     state_write_opcodes,
     stack_underflow_pairs,
     stack_overflow_pairs,
-    oog_constant_pairs,
 )
 
 
@@ -16,11 +17,17 @@ class FixedTableTag(IntEnum):
     table.
     """
 
+    Range16 = auto()  # value, 0, 0
     Range32 = auto()  # value, 0, 0
     Range64 = auto()  # value, 0, 0
     Range256 = auto()  # value, 0, 0
     Range512 = auto()  # value, 0, 0
     Range1024 = auto()  # value, 0, 0
+    SignByte = auto()  # value, signbyte, 0
+    BitwiseAnd = auto()  # lhs, rhs, lhs & rhs, 0
+    BitwiseOr = auto()  # lhs, rhs, lhs | rhs, 0
+    BitwiseXor = auto()  # lhs, rhs, lhs ^ rhs, 0
+    ResponsibleOpcode = auto()  # execution_result, opcode, 0
     InvalidOpcode = auto()  # opcode, 0, 0
     StateWriteOpcode = auto()  # opcode, 0, 0
     StackOverflow = auto()  # opcode, stack_pointer, 0
@@ -28,7 +35,7 @@ class FixedTableTag(IntEnum):
     OOGConstant = auto()  # opcode, gas, 0
 
 
-class TxTableTag(IntEnum):
+class TxContextFieldTag(IntEnum):
     """
     Tag for TxTable lookup, where the TxTable is an instance-column table where
     part of it will be built by verifier.
@@ -46,6 +53,11 @@ class TxTableTag(IntEnum):
     Calldata = auto()
 
 
+class RW:
+    Read = False
+    Write = True
+
+
 class RWTableTag(IntEnum):
     """
     Tag for RWTable lookup, where the RWTable an advice-column table built by
@@ -57,9 +69,7 @@ class RWTableTag(IntEnum):
     TxAccessListStorageSlot = auto()
     TxRefund = auto()
 
-    AccountNonce = auto()
-    AccountBalance = auto()
-    AccountCodeHash = auto()
+    Account = auto()
     AccountStorage = auto()
     AccountDestructed = auto()
 
@@ -89,7 +99,13 @@ class RWTableTag(IntEnum):
         ]
 
 
-class CallContextTag(IntEnum):
+class AccountFieldTag(IntEnum):
+    Nonce = auto()
+    Balance = auto()
+    CodeHash = auto()
+
+
+class CallContextFieldTag(IntEnum):
     """
     Tag for RWTable lookup with tag CallContext, which is used to index specific
     field of CallContext.
@@ -132,68 +148,114 @@ class CallContextTag(IntEnum):
     StateWriteCounter = auto()
 
 
+class LookupUnsatFailure(Exception):
+    def __init__(self, table_name: str, inputs: Tuple[int, ...]) -> None:
+        self.inputs = inputs
+        self.message = f"Lookup {table_name} is unsatisfied on inputs {inputs}"
+
+
+class LookupAmbiguousFailure(Exception):
+    def __init__(self, table_name: str, inputs: Tuple[int, ...], matched_rows: Sequence[Tuple[int, ...]]) -> None:
+        self.inputs = inputs
+        self.message = f"Lookup {table_name} is ambiguous on inputs {inputs}, ${len(matched_rows)} matched rows found: {matched_rows}"
+
+
 class Tables:
     """
     A collection of lookup tables used in EVM circuit.
     """
 
-    fixed_table: Set[Tuple[
-        int,  # tag
-        int,  # value1
-        int,  # value2
-        int,  # value3
-    ]] = set(
+    # Each row in FixedTable contains:
+    # - tag
+    # - value1
+    # - value2
+    # - value3
+    fixed_table: Set[Array4] = set(
+        [(FixedTableTag.Range16, i, 0, 0) for i in range(16)] +
         [(FixedTableTag.Range32, i, 0, 0) for i in range(32)] +
         [(FixedTableTag.Range64, i, 0, 0) for i in range(64)] +
         [(FixedTableTag.Range256, i, 0, 0) for i in range(256)] +
         [(FixedTableTag.Range512, i, 0, 0) for i in range(512)] +
         [(FixedTableTag.Range1024, i, 0, 0) for i in range(1024)] +
+        [(FixedTableTag.SignByte, i, (i & 1) * 0xff, 0) for i in range(256)] +
+        [(FixedTableTag.BitwiseAnd, lhs, rhs, lhs & rhs) for lhs in range(256) for rhs in range(256)] +
+        [(FixedTableTag.BitwiseOr, lhs, rhs, lhs | rhs) for lhs in range(256) for rhs in range(256)] +
+        [(FixedTableTag.BitwiseXor, lhs, rhs, lhs ^ rhs) for lhs in range(256) for rhs in range(256)] +
+        [(FixedTableTag.ResponsibleOpcode, execution_result, opcode, 0)
+            for execution_result in list(ExecutionResult) for opcode in execution_result.responsible_opcode()] +
         [(FixedTableTag.InvalidOpcode, opcode, 0, 0) for opcode in invalid_opcodes()] +
         [(FixedTableTag.StateWriteOpcode, opcode, 0, 0) for opcode in state_write_opcodes()] +
         [(FixedTableTag.StackUnderflow, opcode, stack_pointer, 0) for (opcode, stack_pointer) in stack_underflow_pairs()] +
-        [(FixedTableTag.StackOverflow, opcode, stack_pointer, 0) for (opcode, stack_pointer) in stack_overflow_pairs()] +
-        [(FixedTableTag.OOGConstant, opcode, gas, 0) for (opcode, gas) in oog_constant_pairs()]
+        [(FixedTableTag.StackOverflow, opcode, stack_pointer, 0) for (opcode, stack_pointer) in stack_overflow_pairs()]
     )
-    tx_table: Set[Tuple[
-        int,  # tx_id
-        int,  # tag
-        int,  # index (or 0)
-        int,  # value
-    ]]
-    bytecode_table: Set[Tuple[
-        int,  # bytecode_hash
-        int,  # index
-        int,  # byte
-    ]]
-    rw_table: Set[Tuple[
-        int,  # rw_counter
-        int,  # is_write
-        int,  # tag
-        int,  # value1
-        int,  # value2
-        int,  # value3
-        int,  # value4
-        int,  # value5
-    ]]
+
+    # Each row in TxTable contains:
+    # - tx_id
+    # - tag
+    # - index_or_zero
+    # - value
+    tx_table: Set[Array4]
+
+    # Each row in BytecodeTable contains:
+    # - bytecode_hash
+    # - index
+    # - byte
+    bytecode_table: Set[Array3]
+
+    # Each row in RWTable contains:
+    # - rw_counter
+    # - is_write
+    # - tag
+    # - value1
+    # - value2
+    # - value3
+    # - value4
+    # - value5
+    rw_table: Set[Array8]
 
     def __init__(
         self,
-        tx_table: Set[Tuple[int, int, int, int]],
-        bytecode_table: Set[Tuple[int, int, int]],
-        rw_table: Set[Tuple[int, int, int, int, int, int, int, int]],
+        tx_table: Set[Array4],
+        bytecode_table: Set[Array3],
+        rw_table: Set[Array8],
     ) -> None:
         self.tx_table = tx_table
         self.bytecode_table = bytecode_table
         self.rw_table = rw_table
 
-    def fixed_lookup(self, inputs: Union[Tuple[int, int, int, int], Sequence[int]]) -> bool:
-        return tuple(inputs) in self.fixed_table
+    def fixed_lookup(self, inputs: Sequence[int]) -> Array4:
+        assert len(inputs) <= 4
+        return _lookup("fixed_table", self.fixed_table, inputs)
 
-    def tx_lookup(self, inputs: Union[Tuple[int, int, int, int], Sequence[int]]) -> bool:
-        return tuple(inputs) in self.tx_table
+    def tx_lookup(self, inputs: Sequence[int]) -> Array4:
+        assert len(inputs) <= 4
+        return _lookup("tx_table", self.tx_table, inputs)
 
-    def bytecode_lookup(self, inputs: Union[Tuple[int, int, int], Sequence[int]]) -> bool:
-        return tuple(inputs) in self.bytecode_table
+    def bytecode_lookup(self, inputs: Sequence[int]) -> Array3:
+        assert len(inputs) <= 3
+        return _lookup("bytecode_table", self.bytecode_table, inputs)
 
-    def rw_lookup(self, inputs: Union[Tuple[int, int, int, int, int, int, int, int], Sequence[int]]) -> bool:
-        return tuple(inputs) in self.rw_table
+    def rw_lookup(self, inputs: Sequence[int]) -> Array8:
+        assert len(inputs) <= 8
+        return _lookup("rw_table", self.rw_table, inputs)
+
+
+def _lookup(
+    table_name: str,
+    table: Set[Tuple[int, ...]],
+    inputs: Sequence[int],
+) -> Tuple[int, ...]:
+    inputs = tuple(inputs)
+    inputs_len = len(inputs)
+    matched_rows = []
+
+    for row in table:
+        if inputs == row[:inputs_len]:
+            matched_rows.append(row)
+
+    if len(matched_rows) == 0:
+        raise LookupUnsatFailure(table_name, inputs)
+    elif len(matched_rows) > 1:
+        raise LookupAmbiguousFailure(table_name, inputs, matched_rows)
+
+    return matched_rows[0]

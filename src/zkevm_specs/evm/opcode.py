@@ -146,6 +146,9 @@ class Opcode(IntEnum):
     REVERT = 0xfd
     SELFDESTRUCT = 0xff
 
+    def hex(self) -> str:
+        return '{:02x}'.format(self)
+
 
 class OpcodeInfo:
     """

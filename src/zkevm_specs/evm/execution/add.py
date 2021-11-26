@@ -1,0 +1,25 @@
+from ..instruction import Instruction, Transition
+from ..opcode import Opcode
+
+
+def add(instruction: Instruction):
+    opcode = instruction.opcode_lookup()
+
+    is_sub, _ = instruction.pair_select(opcode, Opcode.SUB, Opcode.ADD)
+
+    a = instruction.stack_pop()
+    b = instruction.stack_pop()
+    c = instruction.stack_push()
+
+    instruction.constrain_word_addition(
+        instruction.select(is_sub, c, a),
+        b,
+        instruction.select(is_sub, a, c),
+    )
+
+    instruction.constrain_same_context_state_transition(
+        opcode,
+        rw_counter=Transition.delta(3),
+        program_counter=Transition.delta(1),
+        stack_pointer=Transition.delta(1),
+    )

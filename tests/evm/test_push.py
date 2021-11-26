@@ -1,65 +1,65 @@
+import pytest
 from zkevm_specs.evm import (
-    main, Opcode, ExecutionResult, CoreState, CallState, Step,
-    Tables, FixedTableTag, RWTableTag
+    ExecutionResult, Tables, RWTableTag, RW,
+    StepState, verify_steps, Opcode
 )
-from zkevm_specs.util import linear_combine, keccak256
+from zkevm_specs.util import keccak256, rand_bytes, RLCStore
 
 
-# TODO: Parametrize r, pushed value and then generate bytecode and table automatically
-def test_push():
-    r = 1
-    bytecode = bytes.fromhex('602060400100')
-    bytecode_hash = linear_combine(keccak256(bytecode), r)
+TESTING_DATA = tuple([
+    (Opcode.PUSH1, bytes([1])),
+    (Opcode.PUSH2, bytes([2, 1])),
+    (Opcode.PUSH31, bytes([i for i in range(31, 0, -1)])),
+    (Opcode.PUSH32, bytes([i for i in range(32, 0, -1)])),
+] + [
+    (Opcode(Opcode.PUSH1 + i), rand_bytes(i + 1)) for i in range(32)
+])
+
+
+@ pytest.mark.parametrize("opcode, value_be_bytes", TESTING_DATA)
+def test_push(opcode: Opcode, value_be_bytes: bytes):
+    rlc_store = RLCStore()
+
+    value = rlc_store.to_rlc(bytes(reversed(value_be_bytes)))
+
+    bytecode = bytes.fromhex(f'{opcode.hex()}{value_be_bytes.hex()}00')
+    bytecode_hash = rlc_store.to_rlc(keccak256(bytecode))
+
     tables = Tables(
         tx_table=set(),
         bytecode_table=set(
             [(bytecode_hash, i, byte) for (i, byte) in enumerate(bytecode)],
         ),
         rw_table=set([
-            (8,  True, RWTableTag.Stack, 1, 1022, 0x40, 0, 0),
+            (8, RW.Write, RWTableTag.Stack, 1, 1023, value, 0, 0),
         ]),
     )
 
-    curr = Step(
-        core=CoreState(
-            rw_counter=8,
-            execution_result=ExecutionResult.PUSH,
-            call_id=1,
-        ),
-        call=CallState(
-            is_root=True,
-            is_create=False,
-            opcode_source=bytecode_hash,
-            program_counter=2,
-            stack_pointer=1023,
-            gas_left=6,
-        ),
-        allocations=[
-            bytecode_hash, 2, Opcode.PUSH1,  # bytecode lookup
-            1, *31*[0],  # selectors
-            FixedTableTag.Range32, 0, 0, 0,  # num_pushed - 1
-            3, 0, 0, 0, 0, 0, 0, 0,  # next gas_left decompression
-            8, True, RWTableTag.Stack, 1, 1022, 0x40, 0, 0, 0x40, *31*[0],  # stack push + decompression (value)
-            bytecode_hash, 3, 0x40,  # bytecode lookup
+    verify_steps(
+        rlc_store=rlc_store,
+        tables=tables,
+        steps=[
+            StepState(
+                execution_result=ExecutionResult.PUSH,
+                rw_counter=8,
+                call_id=1,
+                is_root=True,
+                is_create=False,
+                opcode_source=bytecode_hash,
+                program_counter=0,
+                stack_pointer=1024,
+                gas_left=3,
+            ),
+            StepState(
+                execution_result=ExecutionResult.STOP,
+                rw_counter=9,
+                call_id=1,
+                is_root=True,
+                is_create=False,
+                opcode_source=bytecode_hash,
+                program_counter=1 + len(value_be_bytes),
+                stack_pointer=1023,
+                gas_left=0,
+            ),
         ],
-        tables=tables,
     )
-    next = Step(
-        core=CoreState(
-            rw_counter=9,
-            execution_result=ExecutionResult.ADD,
-            call_id=1,
-        ),
-        call=CallState(
-            is_root=True,
-            is_create=False,
-            opcode_source=bytecode_hash,
-            program_counter=4,
-            stack_pointer=1022,
-            gas_left=3,
-        ),
-        allocations=[],
-        tables=tables,
-    )
-
-    main(curr, next, r, is_first_step=False, is_final_step=False)

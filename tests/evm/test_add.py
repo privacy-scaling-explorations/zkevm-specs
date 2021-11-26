@@ -1,71 +1,69 @@
+import pytest
+from typing import Optional
 from zkevm_specs.evm import (
-    main, Opcode, ExecutionResult, CoreState, CallState, Step,
-    Tables, RWTableTag,
+    ExecutionResult, Tables, RWTableTag, RW,
+    StepState, verify_steps, Opcode
 )
-from zkevm_specs.util import linear_combine, keccak256
+from zkevm_specs.util import keccak256, hex_to_word, rand_bytes, RLCStore
 
 
-# TODO: Parametrize r, a, b and then generate bytecode and table automatically
-def test_add():
-    r = 1
-    bytecode = bytes.fromhex('602060400100')
-    bytecode_hash = linear_combine(keccak256(bytecode), r)
+TESTING_DATA = (
+    (Opcode.ADD, hex_to_word('030201'), hex_to_word('060504'), hex_to_word('090705')),
+    (Opcode.SUB, hex_to_word('090705'), hex_to_word('060504'), hex_to_word('030201')),
+    (Opcode.ADD, rand_bytes(), rand_bytes(), None),
+    (Opcode.SUB, rand_bytes(), rand_bytes(), None),
+)
+
+
+@pytest.mark.parametrize("opcode, a_bytes, b_bytes, c_bytes", TESTING_DATA)
+def test_add(opcode: Opcode, a_bytes: bytes, b_bytes: bytes, c_bytes: Optional[bytes]):
+    rlc_store = RLCStore()
+
+    a = rlc_store.to_rlc(a_bytes)
+    b = rlc_store.to_rlc(b_bytes)
+    c = rlc_store.to_rlc(c_bytes) if c_bytes is not None else (
+        rlc_store.add(a, b) if opcode == Opcode.ADD else rlc_store.sub(a, b))[0]
+
+    bytecode = bytes.fromhex(f'7f{b_bytes.hex()}7f{a_bytes.hex()}{opcode.hex()}00')
+    bytecode_hash = rlc_store.to_rlc(keccak256(bytecode))
+
     tables = Tables(
         tx_table=set(),
         bytecode_table=set(
             [(bytecode_hash, i, byte) for (i, byte) in enumerate(bytecode)],
         ),
         rw_table=set([
-            (9,  False, RWTableTag.Stack, 1, 1022, 0x40, 0, 0),
-            (10, False, RWTableTag.Stack, 1, 1023, 0x20, 0, 0),
-            (11,  True, RWTableTag.Stack, 1, 1023, 0x60, 0, 0),
+            (9,   RW.Read, RWTableTag.Stack, 1, 1022, a, 0, 0),
+            (10,  RW.Read, RWTableTag.Stack, 1, 1023, b, 0, 0),
+            (11, RW.Write, RWTableTag.Stack, 1, 1023, c, 0, 0),
         ]),
     )
 
-    curr = Step(
-        core=CoreState(
-            rw_counter=9,
-            execution_result=ExecutionResult.ADD,
-            call_id=1,
-        ),
-        call=CallState(
-            is_root=True,
-            is_create=False,
-            opcode_source=bytecode_hash,
-            program_counter=4,
-            stack_pointer=1022,
-            gas_left=3,
-        ),
-        allocations=[
-            bytecode_hash, 4, Opcode.ADD,  # bytecode lookup
-            0,  # swap
-            *32*[0],  # carry
-            0, 0, 0, 0, 0, 0, 0, 0,  # next gas_left decompression
-            9,  False, RWTableTag.Stack, 1, 1022, 0x40, 0, 0,  # stack pop (a)
-            10, False, RWTableTag.Stack, 1, 1023, 0x20, 0, 0,  # stack pop (b)
-            11,  True, RWTableTag.Stack, 1, 1023, 0x60, 0, 0,  # stack push (c)
-            0x40, *31*[0],  # decompression (a)
-            0x20, *31*[0],  # decompression (b)
-            0x60, *31*[0],  # decompression (c)
+    verify_steps(
+        rlc_store=rlc_store,
+        tables=tables,
+        steps=[
+            StepState(
+                execution_result=ExecutionResult.ADD,
+                rw_counter=9,
+                call_id=1,
+                is_root=True,
+                is_create=False,
+                opcode_source=bytecode_hash,
+                program_counter=66,
+                stack_pointer=1022,
+                gas_left=3,
+            ),
+            StepState(
+                execution_result=ExecutionResult.STOP,
+                rw_counter=12,
+                call_id=1,
+                is_root=True,
+                is_create=False,
+                opcode_source=bytecode_hash,
+                program_counter=67,
+                stack_pointer=1023,
+                gas_left=0,
+            ),
         ],
-        tables=tables,
     )
-    next = Step(
-        core=CoreState(
-            rw_counter=12,
-            execution_result=ExecutionResult.STOP,
-            call_id=1,
-        ),
-        call=CallState(
-            is_root=True,
-            is_create=False,
-            opcode_source=bytecode_hash,
-            program_counter=5,
-            stack_pointer=1023,
-            gas_left=0,
-        ),
-        allocations=[],
-        tables=tables,
-    )
-
-    main(curr, next, r, is_first_step=False, is_final_step=False)
