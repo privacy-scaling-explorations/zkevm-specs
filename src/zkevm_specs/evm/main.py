@@ -1,15 +1,10 @@
-from typing import Optional, Sequence
+from typing import Sequence
 
 from ..util.arithmetic import RLCStore
 from .execution import (
     add,
     begin_tx,
     push,
-    # call,
-    # error_invalid_opcode,
-    # error_stack_overflow,
-    # error_stack_underflow,
-    # error_depth,
 )
 from .execution_result import ExecutionResult
 from .instruction import Instruction
@@ -42,22 +37,12 @@ def verify_step(
 
     if instruction.curr.execution_result == ExecutionResult.BEGIN_TX:
         begin_tx(instruction, is_first_step)
-    # opcode's successful cases
+    # Opcode's successful cases
     elif instruction.curr.execution_result == ExecutionResult.ADD:
         add(instruction)
     elif instruction.curr.execution_result == ExecutionResult.PUSH:
         push(instruction)
-    # elif instruction.curr.execution_result == ExecutionResult.CALL:
-    #     call(instruction)
-    # error cases
-    # elif instruction.curr.execution_result == ExecutionResult.ERROR_INVALID_CODE:
-    #     error_invalid_opcode(instruction)
-    # elif instruction.curr.execution_result == ExecutionResult.ERROR_STACK_OVERFLOW:
-    #     error_stack_overflow(instruction)
-    # elif instruction.curr.execution_result == ExecutionResult.ERROR_STACK_UNDERFLOW:
-    #     error_stack_underflow(instruction)
-    # elif instruction.curr.execution_result == ExecutionResult.ERROR_DEPTH:
-    #     error_depth(instruction)
+    # Error cases
     else:
         raise NotImplementedError
 

@@ -32,7 +32,6 @@ class FixedTableTag(IntEnum):
     StateWriteOpcode = auto()  # opcode, 0, 0
     StackOverflow = auto()  # opcode, stack_pointer, 0
     StackUnderflow = auto()  # opcode, stack_pointer, 0
-    OOGConstant = auto()  # opcode, gas, 0
 
 
 class TxContextFieldTag(IntEnum):
