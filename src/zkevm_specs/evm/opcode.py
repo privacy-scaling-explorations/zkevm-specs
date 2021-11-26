@@ -149,6 +149,12 @@ class Opcode(IntEnum):
     def hex(self) -> str:
         return '{:02x}'.format(self)
 
+    def constant_gas_cost(self) -> int:
+        return OPCODE_INFO_MAP[self].constant_gas_cost
+
+    def has_dynamic_gas(self) -> bool:
+        return OPCODE_INFO_MAP[self].has_dynamic_gas
+
 
 class OpcodeInfo:
     """
@@ -157,7 +163,7 @@ class OpcodeInfo:
 
     min_stack_pointer: int
     max_stack_pointer: int
-    constant_gas: int
+    constant_gas_cost: int
     has_dynamic_gas: bool
     pure_memory_expansion_info: Tuple[
         int,  # offset stack_pointer_offset
@@ -169,13 +175,13 @@ class OpcodeInfo:
         self,
         min_stack_pointer: int,
         max_stack_pointer: int,
-        constant_gas: int,
+        constant_gas_cost: int,
         has_dynamic_gas: bool = False,
         pure_memory_expansion_info: Union[Tuple[int, int, int], None] = None,
     ) -> None:
         self.min_stack_pointer = min_stack_pointer
         self.max_stack_pointer = max_stack_pointer
-        self.constant_gas = constant_gas
+        self.constant_gas_cost = constant_gas_cost
         self.has_dynamic_gas = has_dynamic_gas
         self.pure_memory_expansion_info = pure_memory_expansion_info
 
@@ -326,7 +332,7 @@ OPCODE_INFO_MAP: Final[Dict[Opcode, OpcodeInfo]] = dict({
 })
 
 
-def valid_opcodes() -> Sequence[int]:
+def valid_opcodes() -> Sequence[Opcode]:
     return list(Opcode)
 
 
@@ -354,13 +360,11 @@ def stack_underflow_pairs() -> Sequence[Tuple[int, int]]:
     return pairs
 
 
-def oog_constant_pairs() -> Sequence[Tuple[int, int]]:
+def opcode_constant_gas_cost_pairs() -> Sequence[Tuple[int, int]]:
     pairs = []
     for opcode in valid_opcodes():
-        opcode_info = OPCODE_INFO_MAP[opcode]
-        if opcode_info.constant_gas > 0 and not opcode_info.has_dynamic_gas:
-            for gas in range(opcode_info.constant_gas):
-                pairs.append((opcode, gas))
+        if not opcode.has_dynamic_gas() and opcode.constant_gas_cost() > 0:
+            pairs.append((opcode, opcode.constant_gas_cost()))
     return pairs
 
 

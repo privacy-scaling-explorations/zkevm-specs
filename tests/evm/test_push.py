@@ -1,9 +1,10 @@
 import pytest
+
 from zkevm_specs.evm import (
-    ExecutionResult, Tables, RWTableTag, RW,
-    StepState, verify_steps, Opcode
+    ExecutionResult, StepState, Opcode, verify_steps, Tables,
+    RWTableTag, RW, Bytecode,
 )
-from zkevm_specs.util import keccak256, rand_bytes, RLCStore
+from zkevm_specs.util import rand_bytes, RLCStore
 
 
 TESTING_DATA = tuple([
@@ -22,14 +23,12 @@ def test_push(opcode: Opcode, value_be_bytes: bytes):
 
     value = rlc_store.to_rlc(bytes(reversed(value_be_bytes)))
 
-    bytecode = bytes.fromhex(f'{opcode.hex()}{value_be_bytes.hex()}00')
-    bytecode_hash = rlc_store.to_rlc(keccak256(bytecode))
+    bytecode = Bytecode(f'{opcode.hex()}{value_be_bytes.hex()}00')
+    bytecode_hash = rlc_store.to_rlc(bytecode.hash, 32)
 
     tables = Tables(
         tx_table=set(),
-        bytecode_table=set(
-            [(bytecode_hash, i, byte) for (i, byte) in enumerate(bytecode)],
-        ),
+        bytecode_table=set(bytecode.table_assignments(rlc_store)),
         rw_table=set([
             (8, RW.Write, RWTableTag.Stack, 1, 1023, value, 0, 0),
         ]),

@@ -83,9 +83,7 @@ class RWTableTag(IntEnum):
         return self in [
             RWTableTag.TxAccessListAccount,
             RWTableTag.TxAccessListStorageSlot,
-            RWTableTag.AccountNonce,
-            RWTableTag.AccountBalance,
-            RWTableTag.AccountCodeHash,
+            RWTableTag.Account,
             RWTableTag.AccountStorage,
         ]
 

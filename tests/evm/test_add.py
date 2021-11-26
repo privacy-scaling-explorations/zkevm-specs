@@ -1,10 +1,11 @@
 import pytest
+
 from typing import Optional
 from zkevm_specs.evm import (
-    ExecutionResult, Tables, RWTableTag, RW,
-    StepState, verify_steps, Opcode
+    ExecutionResult, StepState, Opcode, verify_steps, Tables,
+    RWTableTag, RW, Bytecode,
 )
-from zkevm_specs.util import keccak256, hex_to_word, rand_bytes, RLCStore
+from zkevm_specs.util import hex_to_word, rand_bytes, RLCStore
 
 
 TESTING_DATA = (
@@ -24,14 +25,12 @@ def test_add(opcode: Opcode, a_bytes: bytes, b_bytes: bytes, c_bytes: Optional[b
     c = rlc_store.to_rlc(c_bytes) if c_bytes is not None else (
         rlc_store.add(a, b) if opcode == Opcode.ADD else rlc_store.sub(a, b))[0]
 
-    bytecode = bytes.fromhex(f'7f{b_bytes.hex()}7f{a_bytes.hex()}{opcode.hex()}00')
-    bytecode_hash = rlc_store.to_rlc(keccak256(bytecode))
+    bytecode = Bytecode(f'7f{b_bytes.hex()}7f{a_bytes.hex()}{opcode.hex()}00')
+    bytecode_hash = rlc_store.to_rlc(bytecode.hash, 32)
 
     tables = Tables(
         tx_table=set(),
-        bytecode_table=set(
-            [(bytecode_hash, i, byte) for (i, byte) in enumerate(bytecode)],
-        ),
+        bytecode_table=set(bytecode.table_assignments(rlc_store)),
         rw_table=set([
             (9,   RW.Read, RWTableTag.Stack, 1, 1022, a, 0, 0),
             (10,  RW.Read, RWTableTag.Stack, 1, 1023, b, 0, 0),

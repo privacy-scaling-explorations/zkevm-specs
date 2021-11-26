@@ -3,7 +3,7 @@ from typing import Optional, Sequence
 from ..util.arithmetic import RLCStore
 from .execution import (
     add,
-    # begin_tx,
+    begin_tx,
     push,
     # call,
     # error_invalid_opcode,
@@ -21,8 +21,8 @@ def verify_steps(
     rlc_store: RLCStore,
     tables: Tables,
     steps: Sequence[StepState],
-    begin_with_first_step: Optional[bool] = False,
-    end_with_final_step: Optional[bool] = False,
+    begin_with_first_step: bool = False,
+    end_with_final_step: bool = False,
 ):
     for idx in range(len(steps)-1):
         verify_step(
@@ -34,14 +34,14 @@ def verify_steps(
 
 def verify_step(
     instruction: Instruction,
-    is_first_step: Optional[bool] = False,
-    is_final_step: Optional[bool] = False,
+    is_first_step: bool = False,
+    is_final_step: bool = False,
 ):
     if is_first_step:
         instruction.constrain_equal(instruction.curr.execution_result, ExecutionResult.BEGIN_TX)
 
-    # if instruction.curr.execution_result == ExecutionResult.BEGIN_TX:
-    #     begin_tx(instruction)
+    if instruction.curr.execution_result == ExecutionResult.BEGIN_TX:
+        begin_tx(instruction, is_first_step)
     # opcode's successful cases
     elif instruction.curr.execution_result == ExecutionResult.ADD:
         add(instruction)

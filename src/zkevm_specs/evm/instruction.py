@@ -3,9 +3,12 @@ from enum import IntEnum, auto
 from typing import Optional, Sequence, Tuple, Union
 
 from ..util import Array4, Array8, linear_combine, RLCStore
-from .opcode import Opcode, OPCODE_INFO_MAP
+from .opcode import Opcode
 from .step import StepState
-from .table import CallContextFieldTag, Tables, FixedTableTag, TxContextFieldTag, RWTableTag, Tables
+from .table import (
+    AccountFieldTag, CallContextFieldTag, Tables,
+    FixedTableTag, TxContextFieldTag, RW, RWTableTag,
+)
 
 
 class ConstraintUnsatFailure(Exception):
@@ -65,22 +68,30 @@ class Instruction:
     def constrain_bool(self, value: int):
         assert value in [0, 1]
 
-    def constrain_word_addition(self, a: int, b: int, c: int):
-        a_bytes = self.rlc_to_bytes(a, 32)
-        b_bytes = self.rlc_to_bytes(b, 32)
-        c_bytes = self.rlc_to_bytes(c, 32)
+    def constrain_transfer(
+        self,
+        sender_address: int,
+        receiver_address: int,
+        value: int,
+        gas_fee: int = 0,
+        is_persistent: bool = True,
+        rw_counter_end_of_reversion: int = 0,
+    ):
+        sender_balance, sender_balance_prev = self.account_write(
+            sender_address, AccountFieldTag.Balance, is_persistent, rw_counter_end_of_reversion)
+        receiver_balance, receiver_balance_prev = self.account_write(
+            receiver_address, AccountFieldTag.Balance, is_persistent, rw_counter_end_of_reversion)
 
-        a_lo = self.bytes_to_int(a_bytes[:16])
-        a_hi = self.bytes_to_int(a_bytes[16:])
-        b_lo = self.bytes_to_int(b_bytes[:16])
-        b_hi = self.bytes_to_int(b_bytes[16:])
-        c_lo = self.bytes_to_int(c_bytes[:16])
-        c_hi = self.bytes_to_int(c_bytes[16:])
-        carry_lo = (a_lo + b_lo) > c_lo
-        carry_hi = (a_hi + b_hi + carry_lo) > c_hi
+        value_with_gas_fee, overflow = self.add_word(value, gas_fee)
+        self.constrain_zero(overflow)
 
-        self.constrain_equal(a_lo + b_lo, c_lo + carry_lo * (1 << 128))
-        self.constrain_equal(a_hi + b_hi + carry_lo, c_hi + carry_hi * (1 << 128))
+        result, carry = self.add_word(value_with_gas_fee, sender_balance)
+        self.constrain_equal(sender_balance_prev, result)
+        self.constrain_zero(carry)
+
+        result, carry = self.add_word(value, receiver_balance_prev)
+        self.constrain_equal(receiver_balance, result)
+        self.constrain_zero(carry)
 
     def constrain_state_transition(self, **kwargs: Transition):
         for key in [
@@ -112,16 +123,43 @@ class Instruction:
             else:
                 raise ValueError("unreacheable")
 
+    def constrain_new_context_state_transition(
+        self,
+        rw_counter: Transition,
+        call_id: Transition,
+        is_root: Transition,
+        is_create: Transition,
+        opcode_source: Transition,
+        gas_left: Transition,
+        state_write_counter: Transition,
+    ):
+        self.constrain_state_transition(
+            rw_counter=rw_counter,
+            call_id=call_id,
+            is_root=is_root,
+            is_create=is_create,
+            opcode_source=opcode_source,
+            gas_left=gas_left,
+            state_write_counter=state_write_counter,
+            # Initailization unconditionally
+            program_counter=Transition.to(0),
+            stack_pointer=Transition.to(1024),
+            memory_size=Transition.to(0),
+            last_callee_id=Transition.to(0),
+            last_callee_returndata_offset=Transition.to(0),
+            last_callee_returndata_length=Transition.to(0),
+        )
+
     def constrain_same_context_state_transition(
         self,
-        opcode: Opcode,
+        opcode: int,
         rw_counter: Transition = Transition.persistent(),
         program_counter: Transition = Transition.persistent(),
         stack_pointer: Transition = Transition.persistent(),
         memory_size: Transition = Transition.persistent(),
         dynamic_gas_cost: int = 0,
     ):
-        gas_cost = OPCODE_INFO_MAP[opcode].constant_gas + dynamic_gas_cost
+        gas_cost = Opcode(opcode).constant_gas_cost() + dynamic_gas_cost
 
         self.int_to_bytes(self.curr.gas_left - gas_cost, 8)
 
@@ -147,6 +185,42 @@ class Instruction:
 
     def pair_select(self, value: int, lhs: int, rhs: int) -> Tuple[bool, bool]:
         return value == lhs, value == rhs
+
+    def add_word(self, a: int, b: int) -> Tuple[int, bool]:
+        a_bytes = self.rlc_to_bytes(a, 32)
+        b_bytes = self.rlc_to_bytes(b, 32)
+
+        a_lo = self.bytes_to_int(a_bytes[:16])
+        a_hi = self.bytes_to_int(a_bytes[16:])
+        b_lo = self.bytes_to_int(b_bytes[:16])
+        b_hi = self.bytes_to_int(b_bytes[16:])
+        carry_lo, c_lo = divmod(a_lo + b_lo, 1 << 128)
+        carry_hi, c_hi = divmod(a_hi + b_hi + carry_lo, 1 << 128)
+
+        c_bytes = c_lo.to_bytes(16, 'little') + c_hi.to_bytes(16, 'little')
+
+        return self.rlc_store.to_rlc(c_bytes), carry_hi
+
+    def mul_word_with_u64(self, word: int, u64: int) -> Tuple[int, int]:
+        word_bytes = self.rlc_to_bytes(word, 32)
+
+        word_q1 = self.bytes_to_int(word_bytes[:8])
+        word_q2 = self.bytes_to_int(word_bytes[8:16])
+        word_q3 = self.bytes_to_int(word_bytes[16:24])
+        word_q4 = self.bytes_to_int(word_bytes[24:])
+
+        carry_q1, result_q1 = divmod(word_q1 * u64, 1 << 64)
+        carry_q2, result_q2 = divmod(word_q2 * u64 + carry_q1, 1 << 64)
+        carry_q3, result_q3 = divmod(word_q3 * u64 + carry_q2, 1 << 64)
+        carry_q4, result_q4 = divmod(word_q4 * u64 + carry_q3, 1 << 64)
+
+        result_bytes = \
+            result_q1.to_bytes(8, 'little') + \
+            result_q2.to_bytes(8, 'little') + \
+            result_q3.to_bytes(8, 'little') + \
+            result_q4.to_bytes(8, 'little')
+
+        return self.rlc_store.to_rlc(result_bytes), carry_q4
 
     def rlc_to_bytes(self, value: int, n_bytes: int) -> Sequence[int]:
         bytes = self.rlc_store.to_bytes(value)
@@ -179,15 +253,15 @@ class Instruction:
     def bytecode_lookup(self, bytecode_hash: int, index: int) -> int:
         return self.tables.bytecode_lookup([bytecode_hash, index])[2]
 
-    def rw_lookup(self, is_write: bool, tag: RWTableTag, inputs: Sequence[int], rw_counter: Optional[int] = None) -> Array8:
+    def rw_lookup(self, rw: RW, tag: RWTableTag, inputs: Sequence[int], rw_counter: Optional[int] = None) -> Array8:
         if rw_counter is None:
             rw_counter = self.curr.rw_counter + self.rw_counter_offset
             self.rw_counter_offset += 1
 
-        return self.tables.rw_lookup([rw_counter, is_write, tag] + inputs)
+        return self.tables.rw_lookup([rw_counter, rw, tag] + inputs)
 
     def r_lookup(self, tag: RWTableTag, inputs: Sequence[int]) -> Array8:
-        return self.rw_lookup(False, tag, inputs)
+        return self.rw_lookup(RW.Read, tag, inputs)
 
     def w_lookup(
         self,
@@ -196,10 +270,14 @@ class Instruction:
         is_persistent: bool = True,
         rw_counter_end_of_reversion: int = 0,
     ) -> Array8:
-        if tag.write_only_persistent() and not is_persistent:
-            return self.rw_lookup(True, tag, inputs)
+        row = 8 * [None]
 
-        row = self.rw_lookup(True, tag, inputs)
+        if tag.write_only_persistent():
+            if is_persistent:
+                row = self.rw_lookup(RW.Write, tag, inputs)
+            return row
+
+        row = self.rw_lookup(RW.Write, tag, inputs)
 
         if tag.write_with_reversion():
             rw_counter = rw_counter_end_of_reversion - self.curr.state_write_counter
@@ -218,7 +296,7 @@ class Instruction:
                     inputs[3], inputs[4] = inputs[4], inputs[3]
                 elif tag == RWTableTag.AccountDestructed:
                     inputs[2], inputs[3] = inputs[3], inputs[2]
-                self.rw_lookup(True, tag, inputs, rw_counter=rw_counter)
+                self.rw_lookup(RW.Write, tag, inputs, rw_counter=rw_counter)
 
         return row
 
@@ -234,11 +312,11 @@ class Instruction:
         else:
             return self.bytecode_lookup(self.curr.opcode_source, index)
 
-    def call_context_lookup(self, tag: CallContextFieldTag, is_write: bool = False, call_id: Union[int, None] = None) -> int:
+    def call_context_lookup(self, tag: CallContextFieldTag, rw: RW = RW.Read, call_id: Union[int, None] = None) -> int:
         if call_id is None:
             call_id = self.curr.call_id
 
-        return self.rw_lookup(is_write, RWTableTag.CallContext, [call_id, tag])[5]
+        return self.rw_lookup(rw, RWTableTag.CallContext, [call_id, tag])[5]
 
     def stack_pop(self) -> int:
         stack_pointer_offset = self.stack_pointer_offset
@@ -249,6 +327,56 @@ class Instruction:
         self.stack_pointer_offset -= 1
         return self.stack_lookup(True, self.stack_pointer_offset)
 
-    def stack_lookup(self, is_write: bool, stack_pointer_offset: int) -> int:
+    def stack_lookup(self, rw: RW, stack_pointer_offset: int) -> int:
         stack_pointer = self.curr.stack_pointer + stack_pointer_offset
-        return self.rw_lookup(is_write, RWTableTag.Stack, [self.curr.call_id, stack_pointer])[5]
+        return self.rw_lookup(rw, RWTableTag.Stack, [self.curr.call_id, stack_pointer])[5]
+
+    def account_write(
+        self,
+        account_address: int,
+        account_field_tag: AccountFieldTag,
+        is_persistent: bool = True,
+        rw_counter_end_of_reversion: int = 0,
+    ) -> Tuple[int, int]:
+        row = self.w_lookup(
+            RWTableTag.Account,
+            [account_address, account_field_tag],
+            is_persistent,
+            rw_counter_end_of_reversion,
+        )
+        return row[5], row[6]
+
+    def account_read(self, account_address: int, account_field_tag: AccountFieldTag) -> Tuple[int, int]:
+        row = self.r_lookup(RWTableTag.Account, [account_address, account_field_tag])
+        return row[5], row[6]
+
+    def add_account_to_access_list(
+        self,
+        tx_id: int,
+        account_address: int,
+        is_persistent: bool = True,
+        rw_counter_end_of_reversion: int = 0,
+    ) -> bool:
+        row = self.w_lookup(
+            RWTableTag.TxAccessListAccount,
+            [tx_id, account_address],
+            is_persistent,
+            rw_counter_end_of_reversion,
+        )
+        return row[5] - row[6]
+
+    def add_storage_slot_to_access_list(
+        self,
+        tx_id: int,
+        account_address: int,
+        storage_slot: int,
+        is_persistent: bool = True,
+        rw_counter_end_of_reversion: int = 0,
+    ) -> bool:
+        row = self.w_lookup(
+            RWTableTag.TxAccessListAccount,
+            [tx_id, account_address, storage_slot],
+            is_persistent,
+            rw_counter_end_of_reversion,
+        )
+        return row[5] - row[6]

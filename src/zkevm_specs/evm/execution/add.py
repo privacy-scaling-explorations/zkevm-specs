@@ -11,9 +11,8 @@ def add(instruction: Instruction):
     b = instruction.stack_pop()
     c = instruction.stack_push()
 
-    instruction.constrain_word_addition(
-        instruction.select(is_sub, c, a),
-        b,
+    instruction.constrain_equal(
+        instruction.add_word(instruction.select(is_sub, c, a), b)[0],
         instruction.select(is_sub, a, c),
     )
 

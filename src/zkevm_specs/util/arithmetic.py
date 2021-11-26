@@ -1,15 +1,15 @@
-from typing import Dict, Sequence, Tuple
+from typing import Dict, Sequence, Tuple, Union
 from Crypto.Random import get_random_bytes
 from Crypto.Random.random import randrange
 
 
 # BN254 scalar field size
-FP = 21888242871839275222246405745257275088548364400416034343698204186575808495617
+FP_MODULUS = 21888242871839275222246405745257275088548364400416034343698204186575808495617
 
 
-def fp_add(a: int, b: int) -> int: return (a + b) % FP
-def fp_mul(a: int, b: int) -> int: return (a * b) % FP
-def fp_inv(value: int) -> int: return pow(value, -1, FP)
+def fp_add(a: int, b: int) -> int: return (a + b) % FP_MODULUS
+def fp_mul(a: int, b: int) -> int: return (a * b) % FP_MODULUS
+def fp_inv(value: int) -> int: return pow(value, -1, FP_MODULUS)
 
 
 def le_to_int(bytes: Sequence[int]) -> int:
@@ -29,16 +29,20 @@ class RLCStore:
     randomness: int
     rlc_to_bytes: Dict[int, bytes] = dict()
 
-    def __init__(self, randomness: int = randrange(0, FP)) -> None:
+    def __init__(self, randomness: int = randrange(0, FP_MODULUS)) -> None:
         self.randomness = randomness
         for byte in range(256):
             self.to_rlc([byte])
 
-    def to_rlc(self, seq: Sequence[int]) -> int:
+    def to_rlc(self, seq_or_int: Union[Sequence[int], int], n_bytes: int = 0) -> int:
+        seq = seq_or_int
+        if type(seq_or_int) == int:
+            seq = seq_or_int.to_bytes(n_bytes, 'little')
         rlc = linear_combine(seq, self.randomness)
 
         if rlc in self.rlc_to_bytes:
-            assert self.rlc_to_bytes[rlc] == bytes(seq), \
+            maxlen = max(len(self.rlc_to_bytes[rlc]), len(seq))
+            assert self.rlc_to_bytes[rlc].rjust(maxlen, b'\x00') == bytes(seq).rjust(maxlen, b'\x00'), \
                 f"Random lienar combination collision on {self.rlc_to_bytes[rlc]} and {bytes(seq)} with randomness {self.randomness}"
         else:
             self.rlc_to_bytes[rlc] = bytes(seq)
@@ -52,23 +56,24 @@ class RLCStore:
         bytes = get_random_bytes(n_bytes)
         return self.to_rlc(bytes), bytes
 
-    def add(self, lhs: int, rhs: int, mod: int = 2**256) -> Tuple[int, bytes, bool]:
+    def add(self, lhs: int, rhs: int, modulus: int = 2**256) -> Tuple[int, bytes, bool]:
         lhs_bytes = self.to_bytes(lhs)
         rhs_bytes = self.to_bytes(rhs)
         carry, result = divmod(
             int.from_bytes(lhs_bytes, 'little') + int.from_bytes(rhs_bytes, 'little'),
-            mod,
+            modulus,
         )
         result_bytes = result.to_bytes(32, 'little')
         return self.to_rlc(result_bytes), result_bytes, carry > 0
 
-    def sub(self, lhs: int, rhs: int, mod: int = 2**256) -> Tuple[int, bytes, bool]:
+    def sub(self, lhs: int, rhs: int, modulus: int = 2**256) -> Tuple[int, bytes, bool]:
         lhs_bytes = self.to_bytes(lhs)
         rhs_bytes = self.to_bytes(rhs)
         borrow, result = divmod(
             int.from_bytes(lhs_bytes, 'little') - int.from_bytes(rhs_bytes, 'little'),
-            mod,
+            modulus,
         )
-        assert result + int.from_bytes(rhs_bytes, 'little') == int.from_bytes(lhs_bytes, 'little') + (borrow < 0) * mod
+        assert result + int.from_bytes(rhs_bytes, 'little') == int.from_bytes(lhs_bytes,
+                                                                              'little') + (borrow < 0) * modulus
         result_bytes = result.to_bytes(32, 'little')
         return self.to_rlc(result_bytes), result_bytes, borrow < 0

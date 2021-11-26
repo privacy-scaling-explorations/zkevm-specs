@@ -1,4 +1,4 @@
-# from .begin_tx import *
+from .begin_tx import *
 
 # Opcode's successful cases
 from .add import *
