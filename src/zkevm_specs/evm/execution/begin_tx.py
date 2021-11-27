@@ -27,7 +27,7 @@ def begin_tx(instruction: Instruction, is_first_step: bool = False):
     # Buy gas
     tx_gas = instruction.tx_lookup(tx_id, TxContextFieldTag.Gas)
     tx_gas_fee_cap = instruction.tx_lookup(tx_id, TxContextFieldTag.GasFeeCap)
-    gas_fee, carry = instruction.mul_word_with_u64(tx_gas_fee_cap, tx_gas)
+    gas_fee, carry = instruction.mul_word_by_u64(tx_gas_fee_cap, tx_gas)
     instruction.constrain_zero(carry)
 
     # TODO: Use intrinsic gas (EIP 2028, 2930)

@@ -201,26 +201,18 @@ class Instruction:
 
         return self.rlc_store.to_rlc(c_bytes), carry_hi
 
-    def mul_word_with_u64(self, word: int, u64: int) -> Tuple[int, int]:
-        word_bytes = self.rlc_to_bytes(word, 32)
+    def mul_word_by_u64(self, multiplicand: int, multiplier: int) -> Tuple[int, int]:
+        multiplicand_bytes = self.rlc_to_bytes(multiplicand, 32)
 
-        word_q1 = self.bytes_to_int(word_bytes[:8])
-        word_q2 = self.bytes_to_int(word_bytes[8:16])
-        word_q3 = self.bytes_to_int(word_bytes[16:24])
-        word_q4 = self.bytes_to_int(word_bytes[24:])
+        multiplicand_lo = self.bytes_to_int(multiplicand_bytes[:16])
+        multiplicand_hi = self.bytes_to_int(multiplicand_bytes[16:])
 
-        carry_q1, result_q1 = divmod(word_q1 * u64, 1 << 64)
-        carry_q2, result_q2 = divmod(word_q2 * u64 + carry_q1, 1 << 64)
-        carry_q3, result_q3 = divmod(word_q3 * u64 + carry_q2, 1 << 64)
-        carry_q4, result_q4 = divmod(word_q4 * u64 + carry_q3, 1 << 64)
+        quotient_lo, product_lo = divmod(multiplicand_lo * multiplier, 1 << 128)
+        quotient_hi, product_hi = divmod(multiplicand_hi * multiplier + quotient_lo, 1 << 128)
 
-        result_bytes = \
-            result_q1.to_bytes(8, 'little') + \
-            result_q2.to_bytes(8, 'little') + \
-            result_q3.to_bytes(8, 'little') + \
-            result_q4.to_bytes(8, 'little')
+        product_bytes = product_lo.to_bytes(16, 'little') + product_hi.to_bytes(16, 'little')
 
-        return self.rlc_store.to_rlc(result_bytes), carry_q4
+        return self.rlc_store.to_rlc(product_bytes), quotient_hi
 
     def rlc_to_bytes(self, value: int, n_bytes: int) -> Sequence[int]:
         bytes = self.rlc_store.to_bytes(value)
