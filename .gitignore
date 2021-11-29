@@ -1,2 +1,6 @@
 __pycache__
 *.egg-info
+.python-version
+.mypy_cache
+.pytest_cache
+build
