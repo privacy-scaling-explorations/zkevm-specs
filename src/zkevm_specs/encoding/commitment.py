@@ -39,5 +39,5 @@ def check_commitment(x8s: Sequence[U8], commitment: int, random: int, range_tabl
     assert sum(x8 * random ** i for i, x8 in enumerate(x8s)) == commitment
 
     for i in range(0, 32, 2):
-        low8, high8 = x8s[i], x8s[i+1]
+        low8, high8 = x8s[i], x8s[i + 1]
         assert range_table.lookup(a=low8, b=high8)

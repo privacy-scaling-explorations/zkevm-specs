@@ -9,18 +9,18 @@ Even the popped value will never be used, it still does lookup to ensure the sta
 ## Constraints
 
 1. opId = OpcodeId(0x50)
-2. state transition:  
-    - gc + 1
-    - stack_pointer + 1
-    - pc + 1
-    - gas + 2
+2. state transition:
+   - gc + 1
+   - stack_pointer + 1
+   - pc + 1
+   - gas + 2
 3. Lookups: 1 busmapping lookups
    - A value is indeed at the top of the stack
 
 ## Exceptions
 
 1. stack underflow: when stack is empty
-2. gas out: remaining gas is not enough 
+2. gas out: remaining gas is not enough
 
 ## Code
 

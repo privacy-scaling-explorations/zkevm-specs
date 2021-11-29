@@ -1,6 +1,7 @@
 # Simulate EVM memory
 
-class Memory():
+
+class Memory:
     def __init__(self):
         self.data = {}
         self.size = 0
@@ -13,7 +14,7 @@ class Memory():
             return 0
 
     def write(self, address, value):
-        assert(0 <= value and value < 256)
+        assert 0 <= value and value < 256
         self.track_size(address)
         self.data[address] = value
 
@@ -21,7 +22,7 @@ class Memory():
         if is_write:
             self.write(address, value)
         else:
-            assert(self.read(address) == value)
+            assert self.read(address) == value
 
     def track_size(self, address):
         if address >= self.size:
@@ -29,4 +30,3 @@ class Memory():
 
     def memory_size(self):
         return (self.size + 31) // 32
-

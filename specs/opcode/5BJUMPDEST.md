@@ -1,8 +1,10 @@
 # JUMPDEST op code
-## Procedure
-   JUMPDEST is a special opcode which only marks an address that can be jumped to. In other words, it is metadata to annotate possible jump destinations.  
 
-   For example, in the below opcode sequences, JUMPDEST marks '004D' can be jumped to, if there is no JUMPDEST annotation, Jumping to '004D' will fail as jump opcode will require JUMPDEST as a valid destination.  
+## Procedure
+
+JUMPDEST is a special opcode which only marks an address that can be jumped to. In other words, it is metadata to annotate possible jump destinations.
+
+For example, in the below opcode sequences, JUMPDEST marks '004D' can be jumped to, if there is no JUMPDEST annotation, Jumping to '004D' will fail as jump opcode will require JUMPDEST as a valid destination.
 
 ```
       004D    5B  JUMPDEST  
@@ -24,17 +26,20 @@
 ```
 
 ## Constraints
-   1. opId = OpcodeId(0x5B)
-   2. state transition:  
-      - gc
-      - stack_pointer  
-      - pc + 1  
-      - gas + 1  
-   3. lookups: 
-       none (since there is no operands required)
+
+1. opId = OpcodeId(0x5B)
+2. state transition:
+   - gc
+   - stack_pointer
+   - pc + 1
+   - gas + 1
+3. lookups:
+   none (since there is no operands required)
 
 ## Exceptions
-   1. gas out:   remaining gas is not enough
- 
-## Code  
-   none
+
+1. gas out:   remaining gas is not enough
+
+## Code
+
+none

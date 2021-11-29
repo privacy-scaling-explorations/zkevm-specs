@@ -3,7 +3,7 @@ from ..encoding import U256, is_circuit_code
 # Simulate evm stack and pop & dupx op code
 
 
-class Stack():
+class Stack:
     def __init__(self):
         self.items = [0] * 1024
         self.top = 1024
@@ -24,7 +24,7 @@ class Stack():
     def peek(self):
         # self.items.append(item)
         return self.items[self.top]
-    
+
     # simulate evm pop op code
     def pop(self):
         if self.top == 1024:
@@ -44,7 +44,7 @@ class Stack():
     # simulate evm swapx op code from swap1 to swap16
     def swapx(self, pos):
         if pos < 1 or pos > 16:
-            return # or throw error
+            return  # or throw error
 
         top_word = self.items[self.top]
         swap_word = self.items[self.top + pos]

@@ -5,6 +5,7 @@ from zkevm_specs.opcode import check_lt, check_gt
 from zkevm_specs.opcode.stack import Stack
 from common import NASTY_AB_VALUES
 
+
 def gen_lt_gt_witness(a: U256, b: U256, is_gt: bool):
     a8s = u256_to_u8s(a)
     b8s = u256_to_u8s(b)
@@ -22,8 +23,8 @@ def gen_lt_gt_witness(a: U256, b: U256, is_gt: bool):
         result8s[0] = 1
     c8s = u256_to_u8s(c)
 
-    aa_low128 = aa % (1<<128)
-    bb_low128 = bb % (1<<128)
+    aa_low128 = aa % (1 << 128)
+    bb_low128 = bb % (1 << 128)
     carry = 1 if bb_low128 - aa_low128 < 0 else 0
     return a8s, b8s, result8s, c8s, carry
 
