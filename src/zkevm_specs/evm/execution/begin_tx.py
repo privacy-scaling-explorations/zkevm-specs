@@ -7,6 +7,8 @@ def begin_tx(instruction: Instruction, is_first_step: bool = False):
     instruction.constrain_equal(instruction.curr.call_id, instruction.curr.rw_counter)
 
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
+    rw_counter_end_of_reversion = instruction.call_context_lookup(CallContextFieldTag.RWCounterEndOfReversion)
+    is_persistent = instruction.call_context_lookup(CallContextFieldTag.IsPersistent)
 
     if is_first_step:
         instruction.constrain_equal(instruction.curr.rw_counter, 1)
@@ -16,6 +18,7 @@ def begin_tx(instruction: Instruction, is_first_step: bool = False):
     tx_callee_address = instruction.tx_lookup(tx_id, TxContextFieldTag.CalleeAddress)
     tx_is_create = instruction.tx_lookup(tx_id, TxContextFieldTag.IsCreate)
     tx_value = instruction.tx_lookup(tx_id, TxContextFieldTag.Value)
+    tx_calldata_length = instruction.tx_lookup(tx_id, TxContextFieldTag.CalldataLength)
 
     # Verify nonce
     tx_nonce = instruction.tx_lookup(tx_id, TxContextFieldTag.Nonce)
@@ -24,7 +27,7 @@ def begin_tx(instruction: Instruction, is_first_step: bool = False):
     instruction.constrain_equal(nonce, nonce_prev + 1)
 
     # TODO: Implement EIP 1559 (currently this assumes gas_fee_cap <= basefee + gas_tip_cap)
-    # Buy gas
+    # Calculate gas fee
     tx_gas = instruction.tx_lookup(tx_id, TxContextFieldTag.Gas)
     tx_gas_fee_cap = instruction.tx_lookup(tx_id, TxContextFieldTag.GasFeeCap)
     gas_fee, carry = instruction.mul_word_by_u64(tx_gas_fee_cap, tx_gas)
@@ -39,8 +42,6 @@ def begin_tx(instruction: Instruction, is_first_step: bool = False):
     instruction.constrain_equal(instruction.add_account_to_access_list(tx_id, tx_callee_address), 1)
 
     # Verify transfer
-    rw_counter_end_of_reversion = instruction.call_context_lookup(CallContextFieldTag.RWCounterEndOfReversion)
-    is_persistent = instruction.call_context_lookup(CallContextFieldTag.IsPersistent)
     instruction.constrain_transfer(
         tx_caller_address,
         tx_callee_address,
@@ -61,8 +62,6 @@ def begin_tx(instruction: Instruction, is_first_step: bool = False):
         code_hash, _ = instruction.account_read(tx_callee_address, AccountFieldTag.CodeHash)
 
         # Setup next call's context
-        tx_calldata_length = instruction.tx_lookup(tx_id, TxContextFieldTag.CalldataLength)
-
         # Note that:
         # - CallerCallId, ReturndataOffset, ReturndataLength, Result
         #   should never be used in root call, so unnecessary to check
@@ -80,7 +79,7 @@ def begin_tx(instruction: Instruction, is_first_step: bool = False):
             instruction.constrain_equal(instruction.call_context_lookup(tag), value)
 
         instruction.constrain_new_context_state_transition(
-            rw_counter=Transition.delta(17),
+            rw_counter=Transition.delta(16),
             call_id=Transition.persistent(),
             is_root=Transition.to(True),
             is_create=Transition.to(False),
