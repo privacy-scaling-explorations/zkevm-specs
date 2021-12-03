@@ -89,14 +89,11 @@ class Instruction:
             receiver_address, AccountFieldTag.Balance, is_persistent, rw_counter_end_of_reversion
         )
 
-        value_with_gas_fee, overflow = self.add_word(value, gas_fee)
-        self.constrain_zero(overflow)
-
-        result, carry = self.add_word(value_with_gas_fee, sender_balance)
+        result, carry = self.add_words([sender_balance, value, gas_fee])
         self.constrain_equal(sender_balance_prev, result)
         self.constrain_zero(carry)
 
-        result, carry = self.add_word(value, receiver_balance_prev)
+        result, carry = self.add_words([value, receiver_balance_prev])
         self.constrain_equal(receiver_balance, result)
         self.constrain_zero(carry)
 
@@ -196,20 +193,18 @@ class Instruction:
     def pair_select(self, value: int, lhs: int, rhs: int) -> Tuple[bool, bool]:
         return value == lhs, value == rhs
 
-    def add_word(self, a: int, b: int) -> Tuple[int, bool]:
-        a_bytes = self.rlc_to_bytes(a, 32)
-        b_bytes = self.rlc_to_bytes(b, 32)
+    def add_words(self, addends: Sequence[int]) -> Tuple[int, int]:
+        def rlc_to_lo_hi(rlc: int) -> Tuple[Sequence[int], Sequence[int]]:
+            bytes = self.rlc_to_bytes(rlc, 32)
+            return self.bytes_to_int(bytes[:16]), self.bytes_to_int(bytes[16:])
 
-        a_lo = self.bytes_to_int(a_bytes[:16])
-        a_hi = self.bytes_to_int(a_bytes[16:])
-        b_lo = self.bytes_to_int(b_bytes[:16])
-        b_hi = self.bytes_to_int(b_bytes[16:])
-        carry_lo, c_lo = divmod(a_lo + b_lo, 1 << 128)
-        carry_hi, c_hi = divmod(a_hi + b_hi + carry_lo, 1 << 128)
+        addends_lo, addends_hi = list(zip(*map(rlc_to_lo_hi, addends)))
+        carry_lo, sum_lo = divmod(sum(addends_lo), 1 << 128)
+        carry_hi, sum_hi = divmod(sum(addends_hi) + carry_lo, 1 << 128)
 
-        c_bytes = c_lo.to_bytes(16, "little") + c_hi.to_bytes(16, "little")
+        sum_bytes = sum_lo.to_bytes(16, "little") + sum_hi.to_bytes(16, "little")
 
-        return self.rlc_store.to_rlc(c_bytes), carry_hi
+        return self.rlc_store.to_rlc(sum_bytes), carry_hi
 
     def mul_word_by_u64(self, multiplicand: int, multiplier: int) -> Tuple[int, int]:
         multiplicand_bytes = self.rlc_to_bytes(multiplicand, 32)
@@ -254,6 +249,20 @@ class Instruction:
 
     def bytecode_lookup(self, bytecode_hash: int, index: int, is_code: int) -> int:
         return self.tables.bytecode_lookup([bytecode_hash, index, Tables._, is_code])[2]
+
+    def opcode_lookup(self, is_code: bool) -> int:
+        index = self.curr.program_counter + self.program_counter_offset
+        self.program_counter_offset += 1
+
+        return self.opcode_lookup_at(index, is_code)
+
+    def opcode_lookup_at(self, index: int, is_code: bool) -> int:
+        if self.curr.is_root and self.curr.is_create:
+            raise NotImplementedError(
+                "The opcode source when is_root and is_create (root creation call) is not determined yet"
+            )
+        else:
+            return self.bytecode_lookup(self.curr.opcode_source, index, is_code)
 
     def rw_lookup(self, rw: RW, tag: RWTableTag, inputs: Sequence[int], rw_counter: Optional[int] = None) -> Array8:
         if rw_counter is None:
@@ -303,20 +312,6 @@ class Instruction:
             self.rw_lookup(RW.Write, tag, inputs, rw_counter=rw_counter)
 
         return row
-
-    def opcode_lookup(self, is_code: bool) -> int:
-        index = self.curr.program_counter + self.program_counter_offset
-        self.program_counter_offset += 1
-
-        return self.opcode_lookup_at(index, is_code)
-
-    def opcode_lookup_at(self, index: int, is_code: bool) -> int:
-        if self.curr.is_root and self.curr.is_create:
-            raise NotImplementedError(
-                "The opcode source when is_root and is_create (root creation call) is not determined yet"
-            )
-        else:
-            return self.bytecode_lookup(self.curr.opcode_source, index, is_code)
 
     def call_context_lookup(self, tag: CallContextFieldTag, rw: RW = RW.Read, call_id: Union[int, None] = None) -> int:
         if call_id is None:
