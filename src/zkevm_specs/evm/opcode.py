@@ -149,6 +149,24 @@ class Opcode(IntEnum):
     def hex(self) -> str:
         return "{:02x}".format(self)
 
+    def bytes(self) -> bytes:
+        return bytes([self])
+
+    def is_push(self) -> bool:
+        return Opcode.PUSH1 <= self <= Opcode.PUSH32
+
+    def is_dup(self) -> bool:
+        return Opcode.DUP1 <= self <= Opcode.DUP16
+
+    def is_swap(self) -> bool:
+        return Opcode.SWAP1 <= self <= Opcode.SWAP16
+
+    def max_stack_pointer(self) -> int:
+        return OPCODE_INFO_MAP[self].max_stack_pointer
+
+    def min_stack_pointer(self) -> int:
+        return OPCODE_INFO_MAP[self].min_stack_pointer
+
     def constant_gas_cost(self) -> int:
         return OPCODE_INFO_MAP[self].constant_gas_cost
 
@@ -339,15 +357,14 @@ def valid_opcodes() -> Sequence[Opcode]:
 
 
 def invalid_opcodes() -> Sequence[int]:
-    return [opcode for opcode in range(256) if opcode not in OPCODE_INFO_MAP]
+    return [opcode for opcode in range(256) if opcode not in valid_opcodes()]
 
 
 def stack_overflow_pairs() -> Sequence[Tuple[int, int]]:
     pairs = []
     for opcode in valid_opcodes():
-        opcode_info = OPCODE_INFO_MAP[opcode]
-        if opcode_info.min_stack_pointer > 0:
-            for stack_pointer in range(opcode_info.min_stack_pointer):
+        if opcode.min_stack_pointer() > 0:
+            for stack_pointer in range(opcode.min_stack_pointer()):
                 pairs.append((opcode, stack_pointer))
     return pairs
 
@@ -355,9 +372,8 @@ def stack_overflow_pairs() -> Sequence[Tuple[int, int]]:
 def stack_underflow_pairs() -> Sequence[Tuple[int, int]]:
     pairs = []
     for opcode in valid_opcodes():
-        opcode_info = OPCODE_INFO_MAP[opcode]
-        if opcode_info.max_stack_pointer < 1024:
-            for stack_pointer in range(opcode_info.max_stack_pointer, 1024):
+        if opcode.max_stack_pointer() < 1024:
+            for stack_pointer in range(opcode.max_stack_pointer(), 1024):
                 pairs.append((opcode, stack_pointer + 1))
     return pairs
 

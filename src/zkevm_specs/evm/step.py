@@ -6,7 +6,7 @@ class StepState:
     Step state EVM circuit tracks step by step and used to ensure the
     execution trace is verified continuously and chronologically.
     It includes fields that are used from beginning to end like is_root,
-    is_create and opcode_source.
+    is_create and code_source.
     It also includes call's mutable states which change almost every step like
     program_counter and stack_pointer.
     """
@@ -18,15 +18,15 @@ class StepState:
     # The following 3 fields decide the opcode source. There are 2 possible
     # cases:
     # 1. Root creation call (is_root and is_create)
-    #   It was planned to set the opcode_source to tx_id, then lookup tx_table's
+    #   It was planned to set the code_source to tx_id, then lookup tx_table's
     #   CallData field directly, but is still yet to be determined.
     #   See the issue https://github.com/appliedzkp/zkevm-specs/issues/73 for
     #   further discussion.
     # 2. Deployed contract interaction or internal creation call
-    #   We set opcode_source to bytecode_hash and lookup bytecode_table.
+    #   We set code_source to bytecode_hash and lookup bytecode_table.
     is_root: bool
     is_create: bool
-    opcode_source: int
+    code_source: int
 
     # The following fields change almost every step.
     program_counter: int
@@ -45,10 +45,10 @@ class StepState:
         self,
         execution_state: ExecutionState,
         rw_counter: int,
-        call_id: int,
+        call_id: int = 0,
         is_root: bool = False,
         is_create: bool = False,
-        opcode_source: int = 0,
+        code_source: int = 0,
         program_counter: int = 0,
         stack_pointer: int = 1024,
         gas_left: int = 0,
@@ -63,7 +63,7 @@ class StepState:
         self.call_id = call_id
         self.is_root = is_root
         self.is_create = is_create
-        self.opcode_source = opcode_source
+        self.code_source = code_source
         self.program_counter = program_counter
         self.stack_pointer = stack_pointer
         self.gas_left = gas_left

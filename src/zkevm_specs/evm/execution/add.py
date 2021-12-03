@@ -16,7 +16,7 @@ def add(instruction: Instruction):
         instruction.select(is_sub, a, c),
     )
 
-    instruction.constrain_same_context_state_transition(
+    instruction.step_state_transition_in_same_context(
         opcode,
         rw_counter=Transition.delta(3),
         program_counter=Transition.delta(1),

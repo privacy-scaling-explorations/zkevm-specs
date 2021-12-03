@@ -19,7 +19,7 @@ def caller(instruction: Instruction):
         ),
     )
 
-    instruction.constrain_same_context_state_transition(
+    instruction.step_state_transition_in_same_context(
         opcode,
         rw_counter=Transition.delta(2),
         program_counter=Transition.delta(1),

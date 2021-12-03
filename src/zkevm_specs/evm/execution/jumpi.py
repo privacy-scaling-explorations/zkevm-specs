@@ -1,3 +1,4 @@
+from ...util.param import N_BYTES_PROGRAM_COUNTER
 from ..instruction import Instruction, Transition
 from ..opcode import Opcode
 
@@ -16,12 +17,12 @@ def jumpi(instruction: Instruction):
         pc_diff = 1
     else:
         # Get `dest` raw value in max 8 bytes
-        dest_value = instruction.bytes_to_int(instruction.rlc_to_bytes(dest, 8))
+        dest_value = instruction.rlc_to_int_exact(dest, N_BYTES_PROGRAM_COUNTER)
         pc_diff = dest_value - instruction.curr.program_counter
         # assert Opcode.JUMPDEST == instruction.opcode_lookup_at(dest_value, True)
         instruction.constrain_equal(Opcode.JUMPDEST, instruction.opcode_lookup_at(dest_value, True))
 
-    instruction.constrain_same_context_state_transition(
+    instruction.step_state_transition_in_same_context(
         opcode,
         rw_counter=Transition.delta(2),
         program_counter=Transition.delta(pc_diff),

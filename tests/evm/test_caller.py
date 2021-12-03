@@ -3,7 +3,6 @@ import pytest
 from zkevm_specs.evm import (
     ExecutionState,
     StepState,
-    Opcode,
     verify_steps,
     Tables,
     RWTableTag,
@@ -11,34 +10,33 @@ from zkevm_specs.evm import (
     CallContextFieldTag,
     Bytecode,
 )
-from zkevm_specs.util import RLCStore, U160
+from zkevm_specs.util import rand_address, rand_fp, RLC, U160
 
 
-TESTING_DATA = ((Opcode.CALLER, 0x030201),)
+TESTING_DATA = (0x030201, rand_address())
 
 
-@pytest.mark.parametrize("opcode, address", TESTING_DATA)
-def test_caller(opcode: Opcode, address: U160):
-    rlc_store = RLCStore()
+@pytest.mark.parametrize("caller", TESTING_DATA)
+def test_caller(caller: U160):
+    randomness = rand_fp()
 
-    caller_rlc = rlc_store.to_rlc(address.to_bytes(20, "little"))
+    bytecode = Bytecode().caller()
+    bytecode_hash = RLC(bytecode.hash(), randomness)
 
-    bytecode = Bytecode(f"{opcode.hex()}00")
-    bytecode_hash = rlc_store.to_rlc(bytecode.hash, 32)
     tables = Tables(
         block_table=set(),
         tx_table=set(),
-        bytecode_table=set(bytecode.table_assignments(rlc_store)),
+        bytecode_table=set(bytecode.table_assignments(randomness)),
         rw_table=set(
             [
-                (9, RW.Write, RWTableTag.Stack, 1, 1023, caller_rlc, 0, 0),
-                (10, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.CallerAddress, address, 0, 0),
+                (9, RW.Write, RWTableTag.Stack, 1, 1023, RLC(caller, randomness, 20), 0, 0),
+                (10, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.CallerAddress, caller, 0, 0),
             ]
         ),
     )
 
     verify_steps(
-        rlc_store=rlc_store,
+        randomness=randomness,
         tables=tables,
         steps=[
             StepState(
@@ -47,7 +45,7 @@ def test_caller(opcode: Opcode, address: U160):
                 call_id=1,
                 is_root=True,
                 is_create=False,
-                opcode_source=bytecode_hash,
+                code_source=bytecode_hash,
                 program_counter=0,
                 stack_pointer=1024,
                 gas_left=2,
@@ -58,7 +56,7 @@ def test_caller(opcode: Opcode, address: U160):
                 call_id=1,
                 is_root=True,
                 is_create=False,
-                opcode_source=bytecode_hash,
+                code_source=bytecode_hash,
                 program_counter=1,
                 stack_pointer=1023,
                 gas_left=0,

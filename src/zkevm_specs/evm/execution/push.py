@@ -8,17 +8,17 @@ def push(instruction: Instruction):
     num_additional_pushed = num_pushed - 1
 
     value = instruction.stack_push()
-    value_bytes = instruction.rlc_to_bytes(value, 32)
+    value_le_bytes = instruction.rlc_to_le_bytes(value)
     selectors = instruction.continuous_selectors(num_additional_pushed, 31)
 
     for idx in range(32):
         index = instruction.curr.program_counter + num_pushed - idx
         if idx == 0 or selectors[idx - 1]:
-            instruction.constrain_equal(value_bytes[idx], instruction.opcode_lookup_at(index, False))
+            instruction.constrain_equal(value_le_bytes[idx], instruction.opcode_lookup_at(index, False))
         else:
-            instruction.constrain_zero(value_bytes[idx])
+            instruction.constrain_zero(value_le_bytes[idx])
 
-    instruction.constrain_same_context_state_transition(
+    instruction.step_state_transition_in_same_context(
         opcode,
         rw_counter=Transition.delta(1),
         program_counter=Transition.delta(1 + num_pushed),

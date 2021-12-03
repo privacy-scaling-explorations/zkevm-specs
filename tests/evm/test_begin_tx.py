@@ -13,7 +13,7 @@ from zkevm_specs.evm import (
     Transaction,
     Bytecode,
 )
-from zkevm_specs.util import RLCStore, rand_address, rand_range
+from zkevm_specs.util import rand_fp, rand_address, rand_range, RLC
 
 TESTING_DATA = (
     # Transfer 1 ether, successfully
@@ -41,31 +41,31 @@ TESTING_DATA = (
 
 @pytest.mark.parametrize("tx, result", TESTING_DATA)
 def test_begin_tx(tx: Transaction, result: bool):
-    rlc_store = RLCStore()
+    randomness = rand_fp()
 
-    block = Block()
-    caller_balance_prev = rlc_store.to_rlc(int(1e20), 32)
-    callee_balance_prev = rlc_store.to_rlc(0, 32)
-    caller_balance = rlc_store.to_rlc(int(1e20) - (tx.value + tx.gas * tx.gas_price), 32)
-    callee_balance = rlc_store.to_rlc(tx.value, 32)
+    rw_counter_end_of_reversion = 23
+    caller_balance_prev = int(1e20)
+    callee_balance_prev = 0
+    caller_balance = caller_balance_prev - (tx.value + tx.gas * tx.gas_price)
+    callee_balance = callee_balance_prev + tx.value
 
-    bytecode = Bytecode("00")
-    bytecode_hash = rlc_store.to_rlc(bytecode.hash, 32)
+    bytecode = Bytecode()
+    bytecode_hash = RLC(bytecode.hash(), randomness)
 
     tables = Tables(
-        block_table=set(block.table_assignments(rlc_store)),
-        tx_table=set(tx.table_assignments(rlc_store)),
-        bytecode_table=set(bytecode.table_assignments(rlc_store)),
+        block_table=set(Block().table_assignments(randomness)),
+        tx_table=set(tx.table_assignments(randomness)),
+        bytecode_table=set(bytecode.table_assignments(randomness)),
         rw_table=set(
             [
-                (1, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.TxId, 1, 0, 0),
+                (1, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.TxId, tx.id, 0, 0),
                 (
                     2,
                     RW.Read,
                     RWTableTag.CallContext,
                     1,
-                    CallContextFieldTag.RWCounterEndOfReversion,
-                    0 if result else 20,
+                    CallContextFieldTag.RwCounterEndOfReversion,
+                    0 if result else rw_counter_end_of_reversion,
                     0,
                     0,
                 ),
@@ -79,8 +79,8 @@ def test_begin_tx(tx: Transaction, result: bool):
                     RWTableTag.Account,
                     tx.caller_address,
                     AccountFieldTag.Balance,
-                    caller_balance,
-                    caller_balance_prev,
+                    RLC(caller_balance, randomness),
+                    RLC(caller_balance_prev, randomness),
                     0,
                 ),
                 (
@@ -89,8 +89,8 @@ def test_begin_tx(tx: Transaction, result: bool):
                     RWTableTag.Account,
                     tx.callee_address,
                     AccountFieldTag.Balance,
-                    callee_balance,
-                    callee_balance_prev,
+                    RLC(callee_balance, randomness),
+                    RLC(callee_balance_prev, randomness),
                     0,
                 ),
                 (
@@ -114,7 +114,7 @@ def test_begin_tx(tx: Transaction, result: bool):
                     RWTableTag.CallContext,
                     1,
                     CallContextFieldTag.Value,
-                    rlc_store.to_rlc(tx.value, 32),
+                    RLC(tx.value, randomness),
                     0,
                     0,
                 ),
@@ -125,23 +125,23 @@ def test_begin_tx(tx: Transaction, result: bool):
                 if result
                 else [
                     (
-                        19,
+                        rw_counter_end_of_reversion - 1,
                         RW.Write,
                         RWTableTag.Account,
                         tx.callee_address,
                         AccountFieldTag.Balance,
-                        callee_balance_prev,
-                        callee_balance,
+                        RLC(callee_balance_prev, randomness),
+                        RLC(callee_balance, randomness),
                         0,
                     ),
                     (
-                        20,
+                        rw_counter_end_of_reversion,
                         RW.Write,
                         RWTableTag.Account,
                         tx.caller_address,
                         AccountFieldTag.Balance,
-                        caller_balance_prev,
-                        caller_balance,
+                        RLC(caller_balance_prev, randomness),
+                        RLC(caller_balance, randomness),
                         0,
                     ),
                 ]
@@ -150,13 +150,12 @@ def test_begin_tx(tx: Transaction, result: bool):
     )
 
     verify_steps(
-        rlc_store=rlc_store,
+        randomness=randomness,
         tables=tables,
         steps=[
             StepState(
                 execution_state=ExecutionState.BeginTx,
                 rw_counter=1,
-                call_id=1,
             ),
             StepState(
                 execution_state=ExecutionState.STOP if result else ExecutionState.REVERT,
@@ -164,7 +163,7 @@ def test_begin_tx(tx: Transaction, result: bool):
                 call_id=1,
                 is_root=True,
                 is_create=False,
-                opcode_source=bytecode_hash,
+                code_source=bytecode_hash,
                 program_counter=0,
                 stack_pointer=1024,
                 gas_left=0,

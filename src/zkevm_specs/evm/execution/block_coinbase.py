@@ -11,10 +11,15 @@ def coinbase(instruction: Instruction):
     # check block table for coinbase address
     instruction.constrain_equal(
         address,
-        instruction.bytes_to_rlc(instruction.int_to_bytes(instruction.block_lookup(BlockContextFieldTag.Coinbase), 20)),
+        instruction.bytes_to_rlc(
+            instruction.int_to_bytes(
+                instruction.block_context_lookup(BlockContextFieldTag.Coinbase),
+                20,
+            )
+        ),
     )
 
-    instruction.constrain_same_context_state_transition(
+    instruction.step_state_transition_in_same_context(
         opcode,
         rw_counter=Transition.delta(1),
         program_counter=Transition.delta(1),
