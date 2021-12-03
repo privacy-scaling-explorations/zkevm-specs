@@ -77,9 +77,9 @@ class Instruction:
         is_persistent: bool = True,
         rw_counter_end_of_reversion: int = 0,
     ):
-        sender_balance, sender_balance_prev = self.account_write(
+        sender_balance, sender_balance_prev = self.account_write_with_reversion(
             sender_address, AccountFieldTag.Balance, is_persistent, rw_counter_end_of_reversion)
-        receiver_balance, receiver_balance_prev = self.account_write(
+        receiver_balance, receiver_balance_prev = self.account_write_with_reversion(
             receiver_address, AccountFieldTag.Balance, is_persistent, rw_counter_end_of_reversion)
 
         value_with_gas_fee, overflow = self.add_word(value, gas_fee)
@@ -252,43 +252,45 @@ class Instruction:
 
         return self.tables.rw_lookup([rw_counter, rw, tag] + inputs)
 
-    def r_lookup(self, tag: RWTableTag, inputs: Sequence[int]) -> Array8:
-        return self.rw_lookup(RW.Read, tag, inputs)
+    def state_write_only_persistent(
+        self,
+        tag: RWTableTag,
+        inputs: Sequence[int],
+        is_persistent: bool = True,
+    ) -> Array8:
+        assert tag.write_only_persistent()
 
-    def w_lookup(
+        if is_persistent:
+            return self.rw_lookup(RW.Write, tag, inputs)
+
+        return 8 * [None]
+
+    def state_write_with_reversion(
         self,
         tag: RWTableTag,
         inputs: Sequence[int],
         is_persistent: bool = True,
         rw_counter_end_of_reversion: int = 0,
     ) -> Array8:
-        row = 8 * [None]
-
-        if tag.write_only_persistent():
-            if is_persistent:
-                row = self.rw_lookup(RW.Write, tag, inputs)
-            return row
+        assert tag.write_with_reversion()
 
         row = self.rw_lookup(RW.Write, tag, inputs)
 
-        if tag.write_with_reversion():
-            rw_counter = rw_counter_end_of_reversion - self.curr.state_write_counter
-            self.curr.state_write_counter += 1
+        rw_counter = rw_counter_end_of_reversion - self.curr.state_write_counter - self.state_write_counter_offset
+        self.state_write_counter_offset += 1
 
-            if not is_persistent:
-                # Swap value and value_prev
-                inputs = row[3:]
-                if tag == RWTableTag.TxAccessListAccount:
-                    inputs[2], inputs[3] = inputs[3], inputs[2]
-                elif tag == RWTableTag.TxAccessListStorageSlot:
-                    inputs[3], inputs[4] = inputs[4], inputs[3]
-                elif tag == RWTableTag.Account:
-                    inputs[2], inputs[3] = inputs[3], inputs[2]
-                elif tag == RWTableTag.AccountStorage:
-                    inputs[3], inputs[4] = inputs[4], inputs[3]
-                elif tag == RWTableTag.AccountDestructed:
-                    inputs[2], inputs[3] = inputs[3], inputs[2]
-                self.rw_lookup(RW.Write, tag, inputs, rw_counter=rw_counter)
+        if not is_persistent:
+            # Swap value and value_prev
+            inputs = list(row[3:])
+            if tag == RWTableTag.TxAccessListAccount:
+                inputs[2], inputs[3] = inputs[3], inputs[2]
+            elif tag == RWTableTag.TxAccessListStorageSlot:
+                inputs[3], inputs[4] = inputs[4], inputs[3]
+            elif tag == RWTableTag.Account:
+                inputs[2], inputs[3] = inputs[3], inputs[2]
+            elif tag == RWTableTag.AccountStorage:
+                inputs[3], inputs[4] = inputs[4], inputs[3]
+            self.rw_lookup(RW.Write, tag, inputs, rw_counter=rw_counter)
 
         return row
 
@@ -327,10 +329,22 @@ class Instruction:
         self,
         account_address: int,
         account_field_tag: AccountFieldTag,
+    ) -> Tuple[int, int]:
+        row = self.rw_lookup(
+            RW.Write,
+            RWTableTag.Account,
+            [account_address, account_field_tag],
+        )
+        return row[5], row[6]
+
+    def account_write_with_reversion(
+        self,
+        account_address: int,
+        account_field_tag: AccountFieldTag,
         is_persistent: bool = True,
         rw_counter_end_of_reversion: int = 0,
     ) -> Tuple[int, int]:
-        row = self.w_lookup(
+        row = self.state_write_with_reversion(
             RWTableTag.Account,
             [account_address, account_field_tag],
             is_persistent,
@@ -339,17 +353,29 @@ class Instruction:
         return row[5], row[6]
 
     def account_read(self, account_address: int, account_field_tag: AccountFieldTag) -> Tuple[int, int]:
-        row = self.r_lookup(RWTableTag.Account, [account_address, account_field_tag])
+        row = self.rw_lookup(RW.Read, RWTableTag.Account, [account_address, account_field_tag])
         return row[5], row[6]
 
     def add_account_to_access_list(
         self,
         tx_id: int,
         account_address: int,
+    ) -> bool:
+        row = self.rw_lookup(
+            RW.Write,
+            RWTableTag.TxAccessListAccount,
+            [tx_id, account_address],
+        )
+        return row[5] - row[6]
+
+    def add_account_to_access_list_with_reversion(
+        self,
+        tx_id: int,
+        account_address: int,
         is_persistent: bool = True,
         rw_counter_end_of_reversion: int = 0,
     ) -> bool:
-        row = self.w_lookup(
+        row = self.state_write_with_reversion(
             RWTableTag.TxAccessListAccount,
             [tx_id, account_address],
             is_persistent,
@@ -362,10 +388,22 @@ class Instruction:
         tx_id: int,
         account_address: int,
         storage_slot: int,
+    ) -> bool:
+        row = self.state_write_with_reversion(
+            RWTableTag.TxAccessListAccount,
+            [tx_id, account_address, storage_slot],
+        )
+        return row[5] - row[6]
+
+    def add_storage_slot_to_access_list_with_reversion(
+        self,
+        tx_id: int,
+        account_address: int,
+        storage_slot: int,
         is_persistent: bool = True,
         rw_counter_end_of_reversion: int = 0,
     ) -> bool:
-        row = self.w_lookup(
+        row = self.state_write_with_reversion(
             RWTableTag.TxAccessListAccount,
             [tx_id, account_address, storage_slot],
             is_persistent,

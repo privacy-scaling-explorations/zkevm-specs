@@ -85,5 +85,5 @@ def begin_tx(instruction: Instruction, is_first_step: bool = False):
             is_create=Transition.to(False),
             opcode_source=Transition.to(code_hash),
             gas_left=Transition.to(gas_left),
-            state_write_counter=Transition.to(0),
+            state_write_counter=Transition.to(2),
         )

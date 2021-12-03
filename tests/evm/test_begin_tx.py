@@ -4,27 +4,25 @@ from zkevm_specs.evm import (
     ExecutionResult, StepState, verify_steps, Tables,
     RWTableTag, RW, AccountFieldTag, CallContextFieldTag, Transaction, Bytecode
 )
-from zkevm_specs.util import RLCStore
+from zkevm_specs.util import RLCStore, rand_address, rand_range
+
+TESTING_DATA = (
+    (Transaction(caller_address=0xfe, callee_address=0xff, value=int(1e18)), True),
+    (Transaction(caller_address=0xfe, callee_address=0xff, value=int(1e18)), False),
+    (Transaction(caller_address=rand_address(), callee_address=rand_address(), value=rand_range(1e20)), True),
+    (Transaction(caller_address=rand_address(), callee_address=rand_address(), gas_fee_cap=rand_range(42857142857143)), True),
+    (Transaction(caller_address=rand_address(), callee_address=rand_address(), value=rand_range(1e20)), False),
+    (Transaction(caller_address=rand_address(), callee_address=rand_address(), gas_fee_cap=rand_range(42857142857143)), False),
+)
 
 
-def test_begin_tx():
+@pytest.mark.parametrize("tx, result", TESTING_DATA)
+def test_begin_tx(tx: Transaction, result: bool):
     rlc_store = RLCStore()
 
-    tx = Transaction(
-        id=1,
-        nonce=0,
-        gas=21000,
-        gas_tip_cap=0,
-        gas_fee_cap=int(2e9),
-        caller_address=0xfe,
-        callee_address=0xff,
-        value=0,
-        calldata=bytes(),
-    )
-
-    caller_balance_prev = rlc_store.to_rlc(int(1e18), 32)
+    caller_balance_prev = rlc_store.to_rlc(int(1e20), 32)
     callee_balance_prev = rlc_store.to_rlc(0, 32)
-    caller_balance = rlc_store.to_rlc(int(1e18) - (tx.value + tx.gas * tx.gas_fee_cap), 32)
+    caller_balance = rlc_store.to_rlc(int(1e20) - (tx.value + tx.gas * tx.gas_fee_cap), 32)
     callee_balance = rlc_store.to_rlc(tx.value, 32)
 
     bytecode = Bytecode('00')
@@ -35,8 +33,8 @@ def test_begin_tx():
         bytecode_table=set(bytecode.table_assignments(rlc_store)),
         rw_table=set([
             (1, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.TxId, 1, 0, 0),
-            (2, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.RWCounterEndOfReversion, 0, 0, 0),
-            (3, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.IsPersistent, 1, 0, 0),
+            (2, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.RWCounterEndOfReversion, 0 if result else 20, 0, 0),
+            (3, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.IsPersistent, result, 0, 0),
             (4, RW.Write, RWTableTag.Account, tx.caller_address, AccountFieldTag.Nonce, tx.nonce + 1, tx.nonce, 0),
             (5, RW.Write, RWTableTag.TxAccessListAccount, 1, tx.caller_address, 1, 0, 0),
             (6, RW.Write, RWTableTag.TxAccessListAccount, 1, tx.callee_address, 1, 0, 0),
@@ -52,7 +50,12 @@ def test_begin_tx():
             (14, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.CalldataLength, len(tx.calldata), 0, 0),
             (15, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.Value, rlc_store.to_rlc(tx.value, 32), 0, 0),
             (16, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.IsStatic, 0, 0, 0),
-        ]),
+        ] + ([] if result else [
+            (19, RW.Write, RWTableTag.Account, tx.callee_address,
+             AccountFieldTag.Balance, callee_balance_prev, callee_balance, 0),
+            (20, RW.Write, RWTableTag.Account, tx.caller_address,
+             AccountFieldTag.Balance, caller_balance_prev, caller_balance, 0),
+        ])),
     )
 
     verify_steps(
@@ -65,7 +68,7 @@ def test_begin_tx():
                 call_id=1,
             ),
             StepState(
-                execution_result=ExecutionResult.STOP,
+                execution_result=ExecutionResult.STOP if result else ExecutionResult.REVERT,
                 rw_counter=17,
                 call_id=1,
                 is_root=True,
@@ -74,6 +77,7 @@ def test_begin_tx():
                 program_counter=0,
                 stack_pointer=1024,
                 gas_left=0,
+                state_write_counter=2,
             ),
         ],
         begin_with_first_step=True,
