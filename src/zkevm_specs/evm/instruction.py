@@ -302,7 +302,8 @@ class Instruction:
 
     def opcode_lookup_at(self, index: int) -> int:
         if self.curr.is_root and self.curr.is_create:
-            return self.tx_lookup(self.curr.opcode_source, TxContextFieldTag.Calldata, index)
+            raise NotImplementedError(
+                "The opcode source when is_root and is_create (root creation call) is not determined yet")
         else:
             return self.bytecode_lookup(self.curr.opcode_source, index)
 
