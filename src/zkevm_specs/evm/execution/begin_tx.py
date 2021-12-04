@@ -42,7 +42,7 @@ def begin_tx(instruction: Instruction, is_first_step: bool = False):
     instruction.constrain_equal(instruction.add_account_to_access_list(tx_id, tx_callee_address), 1)
 
     # Verify transfer
-    instruction.constrain_transfer(
+    instruction.transfer_with_gas_fee(
         tx_caller_address,
         tx_callee_address,
         tx_value,

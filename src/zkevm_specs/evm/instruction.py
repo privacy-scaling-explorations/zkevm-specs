@@ -74,30 +74,6 @@ class Instruction:
     def constrain_bool(self, value: int):
         assert value in [0, 1]
 
-    def constrain_transfer(
-        self,
-        sender_address: int,
-        receiver_address: int,
-        value: int,
-        gas_fee: int = 0,
-        is_persistent: bool = True,
-        rw_counter_end_of_reversion: int = 0,
-    ):
-        sender_balance, sender_balance_prev = self.account_write_with_reversion(
-            sender_address, AccountFieldTag.Balance, is_persistent, rw_counter_end_of_reversion
-        )
-        receiver_balance, receiver_balance_prev = self.account_write_with_reversion(
-            receiver_address, AccountFieldTag.Balance, is_persistent, rw_counter_end_of_reversion
-        )
-
-        result, carry = self.add_words([sender_balance, value, gas_fee])
-        self.constrain_equal(sender_balance_prev, result)
-        self.constrain_zero(carry)
-
-        result, carry = self.add_words([value, receiver_balance_prev])
-        self.constrain_equal(receiver_balance, result)
-        self.constrain_zero(carry)
-
     def constrain_state_transition(self, **kwargs: Transition):
         for key in [
             "rw_counter",
@@ -206,6 +182,18 @@ class Instruction:
         sum_bytes = sum_lo.to_bytes(16, "little") + sum_hi.to_bytes(16, "little")
 
         return self.rlc_store.to_rlc(sum_bytes), carry_hi
+
+    def sub_word(self, minuend: int, subtrahend: int) -> Tuple[int, bool]:
+        minuend_lo, minuend_hi = self.rlc_to_lo_hi(minuend)
+        subtrahend_lo, subtrahend_hi = self.rlc_to_lo_hi(subtrahend)
+        borrow_lo = minuend_lo < subtrahend_lo
+        diff_lo = minuend_lo - subtrahend_lo + (1 << 128 if borrow_lo else 0)
+        borrow_hi = minuend_hi < subtrahend_hi + borrow_lo
+        diff_hi = minuend_hi - subtrahend_hi - borrow_lo + (1 << 128 if borrow_hi else 0)
+
+        diff_bytes = diff_lo.to_bytes(16, "little") + diff_hi.to_bytes(16, "little")
+
+        return self.rlc_store.to_rlc(diff_bytes), borrow_hi
 
     def mul_word_by_u64(self, multiplicand: int, multiplier: int) -> Tuple[int, int]:
         multiplicand_bytes = self.rlc_to_bytes(multiplicand, 32)
@@ -422,3 +410,27 @@ class Instruction:
             rw_counter_end_of_reversion,
         )
         return row[6] - row[7]
+
+    def transfer_with_gas_fee(
+        self,
+        sender_address: int,
+        receiver_address: int,
+        value: int,
+        gas_fee: int = 0,
+        is_persistent: bool = True,
+        rw_counter_end_of_reversion: int = 0,
+    ):
+        sender_balance, sender_balance_prev = self.account_write_with_reversion(
+            sender_address, AccountFieldTag.Balance, is_persistent, rw_counter_end_of_reversion
+        )
+        receiver_balance, receiver_balance_prev = self.account_write_with_reversion(
+            receiver_address, AccountFieldTag.Balance, is_persistent, rw_counter_end_of_reversion
+        )
+
+        result, carry = self.add_words([sender_balance, value, gas_fee])
+        self.constrain_equal(sender_balance_prev, result)
+        self.constrain_zero(carry)
+
+        result, carry = self.add_words([value, receiver_balance_prev])
+        self.constrain_equal(receiver_balance, result)
+        self.constrain_zero(carry)
