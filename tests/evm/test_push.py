@@ -8,6 +8,7 @@ from zkevm_specs.evm import (
     Tables,
     RWTableTag,
     RW,
+    Block,
     Bytecode,
 )
 from zkevm_specs.util import rand_bytes, RLCStore
@@ -45,6 +46,7 @@ def test_push(opcode: Opcode, value_be_bytes: bytes):
 
     verify_steps(
         rlc_store=rlc_store,
+        block=Block(),
         tables=tables,
         steps=[
             StepState(

@@ -9,6 +9,7 @@ from zkevm_specs.evm import (
     RW,
     AccountFieldTag,
     CallContextFieldTag,
+    Block,
     Transaction,
     Bytecode,
 )
@@ -20,14 +21,20 @@ TESTING_DATA = (
     (Transaction(caller_address=rand_address(), callee_address=rand_address(), value=rand_range(1e20)), True),
     (
         Transaction(
-            caller_address=rand_address(), callee_address=rand_address(), gas_fee_cap=rand_range(42857142857143)
+            caller_address=rand_address(),
+            callee_address=rand_address(),
+            gas_tip_cap=rand_range(42856142857143),
+            gas_fee_cap=rand_range(42857142857143),
         ),
         True,
     ),
     (Transaction(caller_address=rand_address(), callee_address=rand_address(), value=rand_range(1e20)), False),
     (
         Transaction(
-            caller_address=rand_address(), callee_address=rand_address(), gas_fee_cap=rand_range(42857142857143)
+            caller_address=rand_address(),
+            callee_address=rand_address(),
+            gas_tip_cap=rand_range(42856142857143),
+            gas_fee_cap=rand_range(42857142857143),
         ),
         False,
     ),
@@ -38,9 +45,10 @@ TESTING_DATA = (
 def test_begin_tx(tx: Transaction, result: bool):
     rlc_store = RLCStore()
 
+    block = Block()
     caller_balance_prev = rlc_store.to_rlc(int(1e20), 32)
     callee_balance_prev = rlc_store.to_rlc(0, 32)
-    caller_balance = rlc_store.to_rlc(int(1e20) - (tx.value + tx.gas * tx.gas_fee_cap), 32)
+    caller_balance = rlc_store.to_rlc(int(1e20) - (tx.value + tx.gas * tx.gas_price(block.base_fee)), 32)
     callee_balance = rlc_store.to_rlc(tx.value, 32)
 
     bytecode = Bytecode("00")
@@ -144,6 +152,7 @@ def test_begin_tx(tx: Transaction, result: bool):
 
     verify_steps(
         rlc_store=rlc_store,
+        block=block,
         tables=tables,
         steps=[
             StepState(
@@ -152,6 +161,7 @@ def test_begin_tx(tx: Transaction, result: bool):
                 call_id=1,
             ),
             StepState(
+                # FIXME: Add 2 PUSH ahead to make REVERT work
                 execution_state=ExecutionState.STOP if result else ExecutionState.REVERT,
                 rw_counter=17,
                 call_id=1,

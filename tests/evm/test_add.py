@@ -9,6 +9,7 @@ from zkevm_specs.evm import (
     Tables,
     RWTableTag,
     RW,
+    Block,
     Bytecode,
 )
 from zkevm_specs.util import hex_to_word, rand_bytes, RLCStore
@@ -51,6 +52,7 @@ def test_add(opcode: Opcode, a_bytes: bytes, b_bytes: bytes, c_bytes: Optional[b
 
     verify_steps(
         rlc_store=rlc_store,
+        block=Block(),
         tables=tables,
         steps=[
             StepState(

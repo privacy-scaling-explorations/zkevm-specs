@@ -10,10 +10,12 @@ from .execution_state import ExecutionState
 from .instruction import Instruction
 from .step import StepState
 from .table import Tables
+from .typing import Block
 
 
 def verify_steps(
     rlc_store: RLCStore,
+    block: Block,
     tables: Tables,
     steps: Sequence[StepState],
     begin_with_first_step: bool = False,
@@ -21,7 +23,7 @@ def verify_steps(
 ):
     for idx in range(len(steps) - 1):
         verify_step(
-            Instruction(rlc_store=rlc_store, tables=tables, curr=steps[idx], next=steps[idx + 1]),
+            Instruction(rlc_store=rlc_store, block=block, tables=tables, curr=steps[idx], next=steps[idx + 1]),
             begin_with_first_step and idx == 0,
             end_with_final_step and idx == len(steps) - 2,
         )

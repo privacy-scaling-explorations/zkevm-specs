@@ -4,6 +4,34 @@ from ..util import U64, U160, U256, Array4, RLCStore, keccak256
 from .table import TxContextFieldTag
 
 
+class Block:
+    coinbase: U160
+    gas_limit: U64
+    block_number: U256
+    time: U256
+    difficulty: U256
+    base_fee: U256
+    block_hashes: Sequence[U256]
+
+    def __init__(
+        self,
+        coinbase: U160 = 0x10,
+        gas_limit: U64 = int(15e6),
+        block_number: U256 = 0,
+        time: U256 = 0,
+        difficulty: U256 = 0,
+        base_fee: U256 = int(1e9),
+        block_hashes: Sequence[U256] = [],
+    ) -> None:
+        self.coinbase = coinbase
+        self.gas_limit = gas_limit
+        self.block_number = block_number
+        self.time = time
+        self.difficulty = difficulty
+        self.base_fee = base_fee
+        self.block_hashes = block_hashes
+
+
 class Transaction:
     id: int
     nonce: U64
@@ -36,6 +64,9 @@ class Transaction:
         self.callee_address = callee_address
         self.value = value
         self.call_data = call_data
+
+    def gas_price(self, base_fee: int) -> int:
+        return min(base_fee + self.gas_tip_cap, self.gas_fee_cap)
 
     def table_assignments(self, rlc_store: RLCStore) -> Sequence[Array4]:
         return [

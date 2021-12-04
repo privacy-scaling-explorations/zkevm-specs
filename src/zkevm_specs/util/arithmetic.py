@@ -6,6 +6,9 @@ from Crypto.Random.random import randrange
 # BN254 scalar field size
 FP_MODULUS = 21888242871839275222246405745257275088548364400416034343698204186575808495617
 
+# Maximun number of bytes with composition value that doesn't wrap around the field
+MAX_N_BYTES = 31
+
 
 def fp_add(a: int, b: int) -> int:
     return (a + b) % FP_MODULUS
@@ -20,7 +23,7 @@ def fp_inv(value: int) -> int:
 
 
 def le_to_int(bytes: Sequence[int]) -> int:
-    assert len(bytes) <= 31, "too many bytes to composite an integer in field"
+    assert len(bytes) <= MAX_N_BYTES, "too many bytes to composite an integer in field"
     return linear_combine(bytes, 256)
 
 
@@ -48,10 +51,11 @@ class RLCStore:
         rlc = linear_combine(seq, self.randomness)
 
         if rlc in self.rlc_to_bytes:
-            maxlen = max(len(self.rlc_to_bytes[rlc]), len(seq))
-            assert self.rlc_to_bytes[rlc].rjust(maxlen, b"\x00") == bytes(seq).rjust(
+            existed = self.rlc_to_bytes[rlc]
+            maxlen = max(len(existed), len(seq))
+            assert existed.ljust(maxlen, b"\x00") == bytes(seq).ljust(
                 maxlen, b"\x00"
-            ), f"Random lienar combination collision on {self.rlc_to_bytes[rlc]} and {bytes(seq)} with randomness {self.randomness}"
+            ), f"Random lienar combination collision on {existed} and {bytes(seq)} with randomness {self.randomness}"
         else:
             self.rlc_to_bytes[rlc] = bytes(seq)
 
@@ -80,9 +84,6 @@ class RLCStore:
         borrow, result = divmod(
             int.from_bytes(lhs_bytes, "little") - int.from_bytes(rhs_bytes, "little"),
             modulus,
-        )
-        assert (
-            result + int.from_bytes(rhs_bytes, "little") == int.from_bytes(lhs_bytes, "little") + (borrow < 0) * modulus
         )
         result_bytes = result.to_bytes(32, "little")
         return self.to_rlc(result_bytes), result_bytes, borrow < 0

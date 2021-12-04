@@ -2,7 +2,7 @@ from __future__ import annotations
 from enum import IntEnum, auto
 from typing import Optional, Sequence, Tuple, Union
 
-from ..util import Array4, Array8, linear_combine, RLCStore
+from ..util import Array4, Array8, linear_combine, RLCStore, MAX_N_BYTES
 from .opcode import Opcode
 from .step import StepState
 from .table import (
@@ -14,6 +14,7 @@ from .table import (
     RW,
     RWTableTag,
 )
+from .typing import Block
 
 
 class ConstraintUnsatFailure(Exception):
@@ -47,6 +48,7 @@ class Transition:
 
 class Instruction:
     rlc_store: RLCStore
+    block: Block
     tables: Tables
     curr: StepState
     next: StepState
@@ -58,8 +60,9 @@ class Instruction:
     stack_pointer_offset: int = 0
     state_write_counter_offset: int = 0
 
-    def __init__(self, rlc_store: RLCStore, tables: Tables, curr: StepState, next: StepState) -> None:
+    def __init__(self, rlc_store: RLCStore, block: Block, tables: Tables, curr: StepState, next: StepState) -> None:
         self.rlc_store = rlc_store
+        self.block = block
         self.tables = tables
         self.curr = curr
         self.next = next
@@ -194,17 +197,28 @@ class Instruction:
         return value == lhs, value == rhs
 
     def add_words(self, addends: Sequence[int]) -> Tuple[int, int]:
-        def rlc_to_lo_hi(rlc: int) -> Tuple[Sequence[int], Sequence[int]]:
-            bytes = self.rlc_to_bytes(rlc, 32)
-            return self.bytes_to_int(bytes[:16]), self.bytes_to_int(bytes[16:])
-
-        addends_lo, addends_hi = list(zip(*map(rlc_to_lo_hi, addends)))
+        addends_lo, addends_hi = list(zip(*map(self.rlc_to_lo_hi, addends)))
         carry_lo, sum_lo = divmod(sum(addends_lo), 1 << 128)
         carry_hi, sum_hi = divmod(sum(addends_hi) + carry_lo, 1 << 128)
 
-        sum_bytes = sum_lo.to_bytes(16, "little") + sum_hi.to_bytes(16, "little")
+        sum_bytes = sum_lo.to_bytes(
+            16, "little") + sum_hi.to_bytes(16, "little")
 
         return self.rlc_store.to_rlc(sum_bytes), carry_hi
+
+    def sub_word(self, minuend: int, subtrahend: int) -> Tuple[int, bool]:
+        minuend_lo, minuend_hi = self.rlc_to_lo_hi(minuend)
+        subtrahend_lo, subtrahend_hi = self.rlc_to_lo_hi(subtrahend)
+        borrow_lo = minuend_lo < subtrahend_lo
+        diff_lo = minuend_lo - subtrahend_lo + (1 << 128 if borrow_lo else 0)
+        borrow_hi = minuend_hi < subtrahend_hi + borrow_lo
+        diff_hi = minuend_hi - subtrahend_hi - \
+            borrow_lo + (1 << 128 if borrow_hi else 0)
+
+        diff_bytes = diff_lo.to_bytes(
+            16, "little") + diff_hi.to_bytes(16, "little")
+
+        return self.rlc_store.to_rlc(diff_bytes), borrow_hi
 
     def mul_word_by_u64(self, multiplicand: int, multiplier: int) -> Tuple[int, int]:
         multiplicand_bytes = self.rlc_to_bytes(multiplicand, 32)
@@ -212,31 +226,48 @@ class Instruction:
         multiplicand_lo = self.bytes_to_int(multiplicand_bytes[:16])
         multiplicand_hi = self.bytes_to_int(multiplicand_bytes[16:])
 
-        quotient_lo, product_lo = divmod(multiplicand_lo * multiplier, 1 << 128)
-        quotient_hi, product_hi = divmod(multiplicand_hi * multiplier + quotient_lo, 1 << 128)
+        quotient_lo, product_lo = divmod(
+            multiplicand_lo * multiplier, 1 << 128)
+        quotient_hi, product_hi = divmod(
+            multiplicand_hi * multiplier + quotient_lo, 1 << 128)
 
-        product_bytes = product_lo.to_bytes(16, "little") + product_hi.to_bytes(16, "little")
+        product_bytes = product_lo.to_bytes(
+            16, "little") + product_hi.to_bytes(16, "little")
 
         return self.rlc_store.to_rlc(product_bytes), quotient_hi
+
+    def lt_word(self, lhs: int, rhs: int) -> bool:
+        _, borrow = self.sub_word(lhs, rhs)
+        return borrow
+
+    def min_word(self, lhs: int, rhs: int) -> int:
+        return self.select(self.lt_word(lhs, rhs), lhs, rhs)
 
     def rlc_to_bytes(self, value: int, n_bytes: int) -> Sequence[int]:
         bytes = self.rlc_store.to_bytes(value)
         if len(bytes) > n_bytes and any(bytes[n_bytes:]):
-            raise ConstraintUnsatFailure(f"{value} is too many bytes to fit {n_bytes} bytes")
+            raise ConstraintUnsatFailure(
+                f"{value} is too many bytes to fit {n_bytes} bytes")
         return list(bytes) + (n_bytes - len(bytes)) * [0]
+
+    def rlc_to_lo_hi(self, rlc: int) -> Tuple[Sequence[int], Sequence[int]]:
+        bytes = self.rlc_to_bytes(rlc, 32)
+        return self.bytes_to_int(bytes[:16]), self.bytes_to_int(bytes[16:])
 
     def bytes_to_rlc(self, bytes: Sequence[int]) -> int:
         return self.rlc_store.to_rlc(bytes)
+
+    def bytes_to_int(self, bytes: Sequence[int]) -> int:
+        assert len(
+            bytes) <= MAX_N_BYTES, "too many bytes to composite an integer in field"
+        return linear_combine(bytes, 256)
 
     def int_to_bytes(self, value: int, n_bytes: int) -> Sequence[int]:
         try:
             return value.to_bytes(n_bytes, "little")
         except OverflowError:
-            raise ConstraintUnsatFailure(f"{value} is too many bytes to fit {n_bytes} bytes")
-
-    def bytes_to_int(self, bytes: Sequence[int]) -> int:
-        assert len(bytes) <= 31, "too many bytes to composite an integer in field"
-        return linear_combine(bytes, 256)
+            raise ConstraintUnsatFailure(
+                f"{value} is too many bytes to fit {n_bytes} bytes")
 
     def byte_range_lookup(self, input: int):
         self.tables.fixed_lookup([FixedTableTag.Range256, input, 0, 0])
@@ -249,6 +280,17 @@ class Instruction:
 
     def bytecode_lookup(self, bytecode_hash: int, index: int, is_code: int) -> int:
         return self.tables.bytecode_lookup([bytecode_hash, index, Tables._, is_code])[2]
+
+    def tx_gas_price(self, tx_id: int) -> int:
+        # Calculate gas price by EIP 1559
+        base_fee = self.rlc_store.to_rlc(self.block.base_fee, 32)
+        gas_tip_cap = self.tx_lookup(tx_id, TxContextFieldTag.GasTipCap)
+        gas_fee_cap = self.tx_lookup(tx_id, TxContextFieldTag.GasFeeCap)
+
+        base_fee_with_tip_cap, carry = self.add_words([base_fee, gas_tip_cap])
+        self.constrain_zero(carry)
+
+        return self.min_word(base_fee_with_tip_cap, gas_fee_cap)
 
     def opcode_lookup(self, is_code: bool) -> int:
         index = self.curr.program_counter + self.program_counter_offset
@@ -263,6 +305,9 @@ class Instruction:
             )
         else:
             return self.bytecode_lookup(self.curr.opcode_source, index, is_code)
+
+    def tx_refund_read(self, tx_id: int) -> int:
+        return self.rw_lookup(RW.Read, RWTableTag.TxRefund, [tx_id])[4]
 
     def rw_lookup(self, rw: RW, tag: RWTableTag, inputs: Sequence[int], rw_counter: Optional[int] = None) -> Array8:
         if rw_counter is None:
@@ -295,7 +340,8 @@ class Instruction:
 
         row = self.rw_lookup(RW.Write, tag, inputs)
 
-        rw_counter = rw_counter_end_of_reversion - self.curr.state_write_counter - self.state_write_counter_offset
+        rw_counter = rw_counter_end_of_reversion - \
+            self.curr.state_write_counter - self.state_write_counter_offset
         self.state_write_counter_offset += 1
 
         if not is_persistent:
@@ -360,7 +406,8 @@ class Instruction:
         return row[5], row[6]
 
     def account_read(self, account_address: int, account_field_tag: AccountFieldTag) -> Tuple[int, int]:
-        row = self.rw_lookup(RW.Read, RWTableTag.Account, [account_address, account_field_tag])
+        row = self.rw_lookup(RW.Read, RWTableTag.Account, [
+                             account_address, account_field_tag])
         return row[5], row[6]
 
     def add_account_to_access_list(
