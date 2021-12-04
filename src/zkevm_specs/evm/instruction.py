@@ -268,7 +268,7 @@ class Instruction:
         self,
         tag: RWTableTag,
         inputs: Sequence[int],
-        is_persistent: bool = True,
+        is_persistent: bool,
     ) -> Array8:
         assert tag.write_only_persistent()
 
@@ -281,8 +281,8 @@ class Instruction:
         self,
         tag: RWTableTag,
         inputs: Sequence[int],
-        is_persistent: bool = True,
-        rw_counter_end_of_reversion: int = 0,
+        is_persistent: bool,
+        rw_counter_end_of_reversion: int,
     ) -> Array8:
         assert tag.write_with_reversion()
 
@@ -341,8 +341,8 @@ class Instruction:
         self,
         account_address: int,
         account_field_tag: AccountFieldTag,
-        is_persistent: bool = True,
-        rw_counter_end_of_reversion: int = 0,
+        is_persistent: bool,
+        rw_counter_end_of_reversion: int,
     ) -> Tuple[int, int]:
         row = self.state_write_with_reversion(
             RWTableTag.Account,
@@ -351,6 +351,46 @@ class Instruction:
             rw_counter_end_of_reversion,
         )
         return row[5], row[6]
+
+    def add_balance(self, account_address: int, values: Sequence[int]):
+        balance, balance_prev = self.account_write(account_address, AccountFieldTag.Balance)
+        result, carry = self.add_words([balance_prev, *values])
+        self.constrain_equal(balance, result)
+        self.constrain_zero(carry)
+
+    def add_balance_with_reversion(
+        self,
+        account_address: int,
+        values: Sequence[int],
+        is_persistent: bool,
+        rw_counter_end_of_reversion: int,
+    ):
+        balance, balance_prev = self.account_write_with_reversion(
+            account_address, AccountFieldTag.Balance, is_persistent, rw_counter_end_of_reversion
+        )
+        result, carry = self.add_words([balance_prev, *values])
+        self.constrain_equal(balance, result)
+        self.constrain_zero(carry)
+
+    def sub_balance(self, account_address: int, values: Sequence[int]):
+        balance, balance_prev = self.account_write(account_address, AccountFieldTag.Balance)
+        result, carry = self.add_words([balance, *values])
+        self.constrain_equal(balance_prev, result)
+        self.constrain_zero(carry)
+
+    def sub_balance_with_reversion(
+        self,
+        account_address: int,
+        values: Sequence[int],
+        is_persistent: bool,
+        rw_counter_end_of_reversion: int,
+    ):
+        balance, balance_prev = self.account_write_with_reversion(
+            account_address, AccountFieldTag.Balance, is_persistent, rw_counter_end_of_reversion
+        )
+        result, carry = self.add_words([balance, *values])
+        self.constrain_equal(balance_prev, result)
+        self.constrain_zero(carry)
 
     def account_read(self, account_address: int, account_field_tag: AccountFieldTag) -> Tuple[int, int]:
         row = self.rw_lookup(RW.Read, RWTableTag.Account, [account_address, account_field_tag])
@@ -372,8 +412,8 @@ class Instruction:
         self,
         tx_id: int,
         account_address: int,
-        is_persistent: bool = True,
-        rw_counter_end_of_reversion: int = 0,
+        is_persistent: bool,
+        rw_counter_end_of_reversion: int,
     ) -> bool:
         row = self.state_write_with_reversion(
             RWTableTag.TxAccessListAccount,
@@ -400,8 +440,8 @@ class Instruction:
         tx_id: int,
         account_address: int,
         storage_slot: int,
-        is_persistent: bool = True,
-        rw_counter_end_of_reversion: int = 0,
+        is_persistent: bool,
+        rw_counter_end_of_reversion: int,
     ) -> bool:
         row = self.state_write_with_reversion(
             RWTableTag.TxAccessListAccount,
@@ -416,21 +456,19 @@ class Instruction:
         sender_address: int,
         receiver_address: int,
         value: int,
-        gas_fee: int = 0,
-        is_persistent: bool = True,
-        rw_counter_end_of_reversion: int = 0,
+        gas_fee: int,
+        is_persistent: bool,
+        rw_counter_end_of_reversion: int,
     ):
-        sender_balance, sender_balance_prev = self.account_write_with_reversion(
-            sender_address, AccountFieldTag.Balance, is_persistent, rw_counter_end_of_reversion
+        self.sub_balance_with_reversion(
+            sender_address,
+            [value, gas_fee],
+            is_persistent,
+            rw_counter_end_of_reversion,
         )
-        receiver_balance, receiver_balance_prev = self.account_write_with_reversion(
-            receiver_address, AccountFieldTag.Balance, is_persistent, rw_counter_end_of_reversion
+        self.add_balance_with_reversion(
+            receiver_address,
+            [value],
+            is_persistent,
+            rw_counter_end_of_reversion,
         )
-
-        result, carry = self.add_words([sender_balance, value, gas_fee])
-        self.constrain_equal(sender_balance_prev, result)
-        self.constrain_zero(carry)
-
-        result, carry = self.add_words([value, receiver_balance_prev])
-        self.constrain_equal(receiver_balance, result)
-        self.constrain_zero(carry)
