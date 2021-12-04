@@ -1,7 +1,7 @@
 from typing import Sequence, Set, Tuple
 from enum import IntEnum, auto
 
-from ..util import Array3, Array4, Array8
+from ..util import Array4, Array4, Array8
 from .execution_result import ExecutionResult
 from .opcode import (
     invalid_opcodes,
@@ -9,6 +9,11 @@ from .opcode import (
     stack_underflow_pairs,
     stack_overflow_pairs,
 )
+
+
+class Placeholder:
+    def __eq__(self, _) -> bool:
+        return True
 
 
 class FixedTableTag(IntEnum):
@@ -162,6 +167,8 @@ class Tables:
     A collection of lookup tables used in EVM circuit.
     """
 
+    _: Placeholder = Placeholder()
+
     # Each row in FixedTable contains:
     # - tag
     # - value1
@@ -197,7 +204,8 @@ class Tables:
     # - bytecode_hash
     # - index
     # - byte
-    bytecode_table: Set[Array3]
+    # - is_code
+    bytecode_table: Set[Array4]
 
     # Each row in RWTable contains:
     # - rw_counter
@@ -213,7 +221,7 @@ class Tables:
     def __init__(
         self,
         tx_table: Set[Array4],
-        bytecode_table: Set[Array3],
+        bytecode_table: Set[Array4],
         rw_table: Set[Array8],
     ) -> None:
         self.tx_table = tx_table
@@ -228,8 +236,8 @@ class Tables:
         assert len(inputs) <= 4
         return _lookup("tx_table", self.tx_table, inputs)
 
-    def bytecode_lookup(self, inputs: Sequence[int]) -> Array3:
-        assert len(inputs) <= 3
+    def bytecode_lookup(self, inputs: Sequence[int]) -> Array4:
+        assert len(inputs) <= 4
         return _lookup("bytecode_table", self.bytecode_table, inputs)
 
     def rw_lookup(self, inputs: Sequence[int]) -> Array8:

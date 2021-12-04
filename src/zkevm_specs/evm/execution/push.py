@@ -3,7 +3,7 @@ from ..opcode import Opcode
 
 
 def push(instruction: Instruction):
-    opcode = instruction.opcode_lookup()
+    opcode = instruction.opcode_lookup(True)
     num_pushed = opcode - Opcode.PUSH1 + 1
     num_additional_pushed = num_pushed - 1
 
@@ -14,7 +14,7 @@ def push(instruction: Instruction):
     for idx in range(32):
         index = instruction.curr.program_counter + num_pushed - idx
         if idx == 0 or selectors[idx - 1]:
-            instruction.constrain_equal(value_bytes[idx], instruction.opcode_lookup_at(index))
+            instruction.constrain_equal(value_bytes[idx], instruction.opcode_lookup_at(index, False))
         else:
             instruction.constrain_zero(value_bytes[idx])
 

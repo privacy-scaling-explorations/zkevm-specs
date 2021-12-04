@@ -242,8 +242,8 @@ class Instruction:
     def tx_lookup(self, tx_id: int, tag: TxContextFieldTag, index: int = 0) -> int:
         return self.tables.tx_lookup([tx_id, tag, index])[3]
 
-    def bytecode_lookup(self, bytecode_hash: int, index: int) -> int:
-        return self.tables.bytecode_lookup([bytecode_hash, index])[2]
+    def bytecode_lookup(self, bytecode_hash: int, index: int, is_code: int) -> int:
+        return self.tables.bytecode_lookup([bytecode_hash, index, Tables._, is_code])[2]
 
     def rw_lookup(self, rw: RW, tag: RWTableTag, inputs: Sequence[int], rw_counter: Optional[int] = None) -> Array8:
         if rw_counter is None:
@@ -294,18 +294,18 @@ class Instruction:
 
         return row
 
-    def opcode_lookup(self) -> int:
+    def opcode_lookup(self, is_code: bool) -> int:
         index = self.curr.program_counter + self.program_counter_offset
         self.program_counter_offset += 1
 
-        return self.opcode_lookup_at(index)
+        return self.opcode_lookup_at(index, is_code)
 
-    def opcode_lookup_at(self, index: int) -> int:
+    def opcode_lookup_at(self, index: int, is_code: bool) -> int:
         if self.curr.is_root and self.curr.is_create:
             raise NotImplementedError(
                 "The opcode source when is_root and is_create (root creation call) is not determined yet")
         else:
-            return self.bytecode_lookup(self.curr.opcode_source, index)
+            return self.bytecode_lookup(self.curr.opcode_source, index, is_code)
 
     def call_context_lookup(self, tag: CallContextFieldTag, rw: RW = RW.Read, call_id: Union[int, None] = None) -> int:
         if call_id is None:
@@ -365,7 +365,7 @@ class Instruction:
         row = self.rw_lookup(
             RW.Write,
             RWTableTag.TxAccessListAccount,
-            [tx_id, account_address],
+            [tx_id, account_address, 1],
         )
         return row[5] - row[6]
 
@@ -378,7 +378,7 @@ class Instruction:
     ) -> bool:
         row = self.state_write_with_reversion(
             RWTableTag.TxAccessListAccount,
-            [tx_id, account_address],
+            [tx_id, account_address, 1],
             is_persistent,
             rw_counter_end_of_reversion,
         )
@@ -392,9 +392,9 @@ class Instruction:
     ) -> bool:
         row = self.state_write_with_reversion(
             RWTableTag.TxAccessListAccount,
-            [tx_id, account_address, storage_slot],
+            [tx_id, account_address, storage_slot, 1],
         )
-        return row[5] - row[6]
+        return row[6] - row[7]
 
     def add_storage_slot_to_access_list_with_reversion(
         self,
@@ -406,8 +406,8 @@ class Instruction:
     ) -> bool:
         row = self.state_write_with_reversion(
             RWTableTag.TxAccessListAccount,
-            [tx_id, account_address, storage_slot],
+            [tx_id, account_address, storage_slot, 1],
             is_persistent,
             rw_counter_end_of_reversion,
         )
-        return row[5] - row[6]
+        return row[6] - row[7]

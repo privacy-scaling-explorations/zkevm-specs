@@ -3,7 +3,7 @@ from ..opcode import Opcode
 
 
 def add(instruction: Instruction):
-    opcode = instruction.opcode_lookup()
+    opcode = instruction.opcode_lookup(True)
 
     is_sub, _ = instruction.pair_select(opcode, Opcode.SUB, Opcode.ADD)
 

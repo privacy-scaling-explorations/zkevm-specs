@@ -1,6 +1,6 @@
-from typing import Optional, Sequence, Union
+from typing import Iterator, Optional, Sequence, Union
 
-from ..util import U64, U160, U256, Array3, Array4, RLCStore, keccak256
+from ..util import U64, U160, U256, Array4, RLCStore, keccak256
 from .table import TxContextFieldTag
 
 
@@ -67,6 +67,38 @@ class Bytecode:
         self.hash = int.from_bytes(keccak256(str_or_bytes), 'little')
         self.bytes = str_or_bytes
 
-    def table_assignments(self, rlc_store: RLCStore) -> Sequence[Array3]:
-        hash = rlc_store.to_rlc(self.hash, 32)
-        return [(hash, idx, byte) for idx, byte in enumerate(self.bytes)]
+    def table_assignments(self, rlc_store: RLCStore) -> Iterator[Array4]:
+        class BytecodeIterator:
+            idx: int
+            push_data_left: int
+            hash: int
+            bytes: bytes
+
+            def __init__(self, hash: int, bytes: bytes):
+                self.idx = 0
+                self.push_data_left = 0
+                self.hash = hash
+                self.bytes = bytes
+
+            def __iter__(self):
+                return self
+
+            def __next__(self):
+                if self.idx == len(self.bytes):
+                    raise StopIteration
+
+                idx = self.idx
+                byte = self.bytes[idx]
+                is_code = True
+
+                if self.push_data_left > 0:
+                    is_code = False
+                    self.push_data_left -= 1
+                elif 0x60 <= byte < 0x80:
+                    self.push_data_left = byte - 0x60 + 1
+
+                self.idx += 1
+
+                return (self.hash, idx, byte, is_code)
+
+        return BytecodeIterator(rlc_store.to_rlc(self.hash, 32), self.bytes)
