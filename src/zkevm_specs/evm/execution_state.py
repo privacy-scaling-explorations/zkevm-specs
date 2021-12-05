@@ -4,12 +4,12 @@ from typing import Sequence
 from .opcode import Opcode
 
 
-class ExecutionResult(IntEnum):
+class ExecutionState(IntEnum):
     """
     All possible execution results an EVM step could encounter.
     """
 
-    BEGIN_TX = auto()
+    BeginTx = auto()
 
     # Opcode's successful cases
     STOP = auto()
@@ -23,10 +23,10 @@ class ExecutionResult(IntEnum):
     MULMOD = auto()
     EXP = auto()
     SIGNEXTEND = auto()
-    LT = auto()  # LT, GT, EQ
-    SLT = auto()  # SLT, SGT
+    CMP = auto()  # LT, GT, EQ
+    SCMP = auto()  # SLT, SGT
     ISZERO = auto()
-    AND = auto()  # AND, OR, XOR
+    BITWISE = auto()  # AND, OR, XOR
     NOT = auto()
     BYTE = auto()
     SHL = auto()
@@ -59,7 +59,7 @@ class ExecutionResult(IntEnum):
     SELFBALANCE = auto()
     BASEFEE = auto()
     POP = auto()
-    MLOAD = auto()  # MLOAD, MSTORE, MSTORE8
+    MEMORY = auto()  # MLOAD, MSTORE, MSTORE8
     SLOAD = auto()
     SSTORE = auto()
     JUMP = auto()
@@ -83,178 +83,181 @@ class ExecutionResult(IntEnum):
     SELFDESTRUCT = auto()
 
     # Error cases
-    ERROR_INVALID_OPCODE = auto()
-    # For opcodes who push more than pop
-    ERROR_STACK_OVERFLOW = auto()
-    # For opcodes who pop and DUP, SWAP who peek deeper element directly
-    ERROR_STACK_UNDERFLOW = auto()
-    # For opcodes who have non-zero constant gas cost
-    ERROR_OOG_CONSTANT = auto()
-    # For opcodes MLOAD, MSTORE, MSTORE8, CREATE, RETURN, REVERT, who have pure memory expansion gas cost
-    ERROR_OOG_PURE_MEMORY = auto()
-    # For opcodes who have dynamic gas usage rather than pure memory expansion
-    ERROR_OOG_SHA3 = auto()
-    ERROR_OOG_CALLDATACOPY = auto()
-    ERROR_OOG_CODECOPY = auto()
-    ERROR_OOG_EXTCODECOPY = auto()
-    ERROR_OOG_RETURNDATACOPY = auto()
-    ERROR_OOG_LOG = auto()
-    ERROR_OOG_CALL = auto()
-    ERROR_OOG_CALLCODE = auto()
-    ERROR_OOG_DELEGATECALL = auto()
-    ERROR_OOG_CREATE2 = auto()
-    ERROR_OOG_STATICCALL = auto()
+    ErrorInvalidOpcode = auto()
+    # For opcodes which push more than pop
+    ErrorStackOverflow = auto()
+    # For opcodes which pop and DUP, SWAP which peek deeper element directly
+    ErrorStackUnderflow = auto()
     # For SSTORE, LOG0, LOG1, LOG2, LOG3, LOG4, CREATE, CALL, CREATE2, SELFDESTRUCT
-    ERROR_WRITE_PROTECTION = auto()
+    ErrorWriteProtection = auto()
     # For CALL, CALLCODE, DELEGATECALL, STATICCALL
-    ERROR_DEPTH = auto()
+    ErrorDepth = auto()
     # For CALL, CALLCODE
-    ERROR_INSUFFICIENT_BALANCE = auto()
+    ErrorInsufficientBalance = auto()
     # For CREATE, CREATE2
-    ERROR_CONTRACT_ADDRESS_COLLISION = auto()
-    ERROR_MAX_CODE_SIZE_EXCEEDED = auto()
-    ERROR_INVALID_CODE = auto()
+    ErrorContractAddressCollision = auto()
+    ErrorInvalidCreationCode = auto()
+    # For opcode RETURN which needs to store code when it's is creation
+    ErrorMaxCodeSizeExceeded = auto()
     # For REVERT
-    ERROR_EXECUTION_REVERTED = auto()
+    ErrorReverted = auto()
     # For JUMP, JUMPI
-    ERROR_INVALID_JUMP = auto()
+    ErrorInvalidJump = auto()
     # For RETURNDATACOPY
-    ERROR_RETURN_DATA_OUT_OF_BOUNDS = auto()
+    ErrorReturnDataOutOfBound = auto()
+    # For opcodes which have non-zero constant gas cost
+    ErrorOutOfGasConstant = auto()
+    # For opcodes MLOAD, MSTORE, MSTORE8, CREATE, RETURN, REVERT, which have pure memory expansion gas cost
+    ErrorOutOfGasPureMemory = auto()
+    # For opcode RETURN which has code storing gas cost when it's is creation
+    ErrorOutOfGasCodeStore = auto()
+    # For opcodes which have dynamic gas usage rather than pure memory expansion
+    ErrorOutOfGasSHA3 = auto()
+    ErrorOutOfGasCALLDATACOPY = auto()
+    ErrorOutOfGasCODECOPY = auto()
+    ErrorOutOfGasEXTCODECOPY = auto()
+    ErrorOutOfGasRETURNDATACOPY = auto()
+    ErrorOutOfGasLOG = auto()
+    ErrorOutOfGasCALL = auto()
+    ErrorOutOfGasCALLCODE = auto()
+    ErrorOutOfGasDELEGATECALL = auto()
+    ErrorOutOfGasCREATE2 = auto()
+    ErrorOutOfGasSTATICCALL = auto()
 
     # TODO: Precompile success and error cases
 
     def responsible_opcode(self) -> Sequence[Opcode]:
-        if self == ExecutionResult.STOP:
+        if self == ExecutionState.STOP:
             return [Opcode.STOP]
-        elif self == ExecutionResult.ADD:
+        elif self == ExecutionState.ADD:
             return [
                 Opcode.ADD,
                 Opcode.SUB,
             ]
-        elif self == ExecutionResult.MUL:
+        elif self == ExecutionState.MUL:
             return [Opcode.MUL]
-        elif self == ExecutionResult.DIV:
+        elif self == ExecutionState.DIV:
             return [Opcode.DIV]
-        elif self == ExecutionResult.SDIV:
+        elif self == ExecutionState.SDIV:
             return [Opcode.SDIV]
-        elif self == ExecutionResult.MOD:
+        elif self == ExecutionState.MOD:
             return [Opcode.MOD]
-        elif self == ExecutionResult.SMOD:
+        elif self == ExecutionState.SMOD:
             return [Opcode.SMOD]
-        elif self == ExecutionResult.ADDMOD:
+        elif self == ExecutionState.ADDMOD:
             return [Opcode.ADDMOD]
-        elif self == ExecutionResult.MULMOD:
+        elif self == ExecutionState.MULMOD:
             return [Opcode.MULMOD]
-        elif self == ExecutionResult.EXP:
+        elif self == ExecutionState.EXP:
             return [Opcode.EXP]
-        elif self == ExecutionResult.SIGNEXTEND:
+        elif self == ExecutionState.SIGNEXTEND:
             return [Opcode.SIGNEXTEND]
-        elif self == ExecutionResult.LT:
+        elif self == ExecutionState.CMP:
             return [
                 Opcode.LT,
                 Opcode.GT,
                 Opcode.EQ,
             ]
-        elif self == ExecutionResult.SLT:
+        elif self == ExecutionState.SCMP:
             return [
                 Opcode.SLT,
                 Opcode.SGT,
             ]
-        elif self == ExecutionResult.ISZERO:
+        elif self == ExecutionState.ISZERO:
             return [Opcode.ISZERO]
-        elif self == ExecutionResult.AND:
+        elif self == ExecutionState.BITWISE:
             return [
                 Opcode.AND,
                 Opcode.OR,
                 Opcode.XOR,
             ]
-        elif self == ExecutionResult.NOT:
+        elif self == ExecutionState.NOT:
             return [Opcode.NOT]
-        elif self == ExecutionResult.BYTE:
+        elif self == ExecutionState.BYTE:
             return [Opcode.BYTE]
-        elif self == ExecutionResult.SHL:
+        elif self == ExecutionState.SHL:
             return [Opcode.SHL]
-        elif self == ExecutionResult.SHR:
+        elif self == ExecutionState.SHR:
             return [Opcode.SHR]
-        elif self == ExecutionResult.SAR:
+        elif self == ExecutionState.SAR:
             return [Opcode.SAR]
-        elif self == ExecutionResult.SHA3:
+        elif self == ExecutionState.SHA3:
             return [Opcode.SHA3]
-        elif self == ExecutionResult.ADDRESS:
+        elif self == ExecutionState.ADDRESS:
             return [Opcode.ADDRESS]
-        elif self == ExecutionResult.BALANCE:
+        elif self == ExecutionState.BALANCE:
             return [Opcode.BALANCE]
-        elif self == ExecutionResult.ORIGIN:
+        elif self == ExecutionState.ORIGIN:
             return [Opcode.ORIGIN]
-        elif self == ExecutionResult.CALLER:
+        elif self == ExecutionState.CALLER:
             return [Opcode.CALLER]
-        elif self == ExecutionResult.CALLVALUE:
+        elif self == ExecutionState.CALLVALUE:
             return [Opcode.CALLVALUE]
-        elif self == ExecutionResult.CALLDATALOAD:
+        elif self == ExecutionState.CALLDATALOAD:
             return [Opcode.CALLDATALOAD]
-        elif self == ExecutionResult.CALLDATASIZE:
+        elif self == ExecutionState.CALLDATASIZE:
             return [Opcode.CALLDATASIZE]
-        elif self == ExecutionResult.CALLDATACOPY:
+        elif self == ExecutionState.CALLDATACOPY:
             return [Opcode.CALLDATACOPY]
-        elif self == ExecutionResult.CODESIZE:
+        elif self == ExecutionState.CODESIZE:
             return [Opcode.CODESIZE]
-        elif self == ExecutionResult.CODECOPY:
+        elif self == ExecutionState.CODECOPY:
             return [Opcode.CODECOPY]
-        elif self == ExecutionResult.GASPRICE:
+        elif self == ExecutionState.GASPRICE:
             return [Opcode.GASPRICE]
-        elif self == ExecutionResult.EXTCODESIZE:
+        elif self == ExecutionState.EXTCODESIZE:
             return [Opcode.EXTCODESIZE]
-        elif self == ExecutionResult.EXTCODECOPY:
+        elif self == ExecutionState.EXTCODECOPY:
             return [Opcode.EXTCODECOPY]
-        elif self == ExecutionResult.RETURNDATASIZE:
+        elif self == ExecutionState.RETURNDATASIZE:
             return [Opcode.RETURNDATASIZE]
-        elif self == ExecutionResult.RETURNDATACOPY:
+        elif self == ExecutionState.RETURNDATACOPY:
             return [Opcode.RETURNDATACOPY]
-        elif self == ExecutionResult.EXTCODEHASH:
+        elif self == ExecutionState.EXTCODEHASH:
             return [Opcode.EXTCODEHASH]
-        elif self == ExecutionResult.BLOCKHASH:
+        elif self == ExecutionState.BLOCKHASH:
             return [Opcode.BLOCKHASH]
-        elif self == ExecutionResult.COINBASE:
+        elif self == ExecutionState.COINBASE:
             return [Opcode.COINBASE]
-        elif self == ExecutionResult.TIMESTAMP:
+        elif self == ExecutionState.TIMESTAMP:
             return [Opcode.TIMESTAMP]
-        elif self == ExecutionResult.NUMBER:
+        elif self == ExecutionState.NUMBER:
             return [Opcode.NUMBER]
-        elif self == ExecutionResult.DIFFICULTY:
+        elif self == ExecutionState.DIFFICULTY:
             return [Opcode.DIFFICULTY]
-        elif self == ExecutionResult.GASLIMIT:
+        elif self == ExecutionState.GASLIMIT:
             return [Opcode.GASLIMIT]
-        elif self == ExecutionResult.CHAINID:
+        elif self == ExecutionState.CHAINID:
             return [Opcode.CHAINID]
-        elif self == ExecutionResult.SELFBALANCE:
+        elif self == ExecutionState.SELFBALANCE:
             return [Opcode.SELFBALANCE]
-        elif self == ExecutionResult.BASEFEE:
+        elif self == ExecutionState.BASEFEE:
             return [Opcode.BASEFEE]
-        elif self == ExecutionResult.POP:
+        elif self == ExecutionState.POP:
             return [Opcode.POP]
-        elif self == ExecutionResult.MLOAD:
+        elif self == ExecutionState.MEMORY:
             return [
                 Opcode.MLOAD,
                 Opcode.MSTORE,
                 Opcode.MSTORE8,
             ]
-        elif self == ExecutionResult.SLOAD:
+        elif self == ExecutionState.SLOAD:
             return [Opcode.SLOAD]
-        elif self == ExecutionResult.SSTORE:
+        elif self == ExecutionState.SSTORE:
             return [Opcode.SSTORE]
-        elif self == ExecutionResult.JUMP:
+        elif self == ExecutionState.JUMP:
             return [Opcode.JUMP]
-        elif self == ExecutionResult.JUMPI:
+        elif self == ExecutionState.JUMPI:
             return [Opcode.JUMPI]
-        elif self == ExecutionResult.PC:
+        elif self == ExecutionState.PC:
             return [Opcode.PC]
-        elif self == ExecutionResult.MSIZE:
+        elif self == ExecutionState.MSIZE:
             return [Opcode.MSIZE]
-        elif self == ExecutionResult.GAS:
+        elif self == ExecutionState.GAS:
             return [Opcode.GAS]
-        elif self == ExecutionResult.JUMPDEST:
+        elif self == ExecutionState.JUMPDEST:
             return [Opcode.JUMPDEST]
-        elif self == ExecutionResult.PUSH:
+        elif self == ExecutionState.PUSH:
             return [
                 Opcode.PUSH1,
                 Opcode.PUSH2,
@@ -289,7 +292,7 @@ class ExecutionResult(IntEnum):
                 Opcode.PUSH31,
                 Opcode.PUSH32,
             ]
-        elif self == ExecutionResult.DUP:
+        elif self == ExecutionState.DUP:
             return [
                 Opcode.DUP1,
                 Opcode.DUP2,
@@ -308,7 +311,7 @@ class ExecutionResult(IntEnum):
                 Opcode.DUP15,
                 Opcode.DUP16,
             ]
-        elif self == ExecutionResult.SWAP:
+        elif self == ExecutionState.SWAP:
             return [
                 Opcode.SWAP1,
                 Opcode.SWAP2,
@@ -327,7 +330,7 @@ class ExecutionResult(IntEnum):
                 Opcode.SWAP15,
                 Opcode.SWAP16,
             ]
-        elif self == ExecutionResult.LOG:
+        elif self == ExecutionState.LOG:
             return [
                 Opcode.LOG0,
                 Opcode.LOG1,
@@ -335,22 +338,22 @@ class ExecutionResult(IntEnum):
                 Opcode.LOG3,
                 Opcode.LOG4,
             ]
-        elif self == ExecutionResult.CREATE:
+        elif self == ExecutionState.CREATE:
             return [Opcode.CREATE]
-        elif self == ExecutionResult.CALL:
+        elif self == ExecutionState.CALL:
             return [Opcode.CALL]
-        elif self == ExecutionResult.CALLCODE:
+        elif self == ExecutionState.CALLCODE:
             return [Opcode.CALLCODE]
-        elif self == ExecutionResult.RETURN:
+        elif self == ExecutionState.RETURN:
             return [Opcode.RETURN]
-        elif self == ExecutionResult.DELEGATECALL:
+        elif self == ExecutionState.DELEGATECALL:
             return [Opcode.DELEGATECALL]
-        elif self == ExecutionResult.CREATE2:
+        elif self == ExecutionState.CREATE2:
             return [Opcode.CREATE2]
-        elif self == ExecutionResult.STATICCALL:
+        elif self == ExecutionState.STATICCALL:
             return [Opcode.STATICCALL]
-        elif self == ExecutionResult.REVERT:
+        elif self == ExecutionState.REVERT:
             return [Opcode.REVERT]
-        elif self == ExecutionResult.SELFDESTRUCT:
+        elif self == ExecutionState.SELFDESTRUCT:
             return [Opcode.SELFDESTRUCT]
         return []

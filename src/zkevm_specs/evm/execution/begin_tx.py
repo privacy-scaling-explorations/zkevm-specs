@@ -18,7 +18,7 @@ def begin_tx(instruction: Instruction, is_first_step: bool = False):
     tx_callee_address = instruction.tx_lookup(tx_id, TxContextFieldTag.CalleeAddress)
     tx_is_create = instruction.tx_lookup(tx_id, TxContextFieldTag.IsCreate)
     tx_value = instruction.tx_lookup(tx_id, TxContextFieldTag.Value)
-    tx_calldata_length = instruction.tx_lookup(tx_id, TxContextFieldTag.CalldataLength)
+    tx_call_data_length = instruction.tx_lookup(tx_id, TxContextFieldTag.CallDataLength)
 
     # Verify nonce
     tx_nonce = instruction.tx_lookup(tx_id, TxContextFieldTag.Nonce)
@@ -63,7 +63,7 @@ def begin_tx(instruction: Instruction, is_first_step: bool = False):
 
         # Setup next call's context
         # Note that:
-        # - CallerCallId, ReturndataOffset, ReturndataLength, Result
+        # - CallerCallId, ReturnDataOffset, ReturnDataLength, Result
         #   should never be used in root call, so unnecessary to check
         # - TxId is propagated from previous step or constraint to 1 if is_first_step
         # - IsPersistent will be verified in the end of tx
@@ -71,8 +71,8 @@ def begin_tx(instruction: Instruction, is_first_step: bool = False):
             (CallContextFieldTag.Depth, 1),
             (CallContextFieldTag.CallerAddress, tx_caller_address),
             (CallContextFieldTag.CalleeAddress, tx_callee_address),
-            (CallContextFieldTag.CalldataOffset, 0),
-            (CallContextFieldTag.CalldataLength, tx_calldata_length),
+            (CallContextFieldTag.CallDataOffset, 0),
+            (CallContextFieldTag.CallDataLength, tx_call_data_length),
             (CallContextFieldTag.Value, tx_value),
             (CallContextFieldTag.IsStatic, False),
         ]:

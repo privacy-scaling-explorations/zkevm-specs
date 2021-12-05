@@ -106,8 +106,8 @@ class Instruction:
             'memory_size',
             'state_write_counter',
             'last_callee_id',
-            'last_callee_returndata_offset',
-            'last_callee_returndata_length',
+            'last_callee_return_data_offset',
+            'last_callee_return_data_length',
         ]:
             curr, next = getattr(self.curr, key), getattr(self.next, key)
             transition = kwargs.get(key, Transition.persistent())
@@ -146,8 +146,8 @@ class Instruction:
             stack_pointer=Transition.to(1024),
             memory_size=Transition.to(0),
             last_callee_id=Transition.to(0),
-            last_callee_returndata_offset=Transition.to(0),
-            last_callee_returndata_length=Transition.to(0),
+            last_callee_return_data_offset=Transition.to(0),
+            last_callee_return_data_length=Transition.to(0),
         )
 
     def constrain_same_context_state_transition(

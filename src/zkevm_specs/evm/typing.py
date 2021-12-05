@@ -13,7 +13,7 @@ class Transaction:
     caller_address: U160
     callee_address: Optional[U160]
     value: U256
-    calldata: bytes
+    call_data: bytes
 
     def __init__(
         self,
@@ -25,7 +25,7 @@ class Transaction:
         caller_address: U160 = 0,
         callee_address: Optional[U160] = None,
         value: U256 = 0,
-        calldata: bytes = bytes(),
+        call_data: bytes = bytes(),
     ) -> None:
         self.id = id
         self.nonce = nonce
@@ -35,7 +35,7 @@ class Transaction:
         self.caller_address = caller_address
         self.callee_address = callee_address
         self.value = value
-        self.calldata = calldata
+        self.call_data = call_data
 
     def table_assignments(self, rlc_store: RLCStore) -> Sequence[Array4]:
         return [
@@ -47,9 +47,9 @@ class Transaction:
             (self.id, TxContextFieldTag.CalleeAddress, 0, self.callee_address),
             (self.id, TxContextFieldTag.IsCreate, 0, self.callee_address is None),
             (self.id, TxContextFieldTag.Value, 0, rlc_store.to_rlc(self.value, 32)),
-            (self.id, TxContextFieldTag.CalldataLength, 0, len(self.calldata)),
+            (self.id, TxContextFieldTag.CallDataLength, 0, len(self.call_data)),
         ] + [
-            (self.id, TxContextFieldTag.Calldata, idx, byte) for idx, byte in enumerate(self.calldata)
+            (self.id, TxContextFieldTag.CallData, idx, byte) for idx, byte in enumerate(self.call_data)
         ]
 
 

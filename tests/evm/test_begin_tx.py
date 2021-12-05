@@ -1,7 +1,7 @@
 import pytest
 
 from zkevm_specs.evm import (
-    ExecutionResult, StepState, verify_steps, Tables,
+    ExecutionState, StepState, verify_steps, Tables,
     RWTableTag, RW, AccountFieldTag, CallContextFieldTag, Transaction, Bytecode
 )
 from zkevm_specs.util import RLCStore, rand_address, rand_range
@@ -46,8 +46,8 @@ def test_begin_tx(tx: Transaction, result: bool):
             (10, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.Depth, 1, 0, 0),
             (11, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.CallerAddress, tx.caller_address, 0, 0),
             (12, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.CalleeAddress, tx.callee_address, 0, 0),
-            (13, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.CalldataOffset, 0, 0, 0),
-            (14, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.CalldataLength, len(tx.calldata), 0, 0),
+            (13, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.CallDataOffset, 0, 0, 0),
+            (14, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.CallDataLength, len(tx.call_data), 0, 0),
             (15, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.Value, rlc_store.to_rlc(tx.value, 32), 0, 0),
             (16, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.IsStatic, 0, 0, 0),
         ] + ([] if result else [
@@ -63,12 +63,12 @@ def test_begin_tx(tx: Transaction, result: bool):
         tables=tables,
         steps=[
             StepState(
-                execution_result=ExecutionResult.BEGIN_TX,
+                execution_state=ExecutionState.BeginTx,
                 rw_counter=1,
                 call_id=1,
             ),
             StepState(
-                execution_result=ExecutionResult.STOP if result else ExecutionResult.REVERT,
+                execution_state=ExecutionState.STOP if result else ExecutionState.REVERT,
                 rw_counter=17,
                 call_id=1,
                 is_root=True,

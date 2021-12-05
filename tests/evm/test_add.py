@@ -2,7 +2,7 @@ import pytest
 
 from typing import Optional
 from zkevm_specs.evm import (
-    ExecutionResult, StepState, Opcode, verify_steps, Tables,
+    ExecutionState, StepState, Opcode, verify_steps, Tables,
     RWTableTag, RW, Bytecode,
 )
 from zkevm_specs.util import hex_to_word, rand_bytes, RLCStore
@@ -43,7 +43,7 @@ def test_add(opcode: Opcode, a_bytes: bytes, b_bytes: bytes, c_bytes: Optional[b
         tables=tables,
         steps=[
             StepState(
-                execution_result=ExecutionResult.ADD,
+                execution_state=ExecutionState.ADD,
                 rw_counter=9,
                 call_id=1,
                 is_root=True,
@@ -54,7 +54,7 @@ def test_add(opcode: Opcode, a_bytes: bytes, b_bytes: bytes, c_bytes: Optional[b
                 gas_left=3,
             ),
             StepState(
-                execution_result=ExecutionResult.STOP,
+                execution_state=ExecutionState.STOP,
                 rw_counter=12,
                 call_id=1,
                 is_root=True,

@@ -2,7 +2,7 @@ from typing import Sequence, Set, Tuple
 from enum import IntEnum, auto
 
 from ..util import Array4, Array4, Array8
-from .execution_result import ExecutionResult
+from .execution_state import ExecutionState
 from .opcode import (
     invalid_opcodes,
     state_write_opcodes,
@@ -32,7 +32,7 @@ class FixedTableTag(IntEnum):
     BitwiseAnd = auto()  # lhs, rhs, lhs & rhs, 0
     BitwiseOr = auto()  # lhs, rhs, lhs | rhs, 0
     BitwiseXor = auto()  # lhs, rhs, lhs ^ rhs, 0
-    ResponsibleOpcode = auto()  # execution_result, opcode, 0
+    ResponsibleOpcode = auto()  # execution_state, opcode, 0
     InvalidOpcode = auto()  # opcode, 0, 0
     StateWriteOpcode = auto()  # opcode, 0, 0
     StackOverflow = auto()  # opcode, stack_pointer, 0
@@ -53,8 +53,8 @@ class TxContextFieldTag(IntEnum):
     CalleeAddress = auto()
     IsCreate = auto()
     Value = auto()
-    CalldataLength = auto()
-    Calldata = auto()
+    CallDataLength = auto()
+    CallData = auto()
 
 
 class RW:
@@ -125,10 +125,10 @@ class CallContextFieldTag(IntEnum):
     Depth = auto()  # to know if call too deep
     CallerAddress = auto()
     CalleeAddress = auto()
-    CalldataOffset = auto()
-    CalldataLength = auto()
-    ReturndataOffset = auto()  # for callee to set returndata to caller's memeory
-    ReturndataLength = auto()
+    CallDataOffset = auto()
+    CallDataLength = auto()
+    ReturnDataOffset = auto()  # for callee to set return_data to caller's memeory
+    ReturnDataLength = auto()
     Value = auto()
     Result = auto()  # to peek result in the future
     IsPersistent = auto()  # to know if current call is within reverted call or not
@@ -185,8 +185,8 @@ class Tables:
         [(FixedTableTag.BitwiseAnd, lhs, rhs, lhs & rhs) for lhs in range(256) for rhs in range(256)] +
         [(FixedTableTag.BitwiseOr, lhs, rhs, lhs | rhs) for lhs in range(256) for rhs in range(256)] +
         [(FixedTableTag.BitwiseXor, lhs, rhs, lhs ^ rhs) for lhs in range(256) for rhs in range(256)] +
-        [(FixedTableTag.ResponsibleOpcode, execution_result, opcode, 0)
-            for execution_result in list(ExecutionResult) for opcode in execution_result.responsible_opcode()] +
+        [(FixedTableTag.ResponsibleOpcode, execution_state, opcode, 0)
+            for execution_state in list(ExecutionState) for opcode in execution_state.responsible_opcode()] +
         [(FixedTableTag.InvalidOpcode, opcode, 0, 0) for opcode in invalid_opcodes()] +
         [(FixedTableTag.StateWriteOpcode, opcode, 0, 0) for opcode in state_write_opcodes()] +
         [(FixedTableTag.StackUnderflow, opcode, stack_pointer, 0) for (opcode, stack_pointer) in stack_underflow_pairs()] +

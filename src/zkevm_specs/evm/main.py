@@ -6,7 +6,7 @@ from .execution import (
     begin_tx,
     push,
 )
-from .execution_result import ExecutionResult
+from .execution_state import ExecutionState
 from .instruction import Instruction
 from .step import StepState
 from .table import Tables
@@ -33,14 +33,14 @@ def verify_step(
     is_final_step: bool = False,
 ):
     if is_first_step:
-        instruction.constrain_equal(instruction.curr.execution_result, ExecutionResult.BEGIN_TX)
+        instruction.constrain_equal(instruction.curr.execution_state, ExecutionState.BeginTx)
 
-    if instruction.curr.execution_result == ExecutionResult.BEGIN_TX:
+    if instruction.curr.execution_state == ExecutionState.BeginTx:
         begin_tx(instruction, is_first_step)
     # Opcode's successful cases
-    elif instruction.curr.execution_result == ExecutionResult.ADD:
+    elif instruction.curr.execution_state == ExecutionState.ADD:
         add(instruction)
-    elif instruction.curr.execution_result == ExecutionResult.PUSH:
+    elif instruction.curr.execution_state == ExecutionState.PUSH:
         push(instruction)
     # Error cases
     else:

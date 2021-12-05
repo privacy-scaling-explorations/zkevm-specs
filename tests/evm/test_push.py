@@ -1,7 +1,7 @@
 import pytest
 
 from zkevm_specs.evm import (
-    ExecutionResult, StepState, Opcode, verify_steps, Tables,
+    ExecutionState, StepState, Opcode, verify_steps, Tables,
     RWTableTag, RW, Bytecode,
 )
 from zkevm_specs.util import rand_bytes, RLCStore
@@ -39,7 +39,7 @@ def test_push(opcode: Opcode, value_be_bytes: bytes):
         tables=tables,
         steps=[
             StepState(
-                execution_result=ExecutionResult.PUSH,
+                execution_state=ExecutionState.PUSH,
                 rw_counter=8,
                 call_id=1,
                 is_root=True,
@@ -50,7 +50,7 @@ def test_push(opcode: Opcode, value_be_bytes: bytes):
                 gas_left=3,
             ),
             StepState(
-                execution_result=ExecutionResult.STOP,
+                execution_state=ExecutionState.STOP,
                 rw_counter=9,
                 call_id=1,
                 is_root=True,

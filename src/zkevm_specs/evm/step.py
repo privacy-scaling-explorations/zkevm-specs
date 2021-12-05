@@ -1,4 +1,4 @@
-from .execution_result import ExecutionResult
+from .execution_state import ExecutionState
 
 
 class StepState:
@@ -11,14 +11,14 @@ class StepState:
     program_counter and stack_pointer.
     """
 
-    execution_result: ExecutionResult
+    execution_state: ExecutionState
     rw_counter: int
     call_id: int
 
     # The following 3 fields decide the source of opcode. There are 3 possible
     # cases:
     # 1. Tx contract deployment (is_root and is_create)
-    #   We set opcode_source to tx_id and lookup calldata in tx_table.
+    #   We set opcode_source to tx_id and lookup call_data in tx_table.
     # 2. CREATE and CREATE2 (not is_root and is_create)
     #   We set opcode_source to caller_id and lookup memory in rw_table.
     # 3. Contract execution (not is_create)
@@ -37,12 +37,12 @@ class StepState:
     memory_size: int
     state_write_counter: int
     last_callee_id: int
-    last_callee_returndata_offset: int
-    last_callee_returndata_length: int
+    last_callee_return_data_offset: int
+    last_callee_return_data_length: int
 
     def __init__(
         self,
-        execution_result: ExecutionResult,
+        execution_state: ExecutionState,
         rw_counter: int,
         call_id: int,
         is_root: bool = False,
@@ -54,10 +54,10 @@ class StepState:
         memory_size: int = 0,
         state_write_counter: int = 0,
         last_callee_id: int = 0,
-        last_callee_returndata_offset: int = 0,
-        last_callee_returndata_length: int = 0,
+        last_callee_return_data_offset: int = 0,
+        last_callee_return_data_length: int = 0,
     ) -> None:
-        self.execution_result = execution_result
+        self.execution_state = execution_state
         self.rw_counter = rw_counter
         self.call_id = call_id
         self.is_root = is_root
@@ -69,5 +69,5 @@ class StepState:
         self.memory_size = memory_size
         self.state_write_counter = state_write_counter
         self.last_callee_id = last_callee_id
-        self.last_callee_returndata_offset = last_callee_returndata_offset
-        self.last_callee_returndata_length = last_callee_returndata_length
+        self.last_callee_return_data_offset = last_callee_return_data_offset
+        self.last_callee_return_data_length = last_callee_return_data_length
