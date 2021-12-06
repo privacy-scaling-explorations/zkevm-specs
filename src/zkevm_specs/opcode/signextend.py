@@ -2,6 +2,7 @@ from typing import Sequence
 
 from ..encoding import LookupTable, U8, is_circuit_code, u256_to_u8s
 
+
 class SignByteTable(LookupTable):
     """
     value: 8 bits 0..256
@@ -11,8 +12,9 @@ class SignByteTable(LookupTable):
 
     def __init__(self):
         super().__init__(["value", "sign"])
-        for v in range(0, 2**8):
-            self.add_row(value=v, sign=(v>>7)*0xFF)
+        for v in range(0, 2 ** 8):
+            self.add_row(value=v, sign=(v >> 7) * 0xFF)
+
 
 @is_circuit_code
 def check_signextend(
@@ -37,15 +39,12 @@ def check_signextend(
     selected_byte = 0
     for i in range(31):
         is_selected = (i8s[0] == i) and is_msb_sum_zero
-        selected_byte += (v8s[i] * is_selected)
+        selected_byte += v8s[i] * is_selected
         # Verify the selector
-        assert(is_selected + (selectors[i-1] if i > 0 else 0) == selectors[i])
+        assert is_selected + (selectors[i - 1] if i > 0 else 0) == selectors[i]
 
     # Lookup the sign byte which will be used for doing the extending
-    assert sign_byte_table.lookup(
-        value=selected_byte,
-        sign=sign_byte
-    )
+    assert sign_byte_table.lookup(value=selected_byte, sign=sign_byte)
 
     # Byte 0 always remains the same.
     # All other bytes need to be changed to the sign byte when the selector is enabled.
@@ -53,9 +52,9 @@ def check_signextend(
     # (hence the `selectors[i-1]`).
     for i in range(0, 32):
         if i == 0:
-            assert(r8s[i] == v8s[i])
+            assert r8s[i] == v8s[i]
         else:
-            assert(r8s[i] == sign_byte if selectors[i-1] else v8s[i])
+            assert r8s[i] == sign_byte if selectors[i - 1] else v8s[i]
 
 
 def test_check_byte():

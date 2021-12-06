@@ -11,9 +11,7 @@ class LookupTable:
 
     def __parse_row(self, **kwargs) -> Tuple[int, ...]:
         if len(kwargs.keys()) != len(self.columns):
-            raise ValueError(
-                f"Columns mismatch: expect {self.columns} but got {kwargs.keys()}"
-            )
+            raise ValueError(f"Columns mismatch: expect {self.columns} but got {kwargs.keys()}")
         return tuple(kwargs[col] for col in self.columns)
 
     def add_row(self, **kwargs):

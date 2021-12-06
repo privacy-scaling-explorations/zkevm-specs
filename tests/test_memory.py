@@ -1,6 +1,7 @@
 from zkevm_specs.encoding import u256_to_u8s
 from zkevm_specs.opcode import check_memory_ops, Memory, OP_MLOAD, OP_MSTORE, OP_MSTORE8, G_MEM
 
+
 def test_check_memory_ops():
 
     memory = Memory()
@@ -26,17 +27,16 @@ def test_check_memory_ops():
     # Test against some values acquired from traces
     memory = Memory()
     # Store a value at address 0x12FFFF
-    check_memory_ops(OP_MSTORE, memory, u256_to_u8s(0x12FFFF), range(1, 33), 0, 1_245_216//32, 3_074_203)
+    check_memory_ops(OP_MSTORE, memory, u256_to_u8s(0x12FFFF), range(1, 33), 0, 1_245_216 // 32, 3_074_203)
     # Load a value at address 0x230212
-    check_memory_ops(OP_MLOAD, memory, u256_to_u8s(0x230212), [0] * 32, 1_245_216//32, 2_294_336//32, 7_181_131)
+    check_memory_ops(OP_MLOAD, memory, u256_to_u8s(0x230212), [0] * 32, 1_245_216 // 32, 2_294_336 // 32, 7_181_131)
     # Store a value at address 0x131541
-    check_memory_ops(OP_MSTORE, memory, u256_to_u8s(0x131541), range(1, 33), 2_294_336//32, 2_294_336//32, 0)
+    check_memory_ops(OP_MSTORE, memory, u256_to_u8s(0x131541), range(1, 33), 2_294_336 // 32, 2_294_336 // 32, 0)
 
     # Verify Geth max allowed address
     memory = Memory()
-    check_memory_ops(OP_MLOAD, memory, u256_to_u8s(0x1FFFFFFFC0), [0] * 32, 0, 0xFFFFFFFF, 0x800002fefffffd)
+    check_memory_ops(OP_MLOAD, memory, u256_to_u8s(0x1FFFFFFFC0), [0] * 32, 0, 0xFFFFFFFF, 0x800002FEFFFFFD)
 
     # Verify zkEVM max allowed address
     memory = Memory()
     check_memory_ops(OP_MLOAD, memory, u256_to_u8s(0xFFFFFFFFFF), [0] * 32, 0, 0x800000001, 0x2000001808000003)
-

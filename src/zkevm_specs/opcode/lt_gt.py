@@ -2,6 +2,7 @@ from typing import Sequence
 
 from ..encoding import is_circuit_code, U8, U256, u256_to_u8s
 
+
 def lt_circuit(
     a8s: Sequence[U8],
     b8s: Sequence[U8],
@@ -42,7 +43,7 @@ def lt_circuit(
     # high 16 bytes
     # a[31:16] + c[31:16] + carry = b[31:16] + (1-result[0]) * (sumc == 0) * 256^16
     lhs = 0
-    rhs = (1-result8s[0]) * (sumc != 0)
+    rhs = (1 - result8s[0]) * (sumc != 0)
     for i in range(16, 32):
         lhs = lhs * 256 + a8s[i] + c8s[i]
         rhs = rhs * 256 + b8s[i]

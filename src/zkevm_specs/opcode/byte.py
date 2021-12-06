@@ -2,6 +2,7 @@ from typing import Sequence
 
 from ..encoding import U8, is_circuit_code
 
+
 @is_circuit_code
 def check_byte(
     v8s: Sequence[U8],
@@ -21,10 +22,10 @@ def check_byte(
     r = 0
     for i in range(32):
         selected = i8s[0] == i
-        r += (v8s[i] * msb_sum_zero * selected)
+        r += v8s[i] * msb_sum_zero * selected
     # Result needs to match the selected byte
     # (or equal to 0 when index >= 32)
-    assert(r == r8s[0])
+    assert r == r8s[0]
 
     # Byte 1 to 31:
     for i in range(1, 32):

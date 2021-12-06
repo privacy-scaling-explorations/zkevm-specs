@@ -15,7 +15,7 @@ NUM_ADDRESS_BYTES_USED = 5
 def address_low(
     address: Sequence[U8],
 ) -> U64:
-    return sum(x * (2**(8*i)) for i, x in enumerate(address[:NUM_ADDRESS_BYTES_USED]))
+    return sum(x * (2 ** (8 * i)) for i, x in enumerate(address[:NUM_ADDRESS_BYTES_USED]))
 
 
 @is_circuit_code
@@ -29,7 +29,7 @@ def address_high(
 def require_address_in_range(
     address: Sequence[U8],
 ):
-    assert(address_high(address) == 0)
+    assert address_high(address) == 0
 
 
 @is_circuit_code
@@ -91,8 +91,7 @@ def memory_expansion(
 
     # Calculate the gas cost for the memory expansion
     # This gas cost is the difference between the next and current memory costs
-    memory_gas_cost = (next_memory_size - curr_memory_size) * G_MEM \
-        + (next_quad_memory_cost - curr_quad_memory_cost)
+    memory_gas_cost = (next_memory_size - curr_memory_size) * G_MEM + (next_quad_memory_cost - curr_quad_memory_cost)
 
     # Return the new memory size and the memory expansion gas cost
     return (next_memory_size, memory_gas_cost)
@@ -125,21 +124,18 @@ def check_memory_ops(
     address = address_low(address8s)
 
     # Calculate the next memory size and the gas cost for this memory access
-    (next_memory_size, memory_cost) = memory_expansion(
-        curr_memory_size,
-        address + 1 + is_not_mstore8 * 31
-    )
-    assert(next_memory_size == expected_next_memory_size)
-    assert(memory_cost == expected_memory_cost)
+    (next_memory_size, memory_cost) = memory_expansion(curr_memory_size, address + 1 + is_not_mstore8 * 31)
+    assert next_memory_size == expected_next_memory_size
+    assert memory_cost == expected_memory_cost
 
     # Read/Write the value from memory at the specified address
     for i in range(0, 32):
         # For MSTORE8 we write the LSB of value 32x times to the same address
         # For MLOAD and MSTORE we read/write all the bytes of value
         # at an increasing address value.
-        byte = value8s[0] if i == 31 else select(is_mstore8, value8s[0], value8s[31-i])
+        byte = value8s[0] if i == 31 else select(is_mstore8, value8s[0], value8s[31 - i])
         offset = 0 if i == 0 else is_not_mstore8 * i
         memory.op(address + offset, byte, is_store)
 
     # Also verify the expected memory size against the one calculated by Memory
-    assert(expected_next_memory_size == memory.memory_size())
+    assert expected_next_memory_size == memory.memory_size()

@@ -8,14 +8,14 @@ The `BYTE` opcode retrieves a single byte from a value. This is done by popping 
 
 1. opId = OpcodeId(0x1a)
 2. state transition:
-    - gc + 3 (2 stack reads + 1 stack write)
-    - stack_pointer + 1
-    - pc + 1
-    - gas + 3
+   - gc + 3 (2 stack reads + 1 stack write)
+   - stack_pointer + 1
+   - pc + 1
+   - gas + 3
 3. lookups: 3 busmapping lookups
-    - `index` is at the top of the stack
-    - `value` is at the new top of the stack
-    - `result` is at the new top of the stack
+   - `index` is at the top of the stack
+   - `value` is at the new top of the stack
+   - `result` is at the new top of the stack
 
 ## Exceptions
 

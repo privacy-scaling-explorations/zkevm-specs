@@ -13,21 +13,21 @@ apply the lookup to the 32 chunks of `a`, `b`, and `c` to see if
 ## Constraints
 
 1. opcodeId checks
-    - opId == OpcodeId(0x16) for `AND`
-    - opId == OpcodeId(0x17) for `OR`
-    - opId == OpcodeId(0x18) for `XOR`
+   - opId == OpcodeId(0x16) for `AND`
+   - opId == OpcodeId(0x17) for `OR`
+   - opId == OpcodeId(0x18) for `XOR`
 2. state transition:
-    - gc + 3
-    - stack_pointer + 1
-    - pc + 1
-    - gas + 3
+   - gc + 3
+   - stack_pointer + 1
+   - pc + 1
+   - gas + 3
 3. Lookups: 35 busmapping lookups
-    - `a` is at the top of the stack
-    - `b` is at the second position of the stack
-    - `c`, the result, is at the new top of the stack
-    - Apply the lookup to 32 tuples of `a, b, c` chunks,
-        `(a[i], b[i], c[i]), i = 0..32`, with opcode corresponding table
-        (`BitwiseAnd`, `BitwiseOr`, and `BitwiseXor`).
+   - `a` is at the top of the stack
+   - `b` is at the second position of the stack
+   - `c`, the result, is at the new top of the stack
+   - Apply the lookup to 32 tuples of `a, b, c` chunks,
+     `(a[i], b[i], c[i]), i = 0..32`, with opcode corresponding table
+     (`BitwiseAnd`, `BitwiseOr`, and `BitwiseXor`).
 
 ## Exceptions
 

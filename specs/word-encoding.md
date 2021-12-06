@@ -16,6 +16,7 @@ For example, a 256 bit value 1
 ```python
 word256 = 1
 ```
+
 `word256` can be broken down into 32 8 bit words.
 
 ```python

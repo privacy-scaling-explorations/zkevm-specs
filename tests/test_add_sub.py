@@ -59,12 +59,12 @@ def test_comparator(a, b):
     a8s = u256_to_u8s(a)
     b8s = u256_to_u8s(b)
     sign_table = SignTable()
-    result = [0]*17
+    result = [0] * 17
     for i in reversed(range(0, 32, 2)):
         a16 = a8s[i] + 256 * a8s[i + 1]
         b16 = b8s[i] + 256 * b8s[i + 1]
-        _sum = a16 - b16 + 2**16 * result[i//2+1]
-        result[i//2] = (_sum > 0) - (_sum < 0)
+        _sum = a16 - b16 + 2 ** 16 * result[i // 2 + 1]
+        result[i // 2] = (_sum > 0) - (_sum < 0)
 
     result = result[:16]
 
