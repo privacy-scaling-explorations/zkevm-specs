@@ -1,6 +1,7 @@
 from zkevm_specs.encoding import u256_to_u8s
 from zkevm_specs.opcode import check_byte
 
+
 def test_byte():
     value = range(1, 33)
     for i in range(1024):

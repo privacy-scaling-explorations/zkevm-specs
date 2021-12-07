@@ -13,7 +13,7 @@ class SignTable(LookupTable):
     def __init__(self):
         super().__init__(["x", "sign"])
         self.add_row(x=0, sign=0)
-        for x in range(1, 2**17):
+        for x in range(1, 2 ** 17):
             self.add_row(x=x, sign=1)
             self.add_row(x=-x + FIELD_SIZE, sign=-1)
 
@@ -41,11 +41,8 @@ def compare(
         b16 = b8s[i] + 256 * b8s[i + 1]
 
         diff = (a16 - b16) % FIELD_SIZE
-        previous, current = result[i//2+1], result[i // 2]
+        previous, current = result[i // 2 + 1], result[i // 2]
 
-        assert sign_table.lookup(
-            x=(diff + 2**16 * previous) % FIELD_SIZE,
-            sign=current
-        )
+        assert sign_table.lookup(x=(diff + 2 ** 16 * previous) % FIELD_SIZE, sign=current)
 
     return result[0]
