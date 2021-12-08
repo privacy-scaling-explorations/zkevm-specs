@@ -20,7 +20,40 @@ word256 = 1
 `word256` can be broken down into 32 8 bit words.
 
 ```python
-word8s = [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+word8s = [
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+]
 ```
 
 See `src/encoding/utils.py::u256_to_u8s` and `src/encoding/utils.py::u8s_to_u256` for the functions to convert between a 256 bit word and its 8 bit chunks.

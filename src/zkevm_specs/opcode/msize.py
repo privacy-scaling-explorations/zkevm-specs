@@ -1,6 +1,7 @@
 from zkevm_specs.opcode.memory import Memory
 from ..encoding import U64, is_circuit_code
 
+
 @is_circuit_code
 def check_msize(
     memory: Memory,
