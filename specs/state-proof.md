@@ -45,7 +45,7 @@ class Record:
 
     def __init__(self, **kwargs) -> None:
         self.values = {}
-        self.fields = tuple(['global_counter', 'rw'] + self.fields)
+        self.fields = tuple(["global_counter", "rw"] + self.fields)
         for field in self.fields:
             self.values[field] = kwargs[field]
             setattr(self, field, self.values[field])
@@ -53,7 +53,9 @@ class Record:
     def __sub__(self, rhs):
         if rhs is None:
             return self
-        return type(self)(**{field: self.values[field] - rhs.values[field] for field in self.fields})
+        return type(self)(
+            **{field: self.values[field] - rhs.values[field] for field in self.fields}
+        )
 
 
 class ReadWriteGate:
@@ -63,13 +65,14 @@ class ReadWriteGate:
         diff = cur - prev
 
         is_first_row = prev is None
-        is_first_row_in_group = is_first_row or \
-            any([getattr(diff, field) != 0 for field, _ in self.group_fields])
+        is_first_row_in_group = is_first_row or any(
+            [getattr(diff, field) != 0 for field, _ in self.group_fields]
+        )
 
         # grouping
         if not is_first_row:
             for field, group_fn in self.group_fields:
-                assert(group_fn(cur, prev, diff))
+                assert group_fn(cur, prev, diff)
                 if getattr(diff, field) != 0:
                     break
 
@@ -101,13 +104,13 @@ class ReadWriteGate:
 
 ```python
 class AccountNonce(Record):
-    fields = ['address', 'nonce']
+    fields = ["address", "nonce"]
 
 
 class AccountNonceGate(ReadWriteGate):
     group_fields = [
         # TODO: check address by 160-bit range lookup or other more efficient method
-        ('address', lambda cur, prev, diff: diff.address >= 0)
+        ("address", lambda cur, prev, diff: diff.address >= 0)
     ]
 
     def constraint_every_row(cur: AccountNonce):
@@ -119,7 +122,12 @@ class AccountNonceGate(ReadWriteGate):
         #       come from stack or tx. In both case, evm takes masked value, so evm
         #       circuit only cares first 20 bytes, which will always be in range.
 
-    def constraint_in_group(prev: AccountNonce, cur: AccountNonce, diff: AccountNonce, is_first_row_in_group: bool):
+    def constraint_in_group(
+        prev: AccountNonce,
+        cur: AccountNonce,
+        diff: AccountNonce,
+        is_first_row_in_group: bool,
+    ):
         if is_first_row_in_group:
             # TODO: verify the nonce exist in previous state trie root or initialized to 0
             pass
@@ -137,20 +145,25 @@ class AccountNonceGate(ReadWriteGate):
 
 ```python
 class AccountBalance(Record):
-    fields = ['address', 'balance']
+    fields = ["address", "balance"]
 
 
 class AccountBalanceGate(ReadWriteGate):
     group_fields = [
         # TODO: check address by 160-bit range lookup or other more efficient method
-        ('address', lambda cur, prev, diff: diff.address >= 0)
+        ("address", lambda cur, prev, diff: diff.address >= 0)
     ]
 
     def constraint_every_row(cur: AccountBalance):
         # NOTE: we don't need to check each address (same reason of AccountNonce)
         pass
 
-    def constraint_in_group(prev: AccountBalance, cur: AccountBalance, diff: AccountBalance, is_first_row_in_group: bool):
+    def constraint_in_group(
+        prev: AccountBalance,
+        cur: AccountBalance,
+        diff: AccountBalance,
+        is_first_row_in_group: bool,
+    ):
         if is_first_row_in_group:
             # rw should be a Write for the first row in group
             assert cur.rw == RW.Write
@@ -179,22 +192,27 @@ class AccountBalanceGate(ReadWriteGate):
 
 ```python
 class AccountStorage(Record):
-    fields = ['address', 'key', 'value', 'value_prev']
+    fields = ["address", "key", "value", "value_prev"]
 
 
 class AccountStorageGate(ReadWriteGate):
     group_fields = [
         # TODO: check address by 160-bit range lookup or other more efficient method
-        ('address', lambda cur, prev, diff: diff.address >= 0),
+        ("address", lambda cur, prev, diff: diff.address >= 0),
         # TODO: check key by bytes comparator in case overflow
-        ('key', lambda cur, prev, diff: cur.key >= prev.key),
+        ("key", lambda cur, prev, diff: cur.key >= prev.key),
     ]
 
     def constraint_every_row(cur: AccountStorage):
         # NOTE: we don't need to check each address (same reason of AccountNonce)
         pass
 
-    def constraint_in_group(prev: AccountStorage, cur: AccountStorage, diff: AccountStorage, is_first_row_in_group: bool):
+    def constraint_in_group(
+        prev: AccountStorage,
+        cur: AccountStorage,
+        diff: AccountStorage,
+        is_first_row_in_group: bool,
+    ):
         if is_first_row_in_group:
             # rw should be a Write for the first row in group
             assert cur.rw == RW.Write
@@ -233,22 +251,24 @@ class CallStateEnum(Enum):
 
 
 class CallState(Record):
-    fields = ['id', 'enum', 'value']
+    fields = ["id", "enum", "value"]
 
 
 class CallStateGate(ReadWriteGate):
     group_fields = [
         # TODO: decide a reasonable call id range circuit should support
-        ('id', lambda cur, prev, diff: diff.id >= 0),
+        ("id", lambda cur, prev, diff: diff.id >= 0),
         # enum should increase by 1 or remain
-        ('enum', lambda cur, prev, diff: diff.enum in (0, 1)),
+        ("enum", lambda cur, prev, diff: diff.enum in (0, 1)),
     ]
 
     def constraint_every_row(cur: CallState):
         # enum should be valid
         assert 0 < cur.enum.value <= len(CallStateEnum)
 
-    def constraint_in_group(prev: CallState, cur: CallState, diff: CallState, is_first_row_in_group: bool):
+    def constraint_in_group(
+        prev: CallState, cur: CallState, diff: CallState, is_first_row_in_group: bool
+    ):
         if is_first_row_in_group:
             # rw should be a Write for the first row in group
             assert cur.rw == RW.Write
@@ -268,22 +288,27 @@ class CallStateGate(ReadWriteGate):
 
 ```python
 class CallStateStack(Record):
-    fields = ['id', 'index', 'value']
+    fields = ["id", "index", "value"]
 
 
 class CallStateStackGate(ReadWriteGate):
     group_fields = [
         # TODO: decide a reasonable call id range circuit should support
-        ('id', lambda cur, prev, diff: diff.id >= 0),
+        ("id", lambda cur, prev, diff: diff.id >= 0),
         # index should increase by 1 or remain
-        ('index', lambda cur, prev, diff: diff.index in (0, 1)),
+        ("index", lambda cur, prev, diff: diff.index in (0, 1)),
     ]
 
     def constraint_every_row(cur: CallStateStack):
         # index should be valid (avoid malicious prover to conceal stack overflow / underflow error)
         assert 0 <= cur.index <= MAX_STACK_INDEX
 
-    def constraint_in_group(prev: CallStateStack, cur: CallStateStack, diff: CallStateStack, is_first_row_in_group: bool):
+    def constraint_in_group(
+        prev: CallStateStack,
+        cur: CallStateStack,
+        diff: CallStateStack,
+        is_first_row_in_group: bool,
+    ):
         if is_first_row_in_group:
             # rw should be a Write for the first row in group
             assert cur.rw == RW.Write
@@ -303,15 +328,15 @@ class CallStateStackGate(ReadWriteGate):
 
 ```python
 class CallStateMemory(Record):
-    fields = ['id', 'index', 'value']
+    fields = ["id", "index", "value"]
 
 
 class CallStateMemoryGate(ReadWriteGate):
     group_fields = [
         # TODO: decide a reasonable call id range circuit should support
-        ('id', lambda cur, prev, diff: diff.id >= 0),
+        ("id", lambda cur, prev, diff: diff.id >= 0),
         # TODO: decide a reasonable memory index range circuit should support
-        ('index', lambda cur, prev, diff: diff.index >= 0),
+        ("index", lambda cur, prev, diff: diff.index >= 0),
     ]
 
     def constraint_every_row(cur: CallStateMemory):
@@ -328,7 +353,12 @@ class CallStateMemoryGate(ReadWriteGate):
         # value should be a byte
         assert 0 <= cur.value <= MAX_U8
 
-    def constraint_in_group(prev: CallStateMemory, cur: CallStateMemory, diff: CallStateMemory, is_first_row_in_group: bool):
+    def constraint_in_group(
+        prev: CallStateMemory,
+        cur: CallStateMemory,
+        diff: CallStateMemory,
+        is_first_row_in_group: bool,
+    ):
         if is_first_row_in_group:
             # rw should be a Write for the first row in group
             assert cur.rw == RW.Write
