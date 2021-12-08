@@ -6,8 +6,13 @@ from ..util import Array4, Array8, linear_combine, RLCStore
 from .opcode import Opcode
 from .step import StepState
 from .table import (
-    AccountFieldTag, CallContextFieldTag, Tables,
-    FixedTableTag, TxContextFieldTag, RW, RWTableTag,
+    AccountFieldTag,
+    CallContextFieldTag,
+    Tables,
+    FixedTableTag,
+    TxContextFieldTag,
+    RW,
+    RWTableTag,
 )
 
 
@@ -78,9 +83,11 @@ class Instruction:
         rw_counter_end_of_reversion: int = 0,
     ):
         sender_balance, sender_balance_prev = self.account_write_with_reversion(
-            sender_address, AccountFieldTag.Balance, is_persistent, rw_counter_end_of_reversion)
+            sender_address, AccountFieldTag.Balance, is_persistent, rw_counter_end_of_reversion
+        )
         receiver_balance, receiver_balance_prev = self.account_write_with_reversion(
-            receiver_address, AccountFieldTag.Balance, is_persistent, rw_counter_end_of_reversion)
+            receiver_address, AccountFieldTag.Balance, is_persistent, rw_counter_end_of_reversion
+        )
 
         value_with_gas_fee, overflow = self.add_word(value, gas_fee)
         self.constrain_zero(overflow)
@@ -95,31 +102,34 @@ class Instruction:
 
     def constrain_state_transition(self, **kwargs: Transition):
         for key in [
-            'rw_counter',
-            'call_id',
-            'is_root',
-            'is_create',
-            'opcode_source',
-            'program_counter',
-            'stack_pointer',
-            'gas_left',
-            'memory_size',
-            'state_write_counter',
-            'last_callee_id',
-            'last_callee_return_data_offset',
-            'last_callee_return_data_length',
+            "rw_counter",
+            "call_id",
+            "is_root",
+            "is_create",
+            "opcode_source",
+            "program_counter",
+            "stack_pointer",
+            "gas_left",
+            "memory_size",
+            "state_write_counter",
+            "last_callee_id",
+            "last_callee_return_data_offset",
+            "last_callee_return_data_length",
         ]:
             curr, next = getattr(self.curr, key), getattr(self.next, key)
             transition = kwargs.get(key, Transition.persistent())
             if transition.kind == TransitionKind.Persistent:
-                assert next == curr, \
-                    ConstraintUnsatFailure(f"state {key} should be persistent as {curr}, but got {next}")
+                assert next == curr, ConstraintUnsatFailure(
+                    f"state {key} should be persistent as {curr}, but got {next}"
+                )
             elif transition.kind == TransitionKind.Delta:
-                assert next == curr + transition.value, \
-                    ConstraintUnsatFailure(f"state {key} should transit to ${curr + transition.value}, but got {next}")
+                assert next == curr + transition.value, ConstraintUnsatFailure(
+                    f"state {key} should transit to ${curr + transition.value}, but got {next}"
+                )
             elif transition.kind == TransitionKind.To:
-                assert next == transition.value, \
-                    ConstraintUnsatFailure(f"state {key} should transit to ${transition.value}, but got {next}")
+                assert next == transition.value, ConstraintUnsatFailure(
+                    f"state {key} should transit to ${transition.value}, but got {next}"
+                )
             else:
                 raise ValueError("unreacheable")
 
@@ -197,7 +207,7 @@ class Instruction:
         carry_lo, c_lo = divmod(a_lo + b_lo, 1 << 128)
         carry_hi, c_hi = divmod(a_hi + b_hi + carry_lo, 1 << 128)
 
-        c_bytes = c_lo.to_bytes(16, 'little') + c_hi.to_bytes(16, 'little')
+        c_bytes = c_lo.to_bytes(16, "little") + c_hi.to_bytes(16, "little")
 
         return self.rlc_store.to_rlc(c_bytes), carry_hi
 
@@ -210,7 +220,7 @@ class Instruction:
         quotient_lo, product_lo = divmod(multiplicand_lo * multiplier, 1 << 128)
         quotient_hi, product_hi = divmod(multiplicand_hi * multiplier + quotient_lo, 1 << 128)
 
-        product_bytes = product_lo.to_bytes(16, 'little') + product_hi.to_bytes(16, 'little')
+        product_bytes = product_lo.to_bytes(16, "little") + product_hi.to_bytes(16, "little")
 
         return self.rlc_store.to_rlc(product_bytes), quotient_hi
 
@@ -225,7 +235,7 @@ class Instruction:
 
     def int_to_bytes(self, value: int, n_bytes: int) -> Sequence[int]:
         try:
-            return value.to_bytes(n_bytes, 'little')
+            return value.to_bytes(n_bytes, "little")
         except OverflowError:
             raise ConstraintUnsatFailure(f"{value} is too many bytes to fit {n_bytes} bytes")
 
@@ -303,7 +313,8 @@ class Instruction:
     def opcode_lookup_at(self, index: int, is_code: bool) -> int:
         if self.curr.is_root and self.curr.is_create:
             raise NotImplementedError(
-                "The opcode source when is_root and is_create (root creation call) is not determined yet")
+                "The opcode source when is_root and is_create (root creation call) is not determined yet"
+            )
         else:
             return self.bytecode_lookup(self.curr.opcode_source, index, is_code)
 

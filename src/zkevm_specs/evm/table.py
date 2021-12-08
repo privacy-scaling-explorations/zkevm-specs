@@ -175,22 +175,31 @@ class Tables:
     # - value2
     # - value3
     fixed_table: Set[Array4] = set(
-        [(FixedTableTag.Range16, i, 0, 0) for i in range(16)] +
-        [(FixedTableTag.Range32, i, 0, 0) for i in range(32)] +
-        [(FixedTableTag.Range64, i, 0, 0) for i in range(64)] +
-        [(FixedTableTag.Range256, i, 0, 0) for i in range(256)] +
-        [(FixedTableTag.Range512, i, 0, 0) for i in range(512)] +
-        [(FixedTableTag.Range1024, i, 0, 0) for i in range(1024)] +
-        [(FixedTableTag.SignByte, i, (i & 1) * 0xff, 0) for i in range(256)] +
-        [(FixedTableTag.BitwiseAnd, lhs, rhs, lhs & rhs) for lhs in range(256) for rhs in range(256)] +
-        [(FixedTableTag.BitwiseOr, lhs, rhs, lhs | rhs) for lhs in range(256) for rhs in range(256)] +
-        [(FixedTableTag.BitwiseXor, lhs, rhs, lhs ^ rhs) for lhs in range(256) for rhs in range(256)] +
-        [(FixedTableTag.ResponsibleOpcode, execution_state, opcode, 0)
-            for execution_state in list(ExecutionState) for opcode in execution_state.responsible_opcode()] +
-        [(FixedTableTag.InvalidOpcode, opcode, 0, 0) for opcode in invalid_opcodes()] +
-        [(FixedTableTag.StateWriteOpcode, opcode, 0, 0) for opcode in state_write_opcodes()] +
-        [(FixedTableTag.StackUnderflow, opcode, stack_pointer, 0) for (opcode, stack_pointer) in stack_underflow_pairs()] +
-        [(FixedTableTag.StackOverflow, opcode, stack_pointer, 0) for (opcode, stack_pointer) in stack_overflow_pairs()]
+        [(FixedTableTag.Range16, i, 0, 0) for i in range(16)]
+        + [(FixedTableTag.Range32, i, 0, 0) for i in range(32)]
+        + [(FixedTableTag.Range64, i, 0, 0) for i in range(64)]
+        + [(FixedTableTag.Range256, i, 0, 0) for i in range(256)]
+        + [(FixedTableTag.Range512, i, 0, 0) for i in range(512)]
+        + [(FixedTableTag.Range1024, i, 0, 0) for i in range(1024)]
+        + [(FixedTableTag.SignByte, i, (i & 1) * 0xFF, 0) for i in range(256)]
+        + [(FixedTableTag.BitwiseAnd, lhs, rhs, lhs & rhs) for lhs in range(256) for rhs in range(256)]
+        + [(FixedTableTag.BitwiseOr, lhs, rhs, lhs | rhs) for lhs in range(256) for rhs in range(256)]
+        + [(FixedTableTag.BitwiseXor, lhs, rhs, lhs ^ rhs) for lhs in range(256) for rhs in range(256)]
+        + [
+            (FixedTableTag.ResponsibleOpcode, execution_state, opcode, 0)
+            for execution_state in list(ExecutionState)
+            for opcode in execution_state.responsible_opcode()
+        ]
+        + [(FixedTableTag.InvalidOpcode, opcode, 0, 0) for opcode in invalid_opcodes()]
+        + [(FixedTableTag.StateWriteOpcode, opcode, 0, 0) for opcode in state_write_opcodes()]
+        + [
+            (FixedTableTag.StackUnderflow, opcode, stack_pointer, 0)
+            for (opcode, stack_pointer) in stack_underflow_pairs()
+        ]
+        + [
+            (FixedTableTag.StackOverflow, opcode, stack_pointer, 0)
+            for (opcode, stack_pointer) in stack_overflow_pairs()
+        ]
     )
 
     # Each row in TxTable contains:

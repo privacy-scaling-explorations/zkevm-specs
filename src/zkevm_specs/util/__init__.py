@@ -8,19 +8,19 @@ from .typing import *
 
 
 def hex_to_word(hex: str) -> bytes:
-    return bytes.fromhex(hex.removeprefix('0x').zfill(64))
+    return bytes.fromhex(hex.removeprefix("0x").zfill(64))
 
 
-def rand_range(stop: Union[int, float] = 2**256) -> int:
+def rand_range(stop: Union[int, float] = 2 ** 256) -> int:
     return randrange(0, int(stop))
 
 
 def rand_address() -> U160:
-    return rand_range(2**160)
+    return rand_range(2 ** 160)
 
 
 def rand_word() -> U256:
-    return rand_range(2**256)
+    return rand_range(2 ** 256)
 
 
 def rand_bytes(n_bytes: int = 32) -> bytes:

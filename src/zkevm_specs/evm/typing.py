@@ -48,9 +48,7 @@ class Transaction:
             (self.id, TxContextFieldTag.IsCreate, 0, self.callee_address is None),
             (self.id, TxContextFieldTag.Value, 0, rlc_store.to_rlc(self.value, 32)),
             (self.id, TxContextFieldTag.CallDataLength, 0, len(self.call_data)),
-        ] + [
-            (self.id, TxContextFieldTag.CallData, idx, byte) for idx, byte in enumerate(self.call_data)
-        ]
+        ] + [(self.id, TxContextFieldTag.CallData, idx, byte) for idx, byte in enumerate(self.call_data)]
 
 
 class Bytecode:
@@ -64,7 +62,7 @@ class Bytecode:
         if type(str_or_bytes) is str:
             str_or_bytes = bytes.fromhex(str_or_bytes)
 
-        self.hash = int.from_bytes(keccak256(str_or_bytes), 'little')
+        self.hash = int.from_bytes(keccak256(str_or_bytes), "little")
         self.bytes = str_or_bytes
 
     def table_assignments(self, rlc_store: RLCStore) -> Iterator[Array4]:

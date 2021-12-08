@@ -19,11 +19,11 @@ def verify_steps(
     begin_with_first_step: bool = False,
     end_with_final_step: bool = False,
 ):
-    for idx in range(len(steps)-1):
+    for idx in range(len(steps) - 1):
         verify_step(
-            Instruction(rlc_store=rlc_store, tables=tables, curr=steps[idx], next=steps[idx+1]),
+            Instruction(rlc_store=rlc_store, tables=tables, curr=steps[idx], next=steps[idx + 1]),
             begin_with_first_step and idx == 0,
-            end_with_final_step and idx == len(steps)-2,
+            end_with_final_step and idx == len(steps) - 2,
         )
 
 
