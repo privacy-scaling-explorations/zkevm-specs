@@ -1,8 +1,54 @@
 from typing import Iterator, Optional, Sequence, Union
 
-from ..util import U64, U160, U256, Array4, RLCStore, keccak256
-from .table import TxContextFieldTag
+from ..util import U64, U160, U256, Array3, Array4, RLCStore, keccak256
+from .table import BlockContextFieldTag, TxContextFieldTag
 from .opcode import get_push_size
+
+
+class Block:
+    coinbase: U160
+    gas_limit: U64
+    block_number: U256
+    time: U256
+    difficulty: U256
+    base_fee: U256
+
+    # previous_block_hashes contains at most previous 256 block hashes, where
+    # the lastest one is at previous_block_hashes[-1].
+    previous_block_hashes: Sequence[U256]
+
+    def __init__(
+        self,
+        coinbase: U160 = 0x10,
+        gas_limit: U64 = int(15e6),
+        block_number: U256 = 0,
+        time: U256 = 0,
+        difficulty: U256 = 0,
+        base_fee: U256 = int(1e9),
+        previous_block_hashes: Sequence[U256] = [],
+    ) -> None:
+        assert len(previous_block_hashes) <= 256
+
+        self.coinbase = coinbase
+        self.gas_limit = gas_limit
+        self.block_number = block_number
+        self.time = time
+        self.difficulty = difficulty
+        self.base_fee = base_fee
+        self.previous_block_hashes = previous_block_hashes
+
+    def table_assignments(self, rlc_store: RLCStore) -> Sequence[Array3]:
+        return [
+            (BlockContextFieldTag.Coinbase, 0, self.coinbase),
+            (BlockContextFieldTag.GasLimit, 0, self.gas_limit),
+            (BlockContextFieldTag.BlockNumber, 0, rlc_store.to_rlc(self.block_number, 32)),
+            (BlockContextFieldTag.Time, 0, rlc_store.to_rlc(self.time, 32)),
+            (BlockContextFieldTag.Difficulty, 0, rlc_store.to_rlc(self.difficulty, 32)),
+            (BlockContextFieldTag.BaseFee, 0, rlc_store.to_rlc(self.base_fee, 32)),
+        ] + [
+            (BlockContextFieldTag.BlockHash, self.block_number + idx - 1, rlc_store.to_rlc(block_hash, 32))
+            for idx, block_hash in enumerate(reversed(self.previous_block_hashes))
+        ]
 
 
 class Transaction:

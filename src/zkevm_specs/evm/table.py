@@ -1,7 +1,7 @@
 from typing import Sequence, Set, Tuple
 from enum import IntEnum, auto
 
-from ..util import Array4, Array4, Array8
+from ..util import Array3, Array4, Array8
 from .execution_state import ExecutionState
 from .opcode import (
     invalid_opcodes,
@@ -37,6 +37,23 @@ class FixedTableTag(IntEnum):
     StateWriteOpcode = auto()  # opcode, 0, 0
     StackOverflow = auto()  # opcode, stack_pointer, 0
     StackUnderflow = auto()  # opcode, stack_pointer, 0
+
+
+class BlockContextFieldTag(IntEnum):
+    """
+    Tag for BlockTable lookup, where the BlockTable is an instance-column table
+    where part of it will be built by verifier.
+    We can also merge BlockTable and TxTable together to save columns, but for
+    simplicity we keep them separate for now.
+    """
+
+    Coinbase = auto()
+    GasLimit = auto()
+    BlockNumber = auto()
+    Time = auto()
+    Difficulty = auto()
+    BaseFee = auto()
+    BlockHash = auto()
 
 
 class TxContextFieldTag(IntEnum):
@@ -202,6 +219,12 @@ class Tables:
         ]
     )
 
+    # Each row in BlockTable contains:
+    # - tag
+    # - block_number_or_zero
+    # - value
+    block_table: Set[Array4]
+
     # Each row in TxTable contains:
     # - tx_id
     # - tag
@@ -229,10 +252,12 @@ class Tables:
 
     def __init__(
         self,
+        block_table: Set[Array3],
         tx_table: Set[Array4],
         bytecode_table: Set[Array4],
         rw_table: Set[Array8],
     ) -> None:
+        self.block_table = block_table
         self.tx_table = tx_table
         self.bytecode_table = bytecode_table
         self.rw_table = rw_table
@@ -240,6 +265,10 @@ class Tables:
     def fixed_lookup(self, inputs: Sequence[int]) -> Array4:
         assert len(inputs) <= 4
         return _lookup("fixed_table", self.fixed_table, inputs)
+
+    def block_lookup(self, inputs: Sequence[int]) -> Array3:
+        assert len(inputs) <= 3
+        return _lookup("block_table", self.block_table, inputs)
 
     def tx_lookup(self, inputs: Sequence[int]) -> Array4:
         assert len(inputs) <= 4
