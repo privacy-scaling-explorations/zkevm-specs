@@ -20,16 +20,12 @@ TESTING_DATA = (
     (Transaction(caller_address=0xFE, callee_address=0xFF, value=int(1e18)), False),
     (Transaction(caller_address=rand_address(), callee_address=rand_address(), value=rand_range(1e20)), True),
     (
-        Transaction(
-            caller_address=rand_address(), callee_address=rand_address(), gas_fee_cap=rand_range(42857142857143)
-        ),
+        Transaction(caller_address=rand_address(), callee_address=rand_address(), gas_price=rand_range(42857142857143)),
         True,
     ),
     (Transaction(caller_address=rand_address(), callee_address=rand_address(), value=rand_range(1e20)), False),
     (
-        Transaction(
-            caller_address=rand_address(), callee_address=rand_address(), gas_fee_cap=rand_range(42857142857143)
-        ),
+        Transaction(caller_address=rand_address(), callee_address=rand_address(), gas_price=rand_range(42857142857143)),
         False,
     ),
 )
@@ -42,7 +38,7 @@ def test_begin_tx(tx: Transaction, result: bool):
     block = Block()
     caller_balance_prev = rlc_store.to_rlc(int(1e20), 32)
     callee_balance_prev = rlc_store.to_rlc(0, 32)
-    caller_balance = rlc_store.to_rlc(int(1e20) - (tx.value + tx.gas * tx.gas_fee_cap), 32)
+    caller_balance = rlc_store.to_rlc(int(1e20) - (tx.value + tx.gas * tx.gas_price), 32)
     callee_balance = rlc_store.to_rlc(tx.value, 32)
 
     bytecode = Bytecode("00")

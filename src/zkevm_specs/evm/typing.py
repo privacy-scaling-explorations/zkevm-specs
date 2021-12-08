@@ -55,8 +55,7 @@ class Transaction:
     id: int
     nonce: U64
     gas: U64
-    gas_tip_cap: U256
-    gas_fee_cap: U256
+    gas_price: U256
     caller_address: U160
     callee_address: Optional[U160]
     value: U256
@@ -67,8 +66,7 @@ class Transaction:
         id: int = 1,
         nonce: U64 = 0,
         gas: U64 = 21000,
-        gas_tip_cap: U256 = int(1e9),
-        gas_fee_cap: U256 = int(2e9),
+        gas_price: U256 = int(2e9),
         caller_address: U160 = 0,
         callee_address: Optional[U160] = None,
         value: U256 = 0,
@@ -77,8 +75,7 @@ class Transaction:
         self.id = id
         self.nonce = nonce
         self.gas = gas
-        self.gas_tip_cap = gas_tip_cap
-        self.gas_fee_cap = gas_fee_cap
+        self.gas_price = gas_price
         self.caller_address = caller_address
         self.callee_address = callee_address
         self.value = value
@@ -88,8 +85,7 @@ class Transaction:
         return [
             (self.id, TxContextFieldTag.Nonce, 0, self.nonce),
             (self.id, TxContextFieldTag.Gas, 0, self.gas),
-            (self.id, TxContextFieldTag.GasTipCap, 0, rlc_store.to_rlc(self.gas_tip_cap, 32)),
-            (self.id, TxContextFieldTag.GasFeeCap, 0, rlc_store.to_rlc(self.gas_fee_cap, 32)),
+            (self.id, TxContextFieldTag.GasPrice, 0, rlc_store.to_rlc(self.gas_price, 32)),
             (self.id, TxContextFieldTag.CallerAddress, 0, self.caller_address),
             (self.id, TxContextFieldTag.CalleeAddress, 0, self.callee_address),
             (self.id, TxContextFieldTag.IsCreate, 0, self.callee_address is None),

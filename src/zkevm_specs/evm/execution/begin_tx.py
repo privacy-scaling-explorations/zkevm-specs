@@ -26,11 +26,11 @@ def begin_tx(instruction: Instruction, is_first_step: bool = False):
     instruction.constrain_equal(tx_nonce, nonce_prev)
     instruction.constrain_equal(nonce, nonce_prev + 1)
 
-    # TODO: Implement EIP 1559 (currently this assumes gas_fee_cap <= basefee + gas_tip_cap)
+    # TODO: Implement EIP 1559 (currently it supports legacy transaction format)
     # Calculate gas fee
     tx_gas = instruction.tx_lookup(tx_id, TxContextFieldTag.Gas)
-    tx_gas_fee_cap = instruction.tx_lookup(tx_id, TxContextFieldTag.GasFeeCap)
-    gas_fee, carry = instruction.mul_word_by_u64(tx_gas_fee_cap, tx_gas)
+    tx_gas_price = instruction.tx_lookup(tx_id, TxContextFieldTag.GasPrice)
+    gas_fee, carry = instruction.mul_word_by_u64(tx_gas_price, tx_gas)
     instruction.constrain_zero(carry)
 
     # TODO: Use intrinsic gas (EIP 2028, 2930)
