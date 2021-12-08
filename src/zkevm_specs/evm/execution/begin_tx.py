@@ -34,7 +34,7 @@ def begin_tx(instruction: Instruction, is_first_step: bool = False):
 
     # TODO: Use intrinsic gas (EIP 2028, 2930)
     gas_left = tx_gas - (53000 if tx_is_create else 21000)
-    instruction.int_to_bytes(gas_left, 8)
+    instruction.constrain_sufficient_gas_left(gas_left)
 
     # Prepare access list of caller and callee
     instruction.constrain_equal(instruction.add_account_to_access_list(tx_id, tx_caller_address), 1)
