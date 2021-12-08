@@ -2,7 +2,7 @@ from __future__ import annotations
 from enum import IntEnum, auto
 from typing import Optional, Sequence, Tuple, Union
 
-from ..util import Array4, Array8, linear_combine, RLCStore, MAX_N_BYTES
+from ..util import Array4, Array8, linear_combine, RLCStore, MAX_N_BYTES, N_BYTES_GAS
 from .opcode import Opcode
 from .step import StepState
 from .table import (
@@ -73,6 +73,9 @@ class Instruction:
 
     def constrain_bool(self, value: int):
         assert value in [0, 1]
+
+    def constrain_sufficient_gas_left(self, gas_left: int):
+        self.int_to_bytes(gas_left, N_BYTES_GAS)
 
     def constrain_state_transition(self, **kwargs: Transition):
         for key in [
@@ -145,8 +148,7 @@ class Instruction:
     ):
         gas_cost = Opcode(opcode).constant_gas_cost() + dynamic_gas_cost
 
-        self.int_to_bytes(self.curr.gas_left - gas_cost, 8)
-
+        self.constrain_sufficient_gas_left(self.curr.gas_left - gas_cost)
         self.constrain_state_transition(
             rw_counter=rw_counter,
             program_counter=program_counter,
