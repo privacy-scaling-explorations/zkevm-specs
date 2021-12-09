@@ -2,6 +2,7 @@ from typing import Iterator, Optional, Sequence, Union
 
 from ..util import U64, U160, U256, Array4, RLCStore, keccak256
 from .table import TxContextFieldTag
+from .opcode import get_push_size
 
 
 class Transaction:
@@ -87,13 +88,9 @@ class Bytecode:
 
                 idx = self.idx
                 byte = self.bytes[idx]
-                is_code = True
 
-                if self.push_data_left > 0:
-                    is_code = False
-                    self.push_data_left -= 1
-                elif 0x60 <= byte < 0x80:
-                    self.push_data_left = byte - 0x60 + 1
+                is_code = self.push_data_left == 0
+                self.push_data_left = get_push_size(byte) if is_code else self.push_data_left - 1
 
                 self.idx += 1
 
