@@ -5,6 +5,7 @@ from .execution import (
     add,
     begin_tx,
     push,
+    jump,
 )
 from .execution_state import ExecutionState
 from .instruction import Instruction
@@ -42,6 +43,8 @@ def verify_step(
         add(instruction)
     elif instruction.curr.execution_state == ExecutionState.PUSH:
         push(instruction)
+    elif instruction.curr.execution_state == ExecutionState.JUMP:
+        jump(instruction)
     # Error cases
     else:
         raise NotImplementedError

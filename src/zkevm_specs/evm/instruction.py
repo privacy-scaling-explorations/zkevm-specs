@@ -253,7 +253,7 @@ class Instruction:
         return self.tables.tx_lookup([tx_id, tag, index])[3]
 
     def bytecode_lookup(self, bytecode_hash: int, index: int, is_code: int) -> int:
-        return self.tables.bytecode_lookup([bytecode_hash, index, Tables._, is_code])[2]
+        return self.tables.bytecode_lookup([bytecode_hash, index, is_code])[3]
 
     def rw_lookup(self, rw: RW, tag: RWTableTag, inputs: Sequence[int], rw_counter: Optional[int] = None) -> Array8:
         if rw_counter is None:
