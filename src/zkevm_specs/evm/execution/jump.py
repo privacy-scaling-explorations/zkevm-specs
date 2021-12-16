@@ -4,6 +4,7 @@ from ..opcode import Opcode
 
 def jump(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
+    instruction.constrain_equal(opcode, Opcode.JUMP)
     print(opcode)
     # Do not check 'dest' is within MaxCodeSize(24576) range in successful case
     # as byte code lookup can ensure it.
