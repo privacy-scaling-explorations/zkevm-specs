@@ -29,11 +29,12 @@ Pop two EVM words `dest` and `cond` from the stack. then do the followings:
 - pc = pc + 1 if `cond` is zero else `dest`
 - stack_pointer + 2
 - gas + 10
-- 2 busmapping lookups + 1 byte code lookup if `cond` is non zero
 
-3. Conditional constraint:\
-   adapter each case's selector with `cond` counts to support conditional
-   group constraint: `case_selector.expr() * cond `.
+3. Lookups:
+
+- lookup `dest` and `cond` are the top two of the stack
+- Conditional lookup `dest` position is `JUMPDEST` code in byte code table
+  when `cond` is not zero
 
 ## Exceptions
 
@@ -43,3 +44,5 @@ Pop two EVM words `dest` and `cond` from the stack. then do the followings:
    the `dest` is not JUMPDEST or not code or out of range
 
 ## Code
+
+Refer to src/zkevm_specs/evm/execution/jumpi.py
