@@ -14,9 +14,7 @@ from zkevm_specs.evm import (
 from zkevm_specs.util import hex_to_word, rand_bytes, RLCStore
 
 
-TESTING_DATA = (
-    (Opcode.JUMPI, bytes([40]), bytes([7])),
-)
+TESTING_DATA = ((Opcode.JUMPI, bytes([40]), bytes([7])),)
 
 
 @pytest.mark.parametrize("opcode, cond_bytes, dest_bytes", TESTING_DATA)
@@ -72,9 +70,7 @@ def test_jumpi_cond_nonzero(opcode: Opcode, cond_bytes: bytes, dest_bytes: bytes
     )
 
 
-TESTING_DATA_ZERO_COND = (
-    (Opcode.JUMPI, bytes([0]), bytes([7])),
-)
+TESTING_DATA_ZERO_COND = ((Opcode.JUMPI, bytes([0]), bytes([7])),)
 
 
 @pytest.mark.parametrize("opcode, cond_bytes, dest_bytes", TESTING_DATA_ZERO_COND)

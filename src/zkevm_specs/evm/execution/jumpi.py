@@ -5,7 +5,6 @@ from ..opcode import Opcode
 def jumpi(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
     instruction.constrain_equal(opcode, Opcode.JUMPI)
-    print(opcode)
 
     # Do not check 'dest' is within MaxCodeSize(24576) range in successful case
     # as byte code lookup can ensure it.
@@ -21,10 +20,7 @@ def jumpi(instruction: Instruction):
         dest_value = instruction.bytes_to_int(bytes[:3])
         pc_diff = dest_value - instruction.curr.program_counter
         # assert Opcode.JUMPDEST == instruction.opcode_lookup_at(dest_value, True)
-        instruction.constrain_equal(
-            Opcode.JUMPDEST,
-            instruction.opcode_lookup_at(dest_value, True)
-        )
+        instruction.constrain_equal(Opcode.JUMPDEST, instruction.opcode_lookup_at(dest_value, True))
 
     instruction.constrain_same_context_state_transition(
         opcode,

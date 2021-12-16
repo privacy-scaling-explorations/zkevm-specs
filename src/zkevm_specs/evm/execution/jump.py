@@ -5,7 +5,7 @@ from ..opcode import Opcode
 def jump(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
     instruction.constrain_equal(opcode, Opcode.JUMP)
-    print(opcode)
+
     # Do not check 'dest' is within MaxCodeSize(24576) range in successful case
     # as byte code lookup can ensure it.
     dest = instruction.stack_pop()
@@ -19,15 +19,12 @@ def jump(instruction: Instruction):
     print(dest_value)
 
     pc_diff = dest_value - instruction.curr.program_counter
-    #Verify `dest` is code within byte code table
+    # Verify `dest` is code within byte code table
     # assert Opcode.JUMPDEST == instruction.opcode_lookup_at(dest_value, True)
     code = instruction.opcode_lookup_at(dest_value, True)
     print(code)
 
-    instruction.constrain_equal(
-        Opcode.JUMPDEST,
-        instruction.opcode_lookup_at(dest_value, True)
-    )
+    instruction.constrain_equal(Opcode.JUMPDEST, instruction.opcode_lookup_at(dest_value, True))
 
     instruction.constrain_same_context_state_transition(
         opcode,

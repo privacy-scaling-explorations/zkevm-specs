@@ -15,7 +15,6 @@ from zkevm_specs.util import hex_to_word, rand_bytes, RLCStore
 
 
 TESTING_DATA = (
-    #(Opcode.JUMP, hex_to_word("07")),
     (Opcode.JUMP, bytes([7])),
 )
 
