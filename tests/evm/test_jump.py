@@ -14,9 +14,7 @@ from zkevm_specs.evm import (
 from zkevm_specs.util import hex_to_word, rand_bytes, RLCStore
 
 
-TESTING_DATA = (
-    (Opcode.JUMP, bytes([7])),
-)
+TESTING_DATA = ((Opcode.JUMP, bytes([7])),)
 
 
 @pytest.mark.parametrize("opcode, dest_bytes", TESTING_DATA)
