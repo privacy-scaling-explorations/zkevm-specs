@@ -14,16 +14,9 @@ def jump(instruction: Instruction):
     bytes = instruction.rlc_to_bytes(dest, 32)
     dest_value = instruction.bytes_to_int(bytes[:3])
 
-    # bytes = instruction.rlc_to_bytes(dest, 32)[-3:][::-1]
-    print(bytes)
-    print(dest_value)
-
     pc_diff = dest_value - instruction.curr.program_counter
     # Verify `dest` is code within byte code table
     # assert Opcode.JUMPDEST == instruction.opcode_lookup_at(dest_value, True)
-    code = instruction.opcode_lookup_at(dest_value, True)
-    print(code)
-
     instruction.constrain_equal(Opcode.JUMPDEST, instruction.opcode_lookup_at(dest_value, True))
 
     instruction.constrain_same_context_state_transition(

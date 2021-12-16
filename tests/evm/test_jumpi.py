@@ -20,7 +20,6 @@ TESTING_DATA = ((Opcode.JUMPI, bytes([40]), bytes([7])),)
 @pytest.mark.parametrize("opcode, cond_bytes, dest_bytes", TESTING_DATA)
 def test_jumpi_cond_nonzero(opcode: Opcode, cond_bytes: bytes, dest_bytes: bytes):
     rlc_store = RLCStore()
-    # dest = rlc_store.to_rlc(dest_bytes)
     cond = rlc_store.to_rlc(bytes(reversed(cond_bytes)))
     dest = rlc_store.to_rlc(bytes(reversed(dest_bytes)))
 
@@ -70,18 +69,17 @@ def test_jumpi_cond_nonzero(opcode: Opcode, cond_bytes: bytes, dest_bytes: bytes
     )
 
 
-TESTING_DATA_ZERO_COND = ((Opcode.JUMPI, bytes([0]), bytes([7])),)
+TESTING_DATA_ZERO_COND = ((Opcode.JUMPI, bytes([0]), bytes([8])),)
 
 
 @pytest.mark.parametrize("opcode, cond_bytes, dest_bytes", TESTING_DATA_ZERO_COND)
 def test_jumpi_cond_zero(opcode: Opcode, cond_bytes: bytes, dest_bytes: bytes):
     rlc_store = RLCStore()
-    # dest = rlc_store.to_rlc(dest_bytes)
     cond = rlc_store.to_rlc(bytes(reversed(cond_bytes)))
     dest = rlc_store.to_rlc(bytes(reversed(dest_bytes)))
 
-    # Jumps to PC=7 because the condition (40) is nonzero.
-    # PUSH1 80 PUSH1 40 PUSH1 07 JUMPI JUMPDEST STOP
+    # Jumps to PC=7 because the condition (0) is zero.
+    # PUSH1 80 PUSH1 0 PUSH1 08 JUMPI STOP
     bytecode = Bytecode(f"6080600060{dest_bytes.hex()}575b00")
     bytecode_hash = rlc_store.to_rlc(bytecode.hash, 32)
 

@@ -20,12 +20,8 @@ TESTING_DATA = ((Opcode.JUMP, bytes([7])),)
 @pytest.mark.parametrize("opcode, dest_bytes", TESTING_DATA)
 def test_jump(opcode: Opcode, dest_bytes: bytes):
     rlc_store = RLCStore()
-    # dest = rlc_store.to_rlc(dest_bytes)
     dest = rlc_store.to_rlc(bytes(reversed(dest_bytes)))
 
-    # dest_bytes = instruction.rlc_to_bytes(dest, 32)
-
-    # print(dest)
     # Jumps to PC=7
     # PUSH1 80 PUSH1 40 PUSH1 07 JUMP JUMPDEST STOP
     bytecode = Bytecode(f"6080604060{dest_bytes.hex()}565b00")
