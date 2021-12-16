@@ -10,9 +10,11 @@ def jump(instruction: Instruction):
     dest = instruction.stack_pop()
 
     # Get `dest` raw value in max three bytes
-    bytes = instruction.rlc_to_bytes(dest, 32)[-3:][::-1]
+    bytes = instruction.rlc_to_bytes(dest, 32)
+    dest_value = instruction.bytes_to_int(bytes[:3])
+
+    # bytes = instruction.rlc_to_bytes(dest, 32)[-3:][::-1]
     print(bytes)
-    dest_value = instruction.bytes_to_int(bytes)
     print(dest_value)
 
     pc_diff = dest_value - instruction.curr.program_counter
