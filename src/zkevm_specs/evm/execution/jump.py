@@ -11,10 +11,8 @@ def jump(instruction: Instruction):
     dest = instruction.stack_pop()
 
     # Get `dest` raw value in max three bytes
-    bytes = instruction.rlc_to_bytes(dest, 32)
-    dest_value = instruction.bytes_to_int(bytes[:3])
+    dest_value = instruction.bytes_to_int(instruction.rlc_to_bytes(dest, 8))
 
-    pc_diff = dest_value - instruction.curr.program_counter
     # Verify `dest` is code within byte code table
     # assert Opcode.JUMPDEST == instruction.opcode_lookup_at(dest_value, True)
     instruction.constrain_equal(Opcode.JUMPDEST, instruction.opcode_lookup_at(dest_value, True))
@@ -22,6 +20,6 @@ def jump(instruction: Instruction):
     instruction.constrain_same_context_state_transition(
         opcode,
         rw_counter=Transition.delta(1),
-        program_counter=Transition.delta(pc_diff),
+        program_counter=Transition.to(dest_value),
         stack_pointer=Transition.delta(1),
     )

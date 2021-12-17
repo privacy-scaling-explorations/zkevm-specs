@@ -16,8 +16,7 @@ def jumpi(instruction: Instruction):
         pc_diff = 1
     else:
         # Get `dest` raw value in max three bytes
-        bytes = instruction.rlc_to_bytes(dest, 32)
-        dest_value = instruction.bytes_to_int(bytes[:3])
+        dest_value = instruction.bytes_to_int(instruction.rlc_to_bytes(dest, 8))
         pc_diff = dest_value - instruction.curr.program_counter
         # assert Opcode.JUMPDEST == instruction.opcode_lookup_at(dest_value, True)
         instruction.constrain_equal(Opcode.JUMPDEST, instruction.opcode_lookup_at(dest_value, True))
