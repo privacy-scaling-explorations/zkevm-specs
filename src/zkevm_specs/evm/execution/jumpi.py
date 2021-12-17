@@ -15,7 +15,7 @@ def jumpi(instruction: Instruction):
     if instruction.is_zero(cond):
         pc_diff = 1
     else:
-        # Get `dest` raw value in max three bytes
+        # Get `dest` raw value in max 8 bytes
         dest_value = instruction.bytes_to_int(instruction.rlc_to_bytes(dest, 8))
         pc_diff = dest_value - instruction.curr.program_counter
         # assert Opcode.JUMPDEST == instruction.opcode_lookup_at(dest_value, True)

@@ -10,7 +10,7 @@ def jump(instruction: Instruction):
     # as byte code lookup can ensure it.
     dest = instruction.stack_pop()
 
-    # Get `dest` raw value in max three bytes
+    # Get `dest` raw value in max 8 bytes
     dest_value = instruction.bytes_to_int(instruction.rlc_to_bytes(dest, 8))
 
     # Verify `dest` is code within byte code table
