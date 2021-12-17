@@ -1,6 +1,18 @@
 from typing import Iterator, Optional, Sequence, Union
+from functools import reduce
+from itertools import chain
 
-from ..util import U64, U160, U256, Array3, Array4, RLCStore, keccak256
+from ..util import (
+    U64,
+    U160,
+    U256,
+    Array3,
+    Array4,
+    RLCStore,
+    keccak256,
+    GAS_COST_TX_CALL_DATA_PER_NON_ZERO_BYTE,
+    GAS_COST_TX_CALL_DATA_PER_ZERO_BYTE,
+)
 from .table import BlockContextFieldTag, TxContextFieldTag
 from .opcode import get_push_size
 
@@ -81,17 +93,25 @@ class Transaction:
         self.value = value
         self.call_data = call_data
 
-    def table_assignments(self, rlc_store: RLCStore) -> Sequence[Array4]:
-        return [
-            (self.id, TxContextFieldTag.Nonce, 0, self.nonce),
-            (self.id, TxContextFieldTag.Gas, 0, self.gas),
-            (self.id, TxContextFieldTag.GasPrice, 0, rlc_store.to_rlc(self.gas_price, 32)),
-            (self.id, TxContextFieldTag.CallerAddress, 0, self.caller_address),
-            (self.id, TxContextFieldTag.CalleeAddress, 0, self.callee_address),
-            (self.id, TxContextFieldTag.IsCreate, 0, self.callee_address is None),
-            (self.id, TxContextFieldTag.Value, 0, rlc_store.to_rlc(self.value, 32)),
-            (self.id, TxContextFieldTag.CallDataLength, 0, len(self.call_data)),
-        ] + [(self.id, TxContextFieldTag.CallData, idx, byte) for idx, byte in enumerate(self.call_data)]
+    def table_assignments(self, rlc_store: RLCStore) -> Iterator[Array4]:
+        def call_data_gas_cost_per_byte(byte: int):
+            return GAS_COST_TX_CALL_DATA_PER_ZERO_BYTE if byte is 0 else GAS_COST_TX_CALL_DATA_PER_NON_ZERO_BYTE
+
+        call_data_gas_cost = reduce(lambda acc, byte: acc + call_data_gas_cost_per_byte(byte), self.call_data, 0)
+        return chain(
+            [
+                (self.id, TxContextFieldTag.Nonce, 0, self.nonce),
+                (self.id, TxContextFieldTag.Gas, 0, self.gas),
+                (self.id, TxContextFieldTag.GasPrice, 0, rlc_store.to_rlc(self.gas_price, 32)),
+                (self.id, TxContextFieldTag.CallerAddress, 0, self.caller_address),
+                (self.id, TxContextFieldTag.CalleeAddress, 0, self.callee_address),
+                (self.id, TxContextFieldTag.IsCreate, 0, self.callee_address is None),
+                (self.id, TxContextFieldTag.Value, 0, rlc_store.to_rlc(self.value, 32)),
+                (self.id, TxContextFieldTag.CallDataLength, 0, len(self.call_data)),
+                (self.id, TxContextFieldTag.CallDataGasCost, 0, call_data_gas_cost),
+            ],
+            map(lambda item: (self.id, TxContextFieldTag.CallData, item[0], item[1]), enumerate(self.call_data)),
+        )
 
 
 class Bytecode:

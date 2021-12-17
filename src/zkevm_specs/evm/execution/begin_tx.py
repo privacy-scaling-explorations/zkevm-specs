@@ -33,8 +33,9 @@ def begin_tx(instruction: Instruction, is_first_step: bool = False):
     gas_fee, carry = instruction.mul_word_by_u64(tx_gas_price, tx_gas)
     instruction.constrain_zero(carry)
 
-    # TODO: Use intrinsic gas (EIP 2028, 2930)
-    gas_left = tx_gas - (53000 if tx_is_create else 21000)
+    # TODO: Handle gas cost of tx level access list (EIP 2930)
+    tx_call_data_gas_cost = instruction.tx_lookup(tx_id, TxContextFieldTag.CallDataGasCost)
+    gas_left = tx_gas - (53000 if tx_is_create else 21000) - tx_call_data_gas_cost
     instruction.constrain_sufficient_gas_left(gas_left)
 
     # Prepare access list of caller and callee

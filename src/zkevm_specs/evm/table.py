@@ -72,6 +72,7 @@ class TxContextFieldTag(IntEnum):
     IsCreate = auto()
     Value = auto()
     CallDataLength = auto()
+    CallDataGasCost = auto()
     CallData = auto()
 
 
