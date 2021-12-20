@@ -2,9 +2,9 @@ from typing import Sequence, List
 
 import pytest
 
-from src.zkevm_specs.encoding import u256_to_u8s, U256, u8s_to_u64s
-from src.zkevm_specs.opcode.mul import check_mul
-from tests.common import NASTY_AB_VALUES
+from zkevm_specs.encoding import u256_to_u8s, U256, u8s_to_u64s
+from zkevm_specs.opcode.mul import check_mul
+from common import NASTY_AB_VALUES
 
 
 @pytest.mark.parametrize("a,b", NASTY_AB_VALUES)
@@ -39,5 +39,7 @@ def test_mul(a, b):
     assert 0 <= v[0] <= (2 ** 66)
     assert 0 <= v[1] <= (2 ** 66)
 
-    check_mul(a8s, b8s, c8s, t[0], t[1], t[2], t[3], v[0], v[1])
+    v0 = u256_to_u8s(v[0])[:9]
+    v1 = u256_to_u8s(v[1])[:9]
 
+    check_mul(a8s, b8s, c8s, t[0], t[1], t[2], t[3], v0, v1)
