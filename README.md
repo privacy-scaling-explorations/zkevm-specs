@@ -12,7 +12,7 @@ We recommend the reader to start with [Introduction](./specs/introduction.md)
 
 We provide the [Beacon Chain](https://github.com/ethereum/eth2.0-specs) style Python executable specification to help implementors figure out the specified behavior.
 
-Installing dependencies
+Installing dependencies(Python 3.9 is required)
 
 ```python
 pip3 install pytest
