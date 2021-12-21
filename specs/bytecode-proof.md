@@ -12,8 +12,8 @@ The bytecode proof helps the EVM proof by making the bytecode (identified by its
 | `index`               | The position of the byte in the bytecode                           |
 | `byte`                | The byte data for the current position                             |
 | `is_code`             | `1` if the byte is code, `0` if the byte is PUSH data              |
-| `push_data_left`      | The number of bytes that still need to follow for PUSH data        |
-| `hash_rlc`            | The accumulator containg the current and previous bytes            |
+| `push_data_left`      | The number of PUSH data bytes that still follow the current row    |
+| `hash_rlc`            | The accumulator containing the current and previous bytes          |
 | `hash_length`         | The bytecode length                                                |
 | `byte_push_size`      | The number of bytes pushed for the current byte                    |
 | `is_final`            | `1` if the current byte is the last byte of the bytecode, else `0` |
@@ -43,7 +43,7 @@ All byte data is accumulated per byte (with one byte per row) into `hash_rlc` as
 hash_rlc := hash_rlc_prev * r + byte
 ```
 
-For detecting which byte is code and which byte is push data the [Push table](https://github.com/ethereum/eth2.0-specs) is used. This table allows finding out how many bytes an opcode pushes. This is used to set `push_data_left` if and only if the current byte is code (the first byte in any bytecode is code). If a row contains a non-zero value for `push_data_left` on its previous row we know the current byte is an opcode:
+For detecting which byte is code and which byte is push data the [Push table](#push-table) is used. This table allows finding out how many bytes an opcode pushes. This is used to set `push_data_left` if and only if the current byte is code (the first byte in any bytecode is code). If a row contains a non-zero value for `push_data_left` on its previous row we know the current byte is an opcode:
 
 ```
 is_code := prev_push_data_left == 0
@@ -51,6 +51,8 @@ push_data_left := byte_push_size if is_code else prev_push_data_left - 1
 ```
 
 At the last byte the prover can set `is_final` to `1`, which will enable the keccak lookup on `(hash_rlc, hash_length, hash)`. This will ensure that the byte data passed into the circuit matches the data the prover gave as input (all the byte data is accumulated into `hash_rlc`). This has the consequence that the circuit _requires_ the full bytecode to be a part of its state, otherwise the prover could pass in invalid byte data for the specified hash. This is enforced by the circuit by requiring the last row in the circuit (when `q_last == 1`, note that `q_first` of the next row _cannot_ be used because of unusable rows) to either have `is_final == 1` or `padding == 1`, and padding itself can only be enabled after a `is_final` was set to `1`.
+
+Explicit padding is added to this circuit to be able to fully fill the circuit with valid data without depending on the keccak circuit to either hash this padding data or support looking up e.g. all zero data.
 
 ## Code
 
