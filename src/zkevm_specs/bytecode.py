@@ -40,11 +40,11 @@ def check_bytecode_row(
         # hash_rlc := hash_rlc_prev * r + byte
         assert row.hash_rlc == fp_add(fp_mul(prev_row.hash_rlc, r), row.byte)
 
-        # padding needs to remain the the same
+        # padding needs to remain the same
         assert row.padding == prev_row.padding
-        # hash needs to remain the the same
+        # hash needs to remain the same
         assert row.hash == prev_row.hash
-        # hash_length needs to remain the the same
+        # hash_length needs to remain the same
         assert row.hash_length == prev_row.hash_length
     else:
         # Start
