@@ -221,14 +221,14 @@ class Tables:
 
     # Each row in BlockTable contains:
     # - tag
-    # - block_number_or_zero
+    # - block_number_or_zero (meaningful only for BlockHash, will be zero for other tags)
     # - value
-    block_table: Set[Array4]
+    block_table: Set[Array3]
 
     # Each row in TxTable contains:
     # - tx_id
     # - tag
-    # - index_or_zero
+    # - index_or_zero (meaningful only for CallData, will be zero for other tags)
     # - value
     tx_table: Set[Array4]
 
