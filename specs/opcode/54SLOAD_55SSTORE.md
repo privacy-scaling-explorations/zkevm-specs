@@ -28,7 +28,6 @@ TODO:
          - is popped off the top of the stack for `SSTORE`
      - storage:
        - `SLOAD`/`SSTORE`: The 32 bytes of `value` are read/written from/to storage at `address`.
-   - 29 fixed lookups
 
 ## Exceptions
 
