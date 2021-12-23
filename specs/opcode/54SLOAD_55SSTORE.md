@@ -29,7 +29,7 @@ TODO:
      - storage:
        - `SLOAD`/`SSTORE`: The 32 bytes of `value` are read/written from/to storage at `address`.
 
-## Exceptions
+### Exceptions
 
 1. gas out: remaining gas is not enough
 2. stack underflow:
