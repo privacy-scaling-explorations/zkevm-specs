@@ -13,14 +13,14 @@ TODO:
    2. opId === OpcodeId(0x55) for `SSTORE`
 2. state transition:
    - gc
-     - `SLOAD`/`SSTORE`:  +34 (2 stack operations + 32 storage reads/writes)
+     - `SLOAD`/`SSTORE`:  +3 (2 stack operations + 1 storage reads/writes)
    - stack_pointer
      - `SLOAD`: remains the same
      - `SSTORE`: -2
    - pc + 1
    - gas + 3 + `storage_gas_cost`
 3. lookups:
-   - `SLOAD`/`SSTORE`: 34 busmapping lookups
+   - `SLOAD`/`SSTORE`: 3 busmapping lookups
      - stack:
        - `address` is popped off the top of the stack
        - `value`
