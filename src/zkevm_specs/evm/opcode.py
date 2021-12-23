@@ -399,3 +399,13 @@ def create_opcodes() -> Sequence[int]:
 
 def jump_opcodes() -> Sequence[int]:
     return [Opcode.JUMP, Opcode.JUMPI]
+
+
+# Checks if the passed in byte is a PUSH op
+def is_push(op) -> bool:
+    return op in range(Opcode.PUSH1, Opcode.PUSH32 + 1)
+
+
+# Returns how many bytes the opcode pushes
+def get_push_size(op) -> int:
+    return op - Opcode.PUSH1 + 1 if is_push(op) else 0
