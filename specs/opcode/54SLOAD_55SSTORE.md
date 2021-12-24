@@ -18,7 +18,11 @@ TODO:
      - `SLOAD`: remains the same
      - `SSTORE`: -2
    - pc + 1
-   - gas + 3 + `storage_gas_cost`
+   - gas:
+     - `SLOAD`: gas + 200
+     - `SSTORE`:
+       + (value != 0) && (storage_location == 0): gas + 20000
+       + (value == 0) || (storage_location != 0): gas + 5000
 3. lookups:
    - `SLOAD`/`SSTORE`: 3 busmapping lookups
      - stack:
