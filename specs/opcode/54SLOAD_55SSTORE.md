@@ -39,3 +39,5 @@ TODO:
 2. stack underflow:
    - the stack is empty: `1024 == stack_pointer`
    - only for `SSTORE`: contains a single value: `1023 == stack_pointer`
+3. context error
+   - only for `SSTORE`: the current execution context is from a `STATICCALL` (since Byzantium fork).
