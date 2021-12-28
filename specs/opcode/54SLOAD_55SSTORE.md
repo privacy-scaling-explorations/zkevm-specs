@@ -1,10 +1,10 @@
 # SLOAD & SSTORE op code
 
-## Cross-tx
+## For cross-tx
 
 TODO:
 
-## Inner-tx
+## For inner-tx
 
 ### Constraints
 
