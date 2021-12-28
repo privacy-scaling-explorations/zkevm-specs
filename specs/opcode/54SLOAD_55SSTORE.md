@@ -19,7 +19,9 @@ TODO:
      - `SSTORE`: -2
    - pc + 1
    - gas:
-     - `SLOAD`: gas + 200
+     - `SLOAD`:
+       + the accessed address is warm: gas + 100
+       + the accessed address is cold: gas + 2100
      - `SSTORE`:
        + (value != 0) && (storage_location == 0): gas + 20000
        + (value == 0) || (storage_location != 0): gas + 5000
