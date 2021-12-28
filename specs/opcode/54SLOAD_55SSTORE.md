@@ -23,8 +23,20 @@ TODO:
        + the accessed address is warm: gas + 100
        + the accessed address is cold: gas + 2100
      - `SSTORE`:
-       + (value != 0) && (storage_location == 0): gas + 20000
-       + (value == 0) || (storage_location != 0): gas + 5000
+       + the accessed address is warm:
+         * `value == current_value`: gas + 100 + 100
+         * `value != current_value`:
+           - `current_value == original_value`:
+             - `original_value == 0`: gas + 20000 + 100
+             - `original_value != 0`: gas + 2900 + 100
+           - `current_value != original_value`: gas + 100 + 100
+       + the accessed address is cold:
+         * `value == current_value`: gas + 100 + 2900
+         * `value != current_value`:
+           - `current_value == original_value`:
+             - `original_value == 0`: gas + 20000 + 2900
+             - `original_value != 0`: gas + 2900 + 2900
+           - `current_value != original_value`: gas + 100 + 2900
 3. lookups:
    - `SLOAD`/`SSTORE`: 3 busmapping lookups
      - stack:
