@@ -13,9 +13,9 @@ class Block:
     difficulty: U256
     base_fee: U256
 
-    # previous_block_hashes contains at most previous 256 block hashes, where
-    # the lastest one is at previous_block_hashes[-1].
-    previous_block_hashes: Sequence[U256]
+    # history_hashes contains most recent 256 block hashes in history, where
+    # the lastest one is at history_hashes[-1].
+    history_hashes: Sequence[U256]
 
     def __init__(
         self,
@@ -25,9 +25,9 @@ class Block:
         time: U256 = 0,
         difficulty: U256 = 0,
         base_fee: U256 = int(1e9),
-        previous_block_hashes: Sequence[U256] = [],
+        history_hashes: Sequence[U256] = [],
     ) -> None:
-        assert len(previous_block_hashes) <= 256
+        assert len(history_hashes) <= 256
 
         self.coinbase = coinbase
         self.gas_limit = gas_limit
@@ -35,7 +35,7 @@ class Block:
         self.time = time
         self.difficulty = difficulty
         self.base_fee = base_fee
-        self.previous_block_hashes = previous_block_hashes
+        self.history_hashes = history_hashes
 
     def table_assignments(self, rlc_store: RLCStore) -> Sequence[Array3]:
         return [
@@ -47,7 +47,7 @@ class Block:
             (BlockContextFieldTag.BaseFee, 0, rlc_store.to_rlc(self.base_fee, 32)),
         ] + [
             (BlockContextFieldTag.BlockHash, self.block_number + idx - 1, rlc_store.to_rlc(block_hash, 32))
-            for idx, block_hash in enumerate(reversed(self.previous_block_hashes))
+            for idx, block_hash in enumerate(reversed(self.history_hashes))
         ]
 
 
