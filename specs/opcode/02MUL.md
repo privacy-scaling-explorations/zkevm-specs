@@ -2,67 +2,11 @@
 
 ## Procedure
 
-[Multi-Limbs Multiplication](https://hackmd.io/HL0QhGUeQoSgIBt2el6fHA)
+We followed the approch of [Multi-Limbs Multiplication](https://hackmd.io/HL0QhGUeQoSgIBt2el6fHA), with some notes:
 
-If we are handling $\\texttt{MUL}$ in notation $c = a \\cdot b$, layout could be like the below table if we got 32 columns to use. In table, $a_0, \\cdots, a\_{31}$ as well as $b$ and $c$ are evm words on stack through bus mapping lookup. Each limb in evm word will be range lookup check to fit 8-bit.
+1. we consider there should be a trivial mistake in the original link which claimed the range of v0 and v1 is `[0, 2^64]` (they should be in the range of `[0, 2^66]`).
 
-$c$ here is $r$ in the note, and $t$, $v$ are notations following [Aztec's note](https://hackmd.io/@arielg/B13JoihA8).
-
-$$
-\\begin{array}{|c|c|}
-\\hline
-a_0 & a_1 & a_2 & a_3 & a_4 & a_5 & \\cdots & a\_{29} & a\_{30} & a\_{31} \\\\hline
-b_0 & b_1 & b_2 & b_3 & b_4 & b_5 & \\cdots & b\_{29} & b\_{30} & b\_{31} \\\\hline
-c_0 & c_1 & c_2 & c_3 & c_4 & c_5 & \\cdots & c\_{29} & c\_{30} & c\_{31} \\\\hline
-t_0 & t_1 & t_2 & t_3 & v_0 & v_1 &        &        &        &        \\\\hline
-\\end{array}
-$$
-
-$A$, $B$, and $C$ are linear combination and no need to be stored as witness.
-
-$$
-\\cases{
-A_0 = \\sum\_{0}^{7} a_i \\cdot 2^{8 \\cdot i} \\
-A_1 = \\sum\_{0}^{7} a\_{i+8} \\cdot 2^{8 \\cdot i} \\
-A_2 = \\sum\_{0}^{7} a\_{i+16} \\cdot 2^{8 \\cdot i} \\
-A_3 = \\sum\_{0}^{7} a\_{i+24} \\cdot 2^{8 \\cdot i} \\
-}
-\\qquad
-\\cases{
-B_0 = \\sum\_{0}^{7} b_i \\cdot 2^{8 \\cdot i} \\
-B_1 = \\sum\_{0}^{7} b\_{i+8} \\cdot 2^{8 \\cdot i} \\
-B_2 = \\sum\_{0}^{7} b\_{i+16} \\cdot 2^{8 \\cdot i} \\
-B_3 = \\sum\_{0}^{7} b\_{i+24} \\cdot 2^{8 \\cdot i} \\
-}
-\\qquad
-\\cases{
-C_0 = \\sum\_{0}^{7} c_i \\cdot 2^{8 \\cdot i} \\
-C_1 = \\sum\_{0}^{7} c\_{i+8} \\cdot 2^{8 \\cdot i} \\
-C_2 = \\sum\_{0}^{7} c\_{i+16} \\cdot 2^{8 \\cdot i} \\
-C_3 = \\sum\_{0}^{7} c\_{i+24} \\cdot 2^{8 \\cdot i} \\
-}
-$$
-
-The constraints would be:
-
-$$
-\\begin{aligned}
-\\cases{
-t_0 \\stackrel{?}{=} A_0B_0 \\
-t_1 \\stackrel{?}{=} A_0B_1 + A_1B_0 \\
-t_2 \\stackrel{?}{=} A_0B_2 + A_1B_1 + A_2B_0 \\
-t_3 \\stackrel{?}{=} A_0B_3 + A_1B_2 + A_2B_1 + A_3B_0 \\
-v_0 \\cdot 2^{128} \\stackrel{?}{=} t_0 + t_1 \\cdot 2^{64} - C_0 - C_1 \\cdot 2^{64} \\
-v_1 \\cdot 2^{128} \\stackrel{?}{=} v_0 + t_2 + t_3 \\cdot 2^{64} - C_2 - C_3 \\cdot 2^{64} \\
-v_0 \\stackrel{?}{\\in} \[0, 2^{64}\] \\
-v_1 \\stackrel{?}{\\in} \[0, 2^{64}\] \\
-}
-\\end{aligned}
-$$
-
-We can use the [running sum range check](https://github.com/zcash/orchard/blob/main/src/circuit/gadget/utilities/lookup_range_check.rs) for $v_0$ and $v_1$ with 3 extra cells for each if we have 16-bit range table.
-
-This approach needs 3 evm words and 12 cells, so 108 cells in total.
+2. Ensuring v0 and v1 do not exceed the scalar field after being mutipled by 2^128 is enough. In our code v0 and v1 are constrainted by the combination of 9 bytes (each cell being constrainted by 8-bit range table) so they are constrainted to a slightly relaxed range of `[0, 2^72)`. Our approach use 3 evm words and 22 cells (totally 118 cells).
 
 ### EVM behavior
 
