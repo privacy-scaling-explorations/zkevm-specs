@@ -45,7 +45,8 @@ TODO:
          - is pushed on top of the stack for `SLOAD`
          - is popped off the top of the stack for `SSTORE`
      - storage:
-       - `SLOAD`/`SSTORE`: The 32 bytes of `value` are read/written from/to storage at `address`.
+       - `SLOAD`: The 32 bytes of `value` are read from storage at `address`.
+       - `SSTORE`: The 32 bytes of `value` are written to storage at `address`. Revert if gas out.
 
 ### Exceptions
 
