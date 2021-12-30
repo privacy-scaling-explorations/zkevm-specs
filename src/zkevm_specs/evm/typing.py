@@ -9,7 +9,7 @@ class Block:
     coinbase: U160
     gas_limit: U64
     block_number: U256
-    time: U256
+    time: U64
     difficulty: U256
     base_fee: U256
 
@@ -22,7 +22,7 @@ class Block:
         coinbase: U160 = 0x10,
         gas_limit: U64 = int(15e6),
         block_number: U256 = 0,
-        time: U256 = 0,
+        time: U64 = 0,
         difficulty: U256 = 0,
         base_fee: U256 = int(1e9),
         history_hashes: Sequence[U256] = [],

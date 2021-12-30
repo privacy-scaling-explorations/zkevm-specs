@@ -26,7 +26,6 @@ then push the `address` to the stack.
 3. lookups:  2  
    `address` is on the top of stack  
    `address` is in block context table
-
 4. others:  
    `address` is 20 bytes length
 
@@ -38,5 +37,4 @@ then push the `address` to the stack.
    stack is full, stack pointer = 0
 
 ## Code
-
 Refer to src/zkevm_specs/evm/execution/coinbase.py
