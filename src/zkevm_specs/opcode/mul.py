@@ -7,10 +7,6 @@ def mul_common(
     a8s: Sequence[U8],
     x8s: Sequence[U8],
     y8s: Sequence[U8],
-    t0: U256,
-    t1: U256,
-    t2: U256,
-    t3: U256,
     v0: Sequence[U8],
     v1: Sequence[U8],
 ):
@@ -30,14 +26,14 @@ def mul_common(
         assert 0 <= u8 <= 255
         v1m += u8 * (2 ** (8 * i))
 
-    assert t0 == a64s[0] * x64s[0]
-    assert t1 == a64s[0] * x64s[1] + a64s[1] * x64s[0]
-    assert t2 == a64s[0] * x64s[2] + a64s[1] * x64s[1] + a64s[2] * x64s[0]
-    assert t3 == a64s[0] * x64s[3] + a64s[1] * x64s[2] + a64s[2] * x64s[1] + a64s[3] * x64s[0]
+    t0 = a64s[0] * x64s[0]
+    t1 = a64s[0] * x64s[1] + a64s[1] * x64s[0]
+    t2 = a64s[0] * x64s[2] + a64s[1] * x64s[1] + a64s[2] * x64s[0]
+    t3 = a64s[0] * x64s[3] + a64s[1] * x64s[2] + a64s[2] * x64s[1] + a64s[3] * x64s[0]
     assert v0m * (2 ** 128) == t0 + t1 * (2 ** 64) - y64s[0] - y64s[1] * (2 ** 64)
     assert v1m * (2 ** 128) == v0m + t2 + t3 * (2 ** 64) - y64s[2] - y64s[3] * (2 ** 64)
 
 
 @is_circuit_code
-def check_mul(a8s, b8s, c8s, t0, t1, t2, t3, v0, v1):
-    mul_common(a8s, b8s, c8s, t0, t1, t2, t3, v0, v1)
+def check_mul(a8s, b8s, c8s, v0, v1):
+    mul_common(a8s, b8s, c8s, v0, v1)

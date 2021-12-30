@@ -42,4 +42,4 @@ def test_mul(a, b):
     v0 = u256_to_u8s(v[0])[:9]
     v1 = u256_to_u8s(v[1])[:9]
 
-    check_mul(a8s, b8s, c8s, t[0], t[1], t[2], t[3], v0, v1)
+    check_mul(a8s, b8s, c8s, v0, v1)
