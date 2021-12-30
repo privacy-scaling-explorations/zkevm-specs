@@ -5,3 +5,4 @@ OP_SSTORE = 0x55
 def check_storage_ops(
     opcode: U8,
 ):
+    TODO:
