@@ -9,6 +9,7 @@ from zkevm_specs.evm import (
     Tables,
     RWTableTag,
     RW,
+    Block,
     Bytecode,
 )
 from zkevm_specs.util import hex_to_word, rand_bytes, RLCStore
@@ -22,12 +23,14 @@ def test_jump(opcode: Opcode, dest_bytes: bytes):
     rlc_store = RLCStore()
     dest = rlc_store.to_rlc(bytes(reversed(dest_bytes)))
 
+    block = Block()
     # Jumps to PC=7
     # PUSH1 80 PUSH1 40 PUSH1 07 JUMP JUMPDEST STOP
     bytecode = Bytecode(f"6080604060{dest_bytes.hex()}565b00")
     bytecode_hash = rlc_store.to_rlc(bytecode.hash, 32)
 
     tables = Tables(
+        block_table=set(block.table_assignments(rlc_store)),
         tx_table=set(),
         bytecode_table=set(bytecode.table_assignments(rlc_store)),
         rw_table=set(

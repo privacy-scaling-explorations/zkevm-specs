@@ -9,6 +9,7 @@ from zkevm_specs.evm import (
     Tables,
     RWTableTag,
     RW,
+    Block,
     Bytecode,
 )
 from zkevm_specs.util import hex_to_word, rand_bytes, RLCStore
@@ -23,12 +24,14 @@ def test_jumpi_cond_nonzero(opcode: Opcode, cond_bytes: bytes, dest_bytes: bytes
     cond = rlc_store.to_rlc(bytes(reversed(cond_bytes)))
     dest = rlc_store.to_rlc(bytes(reversed(dest_bytes)))
 
+    block = Block()
     # Jumps to PC=7 because the condition (40) is nonzero.
     # PUSH1 80 PUSH1 40 PUSH1 07 JUMPI JUMPDEST STOP
     bytecode = Bytecode(f"6080604060{dest_bytes.hex()}575b00")
     bytecode_hash = rlc_store.to_rlc(bytecode.hash, 32)
 
     tables = Tables(
+        block_table=set(block.table_assignments(rlc_store)),
         tx_table=set(),
         bytecode_table=set(bytecode.table_assignments(rlc_store)),
         rw_table=set(
@@ -78,12 +81,14 @@ def test_jumpi_cond_zero(opcode: Opcode, cond_bytes: bytes, dest_bytes: bytes):
     cond = rlc_store.to_rlc(bytes(reversed(cond_bytes)))
     dest = rlc_store.to_rlc(bytes(reversed(dest_bytes)))
 
+    block = Block()
     # Jumps to PC=7 because the condition (0) is zero.
     # PUSH1 80 PUSH1 0 PUSH1 08 JUMPI STOP
     bytecode = Bytecode(f"6080600060{dest_bytes.hex()}575b00")
     bytecode_hash = rlc_store.to_rlc(bytecode.hash, 32)
 
     tables = Tables(
+        block_table=set(block.table_assignments(rlc_store)),
         tx_table=set(),
         bytecode_table=set(bytecode.table_assignments(rlc_store)),
         rw_table=set(

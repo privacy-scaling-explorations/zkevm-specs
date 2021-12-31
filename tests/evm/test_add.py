@@ -9,6 +9,7 @@ from zkevm_specs.evm import (
     Tables,
     RWTableTag,
     RW,
+    Block,
     Bytecode,
 )
 from zkevm_specs.util import hex_to_word, rand_bytes, RLCStore
@@ -34,10 +35,12 @@ def test_add(opcode: Opcode, a_bytes: bytes, b_bytes: bytes, c_bytes: Optional[b
         else (rlc_store.add(a, b) if opcode == Opcode.ADD else rlc_store.sub(a, b))[0]
     )
 
+    block = Block()
     bytecode = Bytecode(f"7f{b_bytes.hex()}7f{a_bytes.hex()}{opcode.hex()}00")
     bytecode_hash = rlc_store.to_rlc(bytecode.hash, 32)
 
     tables = Tables(
+        block_table=set(block.table_assignments(rlc_store)),
         tx_table=set(),
         bytecode_table=set(bytecode.table_assignments(rlc_store)),
         rw_table=set(

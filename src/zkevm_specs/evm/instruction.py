@@ -2,11 +2,12 @@ from __future__ import annotations
 from enum import IntEnum, auto
 from typing import Optional, Sequence, Tuple, Union
 
-from ..util import Array4, Array8, linear_combine, RLCStore
+from ..util import Array4, Array8, linear_combine, RLCStore, MAX_N_BYTES
 from .opcode import Opcode
 from .step import StepState
 from .table import (
     AccountFieldTag,
+    BlockContextFieldTag,
     CallContextFieldTag,
     Tables,
     FixedTableTag,
@@ -233,21 +234,25 @@ class Instruction:
     def bytes_to_rlc(self, bytes: Sequence[int]) -> int:
         return self.rlc_store.to_rlc(bytes)
 
+    def bytes_to_int(self, bytes: Sequence[int]) -> int:
+        assert len(bytes) <= MAX_N_BYTES, "too many bytes to composite an integer in field"
+        return linear_combine(bytes, 256)
+
     def int_to_bytes(self, value: int, n_bytes: int) -> Sequence[int]:
+        assert n_bytes <= MAX_N_BYTES, "too many bytes to composite an integer in field"
         try:
             return value.to_bytes(n_bytes, "little")
         except OverflowError:
             raise ConstraintUnsatFailure(f"{value} is too many bytes to fit {n_bytes} bytes")
-
-    def bytes_to_int(self, bytes: Sequence[int]) -> int:
-        assert len(bytes) <= 31, "too many bytes to composite an integer in field"
-        return linear_combine(bytes, 256)
 
     def byte_range_lookup(self, input: int):
         self.tables.fixed_lookup([FixedTableTag.Range256, input, 0, 0])
 
     def fixed_lookup(self, tag: FixedTableTag, inputs: Sequence[int]) -> Array4:
         return self.tables.fixed_lookup([tag] + inputs)
+
+    def block_lookup(self, tag: BlockContextFieldTag, index: int = 0) -> int:
+        return self.tables.block_lookup([tag, index])[2]
 
     def tx_lookup(self, tx_id: int, tag: TxContextFieldTag, index: int = 0) -> int:
         return self.tables.tx_lookup([tx_id, tag, index])[3]

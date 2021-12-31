@@ -9,6 +9,7 @@ from zkevm_specs.evm import (
     RW,
     AccountFieldTag,
     CallContextFieldTag,
+    Block,
     Transaction,
     Bytecode,
 )
@@ -38,6 +39,7 @@ TESTING_DATA = (
 def test_begin_tx(tx: Transaction, result: bool):
     rlc_store = RLCStore()
 
+    block = Block()
     caller_balance_prev = rlc_store.to_rlc(int(1e20), 32)
     callee_balance_prev = rlc_store.to_rlc(0, 32)
     caller_balance = rlc_store.to_rlc(int(1e20) - (tx.value + tx.gas * tx.gas_fee_cap), 32)
@@ -47,6 +49,7 @@ def test_begin_tx(tx: Transaction, result: bool):
     bytecode_hash = rlc_store.to_rlc(bytecode.hash, 32)
 
     tables = Tables(
+        block_table=set(block.table_assignments(rlc_store)),
         tx_table=set(tx.table_assignments(rlc_store)),
         bytecode_table=set(bytecode.table_assignments(rlc_store)),
         rw_table=set(
