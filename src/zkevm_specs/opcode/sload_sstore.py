@@ -12,3 +12,11 @@ def check_storage_ops(
     value: U256,
 ):
     # TODO:
+
+    # Check if this is an SLOAD, SSTORE
+    is_sload = opcode == OP_SLOAD
+    is_sstore = 1 - is_sload
+
+    gas_cost = calc_storage_gas_cost() # TODO
+
+    memory.op(address, value, is_sstore)
