@@ -2,8 +2,6 @@
 
 from ..encoding import U256
 
-# TODO: should be in state
-
 class Storage:
     def __init__(self):
         self.data = {}
@@ -19,7 +17,7 @@ class Storage:
 
     def op(self, address: U256, value: U256, is_write: bool):
         if is_write:
-            # TODO: revert
-            self.write(address, value)
+            # TODO:
+            self.storage_write_with_reversion(address, value)
         else:
             assert self.read(address) == value
