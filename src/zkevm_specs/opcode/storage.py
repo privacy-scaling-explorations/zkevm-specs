@@ -12,12 +12,12 @@ class Storage:
         else:
             return 0
 
-    def write(self, address: U256, value: U256):
+    # TODO:
+    def storage_write_with_reversion(self, address: U256, value: U256):
         self.data[address] = value
 
     def op(self, address: U256, value: U256, is_write: bool):
         if is_write:
-            # TODO:
             self.storage_write_with_reversion(address, value)
         else:
             assert self.read(address) == value
