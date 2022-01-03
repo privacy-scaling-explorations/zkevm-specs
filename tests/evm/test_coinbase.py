@@ -41,7 +41,6 @@ def test_coinbase(opcode: Opcode, address: bytes):
 
     verify_steps(
         rlc_store=rlc_store,
-        block=block,
         tables=tables,
         steps=[
             StepState(
