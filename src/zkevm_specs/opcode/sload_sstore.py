@@ -19,4 +19,4 @@ def check_storage_ops(
 
     gas_cost = calc_storage_gas_cost() # TODO
 
-    memory.op(address, value, is_sstore)
+    storage.op(address, value, is_sstore)
