@@ -1,12 +1,6 @@
 # SLOAD & SSTORE op code
 
-## For cross-tx
-
-TODO:
-
-## For inner-tx
-
-### Constraints
+## Constraints
 
 1. opcodeId checks
    1. opId === OpcodeId(0x54) for `SLOAD`
@@ -48,7 +42,7 @@ TODO:
        - `SLOAD`: The 32 bytes of `value` are read from storage at `address`.
        - `SSTORE`: The 32 bytes of `value` are written to storage at `address`. Revert if gas out.
 
-### Exceptions
+## Exceptions
 
 1. gas out: remaining gas is not enough
 2. stack underflow:
