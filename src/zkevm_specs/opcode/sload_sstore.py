@@ -27,7 +27,7 @@ def check_storage_ops(
     is_sload = opcode == OP_SLOAD
     is_sstore = 1 - is_sload
 
-    # TODO: storage gas after XXX fork depends on warm/cold address and read/write,
+    # TODO: storage gas after Berlin fork depends on warm/cold address and read/write,
     # we use static gas for now
     gas_cost = calc_storage_gas_cost(is_sstore)
 
