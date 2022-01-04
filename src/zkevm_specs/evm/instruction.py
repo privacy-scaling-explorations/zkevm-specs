@@ -415,7 +415,7 @@ class Instruction:
         storage_slot: int,
     ) -> bool:
         row = self.state_write_with_reversion(
-            RWTableTag.TxAccessListAccount,
+            RWTableTag.TxAccessListStorageSlot,
             [tx_id, account_address, storage_slot, 1],
         )
         return row[6] - row[7]
@@ -429,7 +429,7 @@ class Instruction:
         rw_counter_end_of_reversion: int = 0,
     ) -> bool:
         row = self.state_write_with_reversion(
-            RWTableTag.TxAccessListAccount,
+            RWTableTag.TxAccessListStorageSlot,
             [tx_id, account_address, storage_slot, 1],
             is_persistent,
             rw_counter_end_of_reversion,
