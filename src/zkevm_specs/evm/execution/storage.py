@@ -9,7 +9,7 @@ def sload(instruction: Instruction):
     instruction.constrain_equal(opcode, Opcode.SLOAD)
     address = instruction.stack_pop()
     # TODO:
-    # value = instruction.storage_read() 
+    # value = instruction.storage_read() # do we only use a dict for this?
     value = instruction.stack_push()
 
 
