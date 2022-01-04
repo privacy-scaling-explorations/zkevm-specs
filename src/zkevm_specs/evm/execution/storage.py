@@ -1,4 +1,6 @@
 from ..instruction import Instruction, Transition
+from ..opcode import Opcode
+from ..table import CallContextFieldTag, TxContextFieldTag
 
 def sload(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
