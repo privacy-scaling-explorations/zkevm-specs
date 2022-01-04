@@ -3,6 +3,7 @@ from ..instruction import Instruction, Transition
 # TODO:
 # constraint op?
 # combine to storage?
+# check: is_sload = opcode == OP_SLOAD, is_sstore = 1 - is_sload?
 
 def sload(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
