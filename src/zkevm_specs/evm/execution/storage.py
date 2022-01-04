@@ -8,10 +8,20 @@ from ..instruction import Instruction, Transition
 def sload(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
     instruction.constrain_equal(opcode, Opcode.SLOAD)
+
     address = instruction.stack_pop()
-    # TODO:
-    # value = instruction.storage_read() # do we only use a dict for this?
     value = instruction.stack_push()
+    
+    storage_value = instruction.storage_read(address)
+    assert(value == storage_value) # TODO: ???
+
+    # TDOO: deal with gas correctly
+    instruction.constrain_same_context_state_transition(
+        opcode,
+        rw_counter=Transition.delta(3),
+        program_counter=Transition.delta(1),
+        stack_pointer=Transition.delta(0),
+    )
 
 
 def sstore(instruction: Instruction):

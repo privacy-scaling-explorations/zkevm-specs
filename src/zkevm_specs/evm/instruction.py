@@ -395,10 +395,9 @@ class Instruction:
         )
         return row[5] - row[6]
 
-    # TODO: 5?
-    def storage_read(self, stack_pointer_offset: int) -> Tuple[int, int]:
-        stack_pointer = self.curr.stack_pointer # TODO:?
-        return self.rw_lookup(RW.Read, RWTableTag.AccountStorage, [self.curr.call_id, stack_pointer])[5]
+    # TODO: 5? 6?
+    def storage_read(self, storage_address: int) -> int:
+        return self.rw_lookup(RW.Read, RWTableTag.AccountStorage, [storage_address])[6]
 
     def add_storage_slot_to_access_list(
         self,
