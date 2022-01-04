@@ -9,7 +9,9 @@ def sload(instruction: Instruction):
     instruction.constrain_equal(opcode, Opcode.SLOAD)
     address = instruction.stack_pop()
     # TODO:
-    # value = instruction.stack_pop()
+    # value = instruction.storage_read() 
+    value = instruction.stack_push()
+
 
 def sstore(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
@@ -20,3 +22,6 @@ def sstore(instruction: Instruction):
 
     rw_counter_end_of_reversion = instruction.call_context_lookup(CallContextFieldTag.RWCounterEndOfReversion)
     is_persistent = instruction.call_context_lookup(CallContextFieldTag.IsPersistent)
+
+    # TODO: gas
+
