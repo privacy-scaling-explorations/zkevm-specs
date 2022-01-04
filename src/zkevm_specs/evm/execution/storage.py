@@ -28,11 +28,21 @@ def sstore(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
     instruction.constrain_equal(opcode, Opcode.SSTORE)
 
+    rw_counter_end_of_reversion = instruction.call_context_lookup(CallContextFieldTag.RWCounterEndOfReversion)
+    is_persistent = instruction.call_context_lookup(CallContextFieldTag.IsPersistent)
+
     address = instruction.stack_pop()
     value = instruction.stack_pop()
 
     rw_counter_end_of_reversion = instruction.call_context_lookup(CallContextFieldTag.RWCounterEndOfReversion)
     is_persistent = instruction.call_context_lookup(CallContextFieldTag.IsPersistent)
 
-    # TODO: gas
+    _, _ = self.storage_write_with_reversion(
+        # sender_address, AccountFieldTag.Balance,
+        is_persistent, rw_counter_end_of_reversion
+    )
+
+    # TODO: access list
+
+    # TDOO: deal with gas correctly
 
