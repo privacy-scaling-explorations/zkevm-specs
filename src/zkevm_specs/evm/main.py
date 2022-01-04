@@ -7,6 +7,8 @@ from .execution import (
     push,
     jump,
     jumpi,
+    sload,
+    sstore
 )
 from .execution_state import ExecutionState
 from .instruction import Instruction
@@ -48,6 +50,10 @@ def verify_step(
         jump(instruction)
     elif instruction.curr.execution_state == ExecutionState.JUMPI:
         jumpi(instruction)
+    elif instruction.curr.execution_state == ExecutionState.SLOAD:
+        sload(instruction)
+    elif instruction.curr.execution_state == ExecutionState.SSTORE:
+        sstore(instruction)
     # Error cases
     else:
         raise NotImplementedError
