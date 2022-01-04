@@ -31,7 +31,6 @@ def sstore(instruction: Instruction):
 
     storage_slot = instruction.stack_pop()
     value = instruction.stack_pop()
-
     self.add_storage_slot_to_access_list_with_reversion(
         tx_id, account_address, storage_slot, is_persistent, rw_counter_end_of_reversion
     )
