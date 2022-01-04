@@ -395,9 +395,18 @@ class Instruction:
         )
         return row[5] - row[6]
 
-    # TODO: 5? 6?
-    def storage_read(self, storage_address: int) -> int:
-        return self.rw_lookup(RW.Read, RWTableTag.AccountStorage, [storage_address])[6]
+    def storage_slot_read(
+        self,
+        tx_id: int,
+        account_address: int,
+        storage_slot: int,
+    ) -> bool:
+        row = self.rw_lookup(
+            RW.Read,
+            RWTableTag.TxAccessListStorageSlot,
+            [tx_id, account_address, storage_slot, 1],
+        )
+        return row[6] - row[7]
 
     def add_storage_slot_to_access_list(
         self,
