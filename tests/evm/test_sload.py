@@ -35,9 +35,10 @@ def test_sload(tx: Transaction, slot_be_bytes: bytes):
         rw_table=set(
             [
                 (9, RW.Read, RWTableTag.Stack, 1, 1023, storage_slot, 0, 0),
-                (10, RW.Read, RWTableTag.AccountStorage, tx.callee_address, storage_slot, 0, 0, 0),
-                (11, RW.Write, RWTableTag.TxAccessListStorageSlot, 1, tx.callee_address, storage_slot, 1, 0),
-                (12, RW.Write, RWTableTag.Stack, 1, 1023, 0, 0, 0),
+                (10, RW.Read, RWTableTag.TxAccessListStorageSlot, 1, tx.callee_address, storage_slot, 0, 0),
+                (11, RW.Read, RWTableTag.AccountStorage, tx.callee_address, storage_slot, 0, 0, 0),
+                (12, RW.Write, RWTableTag.TxAccessListStorageSlot, 1, tx.callee_address, storage_slot, 1, 0),
+                (13, RW.Write, RWTableTag.Stack, 1, 1023, 0, 0, 0),
             ]
         ),
     )
@@ -59,7 +60,7 @@ def test_sload(tx: Transaction, slot_be_bytes: bytes):
             ),
             StepState(
                 execution_state=ExecutionState.STOP,
-                rw_counter=13,
+                rw_counter=14,
                 call_id=1,
                 is_root=True,
                 is_create=False,
