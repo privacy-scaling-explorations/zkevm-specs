@@ -10,16 +10,15 @@ def sload(instruction: Instruction):
     callee_address = instruction.tx_lookup(tx_id, TxContextFieldTag.CalleeAddress)
 
     storage_slot = instruction.stack_pop()
+    instruction.access_list_storage_slot_read(tx_id, callee_address, storage_slot)
+    # TODO: deal with gas correctly
     instruction.storage_slot_read(callee_address, storage_slot)
     instruction.add_storage_slot_to_access_list(tx_id, callee_address, storage_slot)
     value = instruction.stack_push()
 
-    # TODO: deal with gas correctly
-    # TODO: determine access-listed?
-    # TODO: constrain_new_context_state_transition?
     instruction.constrain_same_context_state_transition(
         opcode,
-        rw_counter=Transition.delta(4),
+        rw_counter=Transition.delta(5),
         program_counter=Transition.delta(1),
         stack_pointer=Transition.delta(0),
     )
@@ -36,6 +35,8 @@ def sstore(instruction: Instruction):
 
     storage_slot = instruction.stack_pop()
     value = instruction.stack_pop()
+    instruction.access_list_storage_slot_read(tx_id, callee_address, storage_slot)
+    # TODO: deal with gas correctly
     instruction.storage_slot_write_with_reversion(
         tx_id, callee_address, storage_slot, is_persistent, rw_counter_end_of_reversion
     )
@@ -43,12 +44,9 @@ def sstore(instruction: Instruction):
         tx_id, callee_address, storage_slot, is_persistent, rw_counter_end_of_reversion
     )
 
-    # TODO: deal with gas correctly
-    # TODO: determine access-listed?
-    # TODO: constrain_new_context_state_transition?
     instruction.constrain_same_context_state_transition(
         opcode,
-        rw_counter=Transition.delta(4),
+        rw_counter=Transition.delta(5),
         program_counter=Transition.delta(1),
         stack_pointer=Transition.delta(-2),
     )
