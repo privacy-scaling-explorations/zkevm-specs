@@ -7,7 +7,7 @@
    2. opId === OpcodeId(0x55) for `SSTORE`
 2. state transition:
    - gc
-     - `SLOAD`/`SSTORE`:  +4 (2 stack operations + 1 storage reads/writes + 1 access_list process)
+     - `SLOAD`/`SSTORE`:  +5 (2 stack operations + 1 storage reads/writes + 2 access_list reads/writes)
    - stack_pointer
      - `SLOAD`: remains the same
      - `SSTORE`: -2
@@ -32,7 +32,7 @@
              - `last_tx_value != 0`: gas + 2900 + 2900
            - `current_value != last_tx_value`: gas + 100 + 2900
 3. lookups:
-   - `SLOAD`/`SSTORE`: 3 busmapping lookups
+   - `SLOAD`/`SSTORE`: 5 busmapping lookups
      - stack:
        - `address` is popped off the top of the stack
        - `value`
@@ -41,6 +41,9 @@
      - storage:
        - `SLOAD`: The 32 bytes of `value` are read from storage at `address`.
        - `SSTORE`: The 32 bytes of `value` are written to storage at `address`. Revert if gas out.
+     - access_list:
+       - `SLOAD`: Whether the address is warm (accessed before), mark as warm afterward.
+       - `SSTORE`: Whether the address is warm (accessed before), mark as warm afterward. Revert if gas out.
 
 ## Exceptions
 
