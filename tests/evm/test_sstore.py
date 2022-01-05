@@ -74,6 +74,7 @@ def test_sstore(tx: Transaction, slot_be_bytes: bytes, value_be_bytes: bytes, re
                 program_counter=67,
                 stack_pointer=1024,
                 gas_left=0, # TODO:
+                state_write_counter=2,
             ),
         ],
     )
