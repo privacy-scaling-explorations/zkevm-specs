@@ -33,7 +33,28 @@ def test_sload(tx: Transaction, slot_be_bytes: bytes):
     verify_steps(
         rlc_store=rlc_store,
         tables=tables,
-        # TODO:
         steps=[
+            StepState(
+                execution_state=ExecutionState.SLOAD,
+                rw_counter=9,
+                call_id=1,
+                is_root=True,
+                is_create=False,
+                opcode_source=bytecode_hash,
+                program_counter=66,
+                stack_pointer=1023,
+                gas_left=3, # TODO:
+            ),
+            StepState(
+                execution_state=ExecutionState.STOP,
+                rw_counter=13,
+                call_id=1,
+                is_root=True,
+                is_create=False,
+                opcode_source=bytecode_hash,
+                program_counter=67,
+                stack_pointer=1023,
+                gas_left=0, # TODO:
+            ),
         ],
     )

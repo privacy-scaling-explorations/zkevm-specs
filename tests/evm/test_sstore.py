@@ -41,8 +41,8 @@ def test_sstore(tx: Transaction, slot_be_bytes: bytes, value_be_bytes: bytes, re
                 []
                 if result
                 else [
-                    (14, RW.Write, RWTableTag.TxAccessListStorageSlot, 1, tx.callee_address, storage_slot, 0, 0),
-                    (15, RW.Write, RWTableTag.AccountStorage, tx.callee_address, storage_slot, value_prev, value, 0),
+                    (15, RW.Write, RWTableTag.TxAccessListStorageSlot, 1, tx.callee_address, storage_slot, 0, 0),
+                    (16, RW.Write, RWTableTag.AccountStorage, tx.callee_address, storage_slot, value_prev, value, 0),
                 ]
             )
         ),
@@ -53,5 +53,27 @@ def test_sstore(tx: Transaction, slot_be_bytes: bytes, value_be_bytes: bytes, re
         tables=tables,
         # TODO:
         steps=[
+            StepState(
+                execution_state=ExecutionState.ADD,
+                rw_counter=9,
+                call_id=1,
+                is_root=True,
+                is_create=False,
+                opcode_source=bytecode_hash,
+                program_counter=66,
+                stack_pointer=1022,
+                gas_left=3, # TODO:
+            ),
+            StepState(
+                execution_state=ExecutionState.STOP if result else ExecutionState.REVERT,
+                rw_counter=13,
+                call_id=1,
+                is_root=True,
+                is_create=False,
+                opcode_source=bytecode_hash,
+                program_counter=67,
+                stack_pointer=1024,
+                gas_left=0, # TODO:
+            ),
         ],
     )
