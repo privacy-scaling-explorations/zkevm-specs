@@ -7,7 +7,7 @@
    2. opId === OpcodeId(0x55) for `SSTORE`
 2. state transition:
    - gc
-     - `SLOAD`/`SSTORE`:  +3 (2 stack operations + 1 storage reads/writes)
+     - `SLOAD`/`SSTORE`:  +4 (2 stack operations + 1 storage reads/writes + 1 access_list process)
    - stack_pointer
      - `SLOAD`: remains the same
      - `SSTORE`: -2
