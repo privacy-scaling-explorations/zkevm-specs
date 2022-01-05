@@ -15,6 +15,7 @@ def sload(instruction: Instruction):
     value = instruction.stack_push()
 
     # TDOO: deal with gas correctly
+    # TODO: constrain_new_context_state_transition?
     instruction.constrain_same_context_state_transition(
         opcode,
         rw_counter=Transition.delta(4),
@@ -34,7 +35,9 @@ def sstore(instruction: Instruction):
 
     storage_slot = instruction.stack_pop()
     value = instruction.stack_pop()
-    # TODO: reversion?
+    instruction.storage_slot_write_with_reversion(
+        tx_id, callee_address, storage_slot, is_persistent, rw_counter_end_of_reversion
+    )
     self.add_storage_slot_to_access_list_with_reversion(
         tx_id, callee_address, storage_slot, is_persistent, rw_counter_end_of_reversion
     )

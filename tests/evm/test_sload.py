@@ -22,6 +22,12 @@ def test_sload(tx: Transaction, slot_be_bytes: bytes):
         bytecode_table=set(bytecode.table_assignments(rlc_store)),
         # TODO:
         rw_table=set(
+            [
+                (1, RW.Read, RWTableTag.Stack, 1, 1023, storage_slot, 0, 0),
+                (2, RW.Read, RWTableTag.AccountStorage, 1, 1023, storage_slot, 0, 0),
+                (3, RW.Write, RWTableTag.TxAccessListStorageSlot, 1, 1023, storage_slot, 0, 0),
+                (4, RW.Write, RWTableTag.Stack, 1, 1023, 0, 0, 0),
+            ]
         ),
     )
 
