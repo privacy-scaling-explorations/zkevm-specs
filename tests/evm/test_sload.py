@@ -1,5 +1,17 @@
 import pytest
 
+from zkevm_specs.evm import (
+    ExecutionState,
+    StepState,
+    verify_steps,
+    Tables,
+    RWTableTag,
+    RW,
+    Transaction,
+    Bytecode,
+)
+from zkevm_specs.util import RLCStore, rand_address
+
 TESTING_DATA = (
     (
         Transaction(caller_address=rand_address(), callee_address=rand_address()),
