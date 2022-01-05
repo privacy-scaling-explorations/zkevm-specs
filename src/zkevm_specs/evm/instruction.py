@@ -395,18 +395,44 @@ class Instruction:
         )
         return row[5] - row[6]
 
-    def storage_slot_read(
+    def storage_slot_write(
         self,
-        tx_id: int,
         account_address: int,
         storage_slot: int,
-    ) -> bool:
+    ) -> Tuple[int, int]:
+        row = self.rw_lookup(
+            RW.Write,
+            RWTableTag.AccountStorage,
+            [account_address, storage_slot],
+        )
+        return row[5], row[6]
+
+    def storage_slot_write_with_reversion(
+        self,
+        account_address: int,
+        storage_slot: int,
+        is_persistent: bool = True,
+        rw_counter_end_of_reversion: int = 0,
+    ) -> Tuple[int, int]:
+        row = self.state_write_with_reversion(
+            RWTableTag.AccountStorage,
+            [account_address, storage_slot],
+            is_persistent,
+            rw_counter_end_of_reversion,
+        )
+        return row[5], row[6]
+
+    def storage_slot_read(
+        self,
+        account_address: int,
+        storage_slot: int,
+    ) -> Tuple[int, int]:
         row = self.rw_lookup(
             RW.Read,
-            RWTableTag.TxAccessListStorageSlot,
-            [tx_id, account_address, storage_slot, 1],
+            RWTableTag.AccountStorage,
+            [account_address, storage_slot],
         )
-        return row[6] - row[7]
+        return row[5], row[6]
 
     def add_storage_slot_to_access_list(
         self,
