@@ -20,13 +20,12 @@ def test_sload(tx: Transaction, slot_be_bytes: bytes):
     tables = Tables(
         tx_table=set(tx.table_assignments(rlc_store)),
         bytecode_table=set(bytecode.table_assignments(rlc_store)),
-        # TODO:
         rw_table=set(
             [
-                (1, RW.Read, RWTableTag.Stack, 1, 1023, storage_slot, 0, 0),
-                (2, RW.Read, RWTableTag.AccountStorage, 1, 1023, storage_slot, 0, 0),
-                (3, RW.Write, RWTableTag.TxAccessListStorageSlot, 1, 1023, storage_slot, 0, 0),
-                (4, RW.Write, RWTableTag.Stack, 1, 1023, 0, 0, 0),
+                (9, RW.Read, RWTableTag.Stack, 1, 1023, storage_slot, 0, 0),
+                (10, RW.Read, RWTableTag.AccountStorage, tx.callee_address, storage_slot, 0, 0, 0),
+                (11, RW.Write, RWTableTag.TxAccessListStorageSlot, 1, tx.callee_address, storage_slot, 1, 0),
+                (12, RW.Write, RWTableTag.Stack, 1, 1023, 0, 0, 0),
             ]
         ),
     )

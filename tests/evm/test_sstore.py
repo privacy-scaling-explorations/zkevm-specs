@@ -29,8 +29,13 @@ def test_sstore(tx: Transaction, slot_be_bytes: bytes, value_be_bytes: bytes, re
     tables = Tables(
         tx_table=set(tx.table_assignments(rlc_store)),
         bytecode_table=set(bytecode.table_assignments(rlc_store)),
-        # TODO:
         rw_table=set(
+            [   
+                (9, RW.Read, RWTableTag.Stack, 1, 1022, storage_slot, 0, 0),
+                (10, RW.Read, RWTableTag.Stack, 1, 1023, value, 0, 0),
+                (11, RW.Write, RWTableTag.AccountStorage, tx.callee_address, storage_slot, value, 0, 0),
+                (12, RW.Write, RWTableTag.TxAccessListStorageSlot, 1, tx.callee_address, storage_slot, 1, 0),
+            ]
         ),
     )
 
