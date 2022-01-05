@@ -14,7 +14,8 @@ def sload(instruction: Instruction):
     instruction.add_storage_slot_to_access_list(tx_id, callee_address, storage_slot)
     value = instruction.stack_push()
 
-    # TDOO: deal with gas correctly
+    # TODO: deal with gas correctly
+    # TODO: determine access-listed?
     # TODO: constrain_new_context_state_transition?
     instruction.constrain_same_context_state_transition(
         opcode,
@@ -42,7 +43,8 @@ def sstore(instruction: Instruction):
         tx_id, callee_address, storage_slot, is_persistent, rw_counter_end_of_reversion
     )
 
-    # TDOO: deal with gas correctly
+    # TODO: deal with gas correctly
+    # TODO: determine access-listed?
     # TODO: constrain_new_context_state_transition?
     instruction.constrain_same_context_state_transition(
         opcode,
