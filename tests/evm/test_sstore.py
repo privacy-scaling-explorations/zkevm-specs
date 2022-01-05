@@ -21,6 +21,7 @@ def test_sstore(tx: Transaction, slot_be_bytes: bytes, value_be_bytes: bytes, re
 
     storage_slot = rlc_store.to_rlc(bytes(reversed(slot_be_bytes)))
     value = rlc_store.to_rlc(bytes(reversed(value_be_bytes)))
+    value_prev = value - 1
 
     # PUSH32 STORAGE_SLOT PUSH32 VALUE SSTORE STOP
     bytecode = Bytecode(f"7f{slot_be_bytes.hex()}7f{value_be_bytes.hex()}5500")
@@ -33,9 +34,17 @@ def test_sstore(tx: Transaction, slot_be_bytes: bytes, value_be_bytes: bytes, re
             [   
                 (9, RW.Read, RWTableTag.Stack, 1, 1022, storage_slot, 0, 0),
                 (10, RW.Read, RWTableTag.Stack, 1, 1023, value, 0, 0),
-                (11, RW.Write, RWTableTag.AccountStorage, tx.callee_address, storage_slot, value, 0, 0),
+                (11, RW.Write, RWTableTag.AccountStorage, tx.callee_address, storage_slot, value, value_prev, 0),
                 (12, RW.Write, RWTableTag.TxAccessListStorageSlot, 1, tx.callee_address, storage_slot, 1, 0),
             ]
+            + (
+                []
+                if result
+                else [
+                    (14, RW.Write, RWTableTag.TxAccessListStorageSlot, 1, tx.callee_address, storage_slot, 0, 0),
+                    (15, RW.Write, RWTableTag.AccountStorage, tx.callee_address, storage_slot, value_prev, value, 0),
+                ]
+            )
         ),
     )
 
