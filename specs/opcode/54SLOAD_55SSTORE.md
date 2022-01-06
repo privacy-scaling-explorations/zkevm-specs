@@ -34,6 +34,7 @@
              - `last_tx_value == 0`: gas + 20000 + 2900
              - `last_tx_value != 0`: gas + 2900 + 2900
            - `current_value != last_tx_value`: gas + 100 + 2900
+   - TODO: gas refunds
 3. lookups:
    - `SLOAD`/`SSTORE`: 5 busmapping lookups
      - stack:

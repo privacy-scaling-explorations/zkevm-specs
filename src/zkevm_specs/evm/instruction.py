@@ -168,6 +168,7 @@ class Instruction:
         stack_pointer: Transition = Transition.persistent(),
         memory_size: Transition = Transition.persistent(),
         dynamic_gas_cost: int = 0,
+        state_write_counter: Transition = Transition.persistent(),
     ):
         gas_cost = Opcode(opcode).constant_gas_cost() + dynamic_gas_cost
 
@@ -179,6 +180,7 @@ class Instruction:
             stack_pointer=stack_pointer,
             memory_size=memory_size,
             gas_left=Transition.delta(-gas_cost),
+            state_write_counter=state_write_counter,
         )
 
     def is_zero(self, value: int) -> bool:
@@ -299,7 +301,7 @@ class Instruction:
             elif tag == RWTableTag.Account:
                 inputs[2], inputs[3] = inputs[3], inputs[2]
             elif tag == RWTableTag.AccountStorage:
-                inputs[3], inputs[4] = inputs[4], inputs[3]
+                inputs[2], inputs[3] = inputs[3], inputs[2]
             self.rw_lookup(RW.Write, tag, inputs, rw_counter=rw_counter)
 
         return row
@@ -461,3 +463,16 @@ class Instruction:
             rw_counter_end_of_reversion,
         )
         return row[6] - row[7]
+
+    def access_list_storage_slot_read(
+        self,
+        tx_id: int,
+        account_address: int,
+        storage_slot: int,
+    ) -> bool:
+        row = self.rw_lookup(
+            RW.Read,
+            RWTableTag.TxAccessListStorageSlot,
+            [tx_id, account_address, storage_slot],
+        )
+        return row[6], row[7]
