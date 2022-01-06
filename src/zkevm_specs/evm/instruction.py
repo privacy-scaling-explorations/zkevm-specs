@@ -74,7 +74,7 @@ class Instruction:
     def constrain_bool(self, value: int):
         assert value in [0, 1]
 
-    def constrain_sufficient_gas_left(self, gas_left: int):
+    def constrain_gas_left_not_underflow(self, gas_left: int):
         self.int_to_bytes(gas_left, N_BYTES_GAS)
 
     def constrain_state_transition(self, **kwargs: Transition):
@@ -148,7 +148,7 @@ class Instruction:
     ):
         gas_cost = Opcode(opcode).constant_gas_cost() + dynamic_gas_cost
 
-        self.constrain_sufficient_gas_left(self.curr.gas_left - gas_cost)
+        self.constrain_gas_left_not_underflow(self.curr.gas_left - gas_cost)
         self.constrain_state_transition(
             rw_counter=rw_counter,
             program_counter=program_counter,
