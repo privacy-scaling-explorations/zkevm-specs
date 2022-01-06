@@ -12,7 +12,7 @@ then push the `address` to the stack.
 ## Circuit behavior
 
 1. construct block context table
-2. do bussmapping lookup for stack write operation
+2. do busmapping lookup for stack write operation
 3. other implicit check: bytes length
 
 ## Constraints

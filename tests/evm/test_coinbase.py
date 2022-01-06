@@ -26,7 +26,6 @@ def test_coinbase(opcode: Opcode, address: bytes):
 
     bytecode = Bytecode(f"{opcode.hex()}00")
     bytecode_hash = rlc_store.to_rlc(bytecode.hash, 32)
-    # block = Block(coinbase_address, int(15e6), 10, 0, 0, int(1e9), [])
     block = Block(coinbase_address)
     tables = Tables(
         block_table=set(block.table_assignments(rlc_store)),
