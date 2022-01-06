@@ -12,6 +12,9 @@
      - `SLOAD`: remains the same
      - `SSTORE`: -2
    - pc + 1
+   - state_write_counter
+       - `SLOAD`: +1
+       - `SSTORE`: +2
    - gas:
      - `SLOAD`:
        + the accessed address is warm: gas + 100
@@ -40,10 +43,10 @@
          - is popped off the top of the stack for `SSTORE`
      - storage:
        - `SLOAD`: The 32 bytes of `value` are read from storage at `address`.
-       - `SSTORE`: The 32 bytes of `value` are written to storage at `address`. Revert if gas out.
+       - `SSTORE`: The 32 bytes of `value` are written to storage at `address`.
      - access_list:
        - `SLOAD`: Whether the address is warm (accessed before), mark as warm afterward.
-       - `SSTORE`: Whether the address is warm (accessed before), mark as warm afterward. Revert if gas out.
+       - `SSTORE`: Whether the address is warm (accessed before), mark as warm afterward.
 
 ## Exceptions
 
