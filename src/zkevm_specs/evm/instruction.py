@@ -475,4 +475,4 @@ class Instruction:
             RWTableTag.TxAccessListStorageSlot,
             [tx_id, account_address, storage_slot],
         )
-        return row[6], row[7]
+        return row[6]

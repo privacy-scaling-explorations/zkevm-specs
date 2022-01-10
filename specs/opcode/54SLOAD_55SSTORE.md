@@ -36,29 +36,29 @@ Disclaimer: this version of the sload/sstore sepc only corrsponds to [EIP-2929](
        + the accessed address is warm:
          * `current_value == new_value`: gas + SLOAD_GAS
          * `current_value != new_value`:
-           - `last_tx_value == current_value`:
-             - `last_tx_value == 0`: gas + SSTORE_SET_GAS
-             - `last_tx_value != 0`: gas + SSTORE_RESET_GAS
-           - `last_tx_value != current_value`: gas + SLOAD_GAS
+           - `original_value == current_value`:
+             - `original_value == 0`: gas + SSTORE_SET_GAS
+             - `original_value != 0`: gas + SSTORE_RESET_GAS
+           - `original_value != current_value`: gas + SLOAD_GAS
        + the accessed address is cold:
          * `current_value == new_value`: gas + SLOAD_GAS + COLD_SLOAD_COST
          * `current_value != new_value`:
-           - `last_tx_value == current_value`:
-             - `last_tx_value == 0`: gas + SSTORE_SET_GAS + COLD_SLOAD_COST
-             - `last_tx_value != 0`: gas + SSTORE_RESET_GAS + COLD_SLOAD_COST
-           - `last_tx_value != current_value`: gas + SLOAD_GAS + COLD_SLOAD_COST
+           - `original_value == current_value`:
+             - `original_value == 0`: gas + SSTORE_SET_GAS + COLD_SLOAD_COST
+             - `original_value != 0`: gas + SSTORE_RESET_GAS + COLD_SLOAD_COST
+           - `original_value != current_value`: gas + SLOAD_GAS + COLD_SLOAD_COST
    * gas_refund:
      - `SSTORE`:
        + `current_value != new_value`:
-         * `last_tx_value == current_value`:
-           * `last_tx_value != 0` && `new_value == 0`: gas_refund + SSTORE_CLEARS_SCHEDULE
-         * `last_tx_value != current_value`:
-           * `last_tx_value != 0`:
+         * `original_value == current_value`:
+           * `original_value != 0` && `new_value == 0`: gas_refund + SSTORE_CLEARS_SCHEDULE
+         * `original_value != current_value`:
+           * `original_value != 0`:
              - `current_value == 0`: gas_refund - SSTORE_CLEARS_SCHEDULE
              - `new_value == 0`: gas_refund + SSTORE_CLEARS_SCHEDULE
-           * `last_tx_value == new_value`:
-             - `last_tx_value == 0`: gas_refund + SSTORE_SET_GAS - SLOAD_GAS
-             - `last_tx_value != 0`: gas_refund + SSTORE_RESET_GAS - SLOAD_GAS
+           * `original_value == new_value`:
+             - `original_value == 0`: gas_refund + SSTORE_SET_GAS - SLOAD_GAS
+             - `original_value != 0`: gas_refund + SSTORE_RESET_GAS - SLOAD_GAS
 3. lookups:
    - `SLOAD`/`SSTORE`: 5 busmapping lookups
      - stack:
