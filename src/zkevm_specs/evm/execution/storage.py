@@ -28,7 +28,7 @@ def sload(instruction: Instruction):
     instruction.add_storage_slot_to_access_list_with_reversion(
         tx_id, callee_address, storage_slot, is_persistent, rw_counter_end_of_reversion
     )
-    value = instruction.stack_push()
+    instruction.stack_push()
 
     instruction.constrain_same_context_state_transition(
         opcode,
@@ -52,19 +52,42 @@ def sstore(instruction: Instruction):
     storage_slot = instruction.stack_pop()
     new_value = instruction.stack_pop()
     warm = instruction.access_list_storage_slot_read(tx_id, callee_address, storage_slot)
+    # TODO:
     original_value = instruction.storage_slot_original_value_read(tx_id, callee_address, storage_slot)
     current_value, _ = instruction.storage_slot_read(tx_id, callee_address, storage_slot)
 
-    gas_refund = 0
-
     # TODO: Use intrinsic gas (EIP 2028, 2930)
-    if warm:
-        if current_value == new_value:
-            dynamic_gas_cost = SLOAD_GAS
-        else:
-
+    if current_value == new_value:
+        dynamic_gas_cost = SLOAD_GAS
     else:
-        dynamic_gas_cost
+        if original_value == current_value:
+            if original_value == 0:
+                dynamic_gas_cost = SSTORE_SET_GAS
+            else:
+                dynamic_gas_cost = SSTORE_RESET_GAS
+        else:
+            dynamic_gas_cost = SLOAD_GAS
+    if not warm:
+        dynamic_gas_cost = dynamic_gas_cost + COLD_SLOAD_COST
+
+    gas_refund = 0 # TODO: read gas_refund
+    if current_value != new_value:
+        if original_value == current_value:
+            if original_value != 0 && new_value == 0:
+                gas_refund = gas_refund + SSTORE_CLEARS_SCHEDULE
+        else:
+            if original_value != 0:
+                if current_value == 0:
+                    gas_refund = gas_refund - SSTORE_CLEARS_SCHEDULE
+                if new_value == 0:
+                    gas_refund = gas_refund + SSTORE_CLEARS_SCHEDULE
+            if original_value == new_value:
+                if original_value == 0:
+                    gas_refund = gas_refund + SSTORE_SET_GAS - SLOAD_GAS
+                else:
+                    gas_refund = gas_refund + SSTORE_RESET_GAS - SLOAD_GAS
+
+    # TODO: write gas_refund
 
     instruction.storage_slot_write_with_reversion(
         callee_address, storage_slot, is_persistent, rw_counter_end_of_reversion
