@@ -50,11 +50,21 @@ def sstore(instruction: Instruction):
     callee_address = instruction.tx_lookup(tx_id, TxContextFieldTag.CalleeAddress)
 
     storage_slot = instruction.stack_pop()
-    value = instruction.stack_pop()
-    instruction.access_list_storage_slot_read(tx_id, callee_address, storage_slot)
+    new_value = instruction.stack_pop()
+    warm = instruction.access_list_storage_slot_read(tx_id, callee_address, storage_slot)
+    original_value = instruction.storage_slot_original_value_read(tx_id, callee_address, storage_slot)
+    current_value, _ = instruction.storage_slot_read(tx_id, callee_address, storage_slot)
+
+    gas_refund = 0
 
     # TODO: Use intrinsic gas (EIP 2028, 2930)
-    dynamic_gas_cost = 0
+    if warm:
+        if current_value == new_value:
+            dynamic_gas_cost = SLOAD_GAS
+        else:
+
+    else:
+        dynamic_gas_cost
 
     instruction.storage_slot_write_with_reversion(
         callee_address, storage_slot, is_persistent, rw_counter_end_of_reversion
