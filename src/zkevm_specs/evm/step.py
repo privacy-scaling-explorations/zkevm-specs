@@ -15,13 +15,14 @@ class StepState:
     rw_counter: int
     call_id: int
 
-    # The following 3 fields decide the source of opcode. There are 3 possible
+    # The following 3 fields decide the opcode source. There are 2 possible
     # cases:
-    # 1. Tx contract deployment (is_root and is_create)
-    #   We set opcode_source to tx_id and lookup call_data in tx_table.
-    # 2. CREATE and CREATE2 (not is_root and is_create)
-    #   We set opcode_source to caller_id and lookup memory in rw_table.
-    # 3. Contract execution (not is_create)
+    # 1. Root creation call (is_root and is_create)
+    #   It was planned to set the opcode_source to tx_id, then lookup tx_table's
+    #   CallData field directly, but is still yet to be determined.
+    #   See the issue https://github.com/appliedzkp/zkevm-specs/issues/73 for
+    #   further discussion.
+    # 2. Deployed contract interaction or internal creation call
     #   We set opcode_source to bytecode_hash and lookup bytecode_table.
     is_root: bool
     is_create: bool

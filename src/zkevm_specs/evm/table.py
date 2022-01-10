@@ -60,17 +60,19 @@ class TxContextFieldTag(IntEnum):
     """
     Tag for TxTable lookup, where the TxTable is an instance-column table where
     part of it will be built by verifier.
+    Note that the field here is targeting legacy transaction format, supporting
+    of EIP1559 is deferred to future work.
     """
 
     Nonce = auto()
     Gas = auto()
-    GasTipCap = auto()
-    GasFeeCap = auto()
+    GasPrice = auto()
     CallerAddress = auto()
     CalleeAddress = auto()
     IsCreate = auto()
     Value = auto()
     CallDataLength = auto()
+    CallDataGasCost = auto()
     CallData = auto()
 
 
