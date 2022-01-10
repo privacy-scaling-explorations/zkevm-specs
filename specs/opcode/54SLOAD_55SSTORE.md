@@ -2,6 +2,17 @@
 
 Disclaimer: this version of the sload/sstore sepc only corrsponds to [EIP-2929](https://eips.ethereum.org/EIPS/eip-2929).
 
+## Variables definition
+
+| Name | Value |
+| - | - |
+| COLD_SLOAD_COST | 2100 |
+| WARM_STORAGE_READ_COST | 100 |
+| SLOAD_GAS | 100 |
+| SSTORE_SET_GAS | 20000 |
+| SSTORE_RESET_GAS | 2900 |
+| SSTORE_CLEARS_SCHEDULE | 15000 |
+
 ## Constraints
 
 1. opcodeId checks
@@ -19,8 +30,8 @@ Disclaimer: this version of the sload/sstore sepc only corrsponds to [EIP-2929](
        - `SSTORE`: +2
    - gas:
      - `SLOAD`:
-       + the accessed address is warm: gas + 100
-       + the accessed address is cold: gas + 2100
+       + the accessed address is warm: gas + WARM_STORAGE_READ_COST
+       + the accessed address is cold: gas + COLD_SLOAD_COST
      - `SSTORE`:
        + the accessed address is warm:
          * `current_value == new_value`: gas + SLOAD_GAS
