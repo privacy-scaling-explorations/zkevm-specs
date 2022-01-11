@@ -436,6 +436,19 @@ class Instruction:
         )
         return row[5], row[6]
 
+    def storage_slot_original_value_read(
+        self,
+        tx_id: int,
+        account_address: int,
+        storage_slot: int,
+    ) -> int:
+        row = self.rw_lookup(
+            RW.Read,
+            RWTableTag.TxStorageSlotOriginalValue,
+            [tx_id, account_address, storage_slot],
+        )
+        return row[6]
+
     def add_storage_slot_to_access_list(
         self,
         tx_id: int,

@@ -71,7 +71,7 @@ class RWTableTag(IntEnum):
 
     TxAccessListAccount = auto()
     TxAccessListStorageSlot = auto()
-    TxAccessListStorageSlotOriginalValue = auto()
+    TxStorageSlotOriginalValue = auto()
     TxRefund = auto()
 
     Account = auto()

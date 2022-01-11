@@ -52,7 +52,6 @@ def sstore(instruction: Instruction):
     storage_slot = instruction.stack_pop()
     new_value = instruction.stack_pop()
     warm = instruction.access_list_storage_slot_read(tx_id, callee_address, storage_slot)
-    # TODO:
     original_value = instruction.storage_slot_original_value_read(tx_id, callee_address, storage_slot)
     current_value, _ = instruction.storage_slot_read(tx_id, callee_address, storage_slot)
 
@@ -73,7 +72,7 @@ def sstore(instruction: Instruction):
     gas_refund = 0 # TODO: read gas_refund
     if current_value != new_value:
         if original_value == current_value:
-            if original_value != 0 && new_value == 0:
+            if original_value != 0 and new_value == 0:
                 gas_refund = gas_refund + SSTORE_CLEARS_SCHEDULE
         else:
             if original_value != 0:
