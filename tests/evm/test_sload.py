@@ -26,6 +26,8 @@ TESTING_DATA = (
     ),
 )
 
+# TODO: add warm test
+
 @pytest.mark.parametrize("tx, slot_be_bytes, result", TESTING_DATA)
 def test_sload(tx: Transaction, slot_be_bytes: bytes, result: bool):
     rlc_store = RLCStore()
@@ -83,7 +85,7 @@ def test_sload(tx: Transaction, slot_be_bytes: bytes, result: bool):
                 program_counter=33,
                 stack_pointer=1023,
                 state_write_counter=0,
-                gas_left=3,
+                gas_left=2100,
             ),
             StepState(
                 execution_state=ExecutionState.STOP if result else ExecutionState.REVERT,
@@ -95,7 +97,7 @@ def test_sload(tx: Transaction, slot_be_bytes: bytes, result: bool):
                 program_counter=34,
                 stack_pointer=1023,
                 state_write_counter=1,
-                gas_left=3,
+                gas_left=0,
             ),
         ],
     )
