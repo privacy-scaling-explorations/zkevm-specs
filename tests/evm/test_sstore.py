@@ -76,7 +76,7 @@ def test_sstore(tx: Transaction, slot_be_bytes: bytes, value_be_bytes: bytes, wa
                     RWTableTag.CallContext,
                     1,
                     CallContextFieldTag.RWCounterEndOfReversion,
-                    0 if result else 14,
+                    0 if result else 16,
                     0,
                     0,
                 ),
@@ -86,15 +86,17 @@ def test_sstore(tx: Transaction, slot_be_bytes: bytes, value_be_bytes: bytes, wa
                 (6, RW.Read, RWTableTag.TxAccessListStorageSlot, 1, tx.callee_address, storage_slot, 1 if warm else 0, 0),
                 (7, RW.Read, RWTableTag.TxStorageSlotOriginalValue, 1, tx.callee_address, storage_slot, original_value, 0),
                 (8, RW.Read, RWTableTag.AccountStorage, tx.callee_address, storage_slot, value_prev, original_value, 0),
-                (9, RW.Write, RWTableTag.AccountStorage, tx.callee_address, storage_slot, value, value_prev, 0),
-                (10, RW.Write, RWTableTag.TxAccessListStorageSlot, 1, tx.callee_address, storage_slot, 1, 1 if warm else 0),
+                (9, RW.Read, RWTableTag.TxRefund, 1, 999, 0, 0, 0),
+                (10, RW.Write, RWTableTag.AccountStorage, tx.callee_address, storage_slot, value, value_prev, 0),
+                (11, RW.Write, RWTableTag.TxAccessListStorageSlot, 1, tx.callee_address, storage_slot, 1, 1 if warm else 0),
+                (12, RW.Write, RWTableTag.TxRefund, 1, 999, 0, 0, 0),
             ]
             + (
                 []
                 if result
                 else [
-                    (13, RW.Write, RWTableTag.TxAccessListStorageSlot, 1, tx.callee_address, storage_slot, 1 if warm else 0, 1),
-                    (14, RW.Write, RWTableTag.AccountStorage, tx.callee_address, storage_slot, value_prev, value, 0),
+                    (15, RW.Write, RWTableTag.TxAccessListStorageSlot, 1, tx.callee_address, storage_slot, 1 if warm else 0, 1),
+                    (16, RW.Write, RWTableTag.AccountStorage, tx.callee_address, storage_slot, value_prev, value, 0),
                 ]
             )
         ),

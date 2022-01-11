@@ -69,7 +69,7 @@ def sstore(instruction: Instruction):
     if not warm:
         dynamic_gas_cost = dynamic_gas_cost + COLD_SLOAD_COST
 
-    gas_refund = 0 # TODO: read gas_refund
+    gas_refund = instruction.gas_refund_read(tx_id)
     if current_value != new_value:
         if original_value == current_value:
             if original_value != 0 and new_value == 0:
@@ -86,14 +86,13 @@ def sstore(instruction: Instruction):
                 else:
                     gas_refund = gas_refund + SSTORE_RESET_GAS - SLOAD_GAS
 
-    # TODO: write gas_refund
-
     instruction.storage_slot_write_with_reversion(
         callee_address, storage_slot, is_persistent, rw_counter_end_of_reversion
     )
     instruction.add_storage_slot_to_access_list_with_reversion(
         tx_id, callee_address, storage_slot, is_persistent, rw_counter_end_of_reversion
     )
+    instruction.gas_refund_write(tx_id)
 
     instruction.constrain_same_context_state_transition(
         opcode,

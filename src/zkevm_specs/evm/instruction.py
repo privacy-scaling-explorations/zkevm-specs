@@ -489,3 +489,25 @@ class Instruction:
             [tx_id, account_address, storage_slot],
         )
         return row[6]
+
+    def gas_refund_read(
+        self,
+        tx_id: int,
+    ) -> int:
+        row = self.rw_lookup(
+            RW.Read,
+            RWTableTag.TxRefund,
+            [tx_id],
+        )
+        return row[4]
+
+    def gas_refund_write(
+        self,
+        tx_id: int,
+    ) -> int:
+        row = self.rw_lookup(
+            RW.Write,
+            RWTableTag.TxRefund,
+            [tx_id],
+        )
+        return row[4]
