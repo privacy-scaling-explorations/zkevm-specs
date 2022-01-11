@@ -22,14 +22,8 @@ def test_mul(a, b):
         rhs_sum = U256(0)
         for a_id in range(0, total_idx + 1):
             a_idx, b_idx = a_id, total_idx - a_id
-            if len(a64s) >= a_idx + 1:
-                tmp_a = a64s[a_idx]
-            else:
-                tmp_a = 0
-            if len(b64s) >= b_idx + 1:
-                tmp_b = b64s[b_idx]
-            else:
-                tmp_b = 0
+            tmp_a = a64s[a_idx] if len(a64s) >= a_idx + 1 else 0
+            tmp_b = b64s[b_idx] if len(b64s) >= b_idx + 1 else 0
             t[total_idx] += tmp_a * tmp_b
 
     # v0, v1

@@ -4,7 +4,7 @@
 
 We followed the approch of [Multi-Limbs Multiplication](https://hackmd.io/HL0QhGUeQoSgIBt2el6fHA), with some notes:
 
-In notation *c = a ⋅ b*, layout could be like the below table if we got 32 columns to use. In table, *a₀, ⋯, a₃₁* as well as *b* and *c* are evm words on stack through bus mapping lookup. Each limb in evm word will be range lookup check to fit 8-bit.
+In notation *c = a ⋅ b*, layout could be like the below table if we got 32 columns to use. In table, *a₀, ⋯, a₃₁* as well as *b* and *c* are big-endian evm words on stack through bus mapping lookup. Each limb in evm word will be range lookup check to fit 8-bit.
 
 | 0  |  1 |  2 | 3  |  4 |  5 | ⋯  | 8  | ⋯ | 29 | 30 | 31 |
 |----|----|----|----|----|----|----|----|----|----|----|----|
