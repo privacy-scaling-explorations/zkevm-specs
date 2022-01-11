@@ -20,7 +20,8 @@ Disclaimer: this version of the sload/sstore sepc only corrsponds to [EIP-2929](
    2. opId === OpcodeId(0x55) for `SSTORE`
 2. state transition:
    - gc
-     - `SLOAD`/`SSTORE`:  +5 (2 stack operations + 1 storage reads/writes + 2 access_list reads/writes)
+     - `SLOAD`:  +5 (2 stack operations + 1 storage reads + 2 access_list reads/writes)
+     - `SSTORE`:  +6 (2 stack operations + 1 original value read + 1 storage reads/writes + 2 access_list reads/writes)
    - stack_pointer
      - `SLOAD`: remains the same
      - `SSTORE`: -2

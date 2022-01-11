@@ -71,14 +71,14 @@ def test_sload(tx: Transaction, slot_be_bytes: bytes, warm: bool, result: bool):
                 (12, RW.Read, RWTableTag.Stack, 1, 1023, storage_slot, 0, 0),
                 (13, RW.Read, RWTableTag.TxAccessListStorageSlot, 1, tx.callee_address, storage_slot, 1 if warm else 0, 0),
                 (14, RW.Read, RWTableTag.AccountStorage, tx.callee_address, storage_slot, 0, 0, 0),
-                (15, RW.Write, RWTableTag.TxAccessListStorageSlot, 1, tx.callee_address, storage_slot, 1, 0),
+                (15, RW.Write, RWTableTag.TxAccessListStorageSlot, 1, tx.callee_address, storage_slot, 1, 1 if warm else 0),
                 (16, RW.Write, RWTableTag.Stack, 1, 1023, 0, 0, 0),
             ]
             + (
                 []
                 if result
                 else [
-                    (19, RW.Write, RWTableTag.TxAccessListStorageSlot, 1, tx.callee_address, storage_slot, 0, 1),
+                    (19, RW.Write, RWTableTag.TxAccessListStorageSlot, 1, tx.callee_address, storage_slot, 1 if warm else 0, 1),
                 ]
             )
         ),

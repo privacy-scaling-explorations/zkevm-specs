@@ -53,7 +53,7 @@ def sstore(instruction: Instruction):
     new_value = instruction.stack_pop()
     warm = instruction.access_list_storage_slot_read(tx_id, callee_address, storage_slot)
     original_value = instruction.storage_slot_original_value_read(tx_id, callee_address, storage_slot)
-    current_value, _ = instruction.storage_slot_read(tx_id, callee_address, storage_slot)
+    current_value, _ = instruction.storage_slot_read(callee_address, storage_slot)
 
     # TODO: Use intrinsic gas (EIP 2028, 2930)
     if current_value == new_value:
