@@ -120,7 +120,7 @@ def test_sstore(tx: Transaction, slot_be_bytes: bytes, value_be_bytes: bytes, wa
             ),
             StepState(
                 execution_state=ExecutionState.STOP if result else ExecutionState.REVERT,
-                rw_counter=6,
+                rw_counter=10,
                 call_id=1,
                 is_root=True,
                 is_create=False,

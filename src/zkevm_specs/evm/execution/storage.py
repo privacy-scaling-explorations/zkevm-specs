@@ -96,7 +96,7 @@ def sstore(instruction: Instruction):
 
     instruction.constrain_same_context_state_transition(
         opcode,
-        rw_counter=Transition.delta(5),
+        rw_counter=Transition.delta(9),
         program_counter=Transition.delta(1),
         stack_pointer=Transition.delta(2),
         state_write_counter=Transition.delta(2),
