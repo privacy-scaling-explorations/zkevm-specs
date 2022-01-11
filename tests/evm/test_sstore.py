@@ -9,6 +9,7 @@ from zkevm_specs.evm import (
     RW,
     CallContextFieldTag,
     Transaction,
+    Block,
     Bytecode,
 )
 from zkevm_specs.evm.execution.storage import (
@@ -61,11 +62,14 @@ def test_sstore(tx: Transaction, slot_be_bytes: bytes, value_be_bytes: bytes, wa
     value_prev = value - 1 if value > 0 else 0
     original_value = value - 2 if value > 1 else 0
 
+    block = Block()
+
     # PUSH32 STORAGE_SLOT PUSH32 VALUE SSTORE STOP
     bytecode = Bytecode(f"7f{slot_be_bytes.hex()}7f{value_be_bytes.hex()}5500")
     bytecode_hash = rlc_store.to_rlc(bytecode.hash, 32)
 
     tables = Tables(
+        block_table=set(block.table_assignments(rlc_store)),
         tx_table=set(tx.table_assignments(rlc_store)),
         bytecode_table=set(bytecode.table_assignments(rlc_store)),
         rw_table=set(

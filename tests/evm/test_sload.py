@@ -9,6 +9,7 @@ from zkevm_specs.evm import (
     RW,
     CallContextFieldTag,
     Transaction,
+    Block,
     Bytecode,
 )
 from zkevm_specs.evm.execution.storage import COLD_SLOAD_COST, WARM_STORAGE_READ_COST
@@ -47,11 +48,14 @@ def test_sload(tx: Transaction, slot_be_bytes: bytes, warm: bool, result: bool):
 
     storage_slot = rlc_store.to_rlc(bytes(reversed(slot_be_bytes)))
 
+    block = Block()
+
     # PUSH32 STORAGE_SLOT SLOAD STOP
     bytecode = Bytecode(f"7f{slot_be_bytes.hex()}5400")
     bytecode_hash = rlc_store.to_rlc(bytecode.hash, 32)
 
     tables = Tables(
+        block_table=set(block.table_assignments(rlc_store)),
         tx_table=set(tx.table_assignments(rlc_store)),
         bytecode_table=set(bytecode.table_assignments(rlc_store)),
         rw_table=set(
