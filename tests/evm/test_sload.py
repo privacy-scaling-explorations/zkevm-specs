@@ -98,7 +98,7 @@ def test_sload(tx: Transaction, slot_be_bytes: bytes, warm: bool, result: bool):
                 program_counter=33,
                 stack_pointer=1023,
                 state_write_counter=0,
-                gas_left= WARM_STORAGE_READ_COST if warm else COLD_SLOAD_COST,
+                gas_left=WARM_STORAGE_READ_COST if warm else COLD_SLOAD_COST,
             ),
             StepState(
                 execution_state=ExecutionState.STOP if result else ExecutionState.REVERT,
