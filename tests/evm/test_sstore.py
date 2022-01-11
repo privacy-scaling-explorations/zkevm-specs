@@ -22,40 +22,26 @@ from zkevm_specs.evm.execution.storage import (
 )
 from zkevm_specs.util import RLCStore, rand_address
 
-TESTING_DATA = (
-    (
-        Transaction(caller_address=rand_address(), callee_address=rand_address()),
-        bytes([i for i in range(32, 0, -1)]),
-        bytes([i for i in range(0, 32, 1)]),
-        -1, -2,
-        False,
-        True,
-    ),
-    (
-        Transaction(caller_address=rand_address(), callee_address=rand_address()),
-        bytes([i for i in range(32, 0, -1)]),
-        bytes([i for i in range(0, 32, 1)]),
-        -1, -2,
-        True,
-        True,
-    ),
-    (
-        Transaction(caller_address=rand_address(), callee_address=rand_address()),
-        bytes([i for i in range(32, 0, -1)]),
-        bytes([i for i in range(0, 32, 1)]),
-        -1, -2,
-        False,
-        False,
-    ),
-    (
-        Transaction(caller_address=rand_address(), callee_address=rand_address()),
-        bytes([i for i in range(32, 0, -1)]),
-        bytes([i for i in range(0, 32, 1)]),
-        -1, -2,
-        True,
-        False,
-    ),
-)
+def gen_test_case():
+    value_cases = [
+        [bytes([i for i in range(0, 32, 1)]), 0, -1], # value_prev == value
+    ]
+    warm_cases = [False, True]
+    persist_cases = [True, False]
+    gen_list = []
+    for value_case in value_cases:
+        for warm_case in warm_cases:
+            for persist_case in persist_cases:
+                gen_list.append((
+                    Transaction(caller_address=rand_address(), callee_address=rand_address()), # tx
+                    bytes([i for i in range(32, 0, -1)]), # storage_slot
+                    value_case[0], value_case[1], value_case[2], # new_value, value_prev_diff, original_value_diff
+                    warm_case, # is_warm_storage_slot
+                    persist_case, # is_not_reverted
+                ))
+    return tuple(gen_list)
+
+TESTING_DATA = gen_test_case()
 
 @pytest.mark.parametrize("tx, slot_be_bytes, value_be_bytes, value_prev_diff, original_value_diff, warm, result", TESTING_DATA)
 def test_sstore(
