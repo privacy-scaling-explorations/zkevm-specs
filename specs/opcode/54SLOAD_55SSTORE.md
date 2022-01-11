@@ -1,6 +1,6 @@
 # SLOAD & SSTORE op code
 
-Disclaimer: this version of the sload/sstore sepc only corrsponds to [EIP-2929](https://eips.ethereum.org/EIPS/eip-2929).
+Disclaimer: this version of the sload/sstore sepc only corresponds to [EIP-2929](https://eips.ethereum.org/EIPS/eip-2929).
 
 ## Variables definition
 
