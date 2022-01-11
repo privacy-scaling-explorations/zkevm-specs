@@ -2,11 +2,12 @@ from __future__ import annotations
 from enum import IntEnum, auto
 from typing import Optional, Sequence, Tuple, Union
 
-from ..util import Array4, Array8, linear_combine, RLCStore
+from ..util import Array4, Array8, linear_combine, RLCStore, MAX_N_BYTES, N_BYTES_GAS
 from .opcode import Opcode
 from .step import StepState
 from .table import (
     AccountFieldTag,
+    BlockContextFieldTag,
     CallContextFieldTag,
     Tables,
     FixedTableTag,
@@ -73,32 +74,8 @@ class Instruction:
     def constrain_bool(self, value: int):
         assert value in [0, 1]
 
-    def constrain_transfer(
-        self,
-        sender_address: int,
-        receiver_address: int,
-        value: int,
-        gas_fee: int = 0,
-        is_persistent: bool = True,
-        rw_counter_end_of_reversion: int = 0,
-    ):
-        sender_balance, sender_balance_prev = self.account_write_with_reversion(
-            sender_address, AccountFieldTag.Balance, is_persistent, rw_counter_end_of_reversion
-        )
-        receiver_balance, receiver_balance_prev = self.account_write_with_reversion(
-            receiver_address, AccountFieldTag.Balance, is_persistent, rw_counter_end_of_reversion
-        )
-
-        value_with_gas_fee, overflow = self.add_word(value, gas_fee)
-        self.constrain_zero(overflow)
-
-        result, carry = self.add_word(value_with_gas_fee, sender_balance)
-        self.constrain_equal(sender_balance_prev, result)
-        self.constrain_zero(carry)
-
-        result, carry = self.add_word(value, receiver_balance_prev)
-        self.constrain_equal(receiver_balance, result)
-        self.constrain_zero(carry)
+    def constrain_gas_left_not_underflow(self, gas_left: int):
+        self.int_to_bytes(gas_left, N_BYTES_GAS)
 
     def constrain_state_transition(self, **kwargs: Transition):
         for key in [
@@ -172,8 +149,7 @@ class Instruction:
     ):
         gas_cost = Opcode(opcode).constant_gas_cost() + dynamic_gas_cost
 
-        self.int_to_bytes(self.curr.gas_left - gas_cost, 8)
-
+        self.constrain_gas_left_not_underflow(self.curr.gas_left - gas_cost)
         self.constrain_state_transition(
             rw_counter=rw_counter,
             program_counter=program_counter,
@@ -198,20 +174,30 @@ class Instruction:
     def pair_select(self, value: int, lhs: int, rhs: int) -> Tuple[bool, bool]:
         return value == lhs, value == rhs
 
-    def add_word(self, a: int, b: int) -> Tuple[int, bool]:
-        a_bytes = self.rlc_to_bytes(a, 32)
-        b_bytes = self.rlc_to_bytes(b, 32)
+    def add_words(self, addends: Sequence[int]) -> Tuple[int, int]:
+        def rlc_to_lo_hi(rlc: int) -> Tuple[Sequence[int], Sequence[int]]:
+            bytes = self.rlc_to_bytes(rlc, 32)
+            return self.bytes_to_int(bytes[:16]), self.bytes_to_int(bytes[16:])
 
-        a_lo = self.bytes_to_int(a_bytes[:16])
-        a_hi = self.bytes_to_int(a_bytes[16:])
-        b_lo = self.bytes_to_int(b_bytes[:16])
-        b_hi = self.bytes_to_int(b_bytes[16:])
-        carry_lo, c_lo = divmod(a_lo + b_lo, 1 << 128)
-        carry_hi, c_hi = divmod(a_hi + b_hi + carry_lo, 1 << 128)
+        addends_lo, addends_hi = list(zip(*map(rlc_to_lo_hi, addends)))
+        carry_lo, sum_lo = divmod(sum(addends_lo), 1 << 128)
+        carry_hi, sum_hi = divmod(sum(addends_hi) + carry_lo, 1 << 128)
 
-        c_bytes = c_lo.to_bytes(16, "little") + c_hi.to_bytes(16, "little")
+        sum_bytes = sum_lo.to_bytes(16, "little") + sum_hi.to_bytes(16, "little")
 
-        return self.rlc_store.to_rlc(c_bytes), carry_hi
+        return self.rlc_store.to_rlc(sum_bytes), carry_hi
+
+    def sub_word(self, minuend: int, subtrahend: int) -> Tuple[int, bool]:
+        minuend_lo, minuend_hi = self.rlc_to_lo_hi(minuend)
+        subtrahend_lo, subtrahend_hi = self.rlc_to_lo_hi(subtrahend)
+        borrow_lo = minuend_lo < subtrahend_lo
+        diff_lo = minuend_lo - subtrahend_lo + (1 << 128 if borrow_lo else 0)
+        borrow_hi = minuend_hi < subtrahend_hi + borrow_lo
+        diff_hi = minuend_hi - subtrahend_hi - borrow_lo + (1 << 128 if borrow_hi else 0)
+
+        diff_bytes = diff_lo.to_bytes(16, "little") + diff_hi.to_bytes(16, "little")
+
+        return self.rlc_store.to_rlc(diff_bytes), borrow_hi
 
     def mul_word_by_u64(self, multiplicand: int, multiplier: int) -> Tuple[int, int]:
         multiplicand_bytes = self.rlc_to_bytes(multiplicand, 32)
@@ -235,15 +221,16 @@ class Instruction:
     def bytes_to_rlc(self, bytes: Sequence[int]) -> int:
         return self.rlc_store.to_rlc(bytes)
 
+    def bytes_to_int(self, bytes: Sequence[int]) -> int:
+        assert len(bytes) <= MAX_N_BYTES, "too many bytes to composite an integer in field"
+        return linear_combine(bytes, 256)
+
     def int_to_bytes(self, value: int, n_bytes: int) -> Sequence[int]:
+        assert n_bytes <= MAX_N_BYTES, "too many bytes to composite an integer in field"
         try:
             return value.to_bytes(n_bytes, "little")
         except OverflowError:
             raise ConstraintUnsatFailure(f"{value} is too many bytes to fit {n_bytes} bytes")
-
-    def bytes_to_int(self, bytes: Sequence[int]) -> int:
-        assert len(bytes) <= 31, "too many bytes to composite an integer in field"
-        return linear_combine(bytes, 256)
 
     def byte_range_lookup(self, input: int):
         self.tables.fixed_lookup([FixedTableTag.Range256, input, 0, 0])
@@ -251,11 +238,28 @@ class Instruction:
     def fixed_lookup(self, tag: FixedTableTag, inputs: Sequence[int]) -> Array4:
         return self.tables.fixed_lookup([tag] + inputs)
 
+    def block_lookup(self, tag: BlockContextFieldTag, index: int = 0) -> int:
+        return self.tables.block_lookup([tag, index])[2]
+
     def tx_lookup(self, tx_id: int, tag: TxContextFieldTag, index: int = 0) -> int:
         return self.tables.tx_lookup([tx_id, tag, index])[3]
 
     def bytecode_lookup(self, bytecode_hash: int, index: int, is_code: int) -> int:
         return self.tables.bytecode_lookup([bytecode_hash, index, Tables._, is_code])[2]
+
+    def opcode_lookup(self, is_code: bool) -> int:
+        index = self.curr.program_counter + self.program_counter_offset
+        self.program_counter_offset += 1
+
+        return self.opcode_lookup_at(index, is_code)
+
+    def opcode_lookup_at(self, index: int, is_code: bool) -> int:
+        if self.curr.is_root and self.curr.is_create:
+            raise NotImplementedError(
+                "The opcode source when is_root and is_create (root creation call) is not determined yet"
+            )
+        else:
+            return self.bytecode_lookup(self.curr.opcode_source, index, is_code)
 
     def rw_lookup(self, rw: RW, tag: RWTableTag, inputs: Sequence[int], rw_counter: Optional[int] = None) -> Array8:
         if rw_counter is None:
@@ -268,7 +272,7 @@ class Instruction:
         self,
         tag: RWTableTag,
         inputs: Sequence[int],
-        is_persistent: bool = True,
+        is_persistent: bool,
     ) -> Array8:
         assert tag.write_only_persistent()
 
@@ -281,8 +285,8 @@ class Instruction:
         self,
         tag: RWTableTag,
         inputs: Sequence[int],
-        is_persistent: bool = True,
-        rw_counter_end_of_reversion: int = 0,
+        is_persistent: bool,
+        rw_counter_end_of_reversion: int,
     ) -> Array8:
         assert tag.write_with_reversion()
 
@@ -305,20 +309,6 @@ class Instruction:
             self.rw_lookup(RW.Write, tag, inputs, rw_counter=rw_counter)
 
         return row
-
-    def opcode_lookup(self, is_code: bool) -> int:
-        index = self.curr.program_counter + self.program_counter_offset
-        self.program_counter_offset += 1
-
-        return self.opcode_lookup_at(index, is_code)
-
-    def opcode_lookup_at(self, index: int, is_code: bool) -> int:
-        if self.curr.is_root and self.curr.is_create:
-            raise NotImplementedError(
-                "The opcode source when is_root and is_create (root creation call) is not determined yet"
-            )
-        else:
-            return self.bytecode_lookup(self.curr.opcode_source, index, is_code)
 
     def call_context_lookup(self, tag: CallContextFieldTag, rw: RW = RW.Read, call_id: Union[int, None] = None) -> int:
         if call_id is None:
@@ -355,8 +345,8 @@ class Instruction:
         self,
         account_address: int,
         account_field_tag: AccountFieldTag,
-        is_persistent: bool = True,
-        rw_counter_end_of_reversion: int = 0,
+        is_persistent: bool,
+        rw_counter_end_of_reversion: int,
     ) -> Tuple[int, int]:
         row = self.state_write_with_reversion(
             RWTableTag.Account,
@@ -365,6 +355,46 @@ class Instruction:
             rw_counter_end_of_reversion,
         )
         return row[5], row[6]
+
+    def add_balance(self, account_address: int, values: Sequence[int]):
+        balance, balance_prev = self.account_write(account_address, AccountFieldTag.Balance)
+        result, carry = self.add_words([balance_prev, *values])
+        self.constrain_equal(balance, result)
+        self.constrain_zero(carry)
+
+    def add_balance_with_reversion(
+        self,
+        account_address: int,
+        values: Sequence[int],
+        is_persistent: bool,
+        rw_counter_end_of_reversion: int,
+    ):
+        balance, balance_prev = self.account_write_with_reversion(
+            account_address, AccountFieldTag.Balance, is_persistent, rw_counter_end_of_reversion
+        )
+        result, carry = self.add_words([balance_prev, *values])
+        self.constrain_equal(balance, result)
+        self.constrain_zero(carry)
+
+    def sub_balance(self, account_address: int, values: Sequence[int]):
+        balance, balance_prev = self.account_write(account_address, AccountFieldTag.Balance)
+        result, carry = self.add_words([balance, *values])
+        self.constrain_equal(balance_prev, result)
+        self.constrain_zero(carry)
+
+    def sub_balance_with_reversion(
+        self,
+        account_address: int,
+        values: Sequence[int],
+        is_persistent: bool,
+        rw_counter_end_of_reversion: int,
+    ):
+        balance, balance_prev = self.account_write_with_reversion(
+            account_address, AccountFieldTag.Balance, is_persistent, rw_counter_end_of_reversion
+        )
+        result, carry = self.add_words([balance, *values])
+        self.constrain_equal(balance_prev, result)
+        self.constrain_zero(carry)
 
     def account_read(self, account_address: int, account_field_tag: AccountFieldTag) -> Tuple[int, int]:
         row = self.rw_lookup(RW.Read, RWTableTag.Account, [account_address, account_field_tag])
@@ -386,8 +416,8 @@ class Instruction:
         self,
         tx_id: int,
         account_address: int,
-        is_persistent: bool = True,
-        rw_counter_end_of_reversion: int = 0,
+        is_persistent: bool,
+        rw_counter_end_of_reversion: int,
     ) -> bool:
         row = self.state_write_with_reversion(
             RWTableTag.TxAccessListAccount,
@@ -466,8 +496,8 @@ class Instruction:
         tx_id: int,
         account_address: int,
         storage_slot: int,
-        is_persistent: bool = True,
-        rw_counter_end_of_reversion: int = 0,
+        is_persistent: bool,
+        rw_counter_end_of_reversion: int,
     ) -> bool:
         row = self.state_write_with_reversion(
             RWTableTag.TxAccessListStorageSlot,
@@ -511,3 +541,25 @@ class Instruction:
             [tx_id],
         )
         return row[4]
+
+    def transfer_with_gas_fee(
+        self,
+        sender_address: int,
+        receiver_address: int,
+        value: int,
+        gas_fee: int,
+        is_persistent: bool,
+        rw_counter_end_of_reversion: int,
+    ):
+        self.sub_balance_with_reversion(
+            sender_address,
+            [value, gas_fee],
+            is_persistent,
+            rw_counter_end_of_reversion,
+        )
+        self.add_balance_with_reversion(
+            receiver_address,
+            [value],
+            is_persistent,
+            rw_counter_end_of_reversion,
+        )

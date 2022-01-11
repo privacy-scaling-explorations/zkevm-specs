@@ -8,6 +8,7 @@ from zkevm_specs.evm import (
     Tables,
     RWTableTag,
     RW,
+    Block,
     Bytecode,
 )
 from zkevm_specs.util import rand_bytes, RLCStore
@@ -30,10 +31,12 @@ def test_push(opcode: Opcode, value_be_bytes: bytes):
 
     value = rlc_store.to_rlc(bytes(reversed(value_be_bytes)))
 
+    block = Block()
     bytecode = Bytecode(f"{opcode.hex()}{value_be_bytes.hex()}00")
     bytecode_hash = rlc_store.to_rlc(bytecode.hash, 32)
 
     tables = Tables(
+        block_table=set(block.table_assignments(rlc_store)),
         tx_table=set(),
         bytecode_table=set(bytecode.table_assignments(rlc_store)),
         rw_table=set(

@@ -12,7 +12,7 @@ def add(instruction: Instruction):
     c = instruction.stack_push()
 
     instruction.constrain_equal(
-        instruction.add_word(instruction.select(is_sub, c, a), b)[0],
+        instruction.add_words([instruction.select(is_sub, c, a), b])[0],
         instruction.select(is_sub, a, c),
     )
 
