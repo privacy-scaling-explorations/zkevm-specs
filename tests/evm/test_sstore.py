@@ -27,6 +27,7 @@ TESTING_DATA = (
         Transaction(caller_address=rand_address(), callee_address=rand_address()),
         bytes([i for i in range(32, 0, -1)]),
         bytes([i for i in range(0, 32, 1)]),
+        -1, -2,
         False,
         True,
     ),
@@ -34,6 +35,7 @@ TESTING_DATA = (
         Transaction(caller_address=rand_address(), callee_address=rand_address()),
         bytes([i for i in range(32, 0, -1)]),
         bytes([i for i in range(0, 32, 1)]),
+        -1, -2,
         True,
         True,
     ),
@@ -41,6 +43,7 @@ TESTING_DATA = (
         Transaction(caller_address=rand_address(), callee_address=rand_address()),
         bytes([i for i in range(32, 0, -1)]),
         bytes([i for i in range(0, 32, 1)]),
+        -1, -2,
         False,
         False,
     ),
@@ -48,25 +51,47 @@ TESTING_DATA = (
         Transaction(caller_address=rand_address(), callee_address=rand_address()),
         bytes([i for i in range(32, 0, -1)]),
         bytes([i for i in range(0, 32, 1)]),
+        -1, -2,
         True,
         False,
     ),
 )
 
-@pytest.mark.parametrize("tx, slot_be_bytes, value_be_bytes, warm, result", TESTING_DATA)
-def test_sstore(tx: Transaction, slot_be_bytes: bytes, value_be_bytes: bytes, warm: bool, result: bool):
+@pytest.mark.parametrize("tx, slot_be_bytes, value_be_bytes, value_prev_diff, original_value_diff, warm, result", TESTING_DATA)
+def test_sstore(
+    tx: Transaction,
+    slot_be_bytes: bytes,
+    value_be_bytes: bytes,
+    value_prev_diff: int,
+    original_value_diff: int,
+    warm: bool,
+    result: bool,
+):
     rlc_store = RLCStore()
 
     storage_slot = rlc_store.to_rlc(bytes(reversed(slot_be_bytes)))
     value = rlc_store.to_rlc(bytes(reversed(value_be_bytes)))
-    value_prev = value - 1 if value > 0 else 0
-    original_value = value - 2 if value > 1 else 0
+    value_prev = value + value_prev_diff
+    original_value = value + original_value_diff
 
     block = Block()
 
     # PUSH32 STORAGE_SLOT PUSH32 VALUE SSTORE STOP
     bytecode = Bytecode(f"7f{slot_be_bytes.hex()}7f{value_be_bytes.hex()}5500")
     bytecode_hash = rlc_store.to_rlc(bytecode.hash, 32)
+
+    if value_prev == value:
+        expected_gas_cost = SLOAD_GAS
+    else:
+        if original_value == value_prev:
+            if original_value == 0:
+                expected_gas_cost = SSTORE_SET_GAS
+            else:
+                expected_gas_cost = SSTORE_RESET_GAS
+        else:
+            expected_gas_cost = SLOAD_GAS
+    if not warm:
+        expected_gas_cost = expected_gas_cost + COLD_SLOAD_COST
 
     tables = Tables(
         block_table=set(block.table_assignments(rlc_store)),
@@ -93,7 +118,7 @@ def test_sstore(tx: Transaction, slot_be_bytes: bytes, value_be_bytes: bytes, wa
                 (9, RW.Read, RWTableTag.TxRefund, 1, 999, 0, 0, 0),
                 (10, RW.Write, RWTableTag.AccountStorage, tx.callee_address, storage_slot, value, value_prev, 0),
                 (11, RW.Write, RWTableTag.TxAccessListStorageSlot, 1, tx.callee_address, storage_slot, 1, 1 if warm else 0),
-                (12, RW.Write, RWTableTag.TxRefund, 1, 999, 0, 0, 0),
+                (12, RW.Write, RWTableTag.TxRefund, 1, 999, 0, 0, 0), # gas_refund is not really tested
             ]
             + (
                 []
@@ -120,7 +145,7 @@ def test_sstore(tx: Transaction, slot_be_bytes: bytes, value_be_bytes: bytes, wa
                 program_counter=66,
                 stack_pointer=1022,
                 state_write_counter=0,
-                gas_left=SLOAD_GAS + (0 if warm else COLD_SLOAD_COST),
+                gas_left=expected_gas_cost,
             ),
             StepState(
                 execution_state=ExecutionState.STOP if result else ExecutionState.REVERT,
