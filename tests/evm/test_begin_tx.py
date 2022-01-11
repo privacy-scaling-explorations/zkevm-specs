@@ -9,28 +9,33 @@ from zkevm_specs.evm import (
     RW,
     AccountFieldTag,
     CallContextFieldTag,
+    Block,
     Transaction,
     Bytecode,
 )
 from zkevm_specs.util import RLCStore, rand_address, rand_range
 
 TESTING_DATA = (
+    # Transfer 1 ether, successfully
     (Transaction(caller_address=0xFE, callee_address=0xFF, value=int(1e18)), True),
+    # Transfer 1 ether, tx reverts
     (Transaction(caller_address=0xFE, callee_address=0xFF, value=int(1e18)), False),
+    # Transfer random ether, successfully
     (Transaction(caller_address=rand_address(), callee_address=rand_address(), value=rand_range(1e20)), True),
+    # Transfer nothing with random gas_price, successfully
     (
-        Transaction(
-            caller_address=rand_address(), callee_address=rand_address(), gas_fee_cap=rand_range(42857142857143)
-        ),
+        Transaction(caller_address=rand_address(), callee_address=rand_address(), gas_price=rand_range(42857142857143)),
         True,
     ),
+    # Transfer random ether, tx reverts
     (Transaction(caller_address=rand_address(), callee_address=rand_address(), value=rand_range(1e20)), False),
+    # Transfer nothing with random gas_price, tx reverts
     (
-        Transaction(
-            caller_address=rand_address(), callee_address=rand_address(), gas_fee_cap=rand_range(42857142857143)
-        ),
+        Transaction(caller_address=rand_address(), callee_address=rand_address(), gas_price=rand_range(42857142857143)),
         False,
     ),
+    # Transfer nothing with some calldata
+    (Transaction(caller_address=0xFE, callee_address=0xFF, gas=21080, call_data=bytes([1, 2, 3, 4, 0, 0, 0, 0])), True),
 )
 
 
@@ -38,15 +43,17 @@ TESTING_DATA = (
 def test_begin_tx(tx: Transaction, result: bool):
     rlc_store = RLCStore()
 
+    block = Block()
     caller_balance_prev = rlc_store.to_rlc(int(1e20), 32)
     callee_balance_prev = rlc_store.to_rlc(0, 32)
-    caller_balance = rlc_store.to_rlc(int(1e20) - (tx.value + tx.gas * tx.gas_fee_cap), 32)
+    caller_balance = rlc_store.to_rlc(int(1e20) - (tx.value + tx.gas * tx.gas_price), 32)
     callee_balance = rlc_store.to_rlc(tx.value, 32)
 
     bytecode = Bytecode("00")
     bytecode_hash = rlc_store.to_rlc(bytecode.hash, 32)
 
     tables = Tables(
+        block_table=set(block.table_assignments(rlc_store)),
         tx_table=set(tx.table_assignments(rlc_store)),
         bytecode_table=set(bytecode.table_assignments(rlc_store)),
         rw_table=set(

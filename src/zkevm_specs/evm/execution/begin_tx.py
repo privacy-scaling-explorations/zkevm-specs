@@ -26,23 +26,24 @@ def begin_tx(instruction: Instruction, is_first_step: bool = False):
     instruction.constrain_equal(tx_nonce, nonce_prev)
     instruction.constrain_equal(nonce, nonce_prev + 1)
 
-    # TODO: Implement EIP 1559 (currently this assumes gas_fee_cap <= basefee + gas_tip_cap)
+    # TODO: Implement EIP 1559 (currently it supports legacy transaction format)
     # Calculate gas fee
     tx_gas = instruction.tx_lookup(tx_id, TxContextFieldTag.Gas)
-    tx_gas_fee_cap = instruction.tx_lookup(tx_id, TxContextFieldTag.GasFeeCap)
-    gas_fee, carry = instruction.mul_word_by_u64(tx_gas_fee_cap, tx_gas)
+    tx_gas_price = instruction.tx_lookup(tx_id, TxContextFieldTag.GasPrice)
+    gas_fee, carry = instruction.mul_word_by_u64(tx_gas_price, tx_gas)
     instruction.constrain_zero(carry)
 
-    # TODO: Use intrinsic gas (EIP 2028, 2930)
-    gas_left = tx_gas - (53000 if tx_is_create else 21000)
-    instruction.int_to_bytes(gas_left, 8)
+    # TODO: Handle gas cost of tx level access list (EIP 2930)
+    tx_call_data_gas_cost = instruction.tx_lookup(tx_id, TxContextFieldTag.CallDataGasCost)
+    gas_left = tx_gas - (53000 if tx_is_create else 21000) - tx_call_data_gas_cost
+    instruction.constrain_gas_left_not_underflow(gas_left)
 
     # Prepare access list of caller and callee
     instruction.constrain_equal(instruction.add_account_to_access_list(tx_id, tx_caller_address), 1)
     instruction.constrain_equal(instruction.add_account_to_access_list(tx_id, tx_callee_address), 1)
 
     # Verify transfer
-    instruction.constrain_transfer(
+    instruction.transfer_with_gas_fee(
         tx_caller_address,
         tx_callee_address,
         tx_value,

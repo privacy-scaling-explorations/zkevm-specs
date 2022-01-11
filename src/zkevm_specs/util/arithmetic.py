@@ -2,6 +2,8 @@ from typing import Dict, Sequence, Tuple, Union
 from Crypto.Random import get_random_bytes
 from Crypto.Random.random import randrange
 
+from .param import MAX_N_BYTES
+
 
 # BN254 scalar field size
 FP_MODULUS = 21888242871839275222246405745257275088548364400416034343698204186575808495617
@@ -20,7 +22,7 @@ def fp_inv(value: int) -> int:
 
 
 def le_to_int(bytes: Sequence[int]) -> int:
-    assert len(bytes) <= 31, "too many bytes to composite an integer in field"
+    assert len(bytes) <= MAX_N_BYTES, "too many bytes to composite an integer in field"
     return linear_combine(bytes, 256)
 
 

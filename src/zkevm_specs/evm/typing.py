@@ -1,16 +1,73 @@
 from typing import Iterator, Optional, Sequence, Union
+from functools import reduce
+from itertools import chain
 
-from ..util import U64, U160, U256, Array4, RLCStore, keccak256
-from .table import TxContextFieldTag
+from ..util import (
+    U64,
+    U160,
+    U256,
+    Array3,
+    Array4,
+    RLCStore,
+    keccak256,
+    GAS_COST_TX_CALL_DATA_PER_NON_ZERO_BYTE,
+    GAS_COST_TX_CALL_DATA_PER_ZERO_BYTE,
+)
+from .table import BlockContextFieldTag, TxContextFieldTag
 from .opcode import get_push_size
+
+
+class Block:
+    coinbase: U160
+    gas_limit: U64
+    block_number: U256
+    time: U256
+    difficulty: U256
+    base_fee: U256
+
+    # history_hashes contains most recent 256 block hashes in history, where
+    # the lastest one is at history_hashes[-1].
+    history_hashes: Sequence[U256]
+
+    def __init__(
+        self,
+        coinbase: U160 = 0x10,
+        gas_limit: U64 = int(15e6),
+        block_number: U256 = 0,
+        time: U256 = 0,
+        difficulty: U256 = 0,
+        base_fee: U256 = int(1e9),
+        history_hashes: Sequence[U256] = [],
+    ) -> None:
+        assert len(history_hashes) <= 256
+
+        self.coinbase = coinbase
+        self.gas_limit = gas_limit
+        self.block_number = block_number
+        self.time = time
+        self.difficulty = difficulty
+        self.base_fee = base_fee
+        self.history_hashes = history_hashes
+
+    def table_assignments(self, rlc_store: RLCStore) -> Sequence[Array3]:
+        return [
+            (BlockContextFieldTag.Coinbase, 0, self.coinbase),
+            (BlockContextFieldTag.GasLimit, 0, self.gas_limit),
+            (BlockContextFieldTag.BlockNumber, 0, rlc_store.to_rlc(self.block_number, 32)),
+            (BlockContextFieldTag.Time, 0, rlc_store.to_rlc(self.time, 32)),
+            (BlockContextFieldTag.Difficulty, 0, rlc_store.to_rlc(self.difficulty, 32)),
+            (BlockContextFieldTag.BaseFee, 0, rlc_store.to_rlc(self.base_fee, 32)),
+        ] + [
+            (BlockContextFieldTag.BlockHash, self.block_number + idx - 1, rlc_store.to_rlc(block_hash, 32))
+            for idx, block_hash in enumerate(reversed(self.history_hashes))
+        ]
 
 
 class Transaction:
     id: int
     nonce: U64
     gas: U64
-    gas_tip_cap: U256
-    gas_fee_cap: U256
+    gas_price: U256
     caller_address: U160
     callee_address: Optional[U160]
     value: U256
@@ -21,8 +78,7 @@ class Transaction:
         id: int = 1,
         nonce: U64 = 0,
         gas: U64 = 21000,
-        gas_tip_cap: U256 = int(1e9),
-        gas_fee_cap: U256 = int(2e9),
+        gas_price: U256 = int(2e9),
         caller_address: U160 = 0,
         callee_address: Optional[U160] = None,
         value: U256 = 0,
@@ -31,25 +87,31 @@ class Transaction:
         self.id = id
         self.nonce = nonce
         self.gas = gas
-        self.gas_tip_cap = gas_tip_cap
-        self.gas_fee_cap = gas_fee_cap
+        self.gas_price = gas_price
         self.caller_address = caller_address
         self.callee_address = callee_address
         self.value = value
         self.call_data = call_data
 
-    def table_assignments(self, rlc_store: RLCStore) -> Sequence[Array4]:
-        return [
-            (self.id, TxContextFieldTag.Nonce, 0, self.nonce),
-            (self.id, TxContextFieldTag.Gas, 0, self.gas),
-            (self.id, TxContextFieldTag.GasTipCap, 0, rlc_store.to_rlc(self.gas_tip_cap, 32)),
-            (self.id, TxContextFieldTag.GasFeeCap, 0, rlc_store.to_rlc(self.gas_fee_cap, 32)),
-            (self.id, TxContextFieldTag.CallerAddress, 0, self.caller_address),
-            (self.id, TxContextFieldTag.CalleeAddress, 0, self.callee_address),
-            (self.id, TxContextFieldTag.IsCreate, 0, self.callee_address is None),
-            (self.id, TxContextFieldTag.Value, 0, rlc_store.to_rlc(self.value, 32)),
-            (self.id, TxContextFieldTag.CallDataLength, 0, len(self.call_data)),
-        ] + [(self.id, TxContextFieldTag.CallData, idx, byte) for idx, byte in enumerate(self.call_data)]
+    def table_assignments(self, rlc_store: RLCStore) -> Iterator[Array4]:
+        def call_data_gas_cost_per_byte(byte: int):
+            return GAS_COST_TX_CALL_DATA_PER_ZERO_BYTE if byte is 0 else GAS_COST_TX_CALL_DATA_PER_NON_ZERO_BYTE
+
+        call_data_gas_cost = reduce(lambda acc, byte: acc + call_data_gas_cost_per_byte(byte), self.call_data, 0)
+        return chain(
+            [
+                (self.id, TxContextFieldTag.Nonce, 0, self.nonce),
+                (self.id, TxContextFieldTag.Gas, 0, self.gas),
+                (self.id, TxContextFieldTag.GasPrice, 0, rlc_store.to_rlc(self.gas_price, 32)),
+                (self.id, TxContextFieldTag.CallerAddress, 0, self.caller_address),
+                (self.id, TxContextFieldTag.CalleeAddress, 0, self.callee_address),
+                (self.id, TxContextFieldTag.IsCreate, 0, self.callee_address is None),
+                (self.id, TxContextFieldTag.Value, 0, rlc_store.to_rlc(self.value, 32)),
+                (self.id, TxContextFieldTag.CallDataLength, 0, len(self.call_data)),
+                (self.id, TxContextFieldTag.CallDataGasCost, 0, call_data_gas_cost),
+            ],
+            map(lambda item: (self.id, TxContextFieldTag.CallData, item[0], item[1]), enumerate(self.call_data)),
+        )
 
 
 class Bytecode:
