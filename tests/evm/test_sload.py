@@ -11,25 +11,38 @@ from zkevm_specs.evm import (
     Transaction,
     Bytecode,
 )
+from zkevm_specs.evm.execution.storage import COLD_SLOAD_COST, WARM_STORAGE_READ_COST
 from zkevm_specs.util import RLCStore, rand_address
 
 TESTING_DATA = (
     (
         Transaction(caller_address=rand_address(), callee_address=rand_address()),
         bytes([i for i in range(32, 0, -1)]),
+        False,
+        True,
+    ),
+    (
+        Transaction(caller_address=rand_address(), callee_address=rand_address()),
+        bytes([i for i in range(32, 0, -1)]),
+        True,
         True,
     ),
     (
         Transaction(caller_address=rand_address(), callee_address=rand_address()),
         bytes([i for i in range(32, 0, -1)]),
         False,
+        False,
+    ),
+    (
+        Transaction(caller_address=rand_address(), callee_address=rand_address()),
+        bytes([i for i in range(32, 0, -1)]),
+        True,
+        False,
     ),
 )
 
-# TODO: add warm test
-
-@pytest.mark.parametrize("tx, slot_be_bytes, result", TESTING_DATA)
-def test_sload(tx: Transaction, slot_be_bytes: bytes, result: bool):
+@pytest.mark.parametrize("tx, slot_be_bytes, warm, result", TESTING_DATA)
+def test_sload(tx: Transaction, slot_be_bytes: bytes, warm: bool, result: bool):
     rlc_store = RLCStore()
 
     storage_slot = rlc_store.to_rlc(bytes(reversed(slot_be_bytes)))
@@ -56,7 +69,7 @@ def test_sload(tx: Transaction, slot_be_bytes: bytes, result: bool):
                 ),
                 (11, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.IsPersistent, result, 0, 0),
                 (12, RW.Read, RWTableTag.Stack, 1, 1023, storage_slot, 0, 0),
-                (13, RW.Read, RWTableTag.TxAccessListStorageSlot, 1, tx.callee_address, storage_slot, 0, 0),
+                (13, RW.Read, RWTableTag.TxAccessListStorageSlot, 1, tx.callee_address, storage_slot, 1 if warm else 0, 0),
                 (14, RW.Read, RWTableTag.AccountStorage, tx.callee_address, storage_slot, 0, 0, 0),
                 (15, RW.Write, RWTableTag.TxAccessListStorageSlot, 1, tx.callee_address, storage_slot, 1, 0),
                 (16, RW.Write, RWTableTag.Stack, 1, 1023, 0, 0, 0),
@@ -85,7 +98,7 @@ def test_sload(tx: Transaction, slot_be_bytes: bytes, result: bool):
                 program_counter=33,
                 stack_pointer=1023,
                 state_write_counter=0,
-                gas_left=2100,
+                gas_left= WARM_STORAGE_READ_COST if warm else COLD_SLOAD_COST,
             ),
             StepState(
                 execution_state=ExecutionState.STOP if result else ExecutionState.REVERT,
