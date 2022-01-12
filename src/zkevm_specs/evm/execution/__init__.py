@@ -6,5 +6,6 @@ from .push import *
 from .jump import *
 from .jumpi import *
 from .storage import *
+from .params import *
 
 # Error cases

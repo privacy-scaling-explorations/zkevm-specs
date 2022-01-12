@@ -1,13 +1,14 @@
 from ..instruction import Instruction, Transition
 from ..opcode import Opcode
 from ..table import CallContextFieldTag, TxContextFieldTag
-
-COLD_SLOAD_COST = 2100
-WARM_STORAGE_READ_COST = 100
-SLOAD_GAS = 100
-SSTORE_SET_GAS = 20000
-SSTORE_RESET_GAS = 2900
-SSTORE_CLEARS_SCHEDULE = 15000
+from .params import (
+    COLD_SLOAD_COST,
+    WARM_STORAGE_READ_COST,
+    SLOAD_GAS,
+    SSTORE_SET_GAS,
+    SSTORE_RESET_GAS,
+    SSTORE_CLEARS_SCHEDULE,
+)
 
 def sload(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
