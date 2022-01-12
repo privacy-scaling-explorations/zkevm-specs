@@ -1,6 +1,5 @@
 import pytest
 
-from typing import Optional
 from zkevm_specs.evm import (
     ExecutionState,
     StepState,
@@ -12,28 +11,28 @@ from zkevm_specs.evm import (
     Block,
     Bytecode,
 )
-from zkevm_specs.util import hex_to_word, rand_bytes, RLCStore
+from zkevm_specs.util import RLCStore, U160
 
 
-TESTING_DATA = ((Opcode.COINBASE, hex_to_word("030201")),)
+TESTING_DATA = ((Opcode.COINBASE, 0x030201),)
 
 
 @pytest.mark.parametrize("opcode, address", TESTING_DATA)
-def test_coinbase(opcode: Opcode, address: bytes):
+def test_coinbase(opcode: Opcode, address: U160):
     rlc_store = RLCStore()
 
-    coinbase_address = rlc_store.to_rlc(address)
+    coinbase_rlc = rlc_store.to_rlc(address.to_bytes(20, "little"))
 
     bytecode = Bytecode(f"{opcode.hex()}00")
     bytecode_hash = rlc_store.to_rlc(bytecode.hash, 32)
-    block = Block(coinbase_address)
+    block = Block(address)
     tables = Tables(
         block_table=set(block.table_assignments(rlc_store)),
         tx_table=set(),
         bytecode_table=set(bytecode.table_assignments(rlc_store)),
         rw_table=set(
             [
-                (9, RW.Write, RWTableTag.Stack, 1, 1023, coinbase_address, 0, 0),
+                (9, RW.Write, RWTableTag.Stack, 1, 1023, coinbase_rlc, 0, 0),
             ]
         ),
     )
