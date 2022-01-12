@@ -39,7 +39,4 @@ def verify_step(
         raise NotImplementedError
 
     if instruction.is_last_step:
-        # Verify no malicious insertion
-        assert instruction.curr.rw_counter == len(instruction.tables.rw_table)
-
-        # TODO: Verify final step has the tx_id identical to the amount in tx_table
+        instruction.constrain_equal(instruction.curr.execution_state, ExecutionState.EndBlock)
