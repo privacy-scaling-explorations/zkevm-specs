@@ -7,6 +7,7 @@ from .execution import (
     push,
     jump,
     jumpi,
+    coinbase,
     sload,
     sstore
 )
@@ -50,6 +51,8 @@ def verify_step(
         jump(instruction)
     elif instruction.curr.execution_state == ExecutionState.JUMPI:
         jumpi(instruction)
+    elif instruction.curr.execution_state == ExecutionState.COINBASE:
+        coinbase(instruction)
     elif instruction.curr.execution_state == ExecutionState.SLOAD:
         sload(instruction)
     elif instruction.curr.execution_state == ExecutionState.SSTORE:

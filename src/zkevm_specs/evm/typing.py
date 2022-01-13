@@ -21,7 +21,7 @@ class Block:
     coinbase: U160
     gas_limit: U64
     block_number: U256
-    time: U256
+    time: U64
     difficulty: U256
     base_fee: U256
 
@@ -34,12 +34,12 @@ class Block:
         coinbase: U160 = 0x10,
         gas_limit: U64 = int(15e6),
         block_number: U256 = 0,
-        time: U256 = 0,
+        time: U64 = 0,
         difficulty: U256 = 0,
         base_fee: U256 = int(1e9),
         history_hashes: Sequence[U256] = [],
     ) -> None:
-        assert len(history_hashes) <= 256
+        assert len(history_hashes) <= min(256, block_number)
 
         self.coinbase = coinbase
         self.gas_limit = gas_limit
@@ -58,7 +58,7 @@ class Block:
             (BlockContextFieldTag.Difficulty, 0, rlc_store.to_rlc(self.difficulty, 32)),
             (BlockContextFieldTag.BaseFee, 0, rlc_store.to_rlc(self.base_fee, 32)),
         ] + [
-            (BlockContextFieldTag.BlockHash, self.block_number + idx - 1, rlc_store.to_rlc(block_hash, 32))
+            (BlockContextFieldTag.BlockHash, self.block_number - idx - 1, rlc_store.to_rlc(block_hash, 32))
             for idx, block_hash in enumerate(reversed(self.history_hashes))
         ]
 
