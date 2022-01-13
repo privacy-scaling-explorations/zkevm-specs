@@ -14,6 +14,25 @@ It returns the result of `a < b` where:
 - `Stack = [b, a]` if `is_sgt == false`
 - `Stack = [a, b]` if `is_sgt == true`
 
+The gadget is constructed with the following logic:
+```
+if a_0 >= 128 and b_0 < 128:
+	result = 1
+elif b_0 >= 128 and a_0 < 128:
+	result = 0
+else:
+	if a_hi < b_hi:
+		result = 1
+	elif a_hi == b_hi and a_lo < b_lo:
+		result = 1
+	else:
+		result = 0
+```
+where:
+- `a_0` and `b_0` represent the most significant bytes of `a` and `b` respectively.
+- `a_0 >= 128` (same for `b`) signifies that `a` (same for `b`) is a negative number.
+- `a_hi = a[0..16]` and `a_lo = a[16..32]` (same for `b`) with `a` (same for `b`) being represented in the big-endian form.
+
 ## Constraints
 - `OpcodeId` check:
 	- opId === OpcodeId(0x12) for `SLT`
@@ -35,4 +54,4 @@ It returns the result of `a < b` where:
 
 ## Code
 
-See [`src/zkevm_specs/opcode/slt_sgt.py`](../../src/zkevm_specs/evm/execution/slt_sgt.py)
+See [`slt_sgt.py`](../../src/zkevm_specs/evm/execution/slt_sgt.py)

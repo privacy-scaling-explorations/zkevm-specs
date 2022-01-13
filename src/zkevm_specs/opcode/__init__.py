@@ -3,7 +3,6 @@ from .bitwise import *
 from .byte import *
 from .comparator import *
 from .lt_gt import *
-from .slt_sgt import *
 from .stack import *
 from .mload_mstore import *
 from .msize import *

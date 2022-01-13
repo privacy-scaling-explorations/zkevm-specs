@@ -1,8 +1,6 @@
 from ..instruction import Instruction, Transition
 from ..opcode import Opcode
 
-from zkevm_specs.encoding import U256, u256_to_u8s
-
 def scmp(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
 
@@ -12,33 +10,33 @@ def scmp(instruction: Instruction):
     b = instruction.stack_pop()
     c = instruction.stack_push()
 
-    a8s = u256_to_u8s(U256(a))
-    b8s = u256_to_u8s(U256(b))
-    c8s = u256_to_u8s(U256(c))
+    # decode RLC to bytes for a and b
+    a8s = instruction.rlc_to_bytes(a, 32)
+    b8s = instruction.rlc_to_bytes(b, 32)
+    aa = instruction.bytes_to_int(a8s)
+    bb = instruction.bytes_to_int(b8s)
+    cc = instruction.bytes_to_int(instruction.rlc_to_bytes(c, 32))
 
-    # if both a and b are unsigned
-    if a8s[0] < 128 and b8s[0] < 128:
-        instruction.constrain_equal(
-            instruction.select(is_sgt, b < a, a < b),
-            c,
-        )
-    # only a is unsigned
-    elif a8s[0] < 128:
+    # c is the result and hence should be binary
+    instruction.constrain_bool(cc)
+
+    # a is positive and b is negative
+    if a8s[0] < 128 and b8s[0] >= 128:
         instruction.constrain_equal(
             instruction.select(is_sgt, 1, 0),
-            c,
+            cc,
         )
-    # only b is unsigned
-    elif b8s[0] < 128:
+    # b is negative and a is positive
+    elif b8s[0] < 128 and a8s[0] >= 128:
         instruction.constrain_equal(
             instruction.select(is_sgt, 0, 1),
-            c,
+            cc,
         )
-    # both a and b are signed
+    # both a and b are of the same sign (positive/negative)
     else:
         instruction.constrain_equal(
-            instruction.select(is_sgt, a < b, b < a),
-            c,
+            instruction.select(is_sgt, int(bb < aa), int(aa < bb)),
+            cc,
         )
 
     instruction.constrain_same_context_state_transition(
