@@ -106,15 +106,17 @@ def test_sstore(
                 (6, RW.Read, RWTableTag.TxAccessListStorageSlot, 1, tx.callee_address, storage_slot, 1 if warm else 0, 0),
                 (7, RW.Read, RWTableTag.TxStorageSlotOriginalValue, 1, tx.callee_address, storage_slot, original_value, 0),
                 (8, RW.Read, RWTableTag.AccountStorage, tx.callee_address, storage_slot, value_prev, original_value, 0),
-                (9, RW.Read, RWTableTag.TxRefund, 1, 999, 0, 0, 0),
-                (10, RW.Write, RWTableTag.AccountStorage, tx.callee_address, storage_slot, value, value_prev, 0),
-                (11, RW.Write, RWTableTag.TxAccessListStorageSlot, 1, tx.callee_address, storage_slot, 1, 1 if warm else 0),
-                (12, RW.Write, RWTableTag.TxRefund, 1, 999, 0, 0, 0), # gas_refund is not really tested
+                (9, RW.Write, RWTableTag.AccountStorage, tx.callee_address, storage_slot, value, value_prev, 0),
+                (10, RW.Write, RWTableTag.TxAccessListStorageSlot, 1, tx.callee_address, storage_slot, 1, 1 if warm else 0),
+                
             ]
             + (
-                []
-                if result
-                else [
+                [
+                    (11, RW.Read, RWTableTag.TxRefund, 1, 999, 0, 0, 0),
+                    (12, RW.Write, RWTableTag.TxRefund, 1, 999, 0, 0, 0), # TODO: gas_refund cannot be really tested yet
+                ]
+                if result else
+                [
                     (15, RW.Write, RWTableTag.TxAccessListStorageSlot, 1, tx.callee_address, storage_slot, 1 if warm else 0, 1),
                     (16, RW.Write, RWTableTag.AccountStorage, tx.callee_address, storage_slot, value_prev, value, 0),
                 ]
@@ -140,7 +142,7 @@ def test_sstore(
             ),
             StepState(
                 execution_state=ExecutionState.STOP if result else ExecutionState.REVERT,
-                rw_counter=10,
+                rw_counter=10 if result else 8,
                 call_id=1,
                 is_root=True,
                 is_create=False,

@@ -19,12 +19,12 @@
 2. state transition:
    - gc
      - `SLOAD`: +5 (2 stack operations + 1 storage reads + 2 access_list reads/writes)
-     - `SSTORE`: +9
+     - `SSTORE`: +9 if persistent, +7 otherwise
        + 2 stack operations
        + 1 original value read
        + 2 storage reads/writes
        + 2 access_list reads/writes
-       + 2 gas_refund reads/writes
+       + 2 gas_refund reads/writes if persistent 
    - stack_pointer
      - `SLOAD`: remains the same
      - `SSTORE`: -2
@@ -63,7 +63,7 @@
            * `original_value == new_value`:
              - `original_value == 0`: gas_refund + SSTORE_SET_GAS - SLOAD_GAS
              - `original_value != 0`: gas_refund + SSTORE_RESET_GAS - SLOAD_GAS
-3. lookups:
+3. lookups: TODO: fix access_list & gas_refund
    - `SLOAD`/`SSTORE`: 5 busmapping lookups
      - stack:
        - `address` is popped off the top of the stack
