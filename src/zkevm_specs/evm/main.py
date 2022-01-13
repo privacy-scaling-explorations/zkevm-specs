@@ -14,6 +14,8 @@ def verify_steps(
     begin_with_first_step: bool = False,
     end_with_final_step: bool = False,
 ):
+    # TODO: Enforce general ExecutionState transition constraint
+
     for idx in range(len(steps) - 1):
         verify_step(
             Instruction(

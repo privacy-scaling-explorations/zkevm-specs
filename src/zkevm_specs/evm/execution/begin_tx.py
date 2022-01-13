@@ -1,7 +1,8 @@
-from ...util import GAS_COST_TX, GAS_COST_CREATION_TX
+from ...util import GAS_COST_TX, GAS_COST_CREATION_TX, EMPTY_CODE_HASH
+from ..execution_state import ExecutionState
 from ..instruction import Instruction, Transition
-from ..table import CallContextFieldTag, TxContextFieldTag, AccountFieldTag
 from ..precompiled import PrecompiledAddress
+from ..table import CallContextFieldTag, TxContextFieldTag, AccountFieldTag
 
 
 def begin_tx(instruction: Instruction):
@@ -56,7 +57,7 @@ def begin_tx(instruction: Instruction):
     )
 
     if tx_is_create:
-        # TODO: Verify receiver address
+        # TODO: Verify created address
         # TODO: Decide what code_source should be (tx_id or hash of creation code)
         raise NotImplementedError
     elif tx_callee_address in list(PrecompiledAddress):
@@ -91,3 +92,10 @@ def begin_tx(instruction: Instruction):
             gas_left=Transition.to(gas_left),
             state_write_counter=Transition.to(2),
         )
+
+        # Constrain either:
+        # - is_empty_code and is_to_end_tx
+        # - (not is_empty_code) and (not is_to_end_tx)
+        is_empty_code = instruction.is_equal(code_hash, instruction.int_to_rlc(EMPTY_CODE_HASH, 32))
+        is_to_end_tx = instruction.is_equal(instruction.next.execution_state, ExecutionState.EndTx)
+        instruction.constrain_equal(is_empty_code + is_to_end_tx, 2 * is_empty_code * is_to_end_tx)

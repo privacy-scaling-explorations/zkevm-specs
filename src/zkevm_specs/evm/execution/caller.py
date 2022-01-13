@@ -11,11 +11,9 @@ def caller(instruction: Instruction):
     # check [rw_table, call_context] table for caller address
     instruction.constrain_equal(
         address,
-        instruction.bytes_to_rlc(
-            instruction.int_to_bytes(
-                instruction.call_context_lookup(CallContextFieldTag.CallerAddress),
-                20,
-            )
+        instruction.int_to_rlc(
+            instruction.call_context_lookup(CallContextFieldTag.CallerAddress),
+            20,
         ),
     )
 

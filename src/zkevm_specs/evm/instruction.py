@@ -98,7 +98,7 @@ class Instruction:
         assert value in [0, 1], ConstraintUnsatFailure(f"Expected value to be a bool, but got {value}")
 
     def constrain_gas_left_not_underflow(self, gas_left: int):
-        self.int_to_bytes(gas_left, N_BYTES_GAS)
+        self.bytes_range_lookup(gas_left, N_BYTES_GAS)
 
     def constrain_step_state_transition(self, **kwargs: Transition):
         keys = set(
@@ -214,7 +214,7 @@ class Instruction:
 
     def constant_divmod(self, numerator: int, denominator: int, n_bytes: int) -> Tuple[int, int]:
         quotient, remainder = divmod(numerator, denominator)
-        self.int_to_bytes(quotient, n_bytes)
+        self.bytes_range_lookup(quotient, n_bytes)
         return quotient, remainder
 
     def compare(self, lhs: int, rhs: int, n_bytes: int) -> Tuple[bool, bool]:
@@ -283,27 +283,27 @@ class Instruction:
         assert len(word_le_bytes) == 32, "Expected RLC to contain 32 bytes"
         return self.bytes_to_int(word_le_bytes[:16]), self.bytes_to_int(word_le_bytes[16:])
 
-    def bytes_to_rlc(self, bytes: Sequence[int]) -> RLC:
-        return RLC(bytes, self.randomness)
+    def int_to_rlc(self, value: int, n_bytes: int) -> RLC:
+        return RLC(value, self.randomness, n_bytes)
 
-    def bytes_to_int(self, bytes: Sequence[int]) -> int:
-        assert len(bytes) <= MAX_N_BYTES, "Too many bytes to composite an integer in field"
+    def bytes_to_int(self, value: Sequence[int]) -> int:
+        assert len(value) <= MAX_N_BYTES, "Too many bytes to composite an integer in field"
 
-        return int.from_bytes(bytes, "little")
+        return int.from_bytes(value, "little")
 
-    def int_to_bytes(self, value: int, n_bytes: int) -> Sequence[int]:
+    def range_lookup(self, value: int, range: int):
+        self.tables.fixed_lookup([FixedTableTag.range_table_tag(range), value, 0, 0])
+
+    def byte_range_lookup(self, value: int):
+        self.range_lookup(value, 256)
+
+    def bytes_range_lookup(self, value: int, n_bytes: int) -> Sequence[int]:
         assert n_bytes <= MAX_N_BYTES, "Too many bytes to composite an integer in field"
 
         try:
             return value.to_bytes(n_bytes, "little")
         except OverflowError:
             raise ConstraintUnsatFailure(f"Value {value} has too many bytes to fit {n_bytes} bytes")
-
-    def range_lookup(self, input: int, range: int):
-        self.tables.fixed_lookup([FixedTableTag.range_table_tag(range), input, 0, 0])
-
-    def byte_range_lookup(self, input: int):
-        self.range_lookup(input, 256)
 
     def fixed_lookup(self, tag: FixedTableTag, inputs: Sequence[int]) -> Array4:
         return self.tables.fixed_lookup([tag] + inputs)
