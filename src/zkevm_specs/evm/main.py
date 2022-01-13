@@ -12,19 +12,19 @@ def verify_steps(
     tables: Tables,
     steps: Sequence[StepState],
     begin_with_first_step: bool = False,
-    end_with_final_step: bool = False,
+    end_with_last_step: bool = False,
 ):
     # TODO: Enforce general ExecutionState transition constraint
 
-    for idx in range(len(steps) - 1):
+    for idx in range(len(steps) if end_with_last_step else len(steps) - 1):
         verify_step(
             Instruction(
                 randomness=randomness,
                 tables=tables,
                 curr=steps[idx],
-                next=steps[idx + 1],
+                next=steps[idx + 1] if idx + 1 < len(steps) else None,
                 is_first_step=begin_with_first_step and idx == 0,
-                is_last_step=end_with_final_step and idx == len(steps) - 2,
+                is_last_step=idx + 1 == len(steps),
             ),
         )
 

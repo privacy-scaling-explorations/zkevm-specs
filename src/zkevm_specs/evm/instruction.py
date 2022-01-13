@@ -123,9 +123,8 @@ class Instruction:
             kwargs.keys()
         ), f"Invalid keys {list(set(kwargs.keys()).difference(keys))} for step state transition"
 
-        for key in keys:
+        for key, transition in kwargs.items():
             curr, next = getattr(self.curr, key), getattr(self.next, key)
-            transition = kwargs.get(key, Transition.same())
             if transition.kind == TransitionKind.Same:
                 assert next == curr, ConstraintUnsatFailure(f"State {key} should be same as {curr}, but got {next}")
             elif transition.kind == TransitionKind.Delta:
@@ -173,6 +172,7 @@ class Instruction:
         program_counter: Transition = Transition.same(),
         stack_pointer: Transition = Transition.same(),
         memory_size: Transition = Transition.same(),
+        state_write_counter: Transition = Transition.same(),
         dynamic_gas_cost: int = 0,
     ):
         self.responsible_opcode_lookup(opcode)
@@ -184,8 +184,17 @@ class Instruction:
             rw_counter=rw_counter,
             program_counter=program_counter,
             stack_pointer=stack_pointer,
-            memory_size=memory_size,
             gas_left=Transition.delta(-gas_cost),
+            memory_size=memory_size,
+            state_write_counter=state_write_counter,
+            # Always stay same
+            call_id=Transition.same(),
+            is_root=Transition.same(),
+            is_create=Transition.same(),
+            code_source=Transition.same(),
+            last_callee_id=Transition.same(),
+            last_callee_return_data_offset=Transition.same(),
+            last_callee_return_data_length=Transition.same(),
         )
 
     def sum(self, values: Sequence[int]) -> int:
@@ -422,6 +431,10 @@ class Instruction:
             call_id = self.curr.call_id
 
         return self.rw_lookup(rw, RWTableTag.Memory, [call_id, memory_address])[5]
+
+    def tx_refund_read(self, tx_id) -> int:
+        row = self.rw_lookup(RW.Read, RWTableTag.TxRefund, [tx_id])
+        return row[4]
 
     def account_read(self, account_address: int, account_field_tag: AccountFieldTag) -> int:
         row = self.rw_lookup(RW.Read, RWTableTag.Account, [account_address, account_field_tag])

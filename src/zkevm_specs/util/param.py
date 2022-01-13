@@ -32,6 +32,8 @@ GAS_COST_CALL_EMPTY_ACCOUNT = 25000
 # Gas stipend given if call with non-zero value
 GAS_STIPEND_CALL_WITH_VALUE = 2300
 
+# Quotient for max refund of gas used
+MAX_REFUND_QUOTIENT_OF_GAS_USED = 5
 # Denominator of quadratic part of memory expansion gas cost
 MEMORY_EXPANSION_QUAD_DENOMINATOR = 512
 # Coefficient of linear part of memory expansion gas cost
