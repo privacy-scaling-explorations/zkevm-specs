@@ -26,4 +26,5 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.JUMP: jump,
     ExecutionState.JUMPI: jumpi,
     ExecutionState.PUSH: push,
+    ExecutionState.SCMP: scmp,
 }
