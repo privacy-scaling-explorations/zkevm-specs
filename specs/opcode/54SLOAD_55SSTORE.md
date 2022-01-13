@@ -65,19 +65,25 @@
            * `original_value == new_value`:
              - `original_value == 0`: gas_refund + SSTORE_SET_GAS - SLOAD_GAS
              - `original_value != 0`: gas_refund + SSTORE_RESET_GAS - SLOAD_GAS
-3. lookups: TODO: fix access_list & gas_refund
-   - `SLOAD`/`SSTORE`: 5 busmapping lookups
+3. lookups:
+   - `SLOAD`: 5 busmapping lookups
      - stack:
        - `address` is popped off the top of the stack
-       - `value`
-         - is pushed on top of the stack for `SLOAD`
-         - is popped off the top of the stack for `SSTORE`
+       - `value` is pushed on top of the stack
+     - storage: The 32 bytes of `value` are read from storage at `address`
+     - access_list: Whether the address is warm (accessed before), mark as warm afterward
+   - `SSTORE`: 9 busmapping lookups if persist, 8 otherwise
+     - stack:
+       - `address` is popped off the top of the stack
+       - `value` is popped off the top of the stack
      - storage:
-       - `SLOAD`: The 32 bytes of `value` are read from storage at `address`.
-       - `SSTORE`: The 32 bytes of `value` are written to storage at `address`.
-     - access_list:
-       - `SLOAD`: Whether the address is warm (accessed before), mark as warm afterward.
-       - `SSTORE`: Whether the address is warm (accessed before), mark as warm afterward.
+       - Read the orignal value at `address`
+       - Read the current value at `address`
+       - The 32 bytes of new `value` are written to storage at `address`
+     - access_list: Whether the address is warm (accessed before), mark as warm afterward
+     - gas_refund:
+       + Read the accumulated gas_refund for this tx
+       + If persist, write the new accumulated gas_refund for this tx
 
 ## Exceptions
 
