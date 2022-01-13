@@ -19,12 +19,14 @@
 2. state transition:
    - gc
      - `SLOAD`: +5 (2 stack operations + 1 storage reads + 2 access_list reads/writes)
-     - `SSTORE`: +9 if persistent, +7 otherwise
+     - `SSTORE`: +9 if persistent, +8 otherwise
        + 2 stack operations
        + 1 original value read
        + 2 storage reads/writes
        + 2 access_list reads/writes
-       + 2 gas_refund reads/writes if persistent 
+       + 2 gas_refund reads/writes if persistent, 1 otherwise
+         * 1 gas_refund read
+         * 1 gas_refund write if persistent 
    - stack_pointer
      - `SLOAD`: remains the same
      - `SSTORE`: -2

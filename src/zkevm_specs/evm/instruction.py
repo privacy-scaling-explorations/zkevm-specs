@@ -531,14 +531,15 @@ class Instruction:
         )
         return row[4]
 
-    def gas_refund_write(
+    def gas_refund_write_only_persistent(
         self,
         tx_id: int,
+        is_persistent: bool,
     ) -> int:
-        row = self.rw_lookup(
-            RW.Write,
+        row = self.state_write_only_persistent(
             RWTableTag.TxRefund,
             [tx_id],
+            is_persistent,
         )
         return row[4]
 
