@@ -1,7 +1,7 @@
 from typing import Sequence, Set, Tuple
 from enum import IntEnum, auto
 
-from ..util import Array3, Array4, Array8
+from ..util import Array3, Array4, Array10
 from .execution_state import ExecutionState
 from .opcode import (
     invalid_opcodes,
@@ -244,20 +244,22 @@ class Tables:
     # Each row in RWTable contains:
     # - rw_counter
     # - is_write
-    # - tag
-    # - value1
-    # - value2
-    # - value3
-    # - value4
-    # - value5
-    rw_table: Set[Array8]
+    # - key1 (tag)
+    # - key2
+    # - key3
+    # - key4
+    # - value
+    # - value_prev
+    # - aux1
+    # - aux2
+    rw_table: Set[Array10]
 
     def __init__(
         self,
         block_table: Set[Array3],
         tx_table: Set[Array4],
         bytecode_table: Set[Array4],
-        rw_table: Set[Array8],
+        rw_table: Set[Array10],
     ) -> None:
         self.block_table = block_table
         self.tx_table = tx_table
@@ -280,8 +282,8 @@ class Tables:
         assert len(inputs) <= 4
         return _lookup("bytecode_table", self.bytecode_table, inputs)
 
-    def rw_lookup(self, inputs: Sequence[int]) -> Array8:
-        assert len(inputs) <= 8
+    def rw_lookup(self, inputs: Sequence[int]) -> Array10:
+        assert len(inputs) <= 10
         return _lookup("rw_table", self.rw_table, inputs)
 
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 from enum import IntEnum, auto
 from typing import Optional, Sequence, Tuple, Union
 
-from ..util import Array4, Array8, linear_combine, RLCStore, MAX_N_BYTES, N_BYTES_GAS
+from ..util import Array4, Array10, linear_combine, RLCStore, MAX_N_BYTES, N_BYTES_GAS
 from .opcode import Opcode
 from .step import StepState
 from .table import (
@@ -259,7 +259,7 @@ class Instruction:
         else:
             return self.bytecode_lookup(self.curr.opcode_source, index, is_code)
 
-    def rw_lookup(self, rw: RW, tag: RWTableTag, inputs: Sequence[int], rw_counter: Optional[int] = None) -> Array8:
+    def rw_lookup(self, rw: RW, tag: RWTableTag, inputs: Sequence[int], rw_counter: Optional[int] = None) -> Array10:
         if rw_counter is None:
             rw_counter = self.curr.rw_counter + self.rw_counter_offset
             self.rw_counter_offset += 1
@@ -271,13 +271,13 @@ class Instruction:
         tag: RWTableTag,
         inputs: Sequence[int],
         is_persistent: bool,
-    ) -> Array8:
+    ) -> Array10:
         assert tag.write_only_persistent()
 
         if is_persistent:
             return self.rw_lookup(RW.Write, tag, inputs)
 
-        return 8 * [None]
+        return 10 * [None]
 
     def state_write_with_reversion(
         self,
@@ -285,7 +285,7 @@ class Instruction:
         inputs: Sequence[int],
         is_persistent: bool,
         rw_counter_end_of_reversion: int,
-    ) -> Array8:
+    ) -> Array10:
         assert tag.write_with_reversion()
 
         row = self.rw_lookup(RW.Write, tag, inputs)
@@ -296,14 +296,7 @@ class Instruction:
         if not is_persistent:
             # Swap value and value_prev
             inputs = list(row[3:])
-            if tag == RWTableTag.TxAccessListAccount:
-                inputs[2], inputs[3] = inputs[3], inputs[2]
-            elif tag == RWTableTag.TxAccessListStorageSlot:
-                inputs[3], inputs[4] = inputs[4], inputs[3]
-            elif tag == RWTableTag.Account:
-                inputs[2], inputs[3] = inputs[3], inputs[2]
-            elif tag == RWTableTag.AccountStorage:
-                inputs[3], inputs[4] = inputs[4], inputs[3]
+            inputs[-3], inputs[-4] = inputs[-4], inputs[-3]
             self.rw_lookup(RW.Write, tag, inputs, rw_counter=rw_counter)
 
         return row
