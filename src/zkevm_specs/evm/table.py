@@ -54,7 +54,7 @@ class FixedTableTag(IntEnum):
         elif self == FixedTableTag.Range1024:
             return [(self, i, 0, 0) for i in range(1024)]
         elif self == FixedTableTag.SignByte:
-            return [(self, i, (i & 1) * 0xFF, 0) for i in range(256)]
+            return [(self, i, (i >> 7) * 0xFF, 0) for i in range(256)]
         elif self == FixedTableTag.BitwiseAnd:
             return [(self, lhs, rhs, lhs & rhs) for lhs, rhs in product(range(256), range(256))]
         elif self == FixedTableTag.BitwiseOr:
