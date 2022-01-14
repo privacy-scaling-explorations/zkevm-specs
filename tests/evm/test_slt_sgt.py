@@ -156,7 +156,6 @@ TESTING_DATA = (
         RAND_2,
         0x00,
     ),
-
     # more cases where contiguous bytes are different
     (
         Opcode.SLT,
