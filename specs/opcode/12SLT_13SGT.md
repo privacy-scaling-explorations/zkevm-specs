@@ -64,4 +64,4 @@ where:
 
 ## Code
 
-See [`slt_sgt.py`](../../src/zkevm_specs/evm/execution/slt_sgt.py)
+See [`slt_sgt.py`](src/zkevm_specs/evm/execution/slt_sgt.py)
