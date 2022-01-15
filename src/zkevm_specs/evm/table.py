@@ -107,11 +107,11 @@ class BlockContextFieldTag(IntEnum):
 
     Coinbase = auto()
     GasLimit = auto()
-    BlockNumber = auto()
-    Time = auto()
+    Number = auto()
+    Timestamp = auto()
     Difficulty = auto()
     BaseFee = auto()
-    BlockHash = auto()
+    HistoryHash = auto()
 
 
 class TxContextFieldTag(IntEnum):
@@ -262,14 +262,14 @@ class Tables:
 
     # Each row in BlockTable contains:
     # - tag
-    # - block_number_or_zero (meaningful only for BlockHash, will be zero for other tags)
+    # - block_number_or_zero (meaningful only for HistoryHash, will be zero for other tags)
     # - value
     block_table: Set[Array3]
 
     # Each row in TxTable contains:
     # - tx_id
     # - tag
-    # - index_or_zero (meaningful only for CallData, will be zero for other tags)
+    # - call_data_index_or_zero (meaningful only for CallData, will be zero for other tags)
     # - value
     tx_table: Set[Array4]
 

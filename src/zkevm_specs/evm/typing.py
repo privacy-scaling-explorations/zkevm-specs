@@ -22,32 +22,38 @@ from .opcode import get_push_size, Opcode
 
 class Block:
     coinbase: U160
+
+    # Gas needs a lot arithmetic operation or comparison in EVM circuit, so we
+    # assume gas limit in the near futuer will not exceed U64, to reduce the
+    # implementation complexity.
     gas_limit: U64
-    block_number: U256
-    time: U64
+
+    # For other fields, we follow the size defined in yellow paper for now.
+    number: U256
+    timestamp: U256
     difficulty: U256
     base_fee: U256
 
-    # history_hashes contains most recent 256 block hashes in history, where
-    # the lastest one is at history_hashes[-1].
+    # It contains most recent 256 block hashes in history, where the lastest
+    # one is at history_hashes[-1].
     history_hashes: Sequence[U256]
 
     def __init__(
         self,
         coinbase: U160 = 0x10,
         gas_limit: U64 = int(15e6),
-        block_number: U256 = 0,
-        time: U64 = 0,
+        number: U256 = 0,
+        timestamp: U256 = 0,
         difficulty: U256 = 0,
         base_fee: U256 = int(1e9),
         history_hashes: Sequence[U256] = [],
     ) -> None:
-        assert len(history_hashes) <= min(256, block_number)
+        assert len(history_hashes) <= min(256, number)
 
         self.coinbase = coinbase
         self.gas_limit = gas_limit
-        self.block_number = block_number
-        self.time = time
+        self.number = number
+        self.timestamp = timestamp
         self.difficulty = difficulty
         self.base_fee = base_fee
         self.history_hashes = history_hashes
@@ -56,13 +62,13 @@ class Block:
         return [
             (BlockContextFieldTag.Coinbase, 0, self.coinbase),
             (BlockContextFieldTag.GasLimit, 0, self.gas_limit),
-            (BlockContextFieldTag.BlockNumber, 0, RLC(self.block_number, randomness)),
-            (BlockContextFieldTag.Time, 0, RLC(self.time, randomness)),
+            (BlockContextFieldTag.Number, 0, RLC(self.number, randomness)),
+            (BlockContextFieldTag.Timestamp, 0, RLC(self.timestamp, randomness)),
             (BlockContextFieldTag.Difficulty, 0, RLC(self.difficulty, randomness)),
             (BlockContextFieldTag.BaseFee, 0, RLC(self.base_fee, randomness)),
         ] + [
-            (BlockContextFieldTag.BlockHash, self.block_number - idx - 1, RLC(block_hash, randomness))
-            for idx, block_hash in enumerate(reversed(self.history_hashes))
+            (BlockContextFieldTag.HistoryHash, self.number - idx - 1, RLC(history_hash, randomness))
+            for idx, history_hash in enumerate(reversed(self.history_hashes))
         ]
 
 
