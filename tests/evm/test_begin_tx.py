@@ -1,5 +1,4 @@
 import pytest
-from itertools import chain
 
 from zkevm_specs.evm import (
     ExecutionState,
@@ -23,8 +22,8 @@ REVERT_BYTECODE = Bytecode().revert(0, 0)
 
 CALLEE_ADDRESS = 0xFF
 CALLEE_WITH_NOTHING = Account(address=CALLEE_ADDRESS)
-CALLEE_WITH_RETURN_BYTECODE = Account(address=CALLEE_ADDRESS, code_hash=RETURN_BYTECODE.hash())
-CALLEE_WITH_REVERT_BYTECODE = Account(address=CALLEE_ADDRESS, code_hash=REVERT_BYTECODE.hash())
+CALLEE_WITH_RETURN_BYTECODE = Account(address=CALLEE_ADDRESS, code=RETURN_BYTECODE)
+CALLEE_WITH_REVERT_BYTECODE = Account(address=CALLEE_ADDRESS, code=REVERT_BYTECODE)
 
 TESTING_DATA = (
     # Transfer 1 ether to EOA, successfully
@@ -90,17 +89,12 @@ def test_begin_tx(tx: Transaction, callee: Account, result: bool):
     caller_balance = caller_balance_prev - (tx.value + tx.gas * tx.gas_price)
     callee_balance = callee_balance_prev + tx.value
 
-    bytecode_hash = RLC(callee.code_hash, randomness)
+    bytecode_hash = RLC(callee.code_hash(), randomness)
 
     tables = Tables(
         block_table=set(Block().table_assignments(randomness)),
         tx_table=set(tx.table_assignments(randomness)),
-        bytecode_table=set(
-            chain(
-                RETURN_BYTECODE.table_assignments(randomness),
-                REVERT_BYTECODE.table_assignments(randomness),
-            )
-        ),
+        bytecode_table=set(callee.code.table_assignments(randomness)),
         rw_table=set(
             [
                 (1, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.TxId, tx.id, 0, 0),
@@ -203,7 +197,7 @@ def test_begin_tx(tx: Transaction, callee: Account, result: bool):
                 rw_counter=1,
             ),
             StepState(
-                execution_state=ExecutionState.EndTx if callee.code_hash == EMPTY_CODE_HASH else ExecutionState.PUSH,
+                execution_state=ExecutionState.EndTx if callee.code_hash() == EMPTY_CODE_HASH else ExecutionState.PUSH,
                 rw_counter=17,
                 call_id=1,
                 is_root=True,

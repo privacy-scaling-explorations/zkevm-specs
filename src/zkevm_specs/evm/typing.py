@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Any, Iterator, Optional, Sequence
+from typing import Any, Dict, Iterator, NewType, Optional, Sequence
 from functools import reduce
 from itertools import chain
 
@@ -13,8 +13,6 @@ from ..util import (
     keccak256,
     GAS_COST_TX_CALL_DATA_PER_NON_ZERO_BYTE,
     GAS_COST_TX_CALL_DATA_PER_ZERO_BYTE,
-    EMPTY_HASH,
-    EMPTY_TRIE_HASH,
 )
 from .table import BlockContextFieldTag, TxContextFieldTag
 from .opcode import get_push_size, Opcode
@@ -213,23 +211,32 @@ class Bytecode:
         return BytecodeIterator(RLC(self.hash(), randomness), self.code)
 
 
+Storage = NewType("Storage", Dict[U256, U256])
+
+
 class Account:
     address: U160
     nonce: U256
     balance: U256
-    code_hash: U256
-    storage_trie_hash: U256
+    code: Bytecode
+    storage: Storage
 
     def __init__(
         self,
         address: U160 = 0,
         nonce: U256 = 0,
         balance: U256 = 0,
-        code_hash: U256 = EMPTY_HASH,
-        storage_trie_hash: U256 = EMPTY_TRIE_HASH,
+        code: Optional[Bytecode] = None,
+        storage: Optional[Storage] = None,
     ) -> None:
         self.address = address
         self.nonce = nonce
         self.balance = balance
-        self.code_hash = code_hash
-        self.storage_trie_hash = storage_trie_hash
+        self.code = Bytecode() if code is None else code
+        self.storage = dict() if storage is None else storage
+
+    def code_hash(self) -> U256:
+        return self.code.hash()
+
+    def storage_trie_hash(self) -> U256:
+        raise NotImplementedError("Trie has not been implemented")
