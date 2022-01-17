@@ -32,7 +32,7 @@ def test_coinbase(opcode: Opcode, address: U160):
         bytecode_table=set(bytecode.table_assignments(rlc_store)),
         rw_table=set(
             [
-                (9, RW.Write, RWTableTag.Stack, 1, 1023, coinbase_rlc, 0, 0),
+                (9, RW.Write, RWTableTag.Stack, 1, 1023, coinbase_rlc, 0, 0, 0, 0),
             ]
         ),
     )

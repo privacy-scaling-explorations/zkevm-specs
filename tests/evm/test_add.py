@@ -45,9 +45,9 @@ def test_add(opcode: Opcode, a_bytes: bytes, b_bytes: bytes, c_bytes: Optional[b
         bytecode_table=set(bytecode.table_assignments(rlc_store)),
         rw_table=set(
             [
-                (9, RW.Read, RWTableTag.Stack, 1, 1022, a, 0, 0),
-                (10, RW.Read, RWTableTag.Stack, 1, 1023, b, 0, 0),
-                (11, RW.Write, RWTableTag.Stack, 1, 1023, c, 0, 0),
+                (9, RW.Read, RWTableTag.Stack, 1, 1022, a, 0, 0, 0, 0),
+                (10, RW.Read, RWTableTag.Stack, 1, 1023, b, 0, 0, 0, 0),
+                (11, RW.Write, RWTableTag.Stack, 1, 1023, c, 0, 0, 0, 0),
             ]
         ),
     )
