@@ -108,15 +108,8 @@ class RWTableTag(IntEnum):
             RWTableTag.TxAccessListStorageSlot,
             RWTableTag.Account,
             RWTableTag.AccountStorage,
-        ]
-
-    # For state writes which don't affect future execution before reversion, we
-    # don't need to write them with reversion, instead we only need to write
-    # them (enable the lookup) when is_persistent is True.
-    def write_only_persistent(self) -> bool:
-        return self in [
-            RWTableTag.TxRefund,
             RWTableTag.AccountDestructed,
+            RWTableTag.TxRefund,
         ]
 
 
