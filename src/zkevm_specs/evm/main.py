@@ -8,6 +8,7 @@ from .execution import (
     jump,
     jumpi,
     coinbase,
+    caller,
 )
 from .execution_state import ExecutionState
 from .instruction import Instruction
@@ -51,6 +52,8 @@ def verify_step(
         jumpi(instruction)
     elif instruction.curr.execution_state == ExecutionState.COINBASE:
         coinbase(instruction)
+    elif instruction.curr.execution_state == ExecutionState.CALLER:
+        caller(instruction)
     # Error cases
     else:
         raise NotImplementedError
