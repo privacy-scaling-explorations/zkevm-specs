@@ -31,8 +31,8 @@ def test_caller(opcode: Opcode, address: U160):
         bytecode_table=set(bytecode.table_assignments(rlc_store)),
         rw_table=set(
             [
-                (9, RW.Write, RWTableTag.Stack, 1, 1023, caller_rlc, 0, 0),
-                (10, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.CallerAddress, address, 0, 0),
+                (9, RW.Write, RWTableTag.Stack, 1, 1023, 0, caller_rlc, 0, 0, 0),
+                (10, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.CallerAddress, 0, address, 0, 0, 0),
             ]
         ),
     )
