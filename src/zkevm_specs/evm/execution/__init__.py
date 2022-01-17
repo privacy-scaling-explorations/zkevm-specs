@@ -13,6 +13,7 @@ from .jumpi import *
 from .push import *
 from .block_coinbase import *
 from .caller import *
+from .gas import *
 
 
 EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
