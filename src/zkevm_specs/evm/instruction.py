@@ -305,7 +305,7 @@ class Instruction:
         if call_id is None:
             call_id = self.curr.call_id
 
-        return self.rw_lookup(rw, RWTableTag.CallContext, [call_id, tag])[5]
+        return self.rw_lookup(rw, RWTableTag.CallContext, [call_id, tag])[-4]
 
     def stack_pop(self) -> int:
         stack_pointer_offset = self.stack_pointer_offset
