@@ -29,6 +29,10 @@ def test_gas(gas: int):
     bytecode = Bytecode(f"{Opcode.GAS.hex()}00")
     bytecode_hash = rlc_store.to_rlc(bytecode.hash, 32)
 
+    # since the GAS opcode returns the value of available gas after deducting the cost
+    # of calling the GAS opcode itself, we should expect gas_left = gas - 2
+    gas_left = gas - 2
+
     tables = Tables(
         block_table=set(block.table_assignments(rlc_store)),
         tx_table=set(tx.table_assignments(rlc_store)),
@@ -36,7 +40,7 @@ def test_gas(gas: int):
         rw_table=set(
             [
                 (3, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.TxId, 1, 0, 0),
-                (2, RW.Write, RWTableTag.Stack, 1, 1023, gas, 0, 0),
+                (2, RW.Write, RWTableTag.Stack, 1, 1023, gas_left, 0, 0),
             ]
         ),
     )
@@ -65,7 +69,7 @@ def test_gas(gas: int):
                 opcode_source=bytecode_hash,
                 program_counter=1,
                 stack_pointer=1023,
-                gas_left=gas - 2,
+                gas_left=gas_left,
             ),
         ],
     )
