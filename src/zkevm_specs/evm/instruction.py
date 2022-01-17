@@ -330,7 +330,7 @@ class Instruction:
             RWTableTag.Account,
             [account_address, account_field_tag],
         )
-        return row[5], row[6]
+        return row[-4], row[-3]
 
     def account_write_with_reversion(
         self,
@@ -345,7 +345,7 @@ class Instruction:
             is_persistent,
             rw_counter_end_of_reversion,
         )
-        return row[5], row[6]
+        return row[-4], row[-3]
 
     def add_balance(self, account_address: int, values: Sequence[int]):
         balance, balance_prev = self.account_write(account_address, AccountFieldTag.Balance)
@@ -389,7 +389,7 @@ class Instruction:
 
     def account_read(self, account_address: int, account_field_tag: AccountFieldTag) -> Tuple[int, int]:
         row = self.rw_lookup(RW.Read, RWTableTag.Account, [account_address, account_field_tag])
-        return row[5], row[6]
+        return row[-4], row[-3]
 
     def add_account_to_access_list(
         self,
@@ -399,9 +399,9 @@ class Instruction:
         row = self.rw_lookup(
             RW.Write,
             RWTableTag.TxAccessListAccount,
-            [tx_id, account_address, 1],
+            [tx_id, account_address, 0, 1],
         )
-        return row[5] - row[6]
+        return row[-4] - row[-3]
 
     def add_account_to_access_list_with_reversion(
         self,
@@ -412,11 +412,11 @@ class Instruction:
     ) -> bool:
         row = self.state_write_with_reversion(
             RWTableTag.TxAccessListAccount,
-            [tx_id, account_address, 1],
+            [tx_id, account_address, 0, 1],
             is_persistent,
             rw_counter_end_of_reversion,
         )
-        return row[5] - row[6]
+        return row[-4] - row[-3]
 
     def add_storage_slot_to_access_list(
         self,
@@ -425,10 +425,10 @@ class Instruction:
         storage_slot: int,
     ) -> bool:
         row = self.state_write_with_reversion(
-            RWTableTag.TxAccessListAccount,
+            RWTableTag.TxAccessListStorageSlot,
             [tx_id, account_address, storage_slot, 1],
         )
-        return row[6] - row[7]
+        return row[-4] - row[-3]
 
     def add_storage_slot_to_access_list_with_reversion(
         self,
@@ -439,12 +439,12 @@ class Instruction:
         rw_counter_end_of_reversion: int,
     ) -> bool:
         row = self.state_write_with_reversion(
-            RWTableTag.TxAccessListAccount,
+            RWTableTag.TxAccessListStorageSlot,
             [tx_id, account_address, storage_slot, 1],
             is_persistent,
             rw_counter_end_of_reversion,
         )
-        return row[6] - row[7]
+        return row[-4] - row[-3]
 
     def transfer_with_gas_fee(
         self,
