@@ -318,7 +318,7 @@ class Instruction:
 
     def stack_lookup(self, rw: RW, stack_pointer_offset: int) -> int:
         stack_pointer = self.curr.stack_pointer + stack_pointer_offset
-        return self.rw_lookup(rw, RWTableTag.Stack, [self.curr.call_id, stack_pointer])[5]
+        return self.rw_lookup(rw, RWTableTag.Stack, [self.curr.call_id, stack_pointer])[-4]
 
     def account_write(
         self,

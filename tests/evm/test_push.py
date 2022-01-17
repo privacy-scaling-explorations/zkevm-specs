@@ -41,7 +41,7 @@ def test_push(opcode: Opcode, value_be_bytes: bytes):
         bytecode_table=set(bytecode.table_assignments(rlc_store)),
         rw_table=set(
             [
-                (8, RW.Write, RWTableTag.Stack, 1, 1023, value, 0, 0, 0, 0),
+                (8, RW.Write, RWTableTag.Stack, 1, 1023, 0, value, 0, 0, 0),
             ]
         ),
     )
