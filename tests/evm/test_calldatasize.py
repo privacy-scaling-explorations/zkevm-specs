@@ -3,6 +3,7 @@ import pytest
 from zkevm_specs.evm import (
     ExecutionState,
     StepState,
+    Opcode,
     verify_steps,
     Tables,
     RWTableTag,
@@ -10,24 +11,22 @@ from zkevm_specs.evm import (
     CallContextFieldTag,
     Bytecode,
 )
-from zkevm_specs.util import rand_address, rand_fp, RLC, U160
-from zkevm_specs.util.param import N_BYTES_ACCOUNT_ADDRESS
+from zkevm_specs.util import rand_fp, RLC, U64
+from zkevm_specs.util.param import N_BYTES_U64
 
 
 TESTING_DATA = (
     0x00,
     0x10,
-    0x030201,
-    0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF,
-    rand_address(),
+    0x302010,
 )
 
 
-@pytest.mark.parametrize("caller", TESTING_DATA)
-def test_caller(caller: U160):
+@pytest.mark.parametrize("calldatasize", TESTING_DATA)
+def test_calldatasize(calldatasize: U64):
     randomness = rand_fp()
 
-    bytecode = Bytecode().caller()
+    bytecode = Bytecode().calldatasize()
     bytecode_hash = RLC(bytecode.hash(), randomness)
 
     tables = Tables(
@@ -36,8 +35,8 @@ def test_caller(caller: U160):
         bytecode_table=set(bytecode.table_assignments(randomness)),
         rw_table=set(
             [
-                (9, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.CallerAddress, caller, 0, 0),
-                (10, RW.Write, RWTableTag.Stack, 1, 1023, RLC(caller, randomness, N_BYTES_ACCOUNT_ADDRESS), 0, 0),
+                (9, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.CallDataLength, calldatasize, 0, 0),
+                (10, RW.Write, RWTableTag.Stack, 1, 1023, RLC(calldatasize, randomness, N_BYTES_U64), 0, 0),
             ]
         ),
     )
@@ -47,7 +46,7 @@ def test_caller(caller: U160):
         tables=tables,
         steps=[
             StepState(
-                execution_state=ExecutionState.CALLER,
+                execution_state=ExecutionState.CALLDATASIZE,
                 rw_counter=9,
                 call_id=1,
                 is_root=True,

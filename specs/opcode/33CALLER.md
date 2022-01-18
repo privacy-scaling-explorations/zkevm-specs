@@ -12,8 +12,8 @@ then pushes the `address` to the stack.
 ## Circuit behaviour
 
 1. Construct call context table in rw table
-2. Do busmapping lookup for stack write operation
-3. Do busmapping lookup for call context caller read operation
+2. Do busmapping lookup for call context caller read operation
+3. Do busmapping lookup for stack write operation
 
 ## Constraints
 
@@ -24,8 +24,8 @@ then pushes the `address` to the stack.
    - pc + 1
    - gas + 2
 3. Lookups: 2
-   - `address` is on top of stack
    - `address` is in the rw table {call context, call ID, caller}
+   - `address` is on top of stack
 
 ## Exceptions
 

@@ -10,6 +10,10 @@ N_BYTES_MEMORY_SIZE = 4
 N_BYTES_GAS = 8
 # Number of bytes of program counter
 N_BYTES_PROGRAM_COUNTER = 8
+# Number of bytes of u64
+N_BYTES_U64 = 8
+# Number of bytes of an EVM word (u256)
+N_BYTES_WORD = 32
 
 # Gas cost of non-creation transaction
 GAS_COST_TX = 21000
