@@ -1,6 +1,6 @@
 from typing import Sequence, Union, Tuple, Set
 from collections import namedtuple
-from .util import keccak256, fp_add, fp_mul, RLCStore
+from .util import keccak256, fp_add, fp_mul, RLC
 from .evm.opcode import get_push_size
 from .encoding import U8, U256, is_circuit_code
 
@@ -87,7 +87,7 @@ def check_bytecode_row(
 
 
 # Populate the circuit matrix
-def assign_bytecode_circuit(k: int, bytecodes: Sequence[UnrolledBytecode], rlc_store: RLCStore):
+def assign_bytecode_circuit(k: int, bytecodes: Sequence[UnrolledBytecode], randomness: int):
     # All rows are usable in this emulation
     last_row_offset = 2 ** k - 1
 
@@ -103,7 +103,7 @@ def assign_bytecode_circuit(k: int, bytecodes: Sequence[UnrolledBytecode], rlc_s
             push_data_left = byte_push_size if is_code else push_data_left - 1
 
             # Add the byte to the accumulator
-            hash_rlc = fp_add(fp_mul(hash_rlc, rlc_store.randomness), row[2])
+            hash_rlc = fp_add(fp_mul(hash_rlc, randomness), row[2])
 
             # Set the data for this row
             rows.append(
@@ -162,10 +162,10 @@ def assign_push_table():
 
 
 # Generate keccak table
-def assign_keccak_table(bytecodes: Sequence[bytes], rlc_store: RLCStore):
+def assign_keccak_table(bytecodes: Sequence[bytes], randomness: int):
     keccak_table = []
     for bytecode in bytecodes:
-        hash = rlc_store.to_rlc(keccak256(bytecode), 32)
-        rlc = rlc_store.to_rlc(list(reversed(bytecode)))
+        hash = RLC(bytes(reversed(keccak256(bytecode))), randomness)
+        rlc = RLC(bytes(reversed(bytecode)), randomness, len(bytecode))
         keccak_table.append((rlc, len(bytecode), hash))
     return keccak_table

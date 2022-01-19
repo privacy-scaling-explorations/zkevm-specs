@@ -8,12 +8,12 @@ from .param import *
 from .typing import *
 
 
-def hex_to_word(hex: str) -> bytes:
-    return bytes.fromhex(hex.removeprefix("0x").zfill(64))
-
-
 def rand_range(stop: Union[int, float] = 2 ** 256) -> int:
     return randrange(0, int(stop))
+
+
+def rand_fp() -> int:
+    return rand_range(FP_MODULUS)
 
 
 def rand_address() -> U160:

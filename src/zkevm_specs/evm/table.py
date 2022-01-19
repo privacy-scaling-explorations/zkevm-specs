@@ -1,5 +1,7 @@
+from __future__ import annotations
 from typing import Sequence, Set, Tuple
 from enum import IntEnum, auto
+from itertools import chain, product
 
 from ..util import Array3, Array4, Array8
 from .execution_state import ExecutionState
@@ -38,6 +40,62 @@ class FixedTableTag(IntEnum):
     StackOverflow = auto()  # opcode, stack_pointer, 0
     StackUnderflow = auto()  # opcode, stack_pointer, 0
 
+    def table_assignments(self) -> Sequence[Array4]:
+        if self == FixedTableTag.Range16:
+            return [(self, i, 0, 0) for i in range(16)]
+        elif self == FixedTableTag.Range32:
+            return [(self, i, 0, 0) for i in range(32)]
+        elif self == FixedTableTag.Range64:
+            return [(self, i, 0, 0) for i in range(64)]
+        elif self == FixedTableTag.Range256:
+            return [(self, i, 0, 0) for i in range(256)]
+        elif self == FixedTableTag.Range512:
+            return [(self, i, 0, 0) for i in range(512)]
+        elif self == FixedTableTag.Range1024:
+            return [(self, i, 0, 0) for i in range(1024)]
+        elif self == FixedTableTag.SignByte:
+            return [(self, i, (i >> 7) * 0xFF, 0) for i in range(256)]
+        elif self == FixedTableTag.BitwiseAnd:
+            return [(self, lhs, rhs, lhs & rhs) for lhs, rhs in product(range(256), range(256))]
+        elif self == FixedTableTag.BitwiseOr:
+            return [(self, lhs, rhs, lhs | rhs) for lhs, rhs in product(range(256), range(256))]
+        elif self == FixedTableTag.BitwiseXor:
+            return [(self, lhs, rhs, lhs ^ rhs) for lhs, rhs in product(range(256), range(256))]
+        elif self == FixedTableTag.ResponsibleOpcode:
+            return [
+                (self, execution_state, opcode, 0)
+                for execution_state in list(ExecutionState)
+                for opcode in execution_state.responsible_opcode()
+            ]
+        elif self == FixedTableTag.InvalidOpcode:
+            return [(self, opcode, 0, 0) for opcode in invalid_opcodes()]
+        elif self == FixedTableTag.StateWriteOpcode:
+            return [(self, opcode, 0, 0) for opcode in state_write_opcodes()]
+        elif self == FixedTableTag.StackOverflow:
+            return [(self, opcode, stack_pointer, 0) for opcode, stack_pointer in stack_underflow_pairs()]
+        elif self == FixedTableTag.StackUnderflow:
+            return [(self, opcode, stack_pointer, 0) for opcode, stack_pointer in stack_overflow_pairs()]
+        else:
+            ValueError("Unreacheable")
+
+    def range_table_tag(range: int) -> FixedTableTag:
+        if range == 16:
+            return FixedTableTag.Range16
+        elif range == 32:
+            return FixedTableTag.Range32
+        elif range == 64:
+            return FixedTableTag.Range64
+        elif range == 256:
+            return FixedTableTag.Range256
+        elif range == 512:
+            return FixedTableTag.Range512
+        elif range == 1024:
+            return FixedTableTag.Range1024
+        else:
+            raise ValueError(
+                f"Range {range} lookup is not supported yet, please add a new variant Range{range} in FixedTableTag with proper table assignments"
+            )
+
 
 class BlockContextFieldTag(IntEnum):
     """
@@ -49,11 +107,11 @@ class BlockContextFieldTag(IntEnum):
 
     Coinbase = auto()
     GasLimit = auto()
-    BlockNumber = auto()
-    Time = auto()
+    Number = auto()
+    Timestamp = auto()
     Difficulty = auto()
     BaseFee = auto()
-    BlockHash = auto()
+    HistoryHash = auto()
 
 
 class TxContextFieldTag(IntEnum):
@@ -89,7 +147,7 @@ class RWTableTag(IntEnum):
     """
 
     TxAccessListAccount = auto()
-    TxAccessListStorageSlot = auto()
+    TxAccessListAccountStorage = auto()
     TxRefund = auto()
 
     Account = auto()
@@ -105,7 +163,7 @@ class RWTableTag(IntEnum):
     def write_with_reversion(self) -> bool:
         return self in [
             RWTableTag.TxAccessListAccount,
-            RWTableTag.TxAccessListStorageSlot,
+            RWTableTag.TxAccessListAccountStorage,
             RWTableTag.Account,
             RWTableTag.AccountStorage,
         ]
@@ -138,8 +196,8 @@ class CallContextFieldTag(IntEnum):
     # It's not like transaction or bytecode that require specifically friendly
     # layout for verification, so maintaining the consistency directly in
     # RWTable seems more intuitive than creating another table for it.
-    RWCounterEndOfReversion = auto()  # to know at which point in the future we should revert
-    CallerCallId = auto()  # to know caller's id
+    RwCounterEndOfReversion = auto()  # to know at which point in the future we should revert
+    CallerId = auto()  # to know caller's id
     TxId = auto()  # to know tx's id
     Depth = auto()  # to know if call too deep
     CallerAddress = auto()
@@ -149,9 +207,16 @@ class CallContextFieldTag(IntEnum):
     ReturnDataOffset = auto()  # for callee to set return_data to caller's memeory
     ReturnDataLength = auto()
     Value = auto()
-    Result = auto()  # to peek result in the future
+    IsSuccess = auto()  # to peek result in the future
     IsPersistent = auto()  # to know if current call is within reverted call or not
     IsStatic = auto()  # to know if state modification is within static call or not
+
+    # The following are read-only data inside a call like previous section for
+    # opcode RETURNDATASIZE and RETURNDATACOPY, except they will be updated when
+    # end of callee execution.
+    LastCalleeId = auto()
+    LastCalleeReturnDataOffset = auto()
+    LastCalleeReturnDataLength = auto()
 
     # The following are used by caller to save its own CallState when it's
     # going to dive into another call, and will be read out to restore caller's
@@ -161,7 +226,7 @@ class CallContextFieldTag(IntEnum):
     # different kinds of RWTableTag.
     IsRoot = auto()
     IsCreate = auto()
-    OpcodeSource = auto()
+    CodeSource = auto()
     ProgramCounter = auto()
     StackPointer = auto()
     GasLeft = auto()
@@ -193,44 +258,18 @@ class Tables:
     # - value1
     # - value2
     # - value3
-    fixed_table: Set[Array4] = set(
-        [(FixedTableTag.Range16, i, 0, 0) for i in range(16)]
-        + [(FixedTableTag.Range32, i, 0, 0) for i in range(32)]
-        + [(FixedTableTag.Range64, i, 0, 0) for i in range(64)]
-        + [(FixedTableTag.Range256, i, 0, 0) for i in range(256)]
-        + [(FixedTableTag.Range512, i, 0, 0) for i in range(512)]
-        + [(FixedTableTag.Range1024, i, 0, 0) for i in range(1024)]
-        + [(FixedTableTag.SignByte, i, (i & 1) * 0xFF, 0) for i in range(256)]
-        + [(FixedTableTag.BitwiseAnd, lhs, rhs, lhs & rhs) for lhs in range(256) for rhs in range(256)]
-        + [(FixedTableTag.BitwiseOr, lhs, rhs, lhs | rhs) for lhs in range(256) for rhs in range(256)]
-        + [(FixedTableTag.BitwiseXor, lhs, rhs, lhs ^ rhs) for lhs in range(256) for rhs in range(256)]
-        + [
-            (FixedTableTag.ResponsibleOpcode, execution_state, opcode, 0)
-            for execution_state in list(ExecutionState)
-            for opcode in execution_state.responsible_opcode()
-        ]
-        + [(FixedTableTag.InvalidOpcode, opcode, 0, 0) for opcode in invalid_opcodes()]
-        + [(FixedTableTag.StateWriteOpcode, opcode, 0, 0) for opcode in state_write_opcodes()]
-        + [
-            (FixedTableTag.StackUnderflow, opcode, stack_pointer, 0)
-            for (opcode, stack_pointer) in stack_underflow_pairs()
-        ]
-        + [
-            (FixedTableTag.StackOverflow, opcode, stack_pointer, 0)
-            for (opcode, stack_pointer) in stack_overflow_pairs()
-        ]
-    )
+    fixed_table: Set[Array4] = set(chain(*[tag.table_assignments() for tag in list(FixedTableTag)]))
 
     # Each row in BlockTable contains:
     # - tag
-    # - block_number_or_zero (meaningful only for BlockHash, will be zero for other tags)
+    # - block_number_or_zero (meaningful only for HistoryHash, will be zero for other tags)
     # - value
     block_table: Set[Array3]
 
     # Each row in TxTable contains:
     # - tx_id
     # - tag
-    # - index_or_zero (meaningful only for CallData, will be zero for other tags)
+    # - call_data_index_or_zero (meaningful only for CallData, will be zero for other tags)
     # - value
     tx_table: Set[Array4]
 
