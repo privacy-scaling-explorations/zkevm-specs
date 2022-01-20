@@ -13,6 +13,7 @@ from .jumpi import *
 from .push import *
 from .block_coinbase import *
 from .caller import *
+from .slt_sgt import *
 
 
 EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
@@ -25,4 +26,5 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.JUMP: jump,
     ExecutionState.JUMPI: jumpi,
     ExecutionState.PUSH: push,
+    ExecutionState.SCMP: scmp,
 }
