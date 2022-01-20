@@ -13,7 +13,7 @@ from zkevm_specs.evm import (
     Transaction,
     verify_steps,
 )
-from zkevm_specs.util import hex_to_word, RLCStore
+from zkevm_specs.util import rand_fp, RLC
 
 # Start with different values for `gas` before calling the `GAS` opcode.
 TESTING_DATA = tuple([i for i in range(2, 10)])
@@ -21,22 +21,21 @@ TESTING_DATA = tuple([i for i in range(2, 10)])
 
 @pytest.mark.parametrize("gas", TESTING_DATA)
 def test_gas(gas: int):
-    rlc_store = RLCStore()
+    randomness = rand_fp()
 
     tx = Transaction(gas=gas)
 
-    block = Block()
-    bytecode = Bytecode(f"{Opcode.GAS.hex()}00")
-    bytecode_hash = rlc_store.to_rlc(bytecode.hash, 32)
+    bytecode = Bytecode().gas().stop()
+    bytecode_hash = RLC(bytecode.hash(), randomness)
 
     # since the GAS opcode returns the value of available gas after deducting the cost
     # of calling the GAS opcode itself, we should expect gas_left = gas - 2
     gas_left = gas - 2
 
     tables = Tables(
-        block_table=set(block.table_assignments(rlc_store)),
-        tx_table=set(tx.table_assignments(rlc_store)),
-        bytecode_table=set(bytecode.table_assignments(rlc_store)),
+        block_table=set(Block().table_assignments(randomness)),
+        tx_table=set(tx.table_assignments(randomness)),
+        bytecode_table=set(bytecode.table_assignments(randomness)),
         rw_table=set(
             [
                 (3, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.TxId, 1, 0, 0),
@@ -46,7 +45,7 @@ def test_gas(gas: int):
     )
 
     verify_steps(
-        rlc_store=rlc_store,
+        randomness=randomness,
         tables=tables,
         steps=[
             StepState(
@@ -55,7 +54,7 @@ def test_gas(gas: int):
                 call_id=1,
                 is_root=True,
                 is_create=False,
-                opcode_source=bytecode_hash,
+                code_source=bytecode_hash,
                 program_counter=0,
                 stack_pointer=1024,
                 gas_left=gas,
@@ -66,7 +65,7 @@ def test_gas(gas: int):
                 call_id=1,
                 is_root=True,
                 is_create=False,
-                opcode_source=bytecode_hash,
+                code_source=bytecode_hash,
                 program_counter=1,
                 stack_pointer=1023,
                 gas_left=gas_left,
