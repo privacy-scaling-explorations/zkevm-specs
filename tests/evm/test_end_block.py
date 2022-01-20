@@ -31,7 +31,7 @@ def test_end_block(is_last_step: bool):
             chain(
                 # dummy read/write for counting
                 [(i, *7 * [0]) for i in range(22)],
-                [(22, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.TxId, tx.id, 0, 0)]
+                [(22, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.TxId, 0, tx.id, 0, 0, 0)]
                 if is_last_step
                 else [],
             )

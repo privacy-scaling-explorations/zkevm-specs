@@ -516,7 +516,7 @@ class Instruction:
         row = self.rw_lookup(
             RW.Write,
             RWTableTag.TxAccessListAccount,
-            [tx_id, account_address, 1],
+            [tx_id, account_address, 0, 1],
         )
         return row[-4] - row[-3]
 
@@ -530,7 +530,7 @@ class Instruction:
     ) -> bool:
         row = self.state_write_with_reversion(
             RWTableTag.TxAccessListAccount,
-            [tx_id, account_address, 1],
+            [tx_id, account_address, 0, 1],
             is_persistent,
             rw_counter_end_of_reversion,
             state_write_counter,
