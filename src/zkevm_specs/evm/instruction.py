@@ -496,7 +496,9 @@ class Instruction:
         )
         is_persistent = self.call_context_lookup(CallContextFieldTag.IsPersistent, call_id=call_id)
         return ReversionInfo(
-            rw_counter_end_of_reversion, is_persistent, self.curr.state_write_counter
+            rw_counter_end_of_reversion,
+            is_persistent,
+            self.curr.state_write_counter if call_id is None else FQ(0),
         )
 
     def stack_pop(self) -> RLC:
