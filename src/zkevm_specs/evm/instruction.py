@@ -50,9 +50,9 @@ class TransitionKind(IntEnum):
 
 class Transition:
     kind: TransitionKind
-    value: Union[int, FQ, RLC]
+    value: Union[int, Expression]
 
-    def __init__(self, kind: TransitionKind, value: Union[int, FQ, RLC] = 0) -> None:
+    def __init__(self, kind: TransitionKind, value: Union[int, Expression] = 0) -> None:
         self.kind = kind
         self.value = value
 
@@ -61,11 +61,11 @@ class Transition:
         return Transition(TransitionKind.Same)
 
     @staticmethod
-    def delta(delta: Union[int, FQ, RLC]):
+    def delta(delta: Union[int, Expression]):
         return Transition(TransitionKind.Delta, delta)
 
     @staticmethod
-    def to(to: Union[int, FQ, RLC]):
+    def to(to: Union[int, Expression]):
         return Transition(TransitionKind.To, to)
 
 
@@ -227,6 +227,79 @@ class Instruction:
             program_counter=Transition.to(0),
             stack_pointer=Transition.to(1024),
             memory_size=Transition.to(0),
+        )
+
+    def step_state_transition_to_restored_context(
+        self,
+        rw_counter: Transition,
+        caller_id: Expression,
+        return_data_offset: Expression,
+        return_data_length: Expression,
+        gas_left: Expression,
+    ):
+        # Read caller's context for restore
+        [
+            caller_is_root,
+            caller_is_create,
+            caller_code_source,
+            caller_program_counter,
+            caller_stack_pointer,
+            caller_gas_left,
+            caller_memory_size,
+            caller_state_write_counter,
+        ] = [
+            self.call_context_lookup(field_tag, call_id=caller_id)
+            for field_tag in [
+                CallContextFieldTag.IsRoot,
+                CallContextFieldTag.IsCreate,
+                CallContextFieldTag.CodeSource,
+                CallContextFieldTag.ProgramCounter,
+                CallContextFieldTag.StackPointer,
+                CallContextFieldTag.GasLeft,
+                CallContextFieldTag.MemorySize,
+                CallContextFieldTag.StateWriteCounter,
+            ]
+        ]
+
+        # Update caller's last callee information
+        for (field_tag, expected_value) in [
+            (CallContextFieldTag.LastCalleeId, self.curr.call_id),
+            (CallContextFieldTag.LastCalleeReturnDataOffset, return_data_offset),
+            (CallContextFieldTag.LastCalleeReturnDataLength, return_data_length),
+        ]:
+            self.constrain_equal(
+                self.call_context_lookup(field_tag, RW.Write, call_id=caller_id),
+                expected_value,
+            )
+
+        # Consume all gas_left if call halts in exception
+        if self.curr.execution_state.halts_in_exception():
+            gas_left = FQ(0)
+
+        # Accumulate state_write_counter in case this call stack reverts
+        # in the future even it itself succeeds.
+        # Note that when sub-call halts in failure, we don't need to
+        # accumulate state_write_counter because what happened in the
+        # sub-call has been reverted.
+        state_write_counter = FQ(0)
+        if self.curr.execution_state.halts_in_success():
+            state_write_counter = self.curr.state_write_counter
+
+        self.constrain_step_state_transition(
+            rw_counter=rw_counter,
+            call_id=Transition.to(caller_id),
+            is_root=Transition.to(caller_is_root),
+            is_create=Transition.to(caller_is_create),
+            code_source=Transition.to(caller_code_source),
+            program_counter=Transition.to(caller_program_counter),
+            stack_pointer=Transition.to(caller_stack_pointer),
+            # Pays back gas_left to caller
+            gas_left=Transition.to(caller_gas_left.expr() + gas_left.expr()),
+            memory_size=Transition.to(caller_memory_size),
+            # Accumulate state_write_counter to caller
+            state_write_counter=Transition.to(
+                caller_state_write_counter.expr() + state_write_counter.expr()
+            ),
         )
 
     def step_state_transition_in_same_context(
