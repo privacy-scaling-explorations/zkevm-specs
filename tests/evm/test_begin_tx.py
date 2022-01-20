@@ -11,62 +11,101 @@ from zkevm_specs.evm import (
     CallContextFieldTag,
     Block,
     Transaction,
+    Account,
     Bytecode,
 )
-from zkevm_specs.util import RLCStore, rand_address, rand_range
+from zkevm_specs.util import rand_fp, rand_address, rand_range, RLC
+from zkevm_specs.util.hash import EMPTY_CODE_HASH
+
+RETURN_BYTECODE = Bytecode().return_(0, 0)
+REVERT_BYTECODE = Bytecode().revert(0, 0)
+
+CALLEE_ADDRESS = 0xFF
+CALLEE_WITH_NOTHING = Account(address=CALLEE_ADDRESS)
+CALLEE_WITH_RETURN_BYTECODE = Account(address=CALLEE_ADDRESS, code=RETURN_BYTECODE)
+CALLEE_WITH_REVERT_BYTECODE = Account(address=CALLEE_ADDRESS, code=REVERT_BYTECODE)
 
 TESTING_DATA = (
-    # Transfer 1 ether, successfully
-    (Transaction(caller_address=0xFE, callee_address=0xFF, value=int(1e18)), True),
-    # Transfer 1 ether, tx reverts
-    (Transaction(caller_address=0xFE, callee_address=0xFF, value=int(1e18)), False),
+    # Transfer 1 ether to EOA, successfully
+    (
+        Transaction(caller_address=0xFE, callee_address=CALLEE_ADDRESS, value=int(1e18)),
+        CALLEE_WITH_NOTHING,
+        True,
+    ),
+    # Transfer 1 ether to contract, successfully
+    (
+        Transaction(caller_address=0xFE, callee_address=CALLEE_ADDRESS, value=int(1e18)),
+        CALLEE_WITH_RETURN_BYTECODE,
+        True,
+    ),
+    # Transfer 1 ether to contract, tx reverts
+    (
+        Transaction(caller_address=0xFE, callee_address=CALLEE_ADDRESS, value=int(1e18)),
+        CALLEE_WITH_REVERT_BYTECODE,
+        False,
+    ),
     # Transfer random ether, successfully
-    (Transaction(caller_address=rand_address(), callee_address=rand_address(), value=rand_range(1e20)), True),
+    (
+        Transaction(caller_address=rand_address(), callee_address=CALLEE_ADDRESS, value=rand_range(1e20)),
+        CALLEE_WITH_RETURN_BYTECODE,
+        True,
+    ),
     # Transfer nothing with random gas_price, successfully
     (
-        Transaction(caller_address=rand_address(), callee_address=rand_address(), gas_price=rand_range(42857142857143)),
+        Transaction(caller_address=rand_address(), callee_address=CALLEE_ADDRESS, gas_price=rand_range(42857142857143)),
+        CALLEE_WITH_RETURN_BYTECODE,
         True,
     ),
     # Transfer random ether, tx reverts
-    (Transaction(caller_address=rand_address(), callee_address=rand_address(), value=rand_range(1e20)), False),
+    (
+        Transaction(caller_address=rand_address(), callee_address=CALLEE_ADDRESS, value=rand_range(1e20)),
+        CALLEE_WITH_REVERT_BYTECODE,
+        False,
+    ),
     # Transfer nothing with random gas_price, tx reverts
     (
-        Transaction(caller_address=rand_address(), callee_address=rand_address(), gas_price=rand_range(42857142857143)),
+        Transaction(caller_address=rand_address(), callee_address=CALLEE_ADDRESS, gas_price=rand_range(42857142857143)),
+        CALLEE_WITH_REVERT_BYTECODE,
         False,
     ),
     # Transfer nothing with some calldata
-    (Transaction(caller_address=0xFE, callee_address=0xFF, gas=21080, call_data=bytes([1, 2, 3, 4, 0, 0, 0, 0])), True),
+    (
+        Transaction(
+            caller_address=0xFE, callee_address=CALLEE_ADDRESS, gas=21080, call_data=bytes([1, 2, 3, 4, 0, 0, 0, 0])
+        ),
+        CALLEE_WITH_RETURN_BYTECODE,
+        True,
+    ),
 )
 
 
-@pytest.mark.parametrize("tx, result", TESTING_DATA)
-def test_begin_tx(tx: Transaction, result: bool):
-    rlc_store = RLCStore()
+@pytest.mark.parametrize("tx, callee, result", TESTING_DATA)
+def test_begin_tx(tx: Transaction, callee: Account, result: bool):
+    randomness = rand_fp()
 
-    block = Block()
-    caller_balance_prev = rlc_store.to_rlc(int(1e20), 32)
-    callee_balance_prev = rlc_store.to_rlc(0, 32)
-    caller_balance = rlc_store.to_rlc(int(1e20) - (tx.value + tx.gas * tx.gas_price), 32)
-    callee_balance = rlc_store.to_rlc(tx.value, 32)
+    rw_counter_end_of_reversion = 23
+    caller_balance_prev = int(1e20)
+    callee_balance_prev = callee.balance
+    caller_balance = caller_balance_prev - (tx.value + tx.gas * tx.gas_price)
+    callee_balance = callee_balance_prev + tx.value
 
-    bytecode = Bytecode("00")
-    bytecode_hash = rlc_store.to_rlc(bytecode.hash, 32)
+    bytecode_hash = RLC(callee.code_hash(), randomness)
 
     tables = Tables(
-        block_table=set(block.table_assignments(rlc_store)),
-        tx_table=set(tx.table_assignments(rlc_store)),
-        bytecode_table=set(bytecode.table_assignments(rlc_store)),
+        block_table=set(Block().table_assignments(randomness)),
+        tx_table=set(tx.table_assignments(randomness)),
+        bytecode_table=set(callee.code.table_assignments(randomness)),
         rw_table=set(
             [
-                (1, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.TxId, 0, 1, 0, 0, 0),
+                (1, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.TxId, 0, tx.id, 0, 0, 0),
                 (
                     2,
                     RW.Read,
                     RWTableTag.CallContext,
                     1,
-                    CallContextFieldTag.RWCounterEndOfReversion,
+                    CallContextFieldTag.RwCounterEndOfReversion,
                     0,
-                    0 if result else 20,
+                    0 if result else rw_counter_end_of_reversion,
                     0,
                     0,
                     0,
@@ -93,8 +132,8 @@ def test_begin_tx(tx: Transaction, result: bool):
                     tx.caller_address,
                     AccountFieldTag.Balance,
                     0,
-                    caller_balance,
-                    caller_balance_prev,
+                    RLC(caller_balance, randomness),
+                    RLC(caller_balance_prev, randomness),
                     0,
                     0,
                 ),
@@ -105,8 +144,8 @@ def test_begin_tx(tx: Transaction, result: bool):
                     tx.callee_address,
                     AccountFieldTag.Balance,
                     0,
-                    callee_balance,
-                    callee_balance_prev,
+                    RLC(callee_balance, randomness),
+                    RLC(callee_balance_prev, randomness),
                     0,
                     0,
                 ),
@@ -167,7 +206,7 @@ def test_begin_tx(tx: Transaction, result: bool):
                     1,
                     CallContextFieldTag.Value,
                     0,
-                    rlc_store.to_rlc(tx.value, 32),
+                    RLC(tx.value, randomness),
                     0,
                     0,
                     0,
@@ -179,26 +218,26 @@ def test_begin_tx(tx: Transaction, result: bool):
                 if result
                 else [
                     (
-                        19,
+                        rw_counter_end_of_reversion - 1,
                         RW.Write,
                         RWTableTag.Account,
                         tx.callee_address,
                         AccountFieldTag.Balance,
                         0,
-                        callee_balance_prev,
-                        callee_balance,
+                        RLC(callee_balance_prev, randomness),
+                        RLC(callee_balance, randomness),
                         0,
                         0,
                     ),
                     (
-                        20,
+                        rw_counter_end_of_reversion,
                         RW.Write,
                         RWTableTag.Account,
                         tx.caller_address,
                         AccountFieldTag.Balance,
                         0,
-                        caller_balance_prev,
-                        caller_balance,
+                        RLC(caller_balance_prev, randomness),
+                        RLC(caller_balance, randomness),
                         0,
                         0,
                     ),
@@ -208,21 +247,20 @@ def test_begin_tx(tx: Transaction, result: bool):
     )
 
     verify_steps(
-        rlc_store=rlc_store,
+        randomness=randomness,
         tables=tables,
         steps=[
             StepState(
                 execution_state=ExecutionState.BeginTx,
                 rw_counter=1,
-                call_id=1,
             ),
             StepState(
-                execution_state=ExecutionState.STOP if result else ExecutionState.REVERT,
+                execution_state=ExecutionState.EndTx if callee.code_hash() == EMPTY_CODE_HASH else ExecutionState.PUSH,
                 rw_counter=17,
                 call_id=1,
                 is_root=True,
                 is_create=False,
-                opcode_source=bytecode_hash,
+                code_source=bytecode_hash,
                 program_counter=0,
                 stack_pointer=1024,
                 gas_left=0,

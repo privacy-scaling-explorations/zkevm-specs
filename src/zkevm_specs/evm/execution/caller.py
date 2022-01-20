@@ -11,15 +11,13 @@ def caller(instruction: Instruction):
     # check [rw_table, call_context] table for caller address
     instruction.constrain_equal(
         address,
-        instruction.bytes_to_rlc(
-            instruction.int_to_bytes(
-                instruction.call_context_lookup(CallContextFieldTag.CallerAddress),
-                20,
-            )
+        instruction.int_to_rlc(
+            instruction.call_context_lookup(CallContextFieldTag.CallerAddress),
+            20,
         ),
     )
 
-    instruction.constrain_same_context_state_transition(
+    instruction.step_state_transition_in_same_context(
         opcode,
         rw_counter=Transition.delta(2),
         program_counter=Transition.delta(1),

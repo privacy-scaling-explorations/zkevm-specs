@@ -12,37 +12,32 @@ from zkevm_specs.evm import (
     Block,
     Bytecode,
 )
-from zkevm_specs.util import hex_to_word, rand_bytes, RLCStore
+from zkevm_specs.util import rand_fp, rand_word, RLC
 
 
 TESTING_DATA = (
-    (Opcode.ADD, hex_to_word("030201"), hex_to_word("060504"), hex_to_word("090705")),
-    (Opcode.SUB, hex_to_word("090705"), hex_to_word("060504"), hex_to_word("030201")),
-    (Opcode.ADD, rand_bytes(), rand_bytes(), None),
-    (Opcode.SUB, rand_bytes(), rand_bytes(), None),
+    (Opcode.ADD, 0x030201, 0x060504, 0x090705),
+    (Opcode.SUB, 0x090705, 0x060504, 0x030201),
+    (Opcode.ADD, rand_word(), rand_word(), None),
+    (Opcode.SUB, rand_word(), rand_word(), None),
 )
 
 
-@pytest.mark.parametrize("opcode, a_bytes, b_bytes, c_bytes", TESTING_DATA)
-def test_add(opcode: Opcode, a_bytes: bytes, b_bytes: bytes, c_bytes: Optional[bytes]):
-    rlc_store = RLCStore()
+@pytest.mark.parametrize("opcode, a, b, c", TESTING_DATA)
+def test_add(opcode: Opcode, a: int, b: int, c: Optional[int]):
+    randomness = rand_fp()
 
-    a = rlc_store.to_rlc(a_bytes)
-    b = rlc_store.to_rlc(b_bytes)
-    c = (
-        rlc_store.to_rlc(c_bytes)
-        if c_bytes is not None
-        else (rlc_store.add(a, b) if opcode == Opcode.ADD else rlc_store.sub(a, b))[0]
-    )
+    c = RLC(c, randomness) if c is not None else RLC((a + b if opcode == Opcode.ADD else a - b) % 2 ** 256, randomness)
+    a = RLC(a, randomness)
+    b = RLC(b, randomness)
 
-    block = Block()
-    bytecode = Bytecode(f"7f{b_bytes.hex()}7f{a_bytes.hex()}{opcode.hex()}00")
-    bytecode_hash = rlc_store.to_rlc(bytecode.hash, 32)
+    bytecode = Bytecode().add(a, b) if opcode == Opcode.ADD else Bytecode().sub(a, b)
+    bytecode_hash = RLC(bytecode.hash(), randomness)
 
     tables = Tables(
-        block_table=set(block.table_assignments(rlc_store)),
+        block_table=set(Block().table_assignments(randomness)),
         tx_table=set(),
-        bytecode_table=set(bytecode.table_assignments(rlc_store)),
+        bytecode_table=set(bytecode.table_assignments(randomness)),
         rw_table=set(
             [
                 (9, RW.Read, RWTableTag.Stack, 1, 1022, 0, a, 0, 0, 0),
@@ -53,7 +48,7 @@ def test_add(opcode: Opcode, a_bytes: bytes, b_bytes: bytes, c_bytes: Optional[b
     )
 
     verify_steps(
-        rlc_store=rlc_store,
+        randomness=randomness,
         tables=tables,
         steps=[
             StepState(
@@ -62,7 +57,7 @@ def test_add(opcode: Opcode, a_bytes: bytes, b_bytes: bytes, c_bytes: Optional[b
                 call_id=1,
                 is_root=True,
                 is_create=False,
-                opcode_source=bytecode_hash,
+                code_source=bytecode_hash,
                 program_counter=66,
                 stack_pointer=1022,
                 gas_left=3,
@@ -73,7 +68,7 @@ def test_add(opcode: Opcode, a_bytes: bytes, b_bytes: bytes, c_bytes: Optional[b
                 call_id=1,
                 is_root=True,
                 is_create=False,
-                opcode_source=bytecode_hash,
+                code_source=bytecode_hash,
                 program_counter=67,
                 stack_pointer=1023,
                 gas_left=0,

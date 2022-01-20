@@ -1,6 +1,5 @@
 import pytest
 
-from typing import Optional
 from zkevm_specs.evm import (
     ExecutionState,
     StepState,
@@ -12,7 +11,7 @@ from zkevm_specs.evm import (
     Block,
     Bytecode,
 )
-from zkevm_specs.util import hex_to_word, rand_bytes, RLCStore
+from zkevm_specs.util import rand_fp, RLC
 
 
 TESTING_DATA = ((Opcode.JUMP, bytes([7])),)
@@ -20,19 +19,19 @@ TESTING_DATA = ((Opcode.JUMP, bytes([7])),)
 
 @pytest.mark.parametrize("opcode, dest_bytes", TESTING_DATA)
 def test_jump(opcode: Opcode, dest_bytes: bytes):
-    rlc_store = RLCStore()
-    dest = rlc_store.to_rlc(bytes(reversed(dest_bytes)))
+    randomness = rand_fp()
+    dest = RLC(bytes(reversed(dest_bytes)), randomness)
 
     block = Block()
     # Jumps to PC=7
     # PUSH1 80 PUSH1 40 PUSH1 07 JUMP JUMPDEST STOP
-    bytecode = Bytecode(f"6080604060{dest_bytes.hex()}565b00")
-    bytecode_hash = rlc_store.to_rlc(bytecode.hash, 32)
+    bytecode = Bytecode().push1(0x80).push1(0x40).push1(dest_bytes).jump().jumpdest().stop()
+    bytecode_hash = RLC(bytecode.hash(), randomness)
 
     tables = Tables(
-        block_table=set(block.table_assignments(rlc_store)),
+        block_table=set(block.table_assignments(randomness)),
         tx_table=set(),
-        bytecode_table=set(bytecode.table_assignments(rlc_store)),
+        bytecode_table=set(bytecode.table_assignments(randomness)),
         rw_table=set(
             [
                 (9, RW.Read, RWTableTag.Stack, 1, 1021, 0, dest, 0, 0, 0),
@@ -41,7 +40,7 @@ def test_jump(opcode: Opcode, dest_bytes: bytes):
     )
 
     verify_steps(
-        rlc_store=rlc_store,
+        randomness=randomness,
         tables=tables,
         steps=[
             StepState(
@@ -50,7 +49,7 @@ def test_jump(opcode: Opcode, dest_bytes: bytes):
                 call_id=1,
                 is_root=True,
                 is_create=False,
-                opcode_source=bytecode_hash,
+                code_source=bytecode_hash,
                 program_counter=6,
                 stack_pointer=1021,
                 gas_left=8,
@@ -61,7 +60,7 @@ def test_jump(opcode: Opcode, dest_bytes: bytes):
                 call_id=1,
                 is_root=True,
                 is_create=False,
-                opcode_source=bytecode_hash,
+                code_source=bytecode_hash,
                 program_counter=int.from_bytes(dest_bytes, "little"),
                 stack_pointer=1022,
                 gas_left=0,

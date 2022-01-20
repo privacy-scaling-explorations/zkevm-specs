@@ -3,7 +3,6 @@ import pytest
 from zkevm_specs.evm import (
     ExecutionState,
     StepState,
-    Opcode,
     verify_steps,
     Tables,
     RWTableTag,
@@ -11,34 +10,33 @@ from zkevm_specs.evm import (
     Block,
     Bytecode,
 )
-from zkevm_specs.util import rand_bytes, RLCStore
+from zkevm_specs.util import rand_bytes, rand_fp, RLC
 
 
 TESTING_DATA = tuple(
     [
-        (Opcode.PUSH1, bytes([1])),
-        (Opcode.PUSH2, bytes([2, 1])),
-        (Opcode.PUSH31, bytes([i for i in range(31, 0, -1)])),
-        (Opcode.PUSH32, bytes([i for i in range(32, 0, -1)])),
+        (bytes([1])),
+        (bytes([2, 1])),
+        (bytes([i for i in range(31, 0, -1)])),
+        (bytes([i for i in range(32, 0, -1)])),
     ]
-    + [(Opcode(Opcode.PUSH1 + i), rand_bytes(i + 1)) for i in range(32)]
+    + [(rand_bytes(i + 1)) for i in range(32)]
 )
 
 
-@pytest.mark.parametrize("opcode, value_be_bytes", TESTING_DATA)
-def test_push(opcode: Opcode, value_be_bytes: bytes):
-    rlc_store = RLCStore()
+@pytest.mark.parametrize("value_be_bytes", TESTING_DATA)
+def test_push(value_be_bytes: bytes):
+    randomness = rand_fp()
 
-    value = rlc_store.to_rlc(bytes(reversed(value_be_bytes)))
+    value = RLC(bytes(reversed(value_be_bytes)), randomness)
 
-    block = Block()
-    bytecode = Bytecode(f"{opcode.hex()}{value_be_bytes.hex()}00")
-    bytecode_hash = rlc_store.to_rlc(bytecode.hash, 32)
+    bytecode = Bytecode().push(value_be_bytes, n_bytes=len(value_be_bytes))
+    bytecode_hash = RLC(bytecode.hash(), randomness)
 
     tables = Tables(
-        block_table=set(block.table_assignments(rlc_store)),
+        block_table=set(Block().table_assignments(randomness)),
         tx_table=set(),
-        bytecode_table=set(bytecode.table_assignments(rlc_store)),
+        bytecode_table=set(bytecode.table_assignments(randomness)),
         rw_table=set(
             [
                 (8, RW.Write, RWTableTag.Stack, 1, 1023, 0, value, 0, 0, 0),
@@ -47,7 +45,7 @@ def test_push(opcode: Opcode, value_be_bytes: bytes):
     )
 
     verify_steps(
-        rlc_store=rlc_store,
+        randomness=randomness,
         tables=tables,
         steps=[
             StepState(
@@ -56,7 +54,7 @@ def test_push(opcode: Opcode, value_be_bytes: bytes):
                 call_id=1,
                 is_root=True,
                 is_create=False,
-                opcode_source=bytecode_hash,
+                code_source=bytecode_hash,
                 program_counter=0,
                 stack_pointer=1024,
                 gas_left=3,
@@ -67,7 +65,7 @@ def test_push(opcode: Opcode, value_be_bytes: bytes):
                 call_id=1,
                 is_root=True,
                 is_create=False,
-                opcode_source=bytecode_hash,
+                code_source=bytecode_hash,
                 program_counter=1 + len(value_be_bytes),
                 stack_pointer=1023,
                 gas_left=0,
