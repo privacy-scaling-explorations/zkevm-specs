@@ -12,7 +12,7 @@ fmt: ## Format the code
 
 lint: ## Check whether the code is formated correctly
 	black . --check
-	mdformat . --number --check
+	mdformat specs/ --number --check
 
 test: ## Run tests
 	pytest
