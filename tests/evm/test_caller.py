@@ -37,7 +37,7 @@ def test_caller(caller: U160):
         rw_table=set(
             [
                 (9, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.CallerAddress, 0, caller, 0, 0, 0),
-                (10, RW.Write, RWTableTag.Stack, 1, 1023, 0， RLC(caller, randomness, N_BYTES_ACCOUNT_ADDRESS), 0, 0， 0),
+                (10, RW.Write, RWTableTag.Stack, 1, 1023, 0, RLC(caller, randomness, N_BYTES_ACCOUNT_ADDRESS), 0, 0, 0),
             ]
         ),
     )

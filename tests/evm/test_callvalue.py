@@ -38,8 +38,8 @@ def test_callvalue(callvalue: U256):
         bytecode_table=set(bytecode.table_assignments(randomness)),
         rw_table=set(
             [
-                (9, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.Value, callvalue_rlc, 0, 0),
-                (10, RW.Write, RWTableTag.Stack, 1, 1023, callvalue_rlc, 0, 0),
+                (9, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.Value, 0, callvalue_rlc, 0, 0, 0),
+                (10, RW.Write, RWTableTag.Stack, 1, 1023, 0, callvalue_rlc, 0, 0, 0),
             ]
         ),
     )
