@@ -16,6 +16,8 @@ from .caller import *
 from .slt_sgt import *
 from .callvalue import *
 from .calldatasize import *
+from .gas import *
+from .storage import *
 
 
 EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
