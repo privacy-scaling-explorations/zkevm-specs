@@ -16,23 +16,23 @@ def sload(instruction: Instruction):
     instruction.constrain_equal(opcode, Opcode.SLOAD)
 
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
-    rw_counter_end_of_reversion = instruction.call_context_lookup(CallContextFieldTag.RWCounterEndOfReversion)
+    rw_counter_end_of_reversion = instruction.call_context_lookup(CallContextFieldTag.RwCounterEndOfReversion)
     is_persistent = instruction.call_context_lookup(CallContextFieldTag.IsPersistent)
-    callee_address = instruction.tx_lookup(tx_id, TxContextFieldTag.CalleeAddress)
+    tx_callee_address = instruction.tx_context_lookup(tx_id, TxContextFieldTag.CalleeAddress)
 
     storage_slot = instruction.stack_pop()
-    warm, _ = instruction.access_list_storage_slot_read(tx_id, callee_address, storage_slot)
+    warm, _ = instruction.access_list_account_storage_read(tx_id, tx_callee_address, storage_slot)
 
     # TODO: Use intrinsic gas (EIP 2028, 2930)
     dynamic_gas_cost = WARM_STORAGE_READ_COST if warm else COLD_SLOAD_COST
 
-    instruction.storage_slot_read(callee_address, storage_slot)
-    instruction.add_storage_slot_to_access_list_with_reversion(
-        tx_id, callee_address, storage_slot, is_persistent, rw_counter_end_of_reversion
+    instruction.account_storage_read(tx_callee_address, storage_slot)
+    instruction.add_account_storage_to_access_list_with_reversion(
+        tx_id, tx_callee_address, storage_slot, is_persistent, rw_counter_end_of_reversion
     )
     instruction.stack_push()
 
-    instruction.constrain_same_context_state_transition(
+    instruction.step_state_transition_in_same_context(
         opcode,
         rw_counter=Transition.delta(5),
         program_counter=Transition.delta(1),
@@ -47,14 +47,14 @@ def sstore(instruction: Instruction):
     instruction.constrain_equal(opcode, Opcode.SSTORE)
 
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
-    rw_counter_end_of_reversion = instruction.call_context_lookup(CallContextFieldTag.RWCounterEndOfReversion)
+    rw_counter_end_of_reversion = instruction.call_context_lookup(CallContextFieldTag.RwCounterEndOfReversion)
     is_persistent = instruction.call_context_lookup(CallContextFieldTag.IsPersistent)
-    callee_address = instruction.tx_lookup(tx_id, TxContextFieldTag.CalleeAddress)
+    tx_callee_address = instruction.tx_context_lookup(tx_id, TxContextFieldTag.CalleeAddress)
 
     storage_slot = instruction.stack_pop()
     new_value = instruction.stack_pop()
-    warm, _ = instruction.access_list_storage_slot_read(tx_id, callee_address, storage_slot)
-    current_value, _, txid, original_value = instruction.storage_slot_read(callee_address, storage_slot)
+    warm, _ = instruction.access_list_account_storage_read(tx_id, tx_callee_address, storage_slot)
+    current_value, _, txid, original_value = instruction.account_storage_read(tx_callee_address, storage_slot)
     instruction.constrain_equal(tx_id, txid)
 
     # TODO: Use intrinsic gas (EIP 2028, 2930)
@@ -89,15 +89,15 @@ def sstore(instruction: Instruction):
                     gas_refund = gas_refund + SSTORE_RESET_GAS - SLOAD_GAS
 
     instruction.storage_slot_write_with_reversion(
-        callee_address, storage_slot, is_persistent, rw_counter_end_of_reversion
+        tx_callee_address, storage_slot, is_persistent, rw_counter_end_of_reversion
     )
-    instruction.add_storage_slot_to_access_list_with_reversion(
-        tx_id, callee_address, storage_slot, is_persistent, rw_counter_end_of_reversion
+    instruction.add_account_storage_to_access_list_with_reversion(
+        tx_id, tx_callee_address, storage_slot, is_persistent, rw_counter_end_of_reversion
     )
     new_gas_refund, _ = instruction.gas_refund_write_with_reversion(tx_id, is_persistent, rw_counter_end_of_reversion)
     instruction.constrain_equal(gas_refund, new_gas_refund)
 
-    instruction.constrain_same_context_state_transition(
+    instruction.step_state_transition_in_same_context(
         opcode,
         rw_counter=Transition.delta(8),
         program_counter=Transition.delta(1),

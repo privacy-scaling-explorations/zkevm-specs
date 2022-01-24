@@ -49,10 +49,8 @@ def test_sload(tx: Transaction, slot_be_bytes: bytes, warm: bool, result: bool):
 
     storage_slot = RLC(bytes(reversed(slot_be_bytes)), randomness)
 
-    block = Block()
-
     # PUSH32 STORAGE_SLOT SLOAD STOP
-    bytecode = Bytecode(f"7f{slot_be_bytes.hex()}5400")
+    bytecode = Bytecode().push32(slot_be_bytes).sload().stop()
     bytecode_hash = RLC(bytecode.hash(), randomness)
 
     value = 2
@@ -60,9 +58,9 @@ def test_sload(tx: Transaction, slot_be_bytes: bytes, warm: bool, result: bool):
     value_committed = 0
 
     tables = Tables(
-        block_table=set(block.table_assignments(rlc_store)),
-        tx_table=set(tx.table_assignments(rlc_store)),
-        bytecode_table=set(bytecode.table_assignments(rlc_store)),
+        block_table=set(Block().table_assignments(randomness)),
+        tx_table=set(tx.table_assignments(randomness)),
+        bytecode_table=set(bytecode.table_assignments(randomness)),
         rw_table=set(
             [
                 (9, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.TxId, 0, tx.id, 0, 0, 0),
@@ -71,7 +69,7 @@ def test_sload(tx: Transaction, slot_be_bytes: bytes, warm: bool, result: bool):
                     RW.Read,
                     RWTableTag.CallContext,
                     1,
-                    CallContextFieldTag.RWCounterEndOfReversion,
+                    CallContextFieldTag.RwCounterEndOfReversion,
                     0,
                     0 if result else 19,
                     0,
@@ -83,7 +81,7 @@ def test_sload(tx: Transaction, slot_be_bytes: bytes, warm: bool, result: bool):
                 (
                     13,
                     RW.Read,
-                    RWTableTag.TxAccessListStorageSlot,
+                    RWTableTag.TxAccessListAccountStorage,
                     tx.id,
                     tx.callee_address,
                     storage_slot,
@@ -107,7 +105,7 @@ def test_sload(tx: Transaction, slot_be_bytes: bytes, warm: bool, result: bool):
                 (
                     15,
                     RW.Write,
-                    RWTableTag.TxAccessListStorageSlot,
+                    RWTableTag.TxAccessListAccountStorage,
                     tx.id,
                     tx.callee_address,
                     storage_slot,
@@ -125,7 +123,7 @@ def test_sload(tx: Transaction, slot_be_bytes: bytes, warm: bool, result: bool):
                     (
                         19,
                         RW.Write,
-                        RWTableTag.TxAccessListStorageSlot,
+                        RWTableTag.TxAccessListAccountStorage,
                         tx.id,
                         tx.callee_address,
                         storage_slot,
@@ -140,7 +138,7 @@ def test_sload(tx: Transaction, slot_be_bytes: bytes, warm: bool, result: bool):
     )
 
     verify_steps(
-        rlc_store=rlc_store,
+        randomness=randomness,
         tables=tables,
         steps=[
             StepState(
@@ -149,7 +147,7 @@ def test_sload(tx: Transaction, slot_be_bytes: bytes, warm: bool, result: bool):
                 call_id=1,
                 is_root=True,
                 is_create=False,
-                opcode_source=bytecode_hash,
+                code_source=bytecode_hash,
                 program_counter=33,
                 stack_pointer=1023,
                 state_write_counter=0,
@@ -161,7 +159,7 @@ def test_sload(tx: Transaction, slot_be_bytes: bytes, warm: bool, result: bool):
                 call_id=1,
                 is_root=True,
                 is_create=False,
-                opcode_source=bytecode_hash,
+                code_source=bytecode_hash,
                 program_counter=34,
                 stack_pointer=1023,
                 state_write_counter=1,

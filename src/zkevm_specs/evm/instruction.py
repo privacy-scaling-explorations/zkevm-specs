@@ -508,6 +508,10 @@ class Instruction:
         self.constrain_zero(carry)
         return balance, balance_prev
 
+    def account_storage_read(self, account_address: int, storage_key: int) -> Tuple[int, int]:
+        row = self.rw_lookup(RW.Read, RWTableTag.AccountStorage, [account_address, storage_key, 0])
+        return row[-4], row[-3]
+
     def add_account_to_access_list(
         self,
         tx_id: int,
@@ -536,6 +540,19 @@ class Instruction:
             state_write_counter,
         )
         return row[-4] - row[-3]
+
+    def access_list_account_storage_read(
+        self,
+        tx_id: int,
+        account_address: int,
+        storage_key: int,
+    ) -> Tuple[int, int]:
+        row = self.rw_lookup(
+            RW.Read,
+            RWTableTag.TxAccessListAccountStorage,
+            [tx_id, account_address, storage_key],
+        )
+        return row[-4], row[-3]
 
     def add_account_storage_to_access_list(
         self,

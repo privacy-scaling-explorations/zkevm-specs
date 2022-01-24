@@ -131,7 +131,7 @@ def test_sstore(
                     RW.Read,
                     RWTableTag.CallContext,
                     1,
-                    CallContextFieldTag.RWCounterEndOfReversion,
+                    CallContextFieldTag.RwCounterEndOfReversion,
                     0,
                     0 if result else 16,
                     0,
@@ -144,7 +144,7 @@ def test_sstore(
                 (
                     6,
                     RW.Read,
-                    RWTableTag.TxAccessListStorageSlot,
+                    RWTableTag.TxAccessListAccountStorage,
                     tx.id,
                     tx.callee_address,
                     storage_slot,
@@ -181,7 +181,7 @@ def test_sstore(
                 (
                     10,
                     RW.Write,
-                    RWTableTag.TxAccessListStorageSlot,
+                    RWTableTag.TxAccessListAccountStorage,
                     tx.id,
                     tx.callee_address,
                     storage_slot,
@@ -211,7 +211,7 @@ def test_sstore(
                     (
                         15,
                         RW.Write,
-                        RWTableTag.TxAccessListStorageSlot,
+                        RWTableTag.TxAccessListAccountStorage,
                         tx.id,
                         tx.callee_address,
                         storage_slot,
@@ -238,7 +238,7 @@ def test_sstore(
     )
 
     verify_steps(
-        rlc_store=rlc_store,
+        randomness=randomness,
         tables=tables,
         steps=[
             StepState(
@@ -247,7 +247,7 @@ def test_sstore(
                 call_id=1,
                 is_root=True,
                 is_create=False,
-                opcode_source=bytecode_hash,
+                code_source=bytecode_hash,
                 program_counter=66,
                 stack_pointer=1022,
                 state_write_counter=0,
@@ -259,7 +259,7 @@ def test_sstore(
                 call_id=1,
                 is_root=True,
                 is_create=False,
-                opcode_source=bytecode_hash,
+                code_source=bytecode_hash,
                 program_counter=67,
                 stack_pointer=1024,
                 state_write_counter=3,
