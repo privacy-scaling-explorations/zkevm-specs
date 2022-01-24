@@ -25,18 +25,30 @@ from zkevm_specs.util import rand_fp, rand_address, RLC
 
 def gen_test_cases():
     value_cases = [
-        [bytes([i for i in range(0, 32, 1)]), 0, -1],  # value_prev == value
-        # "value_prev != value, original_value == value_prev, original_value == 0" case is skipped because inconvenient to generate for now
         [
             bytes([i for i in range(0, 32, 1)]),
-            -1,
-            -1,
+            bytes([i for i in range(0, 32, 1)]),
+            bytes([i for i in range(0, 32, 1)]),
+        ],  # value_prev == value
+        [
+            bytes([1]),
+            bytes([0]),
+            bytes([0]),
+        ],  # value_prev != value, original_value == value_prev, original_value == 0
+        [
+            bytes([2]),
+            bytes([1]),
+            bytes([1]),
         ],  # value_prev != value, original_value == value_prev, original_value != 0
-        [bytes([i for i in range(0, 32, 1)]), -1, -2],  # value_prev != value, original_value != value_prev
         [
-            bytes([i for i in range(0, 32, 1)]),
-            -1,
-            0,
+            bytes([3]),
+            bytes([2]),
+            bytes([1]),
+        ],  # value_prev != value, original_value != value_prev
+        [
+            bytes([1]),
+            bytes([2]),
+            bytes([1]),
         ],  # value_prev != value, original_value != value_prev, value == original_value
     ]
     warm_cases = [False, True]
@@ -64,14 +76,14 @@ TESTING_DATA = gen_test_cases()
 
 
 @pytest.mark.parametrize(
-    "tx, slot_be_bytes, value_be_bytes, value_prev_diff, original_value_diff, warm, result", TESTING_DATA
+    "tx, slot_be_bytes, value_be_bytes, value_prev_be_bytes, original_value_be_bytes, warm, result", TESTING_DATA
 )
 def test_sstore(
     tx: Transaction,
     slot_be_bytes: bytes,
     value_be_bytes: bytes,
-    value_prev_diff: int,
-    original_value_diff: int,
+    value_prev_be_bytes: int,
+    original_value_be_bytes: int,
     warm: bool,
     result: bool,
 ):
@@ -79,13 +91,10 @@ def test_sstore(
 
     storage_slot = RLC(bytes(reversed(slot_be_bytes)), randomness)
     value = RLC(bytes(reversed(value_be_bytes)), randomness)
-    value_prev = value + value_prev_diff
-    original_value = value + original_value_diff
+    value_prev = RLC(bytes(reversed(value_prev_be_bytes)), randomness)
+    original_value = RLC(bytes(reversed(original_value_be_bytes)), randomness)
 
-    block = Block()
-
-    # PUSH32 STORAGE_SLOT PUSH32 VALUE SSTORE STOP
-    bytecode = Bytecode(f"7f{slot_be_bytes.hex()}7f{value_be_bytes.hex()}5500")
+    bytecode = Bytecode().push32(slot_be_bytes).push32(value_be_bytes).sstore().stop()
     bytecode_hash = RLC(bytecode.hash(), randomness)
 
     if value_prev == value:
@@ -120,9 +129,9 @@ def test_sstore(
                     gas_refund = gas_refund + SSTORE_RESET_GAS - SLOAD_GAS
 
     tables = Tables(
-        block_table=set(block.table_assignments(rlc_store)),
-        tx_table=set(tx.table_assignments(rlc_store)),
-        bytecode_table=set(bytecode.table_assignments(rlc_store)),
+        block_table=set(Block().table_assignments(randomness)),
+        tx_table=set(tx.table_assignments(randomness)),
+        bytecode_table=set(bytecode.table_assignments(randomness)),
         rw_table=set(
             [
                 (1, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.TxId, 0, tx.id, 0, 0, 0),

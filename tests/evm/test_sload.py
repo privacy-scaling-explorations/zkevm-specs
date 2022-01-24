@@ -49,7 +49,6 @@ def test_sload(tx: Transaction, slot_be_bytes: bytes, warm: bool, result: bool):
 
     storage_slot = RLC(bytes(reversed(slot_be_bytes)), randomness)
 
-    # PUSH32 STORAGE_SLOT SLOAD STOP
     bytecode = Bytecode().push32(slot_be_bytes).sload().stop()
     bytecode_hash = RLC(bytecode.hash(), randomness)
 

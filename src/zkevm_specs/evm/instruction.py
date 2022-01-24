@@ -429,6 +429,22 @@ class Instruction:
         row = self.rw_lookup(RW.Read, RWTableTag.TxRefund, [tx_id])
         return row[-4]
 
+    def tx_refund_write_with_reversion(
+        self,
+        tx_id: int,
+        is_persistent: bool,
+        rw_counter_end_of_reversion: int,
+        state_write_counter: Optional[int] = None,
+    ) -> Tuple[int, int]:
+        row = self.state_write_with_reversion(
+            RWTableTag.TxRefund,
+            [tx_id],
+            is_persistent,
+            rw_counter_end_of_reversion,
+            state_write_counter,
+        )
+        return row[-4], row[-3]
+
     def account_read(self, account_address: int, account_field_tag: AccountFieldTag) -> int:
         row = self.rw_lookup(RW.Read, RWTableTag.Account, [account_address, account_field_tag])
         return row[-4]
@@ -508,8 +524,25 @@ class Instruction:
         self.constrain_zero(carry)
         return balance, balance_prev
 
-    def account_storage_read(self, account_address: int, storage_key: int) -> Tuple[int, int]:
+    def account_storage_read(self, account_address: int, storage_key: int) -> Tuple[int, int, int, int]:
         row = self.rw_lookup(RW.Read, RWTableTag.AccountStorage, [account_address, storage_key, 0])
+        return row[-4], row[-3], row[-2], row[-1]
+
+    def account_storage_write_with_reversion(
+        self,
+        account_address: int,
+        storage_key: int,
+        is_persistent: bool,
+        rw_counter_end_of_reversion: int,
+        state_write_counter: Optional[int] = None,
+    ) -> Tuple[int, int]:
+        row = self.state_write_with_reversion(
+            RWTableTag.AccountStorage,
+            [account_address, storage_key],
+            is_persistent,
+            rw_counter_end_of_reversion,
+            state_write_counter,
+        )
         return row[-4], row[-3]
 
     def add_account_to_access_list(
