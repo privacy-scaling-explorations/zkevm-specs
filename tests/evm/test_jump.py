@@ -34,7 +34,7 @@ def test_jump(opcode: Opcode, dest_bytes: bytes):
         bytecode_table=set(bytecode.table_assignments(randomness)),
         rw_table=set(
             [
-                (9, RW.Read, RWTableTag.Stack, 1, 1021, dest, 0, 0),
+                (9, RW.Read, RWTableTag.Stack, 1, 1021, 0, dest, 0, 0, 0),
             ]
         ),
     )

@@ -35,8 +35,8 @@ def test_calldatasize(calldatasize: U64):
         bytecode_table=set(bytecode.table_assignments(randomness)),
         rw_table=set(
             [
-                (9, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.CallDataLength, calldatasize, 0, 0),
-                (10, RW.Write, RWTableTag.Stack, 1, 1023, RLC(calldatasize, randomness, N_BYTES_U64), 0, 0),
+                (9, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.CallDataLength, 0, calldatasize, 0, 0, 0),
+                (10, RW.Write, RWTableTag.Stack, 1, 1023, 0, RLC(calldatasize, randomness, N_BYTES_U64), 0, 0, 0),
             ]
         ),
     )
