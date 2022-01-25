@@ -61,11 +61,11 @@ def gen_test_cases():
                 test_cases.append(
                     (
                         Transaction(caller_address=rand_address(), callee_address=rand_address()),  # tx
-                        bytes([i for i in range(32, 0, -1)]),  # storage_slot
+                        bytes([i for i in range(32, 0, -1)]),  # storage_key
                         value_case[0],  # new_value
                         value_case[1],  # value_prev_diff
                         value_case[2],  # original_value_diff
-                        warm_case,  # is_warm_storage_slot
+                        warm_case,  # is_warm_storage_key
                         persist_case,  # is_not_reverted
                     )
                 )
@@ -76,11 +76,11 @@ TESTING_DATA = gen_test_cases()
 
 
 @pytest.mark.parametrize(
-    "tx, slot_be_bytes, value_be_bytes, value_prev_be_bytes, original_value_be_bytes, warm, result", TESTING_DATA
+    "tx, storage_key_be_bytes, value_be_bytes, value_prev_be_bytes, original_value_be_bytes, warm, result", TESTING_DATA
 )
 def test_sstore(
     tx: Transaction,
-    slot_be_bytes: bytes,
+    storage_key_be_bytes: bytes,
     value_be_bytes: bytes,
     value_prev_be_bytes: int,
     original_value_be_bytes: int,
@@ -89,12 +89,12 @@ def test_sstore(
 ):
     randomness = rand_fp()
 
-    storage_slot = RLC(bytes(reversed(slot_be_bytes)), randomness)
+    storage_key = RLC(bytes(reversed(storage_key_be_bytes)), randomness)
     value = RLC(bytes(reversed(value_be_bytes)), randomness)
     value_prev = RLC(bytes(reversed(value_prev_be_bytes)), randomness)
     original_value = RLC(bytes(reversed(original_value_be_bytes)), randomness)
 
-    bytecode = Bytecode().push32(slot_be_bytes).push32(value_be_bytes).sstore().stop()
+    bytecode = Bytecode().push32(storage_key_be_bytes).push32(value_be_bytes).sstore().stop()
     bytecode_hash = RLC(bytecode.hash(), randomness)
 
     if value_prev == value:
@@ -148,7 +148,7 @@ def test_sstore(
                     0,
                 ),
                 (3, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.IsPersistent, 0, result, 0, 0, 0),
-                (4, RW.Read, RWTableTag.Stack, 1, 1022, 0, storage_slot, 0, 0, 0),
+                (4, RW.Read, RWTableTag.Stack, 1, 1022, 0, storage_key, 0, 0, 0),
                 (5, RW.Read, RWTableTag.Stack, 1, 1023, 0, value, 0, 0, 0),
                 (
                     6,
@@ -156,7 +156,7 @@ def test_sstore(
                     RWTableTag.TxAccessListAccountStorage,
                     tx.id,
                     tx.callee_address,
-                    storage_slot,
+                    storage_key,
                     1 if warm else 0,
                     0,
                     0,
@@ -167,7 +167,7 @@ def test_sstore(
                     RW.Read,
                     RWTableTag.AccountStorage,
                     tx.callee_address,
-                    storage_slot,
+                    storage_key,
                     0,
                     value_prev,
                     original_value,
@@ -180,7 +180,7 @@ def test_sstore(
                     RW.Write,
                     RWTableTag.AccountStorage,
                     tx.callee_address,
-                    storage_slot,
+                    storage_key,
                     0,
                     value,
                     value_prev,
@@ -193,7 +193,7 @@ def test_sstore(
                     RWTableTag.TxAccessListAccountStorage,
                     tx.id,
                     tx.callee_address,
-                    storage_slot,
+                    storage_key,
                     1,
                     1 if warm else 0,
                     0,
@@ -223,7 +223,7 @@ def test_sstore(
                         RWTableTag.TxAccessListAccountStorage,
                         tx.id,
                         tx.callee_address,
-                        storage_slot,
+                        storage_key,
                         1 if warm else 0,
                         1,
                         0,
@@ -234,7 +234,7 @@ def test_sstore(
                         RW.Write,
                         RWTableTag.AccountStorage,
                         tx.callee_address,
-                        storage_slot,
+                        storage_key,
                         0,
                         value_prev,
                         value,

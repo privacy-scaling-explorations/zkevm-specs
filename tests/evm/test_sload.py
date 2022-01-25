@@ -43,13 +43,13 @@ TESTING_DATA = (
 )
 
 
-@pytest.mark.parametrize("tx, slot_be_bytes, warm, result", TESTING_DATA)
-def test_sload(tx: Transaction, slot_be_bytes: bytes, warm: bool, result: bool):
+@pytest.mark.parametrize("tx, storage_key_be_bytes, warm, result", TESTING_DATA)
+def test_sload(tx: Transaction, storage_key_be_bytes: bytes, warm: bool, result: bool):
     randomness = rand_fp()
 
-    storage_slot = RLC(bytes(reversed(slot_be_bytes)), randomness)
+    storage_key = RLC(bytes(reversed(storage_key_be_bytes)), randomness)
 
-    bytecode = Bytecode().push32(slot_be_bytes).sload().stop()
+    bytecode = Bytecode().push32(storage_key_be_bytes).sload().stop()
     bytecode_hash = RLC(bytecode.hash(), randomness)
 
     value = 2
@@ -76,14 +76,14 @@ def test_sload(tx: Transaction, slot_be_bytes: bytes, warm: bool, result: bool):
                     0,
                 ),
                 (11, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.IsPersistent, 0, result, 0, 0, 0),
-                (12, RW.Read, RWTableTag.Stack, 1, 1023, 0, storage_slot, 0, 0, 0),
+                (12, RW.Read, RWTableTag.Stack, 1, 1023, 0, storage_key, 0, 0, 0),
                 (
                     13,
                     RW.Read,
                     RWTableTag.TxAccessListAccountStorage,
                     tx.id,
                     tx.callee_address,
-                    storage_slot,
+                    storage_key,
                     1 if warm else 0,
                     0,
                     0,
@@ -94,7 +94,7 @@ def test_sload(tx: Transaction, slot_be_bytes: bytes, warm: bool, result: bool):
                     RW.Read,
                     RWTableTag.AccountStorage,
                     tx.callee_address,
-                    storage_slot,
+                    storage_key,
                     0,
                     value,
                     value_prev,
@@ -107,7 +107,7 @@ def test_sload(tx: Transaction, slot_be_bytes: bytes, warm: bool, result: bool):
                     RWTableTag.TxAccessListAccountStorage,
                     tx.id,
                     tx.callee_address,
-                    storage_slot,
+                    storage_key,
                     1,
                     1 if warm else 0,
                     0,
@@ -125,7 +125,7 @@ def test_sload(tx: Transaction, slot_be_bytes: bytes, warm: bool, result: bool):
                         RWTableTag.TxAccessListAccountStorage,
                         tx.id,
                         tx.callee_address,
-                        storage_slot,
+                        storage_key,
                         1 if warm else 0,
                         1,
                         0,

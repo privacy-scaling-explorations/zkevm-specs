@@ -20,15 +20,15 @@ def sload(instruction: Instruction):
     is_persistent = instruction.call_context_lookup(CallContextFieldTag.IsPersistent)
     tx_callee_address = instruction.tx_context_lookup(tx_id, TxContextFieldTag.CalleeAddress)
 
-    storage_slot = instruction.stack_pop()
-    warm, _ = instruction.access_list_account_storage_read(tx_id, tx_callee_address, storage_slot)
+    storage_key = instruction.stack_pop()
+    warm, _ = instruction.access_list_account_storage_read(tx_id, tx_callee_address, storage_key)
 
     # TODO: Use intrinsic gas (EIP 2028, 2930)
     dynamic_gas_cost = WARM_STORAGE_READ_COST if warm else COLD_SLOAD_COST
 
-    instruction.account_storage_read(tx_callee_address, storage_slot)
+    instruction.account_storage_read(tx_callee_address, storage_key)
     instruction.add_account_storage_to_access_list_with_reversion(
-        tx_id, tx_callee_address, storage_slot, is_persistent, rw_counter_end_of_reversion
+        tx_id, tx_callee_address, storage_key, is_persistent, rw_counter_end_of_reversion
     )
     instruction.stack_push()
 
@@ -51,10 +51,10 @@ def sstore(instruction: Instruction):
     is_persistent = instruction.call_context_lookup(CallContextFieldTag.IsPersistent)
     tx_callee_address = instruction.tx_context_lookup(tx_id, TxContextFieldTag.CalleeAddress)
 
-    storage_slot = instruction.stack_pop()
+    storage_key = instruction.stack_pop()
     new_value = instruction.stack_pop()
-    warm, _ = instruction.access_list_account_storage_read(tx_id, tx_callee_address, storage_slot)
-    current_value, _, txid, original_value = instruction.account_storage_read(tx_callee_address, storage_slot)
+    warm, _ = instruction.access_list_account_storage_read(tx_id, tx_callee_address, storage_key)
+    current_value, _, txid, original_value = instruction.account_storage_read(tx_callee_address, storage_key)
     instruction.constrain_equal(tx_id, txid)
 
     # TODO: Use intrinsic gas (EIP 2028, 2930)
@@ -89,10 +89,10 @@ def sstore(instruction: Instruction):
                     gas_refund = gas_refund + SSTORE_RESET_GAS - SLOAD_GAS
 
     instruction.account_storage_write_with_reversion(
-        tx_callee_address, storage_slot, is_persistent, rw_counter_end_of_reversion
+        tx_callee_address, storage_key, is_persistent, rw_counter_end_of_reversion
     )
     instruction.add_account_storage_to_access_list_with_reversion(
-        tx_id, tx_callee_address, storage_slot, is_persistent, rw_counter_end_of_reversion
+        tx_id, tx_callee_address, storage_key, is_persistent, rw_counter_end_of_reversion
     )
     new_gas_refund, _ = instruction.tx_refund_write_with_reversion(tx_id, is_persistent, rw_counter_end_of_reversion)
     instruction.constrain_equal(gas_refund, new_gas_refund)
