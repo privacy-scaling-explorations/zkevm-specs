@@ -12,7 +12,7 @@ from zkevm_specs.evm import (
     Block,
     Bytecode,
 )
-from zkevm_specs.evm.execution.params import (
+from zkevm_specs.evm.execution.gas import (
     COLD_SLOAD_COST,
     WARM_STORAGE_READ_COST,
     SLOAD_GAS,

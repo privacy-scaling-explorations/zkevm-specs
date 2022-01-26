@@ -12,7 +12,7 @@ from zkevm_specs.evm import (
     Block,
     Bytecode,
 )
-from zkevm_specs.evm.execution.params import COLD_SLOAD_COST, WARM_STORAGE_READ_COST
+from zkevm_specs.evm.execution.gas import COLD_SLOAD_COST, WARM_STORAGE_READ_COST
 from zkevm_specs.util import rand_fp, rand_address, RLC
 
 TESTING_DATA = (
