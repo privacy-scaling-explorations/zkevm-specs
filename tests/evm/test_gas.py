@@ -38,7 +38,7 @@ def test_gas(gas: int):
         bytecode_table=set(bytecode.table_assignments(randomness)),
         rw_table=set(
             [
-                (2, RW.Write, RWTableTag.Stack, 1, 1023, gas_left, 0, 0),
+                (2, RW.Write, RWTableTag.Stack, 1, 1023, gas_left, 0, 0, 0),
             ]
         ),
     )
