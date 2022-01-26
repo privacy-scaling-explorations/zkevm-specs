@@ -6,7 +6,7 @@ The `GAS` opcode gets the amount of available gas, including the correspoding re
 
 ## EVM behaviour
 
-The `GAS` opcode loads a 64-bit value for the available gas from the transaction context, and pushes it to the stack.
+The `GAS` opcode loads a 64-bit value for the available gas from the current state, and pushes it to the stack.
 
 ## Circuit behaviour
 
