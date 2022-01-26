@@ -9,16 +9,9 @@ def gas(instruction: Instruction):
 
     gas = instruction.stack_push()
 
-    tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
-    tx_gas = instruction.tx_context_lookup(tx_id, TxContextFieldTag.Gas)
-
-    # Since the GAS opcode returns the gas left after deducting gas cost for
-    # the GAS opcode itself
-    gas_left = tx_gas - 2
-
     instruction.constrain_equal(
         gas,
-        gas_left,
+        instruction.curr.gas_left - Opcode.GAS.constant_gas_cost(),
     )
 
     instruction.step_state_transition_in_same_context(

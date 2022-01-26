@@ -10,10 +10,8 @@ The `GAS` opcode loads a 64-bit value for the available gas from the transaction
 
 ## Circuit behaviour
 
-1. construct tx table
-2. bus-mapping lookup for stack write operation
-3. call context lookup (for `tx_id`)
-4. tx lookup (for `gas_left`)
+1. bus-mapping lookup for stack write operation
+2. compare against current state's gas left
 
 ## Constraints
 
@@ -25,10 +23,8 @@ The `GAS` opcode loads a 64-bit value for the available gas from the transaction
    - gas + 2
 3. Lookups:
    - `gas` is on the top of stack
-   - `tx_id` is in the call context table
-   - `tx.gas_left` is in the tx table for above `tx_id`
 4. Others:
-   - `tx.gas_left == gas`
+   - Equality constraint: `gas == curr.gas_left - 2`
 
 ## Exceptions
 
