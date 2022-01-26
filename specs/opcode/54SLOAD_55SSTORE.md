@@ -33,17 +33,17 @@
      - `SSTORE`: +3 (for storage, access_list & gas_refund respectively)
    - gas:
      - `SLOAD`:
-       - the accessed address is warm: gas + WARM_STORAGE_READ_COST
-       - the accessed address is cold: gas + COLD_SLOAD_COST
+       - the accessed `key` is warm: gas + WARM_STORAGE_READ_COST
+       - the accessed `key` is cold: gas + COLD_SLOAD_COST
      - `SSTORE`:
-       - the accessed address is warm:
+       - the accessed `key` is warm:
          - `current_value == new_value`: gas + SLOAD_GAS
          - `current_value != new_value`:
            - `original_value == current_value`:
              - `original_value == 0`: gas + SSTORE_SET_GAS
              - `original_value != 0`: gas + SSTORE_RESET_GAS
            - `original_value != current_value`: gas + SLOAD_GAS
-       - the accessed address is cold:
+       - the accessed `key` is cold:
          - `current_value == new_value`: gas + SLOAD_GAS + COLD_SLOAD_COST
          - `current_value != new_value`:
            - `original_value == current_value`:
@@ -65,18 +65,18 @@
 3. lookups:
    - `SLOAD`: 5 busmapping lookups
      - stack:
-       - `address` is popped off the top of the stack
+       - `key` is popped off the top of the stack
        - `value` is pushed on top of the stack
-     - storage: The 32 bytes of `value` are read from storage at `address`
-     - access_list: Whether the address is warm (accessed before), mark as warm afterward
+     - storage: The 32 bytes of `value` are read from storage at `key`
+     - access_list: Whether the `key` is warm (accessed before), mark as warm afterward
    - `SSTORE`: 8 busmapping lookups
      - stack:
-       - `address` is popped off the top of the stack
+       - `key` is popped off the top of the stack
        - `value` is popped off the top of the stack
      - storage:
-       - Read the orignal_value and the current_value at `address`
-       - The 32 bytes of new `value` are written to storage at `address`
-     - access_list: Whether the address is warm (accessed before), mark as warm afterward
+       - Read the orignal_value and the current_value at `key`
+       - The 32 bytes of new `value` are written to storage at `key`
+     - access_list: Whether the `key` is warm (accessed before), mark as warm afterward
      - gas_refund:
        - Read the accumulated gas_refund for this tx
        - Write the new accumulated gas_refund for this tx
