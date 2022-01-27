@@ -367,6 +367,9 @@ class ExecutionState(IntEnum):
             return [Opcode.SELFDESTRUCT]
         return []
 
+    def halts(self):
+        return self.halts_in_success() or self.halts_in_exception() or self == ExecutionState.REVERT
+
     def halts_in_success(self):
         return self in [
             ExecutionState.STOP,

@@ -16,6 +16,7 @@ from ..util import (
     MEMORY_EXPANSION_QUAD_DENOMINATOR,
     MEMORY_EXPANSION_LINEAR_COEFF,
 )
+from .execution_state import ExecutionState
 from .opcode import Opcode
 from .step import StepState
 from .table import (
@@ -107,7 +108,24 @@ class Instruction:
     def constrain_gas_left_not_underflow(self, gas_left: FQ):
         self.range_check(gas_left, N_BYTES_GAS)
 
-    def constrain_step_state_transition(self, **kwargs: Mapping[str, Transition]):
+    def constrain_execution_state_transition(self):
+        curr, next = self.curr.execution_state, self.next.execution_state
+
+        # ExecutionState transition constraint for special ones
+        if curr == ExecutionState.EndTx:
+            assert next in [ExecutionState.BeginTx, ExecutionState.EndBlock]
+        elif curr == ExecutionState.EndBlock:
+            assert next == ExecutionState.EndBlock
+
+        # Negation ExecutionState transition constraint for rest ones
+        if next == ExecutionState.BeginTx:
+            assert curr == ExecutionState.EndTx
+        elif next == ExecutionState.EndTx:
+            assert curr.halts() or curr == ExecutionState.BeginTx
+        elif next == ExecutionState.EndBlock:
+            assert curr in [ExecutionState.EndTx, ExecutionState.EndBlock]
+
+    def constrain_step_state_transition(self, **kwargs: Transition):
         keys = set(
             [
                 "rw_counter",
