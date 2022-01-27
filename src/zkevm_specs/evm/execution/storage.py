@@ -1,7 +1,7 @@
 from ..instruction import Instruction, Transition
 from ..opcode import Opcode
 from ..table import CallContextFieldTag, TxContextFieldTag
-from .gas import (
+from .storage_gas import (
     COLD_SLOAD_COST,
     WARM_STORAGE_READ_COST,
     SLOAD_GAS,
