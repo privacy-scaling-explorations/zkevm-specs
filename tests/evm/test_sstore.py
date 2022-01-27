@@ -264,7 +264,7 @@ def test_sstore(
             ),
             StepState(
                 execution_state=ExecutionState.STOP if result else ExecutionState.REVERT,
-                rw_counter=9,
+                rw_counter=12,
                 call_id=1,
                 is_root=True,
                 is_create=False,

@@ -154,7 +154,7 @@ def test_sload(tx: Transaction, storage_key_be_bytes: bytes, warm: bool, result:
             ),
             StepState(
                 execution_state=ExecutionState.STOP if result else ExecutionState.REVERT,
-                rw_counter=14,
+                rw_counter=17,
                 call_id=1,
                 is_root=True,
                 is_create=False,
