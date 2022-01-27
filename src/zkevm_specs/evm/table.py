@@ -35,10 +35,6 @@ class FixedTableTag(IntEnum):
     BitwiseOr = auto()  # lhs, rhs, lhs | rhs, 0
     BitwiseXor = auto()  # lhs, rhs, lhs ^ rhs, 0
     ResponsibleOpcode = auto()  # execution_state, opcode, 0
-    InvalidOpcode = auto()  # opcode, 0, 0
-    StateWriteOpcode = auto()  # opcode, 0, 0
-    StackOverflow = auto()  # opcode, stack_pointer, 0
-    StackUnderflow = auto()  # opcode, stack_pointer, 0
 
     def table_assignments(self) -> Sequence[Array4]:
         if self == FixedTableTag.Range16:
@@ -67,21 +63,8 @@ class FixedTableTag(IntEnum):
                 for execution_state in list(ExecutionState)
                 for opcode in execution_state.responsible_opcode()
             ]
-        elif self == FixedTableTag.InvalidOpcode:
-            return [(self, opcode, 0, 0) for opcode in invalid_opcodes()]
-        elif self == FixedTableTag.StateWriteOpcode:
-            return [(self, opcode, 0, 0) for opcode in state_write_opcodes()]
-        elif self == FixedTableTag.StackOverflow:
-            return [
-                (self, opcode, stack_pointer, 0)
-                for opcode, stack_pointer in stack_underflow_pairs()
-            ]
-        elif self == FixedTableTag.StackUnderflow:
-            return [
-                (self, opcode, stack_pointer, 0) for opcode, stack_pointer in stack_overflow_pairs()
-            ]
         else:
-            ValueError("Unreacheable")
+            raise ValueError("Unreacheable")
 
     def range_table_tag(range: int) -> FixedTableTag:
         if range == 16:
