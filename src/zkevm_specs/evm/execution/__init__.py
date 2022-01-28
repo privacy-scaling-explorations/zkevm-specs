@@ -8,15 +8,16 @@ from .end_block import *
 
 # Opcode's successful cases
 from .add import *
+from .block_coinbase import *
+from .block_timestamp import *
+from .calldatasize import *
+from .caller import *
+from .callvalue import *
+from .gas import *
 from .jump import *
 from .jumpi import *
 from .push import *
-from .block_coinbase import *
-from .block_timestamp import *
-from .caller import *
 from .slt_sgt import *
-from .callvalue import *
-from .calldatasize import *
 
 
 EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
@@ -33,4 +34,5 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.JUMPI: jumpi,
     ExecutionState.PUSH: push,
     ExecutionState.SCMP: scmp,
+    ExecutionState.GAS: gas,
 }

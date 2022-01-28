@@ -31,7 +31,7 @@ def test_coinbase(coinbase: U160):
         bytecode_table=set(bytecode.table_assignments(randomness)),
         rw_table=set(
             [
-                (9, RW.Write, RWTableTag.Stack, 1, 1023, RLC(coinbase, randomness, 20), 0, 0),
+                (9, RW.Write, RWTableTag.Stack, 1, 1023, 0, RLC(coinbase, randomness, 20), 0, 0, 0),
             ]
         ),
     )

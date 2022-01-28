@@ -4,7 +4,7 @@ from typing import Optional, Sequence, Tuple, Union
 
 from ..util import (
     Array4,
-    Array8,
+    Array10,
     RLC,
     MAX_N_BYTES,
     N_BYTES_MEMORY_ADDRESS,
@@ -349,7 +349,7 @@ class Instruction:
         else:
             return self.bytecode_lookup(self.curr.code_source, index, is_code)
 
-    def rw_lookup(self, rw: RW, tag: RWTableTag, inputs: Sequence[int], rw_counter: Optional[int] = None) -> Array8:
+    def rw_lookup(self, rw: RW, tag: RWTableTag, inputs: Sequence[int], rw_counter: Optional[int] = None) -> Array10:
         if rw_counter is None:
             rw_counter = self.curr.rw_counter + self.rw_counter_offset
             self.rw_counter_offset += 1
@@ -361,13 +361,13 @@ class Instruction:
         tag: RWTableTag,
         inputs: Sequence[int],
         is_persistent: bool,
-    ) -> Array8:
+    ) -> Array10:
         assert tag.write_only_persistent()
 
         if is_persistent:
             return self.rw_lookup(RW.Write, tag, inputs)
 
-        return 8 * [None]
+        return 10 * [None]
 
     def state_write_with_reversion(
         self,
@@ -376,7 +376,7 @@ class Instruction:
         is_persistent: bool,
         rw_counter_end_of_reversion: int,
         state_write_counter: Optional[int] = None,
-    ) -> Array8:
+    ) -> Array10:
         assert tag.write_with_reversion()
 
         row = self.rw_lookup(RW.Write, tag, inputs)
@@ -390,14 +390,7 @@ class Instruction:
         if not is_persistent:
             # Swap value and value_prev
             inputs = list(row[3:])
-            if tag == RWTableTag.TxAccessListAccount:
-                inputs[2], inputs[3] = inputs[3], inputs[2]
-            elif tag == RWTableTag.TxAccessListAccountStorage:
-                inputs[3], inputs[4] = inputs[4], inputs[3]
-            elif tag == RWTableTag.Account:
-                inputs[2], inputs[3] = inputs[3], inputs[2]
-            elif tag == RWTableTag.AccountStorage:
-                inputs[2], inputs[3] = inputs[3], inputs[2]
+            inputs[-3], inputs[-4] = inputs[-4], inputs[-3]
             self.rw_lookup(RW.Write, tag, inputs, rw_counter=rw_counter)
 
         return row
@@ -408,7 +401,7 @@ class Instruction:
         if call_id is None:
             call_id = self.curr.call_id
 
-        return self.rw_lookup(rw, RWTableTag.CallContext, [call_id, field_tag])[5]
+        return self.rw_lookup(rw, RWTableTag.CallContext, [call_id, field_tag])[-4]
 
     def stack_pop(self) -> Union[int, RLC]:
         stack_pointer_offset = self.stack_pointer_offset
@@ -421,7 +414,7 @@ class Instruction:
 
     def stack_lookup(self, rw: RW, stack_pointer_offset: int) -> Union[int, RLC]:
         stack_pointer = self.curr.stack_pointer + stack_pointer_offset
-        return self.rw_lookup(rw, RWTableTag.Stack, [self.curr.call_id, stack_pointer])[5]
+        return self.rw_lookup(rw, RWTableTag.Stack, [self.curr.call_id, stack_pointer])[-4]
 
     def memory_write(self, memory_address: int, call_id: Optional[int] = None) -> int:
         return self.memory_lookup(RW.Write, memory_address, call_id)
@@ -430,15 +423,15 @@ class Instruction:
         if call_id is None:
             call_id = self.curr.call_id
 
-        return self.rw_lookup(rw, RWTableTag.Memory, [call_id, memory_address])[5]
+        return self.rw_lookup(rw, RWTableTag.Memory, [call_id, memory_address])[-4]
 
     def tx_refund_read(self, tx_id) -> int:
         row = self.rw_lookup(RW.Read, RWTableTag.TxRefund, [tx_id])
-        return row[4]
+        return row[-4]
 
     def account_read(self, account_address: int, account_field_tag: AccountFieldTag) -> int:
         row = self.rw_lookup(RW.Read, RWTableTag.Account, [account_address, account_field_tag])
-        return row[5]
+        return row[-4]
 
     def account_write(
         self,
@@ -450,7 +443,7 @@ class Instruction:
             RWTableTag.Account,
             [account_address, account_field_tag],
         )
-        return row[5], row[6]
+        return row[-4], row[-3]
 
     def account_write_with_reversion(
         self,
@@ -467,7 +460,7 @@ class Instruction:
             rw_counter_end_of_reversion,
             state_write_counter,
         )
-        return row[5], row[6]
+        return row[-4], row[-3]
 
     def add_balance(self, account_address: int, values: Sequence[int]) -> Tuple[int, int]:
         balance, balance_prev = self.account_write(account_address, AccountFieldTag.Balance)
@@ -523,9 +516,9 @@ class Instruction:
         row = self.rw_lookup(
             RW.Write,
             RWTableTag.TxAccessListAccount,
-            [tx_id, account_address, 1],
+            [tx_id, account_address, 0, 1],
         )
-        return row[5] - row[6]
+        return row[-4] - row[-3]
 
     def add_account_to_access_list_with_reversion(
         self,
@@ -537,12 +530,12 @@ class Instruction:
     ) -> bool:
         row = self.state_write_with_reversion(
             RWTableTag.TxAccessListAccount,
-            [tx_id, account_address, 1],
+            [tx_id, account_address, 0, 1],
             is_persistent,
             rw_counter_end_of_reversion,
             state_write_counter,
         )
-        return row[5] - row[6]
+        return row[-4] - row[-3]
 
     def add_account_storage_to_access_list(
         self,
@@ -555,7 +548,7 @@ class Instruction:
             RWTableTag.TxAccessListAccountStorage,
             [tx_id, account_address, storage_key, 1],
         )
-        return row[6] - row[7]
+        return row[-4] - row[-3]
 
     def add_account_storage_to_access_list_with_reversion(
         self,
@@ -573,7 +566,7 @@ class Instruction:
             rw_counter_end_of_reversion,
             state_write_counter,
         )
-        return row[6] - row[7]
+        return row[-4] - row[-3]
 
     def transfer_with_gas_fee(
         self,

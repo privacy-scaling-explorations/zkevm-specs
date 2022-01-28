@@ -35,8 +35,8 @@ def test_jumpi_cond_nonzero(opcode: Opcode, cond_bytes: bytes, dest_bytes: bytes
         bytecode_table=set(bytecode.table_assignments(randomness)),
         rw_table=set(
             [
-                (9, RW.Read, RWTableTag.Stack, 1, 1021, dest, 0, 0),
-                (10, RW.Read, RWTableTag.Stack, 1, 1022, cond, 0, 0),
+                (9, RW.Read, RWTableTag.Stack, 1, 1021, 0, dest, 0, 0, 0),
+                (10, RW.Read, RWTableTag.Stack, 1, 1022, 0, cond, 0, 0, 0),
             ],
         ),
     )
@@ -92,8 +92,8 @@ def test_jumpi_cond_zero(opcode: Opcode, cond_bytes: bytes, dest_bytes: bytes):
         bytecode_table=set(bytecode.table_assignments(randomness)),
         rw_table=set(
             [
-                (9, RW.Read, RWTableTag.Stack, 1, 1021, dest, 0, 0),
-                (10, RW.Read, RWTableTag.Stack, 1, 1022, cond, 0, 0),
+                (9, RW.Read, RWTableTag.Stack, 1, 1021, 0, dest, 0, 0, 0),
+                (10, RW.Read, RWTableTag.Stack, 1, 1022, 0, cond, 0, 0, 0),
             ],
         ),
     )
