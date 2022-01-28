@@ -30,7 +30,7 @@ def test_timestamp(timestamp: U64):
         bytecode_table=set(bytecode.table_assignments(randomness)),
         rw_table=set(
             [
-                (9, RW.Write, RWTableTag.Stack, 1, 1023, RLC(timestamp, randomness, 8), 0, 0),
+                (9, RW.Write, RWTableTag.Stack, 1, 1023, 0, RLC(timestamp, randomness, 8), 0, 0, 0),
             ]
         ),
     )
