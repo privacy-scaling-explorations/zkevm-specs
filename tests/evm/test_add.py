@@ -75,6 +75,3 @@ def test_add(opcode: Opcode, a: int, b: int, c: Optional[int]):
             ),
         ],
     )
-
-
-test_add(*TESTING_DATA[0])

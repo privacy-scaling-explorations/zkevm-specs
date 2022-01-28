@@ -48,7 +48,7 @@ class StepState:
         is_root: bool = False,
         is_create: bool = False,
         code_source: int = 0,
-        program_counter: FpNum = FpNum(0),
+        program_counter: int = 0,
         stack_pointer: int = 1024,
         gas_left: int = 0,
         memory_size: int = 0,
