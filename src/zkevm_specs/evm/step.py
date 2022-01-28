@@ -14,8 +14,8 @@ class StepState:
     """
 
     execution_state: ExecutionState
-    rw_counter: int
-    call_id: int
+    rw_counter: FpNum
+    call_id: FpNum
 
     # The following 3 fields decide the opcode source. There are 2 possible
     # cases:
@@ -28,17 +28,17 @@ class StepState:
     #   We set code_source to bytecode_hash and lookup bytecode_table.
     is_root: bool
     is_create: bool
-    code_source: int
+    code_source: RLC
 
     # The following fields change almost every step.
-    program_counter: int
-    stack_pointer: int
-    gas_left: int
+    program_counter: FpNum
+    stack_pointer: FpNum
+    gas_left: FpNum
 
     # The following fields could be further moved into rw_table if we find them
     # not often used.
-    memory_size: int
-    state_write_counter: int
+    memory_size: FpNum
+    state_write_counter: FpNum
 
     def __init__(
         self,
