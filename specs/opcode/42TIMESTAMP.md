@@ -13,7 +13,6 @@ pushes it onto the stack.
 
 1. construct block context table
 2. do busmapping lookup for stack write operation
-3. other implicit check: bytes length
 
 ## Constraints
 
@@ -26,8 +25,6 @@ pushes it onto the stack.
 3. Lookups:  2
    - `timestamp` is on the top of stack
    - `timestamp` is in the block context table
-4. Others:
-   - `timestamp` fits into 8 bytes
 
 ## Exceptions
 

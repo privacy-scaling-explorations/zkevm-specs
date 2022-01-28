@@ -7,7 +7,6 @@ def timestamp(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
     instruction.constrain_equal(opcode, Opcode.TIMESTAMP)
     timestamp = instruction.stack_push()
-    # in real circuit also check timestamp raw data is 64 bit length (8 bytes)
     # check block table for timestamp
     instruction.constrain_equal(
         timestamp,
