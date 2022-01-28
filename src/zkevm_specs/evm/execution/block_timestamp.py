@@ -9,8 +9,7 @@ def timestamp(instruction: Instruction):
     timestamp = instruction.stack_push()
     # check block table for timestamp
     instruction.constrain_equal(
-        timestamp,
-        instruction.block_context_lookup(BlockContextFieldTag.Timestamp),
+        timestamp, instruction.int_to_rlc(instruction.block_context_lookup(BlockContextFieldTag.Timestamp), 8)
     )
 
     instruction.step_state_transition_in_same_context(
