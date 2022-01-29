@@ -212,6 +212,9 @@ def test_begin_tx(tx: Transaction, callee: Account, result: bool):
                     0,
                 ),
                 (16, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.IsStatic, 0, 0, 0, 0, 0),
+                (17, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.LastCalleeId, 0, 0, 0, 0, 0),
+                (18, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.LastCalleeReturnDataOffset, 0, 0, 0, 0, 0),
+                (19, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.LastCalleeReturnDataLength, 0, 0, 0, 0, 0),
             ]
             + (
                 []
@@ -256,7 +259,7 @@ def test_begin_tx(tx: Transaction, callee: Account, result: bool):
             ),
             StepState(
                 execution_state=ExecutionState.EndTx if callee.code_hash() == EMPTY_CODE_HASH else ExecutionState.PUSH,
-                rw_counter=17,
+                rw_counter=20,
                 call_id=1,
                 is_root=True,
                 is_create=False,

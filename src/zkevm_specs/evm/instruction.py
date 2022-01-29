@@ -113,9 +113,6 @@ class Instruction:
                 "gas_left",
                 "memory_size",
                 "state_write_counter",
-                "last_callee_id",
-                "last_callee_return_data_offset",
-                "last_callee_return_data_length",
             ]
         )
 
@@ -160,9 +157,6 @@ class Instruction:
             program_counter=Transition.to(0),
             stack_pointer=Transition.to(1024),
             memory_size=Transition.to(0),
-            last_callee_id=Transition.to(0),
-            last_callee_return_data_offset=Transition.to(0),
-            last_callee_return_data_length=Transition.to(0),
         )
 
     def step_state_transition_in_same_context(
@@ -192,9 +186,6 @@ class Instruction:
             is_root=Transition.same(),
             is_create=Transition.same(),
             code_source=Transition.same(),
-            last_callee_id=Transition.same(),
-            last_callee_return_data_offset=Transition.same(),
-            last_callee_return_data_length=Transition.same(),
         )
 
     def sum(self, values: Sequence[int]) -> int:
