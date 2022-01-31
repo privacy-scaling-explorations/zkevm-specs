@@ -36,4 +36,4 @@ then push the `address` to the stack.
 
 ## Code
 
-Please refer to `src/zkevm_specs/evm/execution/coinbase.py`.
+Please refer to `src/zkevm_specs/evm/execution/block_coinbase.py`.

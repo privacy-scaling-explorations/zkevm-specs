@@ -18,8 +18,8 @@ def test_u256_and_u8s_conversion(u256, u8s):
 
 
 def test_table_sizes():
-    assert len(SignTable()) == 2 ** 18 - 1
-    assert len(RangeTable()) == 2 ** 16
+    assert len(SignTable()) == 2**18 - 1
+    assert len(RangeTable()) == 2**16
 
 
 @pytest.mark.parametrize(

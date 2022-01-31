@@ -7,8 +7,8 @@ from zkevm_specs.opcode import check_and, check_or, check_xor
 
 def test_and():
     for _ in range(5):
-        a = random.randint(0, 2 ** 256)
-        b = random.randint(0, 2 ** 256)
+        a = random.randint(0, 2**256)
+        b = random.randint(0, 2**256)
         c = a & b
         a8s = u256_to_u8s(a)
         b8s = u256_to_u8s(b)
@@ -18,8 +18,8 @@ def test_and():
 
 def test_check_or():
     for _ in range(5):
-        a = random.randint(0, 2 ** 256)
-        b = random.randint(0, 2 ** 256)
+        a = random.randint(0, 2**256)
+        b = random.randint(0, 2**256)
         c = a | b
         a8s = u256_to_u8s(a)
         b8s = u256_to_u8s(b)
@@ -30,8 +30,8 @@ def test_check_or():
 def test_check_xor():
     for i in range(5):
         print(i)
-        a = random.randint(0, 2 ** 256)
-        b = random.randint(0, 2 ** 256)
+        a = random.randint(0, 2**256)
+        b = random.randint(0, 2**256)
         c = a ^ b
         a8s = u256_to_u8s(a)
         b8s = u256_to_u8s(b)

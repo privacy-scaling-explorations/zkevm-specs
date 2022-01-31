@@ -65,12 +65,12 @@ def test_bytecode_empty():
 
 
 def test_bytecode_full():
-    bytecodes = [unroll(bytes([7] * 2 ** k), randomness)]
+    bytecodes = [unroll(bytes([7] * 2**k), randomness)]
     verify(k, bytecodes, randomness, True)
 
 
 def test_bytecode_incomplete():
-    bytecodes = [unroll(bytes([7] * (2 ** k + 1)), randomness)]
+    bytecodes = [unroll(bytes([7] * (2**k + 1)), randomness)]
     verify(k, bytecodes, randomness, False)
 
 

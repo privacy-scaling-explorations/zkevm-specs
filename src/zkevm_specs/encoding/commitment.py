@@ -23,7 +23,7 @@ class RangeTable(LookupTable):
 
 def commit(x: U256, random: int) -> Tuple[Tuple[U8, ...], int]:
     x8s = u256_to_u8s(x)
-    commitment = sum(x8 * random ** i for i, x8 in enumerate(x8s))
+    commitment = sum(x8 * random**i for i, x8 in enumerate(x8s))
     return x8s, commitment
 
 
@@ -36,7 +36,7 @@ def check_commitment(x8s: Sequence[U8], commitment: int, random: int, range_tabl
     """
     assert len(x8s) == 32
 
-    assert sum(x8 * random ** i for i, x8 in enumerate(x8s)) == commitment
+    assert sum(x8 * random**i for i, x8 in enumerate(x8s)) == commitment
 
     for i in range(0, 32, 2):
         low8, high8 = x8s[i], x8s[i + 1]
