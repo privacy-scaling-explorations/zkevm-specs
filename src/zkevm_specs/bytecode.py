@@ -89,7 +89,7 @@ def check_bytecode_row(
 # Populate the circuit matrix
 def assign_bytecode_circuit(k: int, bytecodes: Sequence[UnrolledBytecode], randomness: int):
     # All rows are usable in this emulation
-    last_row_offset = 2 ** k - 1
+    last_row_offset = 2**k - 1
 
     rows = []
     offset = 0
@@ -125,11 +125,11 @@ def assign_bytecode_circuit(k: int, bytecodes: Sequence[UnrolledBytecode], rando
 
             offset += 1
             # return when the circuit is full
-            if offset == 2 ** k:
+            if offset == 2**k:
                 return rows
 
     # Padding
-    for idx in range(offset, 2 ** k):
+    for idx in range(offset, 2**k):
         rows.append(
             Row(
                 idx == 0,

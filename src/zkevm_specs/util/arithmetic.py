@@ -31,7 +31,7 @@ class RLC:
 
     def __init__(self, int_or_bytes: Union[int, bytes], randomness: int, n_bytes: int = 32) -> None:
         if isinstance(int_or_bytes, int):
-            assert 0 <= int_or_bytes < 256 ** n_bytes, f"Value {int_or_bytes} too large to fit {n_bytes} bytes"
+            assert 0 <= int_or_bytes < 256**n_bytes, f"Value {int_or_bytes} too large to fit {n_bytes} bytes"
             self.le_bytes = int_or_bytes.to_bytes(n_bytes, "little")
         elif isinstance(int_or_bytes, bytes):
             assert len(int_or_bytes) <= n_bytes, f"Expected bytes with length less or equal than {n_bytes}"

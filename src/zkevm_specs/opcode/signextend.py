@@ -12,7 +12,7 @@ class SignByteTable(LookupTable):
 
     def __init__(self):
         super().__init__(["value", "sign"])
-        for v in range(0, 2 ** 8):
+        for v in range(0, 2**8):
             self.add_row(value=v, sign=(v >> 7) * 0xFF)
 
 

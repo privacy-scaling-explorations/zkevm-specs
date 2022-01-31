@@ -9,7 +9,7 @@ from common import NASTY_AB_VALUES
 
 @pytest.mark.parametrize("a,b", NASTY_AB_VALUES)
 def test_mul(a, b):
-    c = a * b % (2 ** 256)
+    c = a * b % (2**256)
     a8s = u256_to_u8s(U256(a))
     b8s = u256_to_u8s(U256(b))
     c8s = u256_to_u8s(U256(c))
@@ -28,10 +28,10 @@ def test_mul(a, b):
 
     # v0, v1
     v = [U256(0)] * 2
-    v[0] = U256((t[0] + t[1] * (2 ** 64) - c64s[0] - c64s[1] * (2 ** 64)) // (2 ** 128))
-    v[1] = U256((v[0] + t[2] + t[3] * (2 ** 64) - c64s[2] - c64s[3] * (2 ** 64)) // (2 ** 128))
-    assert 0 <= v[0] <= (2 ** 66)
-    assert 0 <= v[1] <= (2 ** 66)
+    v[0] = U256((t[0] + t[1] * (2**64) - c64s[0] - c64s[1] * (2**64)) // (2**128))
+    v[1] = U256((v[0] + t[2] + t[3] * (2**64) - c64s[2] - c64s[3] * (2**64)) // (2**128))
+    assert 0 <= v[0] <= (2**66)
+    assert 0 <= v[1] <= (2**66)
 
     v0 = u256_to_u8s(v[0])[:9]
     v1 = u256_to_u8s(v[1])[:9]
