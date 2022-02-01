@@ -29,7 +29,7 @@ class RLC:
             assert 0 <= int_or_bytes < 256**n_bytes, f"Value {int_or_bytes} too large to fit {n_bytes} bytes"
             self.le_bytes = int_or_bytes.to_bytes(n_bytes, "little")
         elif isinstance(int_or_bytes, FQ):
-            assert int_or_bytes.n < 256 ** n_bytes, f"Value {int_or_bytes} too large to fit {n_bytes} bytes"
+            assert int_or_bytes.n < 256**n_bytes, f"Value {int_or_bytes} too large to fit {n_bytes} bytes"
             self.le_bytes = int_or_bytes.n.to_bytes(n_bytes, "little")
         elif isinstance(int_or_bytes, bytes):
             assert len(int_or_bytes) <= n_bytes, f"Expected bytes with length less or equal than {n_bytes}"

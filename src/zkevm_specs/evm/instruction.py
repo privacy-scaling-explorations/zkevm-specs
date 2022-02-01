@@ -221,8 +221,8 @@ class Instruction:
 
     def compare(self, lhs: FQ, rhs: FQ, n_bytes: int) -> Tuple[bool, bool]:
         assert n_bytes <= MAX_N_BYTES, "Too many bytes to composite an integer in field"
-        assert lhs.n < 256 ** n_bytes, f"lhs {lhs} exceeds the range of {n_bytes} bytes"
-        assert rhs.n < 256 ** n_bytes, f"rhs {rhs} exceeds the range of {n_bytes} bytes"
+        assert lhs.n < 256**n_bytes, f"lhs {lhs} exceeds the range of {n_bytes} bytes"
+        assert rhs.n < 256**n_bytes, f"rhs {rhs} exceeds the range of {n_bytes} bytes"
 
         return lhs.n < rhs.n, lhs.n == rhs.n
 
