@@ -1,6 +1,6 @@
 from typing import Any, Sequence
 from .execution_state import ExecutionState
-from ..util import FpNum, RLC
+from ..util import FQ, RLC
 
 
 class StepState:
@@ -14,8 +14,8 @@ class StepState:
     """
 
     execution_state: ExecutionState
-    rw_counter: FpNum
-    call_id: FpNum
+    rw_counter: FQ
+    call_id: FQ
 
     # The following 3 fields decide the opcode source. There are 2 possible
     # cases:
@@ -31,14 +31,14 @@ class StepState:
     code_source: RLC
 
     # The following fields change almost every step.
-    program_counter: FpNum
-    stack_pointer: FpNum
-    gas_left: FpNum
+    program_counter: FQ
+    stack_pointer: FQ
+    gas_left: FQ
 
     # The following fields could be further moved into rw_table if we find them
     # not often used.
-    memory_size: FpNum
-    state_write_counter: FpNum
+    memory_size: FQ
+    state_write_counter: FQ
 
     def __init__(
         self,
@@ -55,13 +55,13 @@ class StepState:
         state_write_counter: int = 0,
     ) -> None:
         self.execution_state = execution_state
-        self.rw_counter = FpNum(rw_counter)
-        self.call_id = FpNum(call_id)
+        self.rw_counter = FQ(rw_counter)
+        self.call_id = FQ(call_id)
         self.is_root = is_root
         self.is_create = is_create
         self.code_source = code_source
-        self.program_counter = FpNum(program_counter)
-        self.stack_pointer = FpNum(stack_pointer)
-        self.gas_left = FpNum(gas_left)
-        self.memory_size = FpNum(memory_size)
-        self.state_write_counter = FpNum(state_write_counter)
+        self.program_counter = FQ(program_counter)
+        self.stack_pointer = FQ(stack_pointer)
+        self.gas_left = FQ(gas_left)
+        self.memory_size = FQ(memory_size)
+        self.state_write_counter = FQ(state_write_counter)

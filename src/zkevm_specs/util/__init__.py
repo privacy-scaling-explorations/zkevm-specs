@@ -13,7 +13,7 @@ def rand_range(stop: Union[int, float] = 2**256) -> int:
 
 
 def rand_fp() -> int:
-    return rand_range(FpNum.FP_MODULUS)
+    return rand_range(FQ.field_modulus)
 
 
 def rand_address() -> U160:

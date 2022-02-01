@@ -5,7 +5,8 @@ from typing import Optional, Sequence, Tuple, Union
 from ..util import (
     Array4,
     Array10,
-    FpNum,
+    FQ,
+    IntOrFQ,
     RLC,
     MAX_N_BYTES,
     N_BYTES_MEMORY_ADDRESS,
@@ -89,16 +90,16 @@ class Instruction:
         self.is_first_step = is_first_step
         self.is_last_step = is_last_step
 
-    def constrain_zero(self, value: FpNum):
+    def constrain_zero(self, value: FQ):
         assert value == 0, ConstraintUnsatFailure(f"Expected value to be 0, but got {value}")
 
-    def constrain_equal(self, lhs: FpNum, rhs: FpNum):
+    def constrain_equal(self, lhs: FQ, rhs: FQ):
         assert lhs == rhs, ConstraintUnsatFailure(f"Expected values to be equal, but got {lhs} and {rhs}")
 
-    def constrain_bool(self, num: FpNum):
-        assert num.value in [0, 1], ConstraintUnsatFailure(f"Expected value to be a bool, but got {num}")
+    def constrain_bool(self, num: FQ):
+        assert num.n in [0, 1], ConstraintUnsatFailure(f"Expected value to be a bool, but got {num}")
 
-    def constrain_gas_left_not_underflow(self, gas_left: FpNum):
+    def constrain_gas_left_not_underflow(self, gas_left: FQ):
         self.bytes_range_lookup(gas_left, N_BYTES_GAS)
 
     def constrain_step_state_transition(self, **kwargs: Transition):
@@ -189,54 +190,55 @@ class Instruction:
             code_source=Transition.same(),
         )
 
-    def sum(self, values: Sequence[FpNum]) -> FpNum:
+    def sum(self, values: Sequence[FQ]) -> FQ:
         return sum(values)
 
-    def is_zero(self, value: Union[FpNum, RLC]) -> bool:
+    def is_zero(self, value: Union[FQ, RLC]) -> bool:
         return value == 0
 
-    def is_equal(self, lhs: Union[FpNum, RLC], rhs: Union[FpNum, RLC]) -> bool:
+    def is_equal(self, lhs: Union[FQ, RLC], rhs: Union[FQ, RLC]) -> bool:
         if isinstance(lhs, RLC):
             lhs = lhs.value
         if isinstance(rhs, RLC):
             rhs = rhs.value
         return self.is_zero(lhs - rhs)
 
-    def continuous_selectors(self, t: Union[FpNum, int], n: int) -> Sequence[bool]:
+    def continuous_selectors(self, t: IntOrFQ, n: int) -> Sequence[bool]:
+        t = t.n if isinstance(t, FQ) else t
         return [i < t for i in range(n)]
 
-    def select(self, condition: bool, when_true: FpNum, when_false: FpNum) -> FpNum:
+    def select(self, condition: bool, when_true: FQ, when_false: FQ) -> FQ:
         return when_true if condition else when_false
 
     def pair_select(self, value: int, lhs: int, rhs: int) -> Tuple[bool, bool]:
         return value == lhs, value == rhs
 
-    def constant_divmod(self, numerator: FpNum, denominator: Union[int, FpNum], n_bytes: int) -> Tuple[int, int]:
-        quotient, remainder = divmod(numerator.value, FpNum(denominator).value)
-        quotient, remainder = FpNum(quotient), FpNum(remainder)
+    def constant_divmod(self, numerator: IntOrFQ, denominator: IntOrFQ, n_bytes: int) -> Tuple[int, int]:
+        quotient, remainder = divmod(FQ(numerator).n, FQ(denominator).n)
+        quotient, remainder = FQ(quotient), FQ(remainder)
         self.bytes_range_lookup(quotient, n_bytes)
         return quotient, remainder
 
-    def compare(self, lhs: FpNum, rhs: FpNum, n_bytes: int) -> Tuple[bool, bool]:
+    def compare(self, lhs: FQ, rhs: FQ, n_bytes: int) -> Tuple[bool, bool]:
         assert n_bytes <= MAX_N_BYTES, "Too many bytes to composite an integer in field"
-        assert lhs < 256 ** n_bytes, f"lhs {lhs} exceeds the range of {n_bytes} bytes"
-        assert rhs < 256 ** n_bytes, f"rhs {rhs} exceeds the range of {n_bytes} bytes"
+        assert lhs.n < 256 ** n_bytes, f"lhs {lhs} exceeds the range of {n_bytes} bytes"
+        assert rhs.n < 256 ** n_bytes, f"rhs {rhs} exceeds the range of {n_bytes} bytes"
 
-        return lhs < rhs, lhs == rhs
+        return lhs.n < rhs.n, lhs.n == rhs.n
 
-    def min(self, lhs: FpNum, rhs: FpNum, n_bytes: int) -> FpNum:
+    def min(self, lhs: FQ, rhs: FQ, n_bytes: int) -> FQ:
         lt, _ = self.compare(lhs, rhs, n_bytes)
         return self.select(lt, lhs, rhs)
 
-    def max(self, lhs: FpNum, rhs: FpNum, n_bytes: int) -> FpNum:
+    def max(self, lhs: FQ, rhs: FQ, n_bytes: int) -> FQ:
         lt, _ = self.compare(lhs, rhs, n_bytes)
         return self.select(lt, rhs, lhs)
 
     def add_words(self, addends: Sequence[RLC]) -> Tuple[RLC, int]:
         addends_lo, addends_hi = list(zip(*map(self.word_to_lo_hi, addends)))
 
-        carry_lo, sum_lo = divmod(self.sum(addends_lo), 1 << 128)
-        carry_hi, sum_hi = divmod(self.sum(addends_hi) + carry_lo, 1 << 128)
+        carry_lo, sum_lo = divmod(self.sum(addends_lo).n, 1 << 128)
+        carry_hi, sum_hi = divmod((self.sum(addends_hi) + carry_lo).n, 1 << 128)
 
         sum_bytes = sum_lo.to_bytes(16, "little") + sum_hi.to_bytes(16, "little")
 
@@ -246,20 +248,20 @@ class Instruction:
         minuend_lo, minuend_hi = self.word_to_lo_hi(minuend)
         subtrahend_lo, subtrahend_hi = self.word_to_lo_hi(subtrahend)
 
-        borrow_lo = minuend_lo < subtrahend_lo
+        borrow_lo = minuend_lo.n < subtrahend_lo.n
         diff_lo = minuend_lo - subtrahend_lo + (1 << 128 if borrow_lo else 0)
-        borrow_hi = minuend_hi < subtrahend_hi + borrow_lo
+        borrow_hi = minuend_hi.n < subtrahend_hi.n + borrow_lo
         diff_hi = minuend_hi - subtrahend_hi - borrow_lo + (1 << 128 if borrow_hi else 0)
 
-        diff_bytes = diff_lo.to_bytes(16, "little") + diff_hi.to_bytes(16, "little")
+        diff_bytes = diff_lo.n.to_bytes(16, "little") + diff_hi.n.to_bytes(16, "little")
 
         return RLC(diff_bytes, self.randomness), borrow_hi
 
-    def mul_word_by_u64(self, multiplicand: RLC, multiplier: FpNum) -> Tuple[RLC, int]:
+    def mul_word_by_u64(self, multiplicand: RLC, multiplier: FQ) -> Tuple[RLC, int]:
         multiplicand_lo, multiplicand_hi = self.word_to_lo_hi(multiplicand)
 
-        quotient_lo, product_lo = divmod(multiplicand_lo * multiplier.value, 1 << 128)
-        quotient_hi, product_hi = divmod(multiplicand_hi * multiplier.value + quotient_lo, 1 << 128)
+        quotient_lo, product_lo = divmod((multiplicand_lo * multiplier).n, 1 << 128)
+        quotient_hi, product_hi = divmod((multiplicand_hi * multiplier + quotient_lo).n, 1 << 128)
 
         product_bytes = product_lo.to_bytes(16, "little") + product_hi.to_bytes(16, "little")
 
@@ -282,30 +284,33 @@ class Instruction:
 
     def word_to_lo_hi(self, word: RLC) -> Tuple[Sequence[int], Sequence[int]]:
         word_le_bytes = self.rlc_to_le_bytes(word)
-        assert len(word_le_bytes) == 32, "Expected RLC to contain 32 bytes"
-        return self.bytes_to_int(word_le_bytes[:16]), self.bytes_to_int(word_le_bytes[16:])
+        assert len(word_le_bytes) == 32, "Expected word to contain 32 bytes"
+        return self.bytes_to_fq(word_le_bytes[:16]), self.bytes_to_fq(word_le_bytes[16:])
 
     def int_to_rlc(self, value: int, n_bytes: int) -> RLC:
         return RLC(value, self.randomness, n_bytes)
 
     def bytes_to_int(self, value: Sequence[int]) -> int:
         assert len(value) <= MAX_N_BYTES, "Too many bytes to composite an integer in field"
-
         return int.from_bytes(value, "little")
 
-    def range_lookup(self, value: FpNum, range: int):
+    def bytes_to_fq(self, value: Sequence[int]) -> FQ:
+        assert len(value) <= MAX_N_BYTES, "Too many bytes to composite an integer in field"
+        return FQ(int.from_bytes(value, "little"))
+
+    def range_lookup(self, value: FQ, range: int):
         self.tables.fixed_lookup([FixedTableTag.range_table_tag(range), value, 0, 0])
 
-    def byte_range_lookup(self, value: FpNum):
-        assert isinstance(value, FpNum), f"Expect type FpNum, but get type {type(value)}"
+    def byte_range_lookup(self, value: FQ):
+        assert isinstance(value, FQ), f"Expect type FQ, but get type {type(value)}"
         self.range_lookup(value, 256)
 
-    def bytes_range_lookup(self, value: FpNum, n_bytes: int) -> Sequence[int]:
+    def bytes_range_lookup(self, value: FQ, n_bytes: int) -> Sequence[int]:
         assert n_bytes <= MAX_N_BYTES, "Too many bytes to composite an integer in field"
-        assert isinstance(value, FpNum)
+        assert isinstance(value, FQ)
 
         try:
-            return value.value.to_bytes(n_bytes, "little")
+            return value.n.to_bytes(n_bytes, "little")
         except OverflowError:
             raise ConstraintUnsatFailure(f"Value {value} has too many bytes to fit {n_bytes} bytes")
 
@@ -407,24 +412,24 @@ class Instruction:
         self.stack_pointer_offset -= 1
         return self.stack_lookup(True, self.stack_pointer_offset)
 
-    def stack_lookup(self, rw: RW, stack_pointer_offset: int) -> Union[FpNum, RLC]:
+    def stack_lookup(self, rw: RW, stack_pointer_offset: int) -> Union[FQ, RLC]:
         stack_pointer = self.curr.stack_pointer + stack_pointer_offset
         return self.rw_lookup(rw, RWTableTag.Stack, [self.curr.call_id, stack_pointer])[-4]
 
-    def memory_write(self, memory_address: int, call_id: Optional[int] = None) -> FpNum:
+    def memory_write(self, memory_address: int, call_id: Optional[int] = None) -> FQ:
         return self.memory_lookup(RW.Write, memory_address, call_id)
 
-    def memory_lookup(self, rw: RW, memory_address: int, call_id: Optional[int] = None) -> FpNum:
+    def memory_lookup(self, rw: RW, memory_address: int, call_id: Optional[int] = None) -> FQ:
         if call_id is None:
             call_id = self.curr.call_id
 
         return self.rw_lookup(rw, RWTableTag.Memory, [call_id, memory_address])[-4]
 
-    def tx_refund_read(self, tx_id) -> FpNum:
+    def tx_refund_read(self, tx_id) -> FQ:
         row = self.rw_lookup(RW.Read, RWTableTag.TxRefund, [tx_id])
         return row[-4]
 
-    def account_read(self, account_address: int, account_field_tag: AccountFieldTag) -> FpNum:
+    def account_read(self, account_address: int, account_field_tag: AccountFieldTag) -> FQ:
         row = self.rw_lookup(RW.Read, RWTableTag.Account, [account_address, account_field_tag])
         return row[-4]
 
@@ -432,7 +437,7 @@ class Instruction:
         self,
         account_address: int,
         account_field_tag: AccountFieldTag,
-    ) -> Tuple[FpNum, FpNum]:
+    ) -> Tuple[FQ, FQ]:
         row = self.rw_lookup(
             RW.Write,
             RWTableTag.Account,
@@ -447,7 +452,7 @@ class Instruction:
         is_persistent: bool,
         rw_counter_end_of_reversion: int,
         state_write_counter: Optional[int] = None,
-    ) -> Tuple[FpNum, FpNum]:
+    ) -> Tuple[FQ, FQ]:
         row = self.state_write_with_reversion(
             RWTableTag.Account,
             [account_address, account_field_tag],
@@ -457,7 +462,7 @@ class Instruction:
         )
         return row[-4], row[-3]
 
-    def add_balance(self, account_address: int, values: Sequence[int]) -> Tuple[FpNum, FpNum]:
+    def add_balance(self, account_address: int, values: Sequence[int]) -> Tuple[FQ, FQ]:
         balance, balance_prev = self.account_write(account_address, AccountFieldTag.Balance)
         result, carry = self.add_words([balance_prev, *values])
         self.constrain_equal(balance, result)
@@ -471,7 +476,7 @@ class Instruction:
         is_persistent: bool,
         rw_counter_end_of_reversion: int,
         state_write_counter: Optional[int] = None,
-    ) -> Tuple[FpNum, FpNum]:
+    ) -> Tuple[FQ, FQ]:
         balance, balance_prev = self.account_write_with_reversion(
             account_address, AccountFieldTag.Balance, is_persistent, rw_counter_end_of_reversion, state_write_counter
         )
@@ -480,7 +485,7 @@ class Instruction:
         self.constrain_zero(carry)
         return balance, balance_prev
 
-    def sub_balance(self, account_address: int, values: Sequence[int]) -> Tuple[FpNum, FpNum]:
+    def sub_balance(self, account_address: int, values: Sequence[int]) -> Tuple[FQ, FQ]:
         balance, balance_prev = self.account_write(account_address, AccountFieldTag.Balance)
         result, carry = self.add_words([balance, *values])
         self.constrain_equal(balance_prev, result)
@@ -494,7 +499,7 @@ class Instruction:
         is_persistent: bool,
         rw_counter_end_of_reversion: int,
         state_write_counter: Optional[int] = None,
-    ) -> Tuple[FpNum, FpNum]:
+    ) -> Tuple[FQ, FQ]:
         balance, balance_prev = self.account_write_with_reversion(
             account_address, AccountFieldTag.Balance, is_persistent, rw_counter_end_of_reversion, state_write_counter
         )
@@ -507,7 +512,7 @@ class Instruction:
         self,
         tx_id: int,
         account_address: int,
-    ) -> FpNum:
+    ) -> FQ:
         row = self.rw_lookup(
             RW.Write,
             RWTableTag.TxAccessListAccount,
@@ -522,7 +527,7 @@ class Instruction:
         is_persistent: bool,
         rw_counter_end_of_reversion: int,
         state_write_counter: Optional[int] = None,
-    ) -> FpNum:
+    ) -> FQ:
         row = self.state_write_with_reversion(
             RWTableTag.TxAccessListAccount,
             [tx_id, account_address, 0, 1],
