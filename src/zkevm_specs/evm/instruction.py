@@ -1,6 +1,6 @@
 from __future__ import annotations
 from enum import IntEnum, auto
-from typing import Optional, Sequence, Tuple, Union
+from typing import Optional, Sequence, Tuple, Union, Mapping
 
 from ..util import (
     Array4,
@@ -12,6 +12,7 @@ from ..util import (
     N_BYTES_MEMORY_ADDRESS,
     N_BYTES_MEMORY_SIZE,
     N_BYTES_GAS,
+    GAS_COST_COPY,
     MEMORY_EXPANSION_QUAD_DENOMINATOR,
     MEMORY_EXPANSION_LINEAR_COEFF,
 )
@@ -59,7 +60,7 @@ class Transition:
 
 
 class Instruction:
-    randomness: int
+    randomness: FQ
     tables: Tables
     curr: StepState
     next: StepState
@@ -76,7 +77,7 @@ class Instruction:
 
     def __init__(
         self,
-        randomness: int,
+        randomness: FQ,
         tables: Tables,
         curr: StepState,
         next: StepState,
@@ -104,9 +105,9 @@ class Instruction:
         )
 
     def constrain_gas_left_not_underflow(self, gas_left: FQ):
-        self.bytes_range_lookup(gas_left, N_BYTES_GAS)
+        self.range_check(gas_left, N_BYTES_GAS)
 
-    def constrain_step_state_transition(self, **kwargs: Transition):
+    def constrain_step_state_transition(self, **kwargs: Mapping[str, Transition]):
         keys = set(
             [
                 "rw_counter",
@@ -127,7 +128,10 @@ class Instruction:
         ), f"Invalid keys {list(set(kwargs.keys()).difference(keys))} for step state transition"
 
         for key, transition in kwargs.items():
+            # for key in keys:
             curr, next = getattr(self.curr, key), getattr(self.next, key)
+            # transition = kwargs.get(key, Transition.same())
+            # print(key, curr, next)
             if transition.kind == TransitionKind.Same:
                 assert next == curr, ConstraintUnsatFailure(
                     f"State {key} should be same as {curr}, but got {next}"
@@ -216,22 +220,21 @@ class Instruction:
     def select(self, condition: bool, when_true: FQ, when_false: FQ) -> FQ:
         return when_true if condition else when_false
 
-    def pair_select(self, value: int, lhs: int, rhs: int) -> Tuple[bool, bool]:
+    def pair_select(self, value: FQ, lhs: FQ, rhs: FQ) -> Tuple[bool, bool]:
         return value == lhs, value == rhs
 
     def constant_divmod(
         self, numerator: IntOrFQ, denominator: IntOrFQ, n_bytes: int
-    ) -> Tuple[int, int]:
+    ) -> Tuple[FQ, FQ]:
         quotient, remainder = divmod(FQ(numerator).n, FQ(denominator).n)
         quotient, remainder = FQ(quotient), FQ(remainder)
-        self.bytes_range_lookup(quotient, n_bytes)
+        self.range_check(quotient, n_bytes)
         return quotient, remainder
 
     def compare(self, lhs: FQ, rhs: FQ, n_bytes: int) -> Tuple[bool, bool]:
         assert n_bytes <= MAX_N_BYTES, "Too many bytes to composite an integer in field"
         assert lhs.n < 256**n_bytes, f"lhs {lhs} exceeds the range of {n_bytes} bytes"
         assert rhs.n < 256**n_bytes, f"rhs {rhs} exceeds the range of {n_bytes} bytes"
-
         return lhs.n < rhs.n, lhs.n == rhs.n
 
     def min(self, lhs: FQ, rhs: FQ, n_bytes: int) -> FQ:
@@ -242,13 +245,14 @@ class Instruction:
         lt, _ = self.compare(lhs, rhs, n_bytes)
         return self.select(lt, rhs, lhs)
 
-    def add_words(self, addends: Sequence[RLC]) -> Tuple[RLC, int]:
+    def add_words(self, addends: Sequence[RLC]) -> Tuple[RLC, FQ]:
         addends_lo, addends_hi = list(zip(*map(self.word_to_lo_hi, addends)))
 
         carry_lo, sum_lo = divmod(self.sum(addends_lo).n, 1 << 128)
         carry_hi, sum_hi = divmod((self.sum(addends_hi) + carry_lo).n, 1 << 128)
 
         sum_bytes = sum_lo.to_bytes(16, "little") + sum_hi.to_bytes(16, "little")
+        carry_hi = FQ(carry_hi)
 
         return RLC(sum_bytes, self.randomness), carry_hi
 
@@ -265,34 +269,35 @@ class Instruction:
 
         return RLC(diff_bytes, self.randomness), borrow_hi
 
-    def mul_word_by_u64(self, multiplicand: RLC, multiplier: FQ) -> Tuple[RLC, int]:
+    def mul_word_by_u64(self, multiplicand: RLC, multiplier: FQ) -> Tuple[RLC, FQ]:
         multiplicand_lo, multiplicand_hi = self.word_to_lo_hi(multiplicand)
 
         quotient_lo, product_lo = divmod((multiplicand_lo * multiplier).n, 1 << 128)
         quotient_hi, product_hi = divmod((multiplicand_hi * multiplier + quotient_lo).n, 1 << 128)
 
         product_bytes = product_lo.to_bytes(16, "little") + product_hi.to_bytes(16, "little")
+        quotient_hi = FQ(quotient_hi)
 
         return RLC(product_bytes, self.randomness), quotient_hi
 
     def rlc_to_le_bytes(self, rlc: RLC) -> bytes:
         return rlc.le_bytes
 
-    def rlc_to_int_unchecked(self, rlc: RLC, n_bytes: int) -> int:
+    def rlc_to_fq_unchecked(self, rlc: RLC, n_bytes: int) -> FQ:
         rlc_le_bytes = self.rlc_to_le_bytes(rlc)
-        return self.bytes_to_int(rlc_le_bytes[:n_bytes]), self.is_zero(
+        return self.bytes_to_fq(rlc_le_bytes[:n_bytes]), self.is_zero(
             self.sum(rlc_le_bytes[n_bytes:])
         )
 
-    def rlc_to_int_exact(self, rlc: RLC, n_bytes: int) -> int:
+    def rlc_to_fq_exact(self, rlc: RLC, n_bytes: int) -> FQ:
         rlc_le_bytes = self.rlc_to_le_bytes(rlc)
 
         if sum(rlc_le_bytes[n_bytes:]) > 0:
             raise ConstraintUnsatFailure(f"Value {rlc} has too many bytes to fit {n_bytes} bytes")
 
-        return self.bytes_to_int(rlc_le_bytes[:n_bytes])
+        return self.bytes_to_fq(rlc_le_bytes[:n_bytes])
 
-    def word_to_lo_hi(self, word: RLC) -> Tuple[Sequence[int], Sequence[int]]:
+    def word_to_lo_hi(self, word: RLC) -> Tuple[FQ, FQ]:
         word_le_bytes = self.rlc_to_le_bytes(word)
         assert len(word_le_bytes) == 32, "Expected word to contain 32 bytes"
         return self.bytes_to_fq(word_le_bytes[:16]), self.bytes_to_fq(word_le_bytes[16:])
@@ -315,43 +320,41 @@ class Instruction:
         assert isinstance(value, FQ), f"Expect type FQ, but get type {type(value)}"
         self.range_lookup(value, 256)
 
-    def bytes_range_lookup(self, value: FQ, n_bytes: int) -> Sequence[int]:
+    def range_check(self, value: FQ, n_bytes: int) -> bytes:
         assert n_bytes <= MAX_N_BYTES, "Too many bytes to composite an integer in field"
         assert isinstance(value, FQ)
-
         try:
             return value.n.to_bytes(n_bytes, "little")
         except OverflowError:
             raise ConstraintUnsatFailure(f"Value {value} has too many bytes to fit {n_bytes} bytes")
 
-    def fixed_lookup(self, tag: FixedTableTag, inputs: Sequence[int]) -> Array4:
+    def fixed_lookup(self, tag: FixedTableTag, inputs: Sequence[FQ]) -> Array4:
         return self.tables.fixed_lookup([tag] + inputs)
 
-    def block_context_lookup(self, tag: BlockContextFieldTag, index: int = 0) -> int:
+    def block_context_lookup(self, tag: BlockContextFieldTag, index: FQ = FQ.zero()) -> FQ:
         return self.tables.block_lookup([tag, index])[2]
 
-    def tx_context_lookup(self, tx_id: int, field_tag: TxContextFieldTag) -> Union[int, RLC]:
-        return self.tables.tx_lookup([tx_id, field_tag, 0])[3]
+    def tx_context_lookup(self, tx_id: FQ, field_tag: TxContextFieldTag, index: FQ = FQ.zero()) -> Union[FQ, RLC]:
+        return self.tables.tx_lookup([tx_id, field_tag, index])[3]
 
-    def tx_calldata_lookup(self, tx_id: int, index: int) -> int:
+    def tx_calldata_lookup(self, tx_id: FQ, index: FQ) -> FQ:
         return self.tables.tx_lookup([tx_id, TxContextFieldTag.CallData, index])[3]
 
-    def bytecode_lookup(self, bytecode_hash: int, index: int, is_code: int) -> int:
+    def bytecode_lookup(self, bytecode_hash: RLC, index: FQ, is_code: FQ) -> FQ:
         return self.tables.bytecode_lookup([bytecode_hash, index, Tables._, is_code])[2]
 
-    def tx_gas_price(self, tx_id: int) -> int:
+    def tx_gas_price(self, tx_id: FQ) -> FQ:
         return self.tx_context_lookup(tx_id, TxContextFieldTag.GasPrice)
 
     def responsible_opcode_lookup(self, opcode: int):
         self.fixed_lookup(FixedTableTag.ResponsibleOpcode, [self.curr.execution_state, opcode])
 
-    def opcode_lookup(self, is_code: bool) -> int:
+    def opcode_lookup(self, is_code: bool) -> FQ:
         index = self.curr.program_counter + self.program_counter_offset
         self.program_counter_offset += 1
-
         return self.opcode_lookup_at(index, is_code)
 
-    def opcode_lookup_at(self, index: int, is_code: bool) -> int:
+    def opcode_lookup_at(self, index: FQ, is_code: bool) -> FQ:
         if self.curr.is_root and self.curr.is_create:
             raise NotImplementedError(
                 "The opcode source when is_root and is_create (root creation call) is not determined yet"
@@ -365,7 +368,6 @@ class Instruction:
         if rw_counter is None:
             rw_counter = self.curr.rw_counter + self.rw_counter_offset
             self.rw_counter_offset += 1
-
         return self.tables.rw_lookup([rw_counter, rw, tag] + inputs)
 
     def state_write_only_persistent(
@@ -409,18 +411,17 @@ class Instruction:
 
     def call_context_lookup(
         self, field_tag: CallContextFieldTag, rw: RW = RW.Read, call_id: Optional[int] = None
-    ) -> int:
+    ) -> Union[FQ, RLC]:
         if call_id is None:
             call_id = self.curr.call_id
-
         return self.rw_lookup(rw, RWTableTag.CallContext, [call_id, field_tag])[-4]
 
-    def stack_pop(self) -> Union[int, RLC]:
+    def stack_pop(self) -> Union[FQ, RLC]:
         stack_pointer_offset = self.stack_pointer_offset
         self.stack_pointer_offset += 1
         return self.stack_lookup(False, stack_pointer_offset)
 
-    def stack_push(self) -> Union[int, RLC]:
+    def stack_push(self) -> Union[FQ, RLC]:
         self.stack_pointer_offset -= 1
         return self.stack_lookup(True, self.stack_pointer_offset)
 
@@ -434,7 +435,6 @@ class Instruction:
     def memory_lookup(self, rw: RW, memory_address: int, call_id: Optional[int] = None) -> FQ:
         if call_id is None:
             call_id = self.curr.call_id
-
         return self.rw_lookup(rw, RWTableTag.Memory, [call_id, memory_address])[-4]
 
     def tx_refund_read(self, tx_id) -> FQ:
@@ -596,7 +596,7 @@ class Instruction:
         gas_fee: int,
         is_persistent: bool,
         rw_counter_end_of_reversion: int,
-    ) -> Tuple[Tuple[int, int], Tuple[int, int]]:
+    ) -> Tuple[Tuple[FQ, FQ], Tuple[FQ, FQ]]:
         sender_balance_pair = self.sub_balance_with_reversion(
             sender_address,
             [value, gas_fee],
@@ -636,27 +636,26 @@ class Instruction:
         )
         return sender_balance_pair, receiver_balance_pair
 
-    def memory_offset_and_length_to_int(self, offset: RLC, length: RLC) -> Tuple[int, int]:
-        length = self.rlc_to_int_exact(length, N_BYTES_MEMORY_ADDRESS)
+    def memory_offset_and_length(self, offset: RLC, length: RLC) -> Tuple[FQ, FQ]:
+        length = self.rlc_to_fq_exact(length, N_BYTES_MEMORY_SIZE)
         if self.is_zero(length):
-            return 0, 0
-
-        offset = self.rlc_to_int_exact(offset, N_BYTES_MEMORY_ADDRESS)
+            return FQ.zero(), FQ.zero()
+        offset = self.rlc_to_fq_exact(offset, N_BYTES_MEMORY_ADDRESS)
         return offset, length
 
-    def memory_gas_cost(self, memory_size: int) -> int:
+    def memory_gas_cost(self, memory_size: FQ) -> FQ:
         quadratic_cost, _ = self.constant_divmod(
             memory_size * memory_size, MEMORY_EXPANSION_QUAD_DENOMINATOR, N_BYTES_GAS
         )
         linear_cost = MEMORY_EXPANSION_LINEAR_COEFF * memory_size
         return quadratic_cost + linear_cost
 
-    def memory_expansion_constant_length(self, offset: int, length: int) -> Tuple[int, int]:
+    def memory_expansion_constant_length(self, offset: FQ, length: FQ) -> Tuple[FQ, FQ]:
         memory_size, _ = self.constant_divmod(length + offset + 31, 32, N_BYTES_MEMORY_SIZE)
 
         next_memory_size = self.max(self.curr.memory_size, memory_size, N_BYTES_MEMORY_SIZE)
 
-        memory_gas_cost = self.memory_gas_cost(self.curr.memory_size)
+        memory_gas_cost = self.memory_expansion_gas_cost(self.curr.memory_size)
         memory_gas_cost_next = self.memory_gas_cost(next_memory_size)
         memory_expansion_gas_cost = memory_gas_cost_next - memory_gas_cost
 
@@ -664,11 +663,11 @@ class Instruction:
 
     def memory_expansion_dynamic_length(
         self,
-        cd_offset: int,
-        cd_length: int,
-        rd_offset: Optional[int] = None,
-        rd_length: Optional[int] = None,
-    ) -> Tuple[int, int]:
+        cd_offset: FQ,
+        cd_length: FQ,
+        rd_offset: Optional[FQ] = None,
+        rd_length: Optional[FQ] = None,
+    ) -> Tuple[FQ, FQ]:
         cd_memory_size, _ = self.constant_divmod(
             cd_offset + cd_length + 31, 32, N_BYTES_MEMORY_SIZE
         )
@@ -685,3 +684,9 @@ class Instruction:
         memory_expansion_gas_cost = memory_gas_cost_next - memory_gas_cost
 
         return next_memory_size, memory_expansion_gas_cost
+
+    def memory_copier_gas_cost(self, length: FQ, memory_expansion_gas_cost: FQ) -> FQ:
+        word_size, _ = self.constant_divmod(length + 31, 32, N_BYTES_MEMORY_SIZE)
+        gas_cost = word_size * GAS_COST_COPY + memory_expansion_gas_cost
+        self.range_check(gas_cost, N_BYTES_GAS)
+        return gas_cost

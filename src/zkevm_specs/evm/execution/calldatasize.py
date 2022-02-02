@@ -6,7 +6,6 @@ from ...util.param import N_BYTES_MEMORY_ADDRESS
 
 def calldatasize(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
-    instruction.constrain_equal(opcode, Opcode.CALLDATASIZE)
 
     # check [rw_table, call_context] table for call data length and compare
     # against stack top after push.
