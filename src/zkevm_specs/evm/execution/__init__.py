@@ -18,6 +18,7 @@ from .jump import *
 from .jumpi import *
 from .push import *
 from .slt_sgt import *
+from .selfbalance import *
 
 
 EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
@@ -35,4 +36,5 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.PUSH: push,
     ExecutionState.SCMP: scmp,
     ExecutionState.GAS: gas,
+    ExecutionState.SELFBALANCE: selfbalance,
 }
