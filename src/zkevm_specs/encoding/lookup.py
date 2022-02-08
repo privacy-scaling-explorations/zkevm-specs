@@ -2,7 +2,7 @@ from typing import Tuple, Sequence, Set
 
 
 class LookupTable:
-    columns: Tuple[str]
+    columns: Tuple[str, ...]
     rows: Set[Tuple[int, ...]]
 
     def __init__(self, columns: Sequence[str]) -> None:

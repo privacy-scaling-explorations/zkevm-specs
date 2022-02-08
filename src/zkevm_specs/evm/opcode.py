@@ -1,5 +1,5 @@
 from enum import IntEnum
-from typing import Final, Dict, Sequence, Tuple, Union
+from typing import Final, Dict, Sequence, Tuple, Union, Optional
 from ..util.param import *
 
 
@@ -184,10 +184,12 @@ class OpcodeInfo:
     max_stack_pointer: int
     constant_gas_cost: int
     has_dynamic_gas: bool
-    pure_memory_expansion_info: Tuple[
-        int,  # offset stack_pointer_offset
-        int,  # length stack_pointer_offset
-        int,  # constant length
+    pure_memory_expansion_info: Optional[
+        Tuple[
+            int,  # offset stack_pointer_offset
+            int,  # length stack_pointer_offset
+            int,  # constant length
+        ]
     ]
 
     def __init__(
@@ -196,7 +198,7 @@ class OpcodeInfo:
         max_stack_pointer: int,
         constant_gas_cost: int,
         has_dynamic_gas: bool = False,
-        pure_memory_expansion_info: Union[Tuple[int, int, int], None] = None,
+        pure_memory_expansion_info: Optional[Tuple[int, int, int]] = None,
     ) -> None:
         self.min_stack_pointer = min_stack_pointer
         self.max_stack_pointer = max_stack_pointer

@@ -49,7 +49,7 @@ class RLC:
 
         self.value = fp_linear_combine(self.le_bytes, randomness)
 
-    def __eq__(self, rhs: Union[int, FQ, RLC]):
+    def __eq__(self, rhs: Union[int, object]):
         if isinstance(rhs, (int, FQ)):
             return self.value == rhs
         if isinstance(rhs, RLC):

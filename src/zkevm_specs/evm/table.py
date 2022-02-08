@@ -81,7 +81,7 @@ class FixedTableTag(IntEnum):
                 (self, opcode, stack_pointer, 0) for opcode, stack_pointer in stack_overflow_pairs()
             ]
         else:
-            ValueError("Unreacheable")
+            raise ValueError("Unreacheable")
 
     def range_table_tag(range: int) -> FixedTableTag:
         if range == 16:
