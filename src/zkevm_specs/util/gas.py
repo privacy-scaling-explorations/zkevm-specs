@@ -1,48 +1,41 @@
-from typing import NewType, Tuple
+from ..encoding import U8, U64, U128,U256
+from typing import Sequence, Tuple
 
-U64 = NewType("U64", int)
-U160 = NewType("U160", int)
-U256 = NewType("U256", int)
+G_MEM = 3
 
 
-Array3 = NewType("Array3", Tuple[int, int, int])
-Array4 = NewType("Array4", Tuple[int, int, int, int])
-Array8 = NewType("Array8", Tuple[int, int, int, int, int, int, int, int])
-Array10 = NewType("Array10", Tuple[int, int, int, int, int, int, int, int, int, int])
-Array32 = NewType(
-    "Array32",
-    Tuple[
-        int,
-        int,
-        int,
-        int,
-        int,
-        int,
-        int,
-        int,
-        int,
-        int,
-        int,
-        int,
-        int,
-        int,
-        int,
-        int,
-        int,
-        int,
-        int,
-        int,
-        int,
-        int,
-        int,
-        int,
-        int,
-        int,
-        int,
-        int,
-        int,
-        int,
-        int,
-        int,
-    ],
-)
+def memory_size(
+    address: U64,
+) -> U64:
+    return (address + 31) // 32
+
+
+def div(
+    value: U256,
+    divisor: U64,
+) -> Tuple[U256, U256]:
+    quotient = value // divisor
+    remainder = value % divisor
+    return (quotient, remainder)
+
+
+def memory_expansion(
+    curr_memory_size: U64,
+    address: U64,
+) -> Tuple[U64, U128]:
+    # The memory size required for the used address
+    address_memory_size = memory_size(address)
+
+    # Expand the memory if needed
+    next_memory_size = max(address_memory_size, curr_memory_size)
+
+    # Calculate the quad memory cost
+    (curr_quad_memory_cost, _) = div(curr_memory_size * curr_memory_size, 512)
+    (next_quad_memory_cost, _) = div(next_memory_size * next_memory_size, 512)
+
+    # Calculate the gas cost for the memory expansion
+    # This gas cost is the difference between the next and current memory costs
+    memory_gas_cost = (next_memory_size - curr_memory_size) * G_MEM + (next_quad_memory_cost - curr_quad_memory_cost)
+
+    # Return the new memory size and the memory expansion gas cost
+    return next_memory_size, memory_gas_cost

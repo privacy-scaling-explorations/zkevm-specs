@@ -28,6 +28,7 @@ from .gasprice import *
 from .storage import *
 from .selfbalance import *
 from .extcodehash import *
+from .log import *
 
 
 EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
@@ -55,4 +56,5 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.SELFBALANCE: selfbalance,
     ExecutionState.GASPRICE: gasprice,
     ExecutionState.EXTCODEHASH: extcodehash,
+    ExecutionState.LOG: log,
 }
