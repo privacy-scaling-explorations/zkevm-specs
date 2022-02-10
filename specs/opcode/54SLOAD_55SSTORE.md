@@ -18,16 +18,16 @@
    2. opId === OpcodeId(0x55) for `SSTORE`
 2. state transition:
    - gc
-     - `SLOAD`: +8
+     - `SLOAD`: +7
        - 3 call_context read
        - 2 stack operations
        - 1 storage reads
-       - 2 access_list reads/writes
-     - `SSTORE`: +11
+       - 1 access_list write
+     - `SSTORE`: +10
        - 3 call_context read
        - 2 stack operations
        - 2 storage reads/writes
-       - 2 access_list reads/writes
+       - 1 access_list write
        - 2 gas_refund reads/writes
    - stack_pointer
      - `SLOAD`: remains the same
@@ -68,7 +68,7 @@
              - `original_value == 0`: gas_refund + SSTORE_SET_GAS - SLOAD_GAS
              - `original_value != 0`: gas_refund + SSTORE_RESET_GAS - SLOAD_GAS
 3. lookups:
-   - `SLOAD`: 8 busmapping lookups
+   - `SLOAD`: 7 busmapping lookups
      - call_context:
        - `tx_id`: Read the `tx_id` for this tx.
        - `rw_counter_end_of_reversion`: Read the `rw_counter_end` if this tx get reverted.
@@ -77,8 +77,8 @@
        - `key` is popped off the top of the stack
        - `value` is pushed on top of the stack
      - storage: The 32 bytes of `value` are read from storage at `key`
-     - access_list: Whether the `key` is warm (accessed before), mark as warm afterward
-   - `SSTORE`: 11 busmapping lookups
+     - access_list: Write as `true` for `key`
+   - `SSTORE`: 10 busmapping lookups
      - call_context:
        - `tx_id`: Read the `tx_id` for this tx.
        - `rw_counter_end_of_reversion`: Read the `rw_counter_end` if this tx get reverted.
@@ -89,7 +89,7 @@
      - storage:
        - Read the orignal_value and the current_value at `key`
        - The 32 bytes of new `value` are written to storage at `key`
-     - access_list: Whether the `key` is warm (accessed before), mark as warm afterward
+     - access_list: Write as `true` for `key`
      - gas_refund:
        - Read the accumulated gas_refund for this tx
        - Write the new accumulated gas_refund for this tx
