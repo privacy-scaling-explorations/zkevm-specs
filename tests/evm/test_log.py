@@ -69,9 +69,22 @@ def test_log(topics: list, mstart: U64, msize: U64):
                 # (6, RW.Write, RWTableTag.TxLog, 0, 0, TxLogFieldTag.Topics, RLC(topic1, randomness, 32), 0, 0, 0),
                 # (7, RW.Write, RWTableTag.TxLog, 0, 0, TxLogFieldTag.Data, 10, 0, 0, 0),
                 # (8, RW.Write, RWTableTag.TxLog, 0, 1, TxLogFieldTag.Data, 20, 0, 0, 0),
-                # for contract address
+                # for not static call
                 (
                     3 + 2 * topic_count + 2 * msize,
+                    RW.Read,
+                    RWTableTag.CallContext,
+                    1,
+                    CallContextFieldTag.IsStatic,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                ),
+                # for contract address
+                (
+                    4 + 2 * topic_count + 2 * msize,
                     RW.Read,
                     RWTableTag.CallContext,
                     1,
@@ -82,9 +95,8 @@ def test_log(topics: list, mstart: U64, msize: U64):
                     0,
                     0,
                 ),
-                # TODO: for not static call
                 (
-                    4 + 2 * topic_count + 2 * msize,
+                    5 + 2 * topic_count + 2 * msize,
                     RW.Write,
                     RWTableTag.TxLog,
                     0,
@@ -119,7 +131,7 @@ def test_log(topics: list, mstart: U64, msize: U64):
             ),
             StepState(
                 execution_state=ExecutionState.STOP,
-                rw_counter=5 + 2 * topic_count + 2 * msize,
+                rw_counter=6 + 2 * topic_count + 2 * msize,
                 call_id=1,
                 is_root=True,
                 is_create=False,
