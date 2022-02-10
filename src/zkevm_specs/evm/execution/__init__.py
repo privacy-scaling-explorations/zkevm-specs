@@ -9,6 +9,7 @@ from .end_block import *
 # Opcode's successful cases
 from .add import *
 from .block_coinbase import *
+from .block_timestamp import *
 from .calldatasize import *
 from .caller import *
 from .callvalue import *
@@ -30,6 +31,7 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.CALLVALUE: callvalue,
     ExecutionState.CALLDATASIZE: calldatasize,
     ExecutionState.COINBASE: coinbase,
+    ExecutionState.TIMESTAMP: timestamp,
     ExecutionState.JUMP: jump,
     ExecutionState.JUMPI: jumpi,
     ExecutionState.PUSH: push,

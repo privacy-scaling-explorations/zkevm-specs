@@ -16,7 +16,7 @@ from zkevm_specs.evm import (
 from zkevm_specs.util import rand_fp, rand_range, RLC
 
 # Start with different values for `gas` before calling the `GAS` opcode.
-TESTING_DATA = tuple([i for i in range(2, 10)] + [rand_range(2 ** 64) for i in range(0, 10)])
+TESTING_DATA = tuple([i for i in range(2, 10)] + [rand_range(2**64) for i in range(0, 10)])
 
 
 @pytest.mark.parametrize("gas", TESTING_DATA)
