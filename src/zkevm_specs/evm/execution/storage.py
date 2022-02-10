@@ -21,20 +21,21 @@ def sload(instruction: Instruction):
     tx_callee_address = instruction.tx_context_lookup(tx_id, TxContextFieldTag.CalleeAddress)
 
     storage_key = instruction.stack_pop()
-    warm, _ = instruction.access_list_account_storage_read(tx_id, tx_callee_address, storage_key)
+
+    instruction.account_storage_read(tx_callee_address, storage_key)
+
+    _, is_warm_prev = instruction.add_account_storage_to_access_list_with_reversion(
+        tx_id, tx_callee_address, storage_key, is_persistent, rw_counter_end_of_reversion
+    )
 
     # TODO: Use intrinsic gas (EIP 2028, 2930)
     dynamic_gas_cost = WARM_STORAGE_READ_COST if warm else COLD_SLOAD_COST
 
-    instruction.account_storage_read(tx_callee_address, storage_key)
-    instruction.add_account_storage_to_access_list_with_reversion(
-        tx_id, tx_callee_address, storage_key, is_persistent, rw_counter_end_of_reversion
-    )
     instruction.stack_push()
 
     instruction.step_state_transition_in_same_context(
         opcode,
-        rw_counter=Transition.delta(8),
+        rw_counter=Transition.delta(7),
         program_counter=Transition.delta(1),
         stack_pointer=Transition.delta(0),
         state_write_counter=Transition.delta(1),
