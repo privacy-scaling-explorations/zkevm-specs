@@ -22,9 +22,9 @@ TESTING_DATA = (
     # one topic
     ([0x030201], 20, 3),
     # two topics
-    ([0x030201, 0x0f0e0d], 100, 20),
+    ([0x030201, 0x0F0E0D], 100, 20),
     # four topics
-    ([0x030201, 0x0f0e0d, 0x0d8f01, 0x0aa213], 421, 15),
+    ([0x030201, 0x0F0E0D, 0x0D8F01, 0x0AA213], 421, 15),
 )
 CALLEE_ADDRESS = rand_address()
 
@@ -55,11 +55,11 @@ def test_log(topics: list, mstart: U64, msize: U64):
             [
                 (1, RW.Read, RWTableTag.Stack, 1, 1017, 0, RLC(mstart, randomness, 8), 0, 0, 0),
                 (2, RW.Read, RWTableTag.Stack, 1, 1018, 0, RLC(msize, randomness, 8), 0, 0, 0),
-            ]    # write topics
+            ]  # write topics
             + construct_topic_stack(3, 1019, topics, randomness)
             + construct_memory_rows(3 + topic_count, data, mstart, randomness)
             + construct_topic_rows(3 + topic_count + msize, topics, randomness)
-            + construct_data_rows(3 + 2*topic_count + msize, data,randomness)
+            + construct_data_rows(3 + 2 * topic_count + msize, data, randomness)
             + [
                 # demo rows of one topic with two data
                 # (3, RW.Read, RWTableTag.Stack, 1, 1022, 0, RLC(topic1, randomness, 32), 0, 0, 0),
@@ -83,7 +83,18 @@ def test_log(topics: list, mstart: U64, msize: U64):
                     0,
                 ),
                 # TODO: for not static call
-                (4 + 2 * topic_count + 2 * msize, RW.Write, RWTableTag.TxLog, 0, 0, TxLogFieldTag.Address, CALLEE_ADDRESS, 0, 0, 0),
+                (
+                    4 + 2 * topic_count + 2 * msize,
+                    RW.Write,
+                    RWTableTag.TxLog,
+                    0,
+                    0,
+                    TxLogFieldTag.Address,
+                    CALLEE_ADDRESS,
+                    0,
+                    0,
+                    0,
+                ),
             ]
         ),
     )

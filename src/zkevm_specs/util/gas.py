@@ -1,4 +1,4 @@
-from ..encoding import U8, U64, U128,U256
+from ..encoding import U8, U64, U128, U256
 from typing import Sequence, Tuple
 
 G_MEM = 3
