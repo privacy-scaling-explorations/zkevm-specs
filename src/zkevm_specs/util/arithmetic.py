@@ -7,13 +7,13 @@ def _hash_fq(v: FQ) -> int:
     return hash(v.n)
 
 
-FQ.__hash__ = _hash_fq
+FQ.__hash__ = _hash_fq # type: ignore
 IntOrFQ = Union[int, FQ]
 
 
-def fp_linear_combine(le_bytes: Union[bytes, Sequence[int]], factor: int) -> FQ:
+def fp_linear_combine(le_bytes: Union[bytes, Sequence[int]], _factor: int) -> FQ:
     ret = FQ.zero()
-    factor = FQ(factor)
+    factor = FQ(_factor)
     for byte in reversed(le_bytes):
         assert 0 <= byte < 256, "Each byte in le_bytes for linear combination should fit in 8-bit"
         ret = ret * factor + byte
