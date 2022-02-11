@@ -24,7 +24,7 @@ def select(
     when_true: U256,
     when_false: U256,
 ) -> U256:
-    return selector * when_true + (1 - selector) * when_false
+    return U256(selector * when_true + (1 - selector) * when_false)
 
 
 @is_circuit_code

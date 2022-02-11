@@ -1,8 +1,8 @@
-from typing import Sequence, Tuple, List
+from typing import Sequence, Tuple
 from .typing import U8, U256, U64
 
 
-def is_circuit_code(func) -> object:
+def is_circuit_code(func):
     """
     A no-op decorator just to mark the function
     """
