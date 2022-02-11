@@ -70,15 +70,27 @@ def test_sload(tx: Transaction, storage_key_be_bytes: bytes, warm: bool, result:
                     1,
                     CallContextFieldTag.RwCounterEndOfReversion,
                     0,
-                    0 if result else 18,
+                    0 if result else 19,
                     0,
                     0,
                     0,
                 ),
                 (11, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.IsPersistent, 0, result, 0, 0, 0),
-                (12, RW.Read, RWTableTag.Stack, 1, 1023, 0, storage_key, 0, 0, 0),
                 (
-                    13,
+                    12,
+                    RW.Read,
+                    RWTableTag.CallContext,
+                    1,
+                    CallContextFieldTag.CalleeAddress,
+                    0,
+                    tx.callee_address,
+                    0,
+                    0,
+                    0,
+                ),
+                (13, RW.Read, RWTableTag.Stack, 1, 1023, 0, storage_key, 0, 0, 0),
+                (
+                    14,
                     RW.Read,
                     RWTableTag.AccountStorage,
                     tx.callee_address,
@@ -90,7 +102,7 @@ def test_sload(tx: Transaction, storage_key_be_bytes: bytes, warm: bool, result:
                     value_committed,
                 ),
                 (
-                    14,
+                    15,
                     RW.Write,
                     RWTableTag.TxAccessListAccountStorage,
                     tx.id,
@@ -101,14 +113,14 @@ def test_sload(tx: Transaction, storage_key_be_bytes: bytes, warm: bool, result:
                     0,
                     0,
                 ),
-                (15, RW.Write, RWTableTag.Stack, 1, 1023, 0, value, 0, 0, 0),
+                (16, RW.Write, RWTableTag.Stack, 1, 1023, 0, value, 0, 0, 0),
             ]
             + (
                 []
                 if result
                 else [
                     (
-                        18,
+                        19,
                         RW.Write,
                         RWTableTag.TxAccessListAccountStorage,
                         tx.id,
@@ -142,7 +154,7 @@ def test_sload(tx: Transaction, storage_key_be_bytes: bytes, warm: bool, result:
             ),
             StepState(
                 execution_state=ExecutionState.STOP if result else ExecutionState.REVERT,
-                rw_counter=16,
+                rw_counter=17,
                 call_id=1,
                 is_root=True,
                 is_create=False,

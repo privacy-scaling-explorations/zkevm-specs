@@ -18,13 +18,13 @@
    2. opId === OpcodeId(0x55) for `SSTORE`
 2. state transition:
    - gc
-     - `SLOAD`: +7
-       - 3 call_context read
+     - `SLOAD`: +8
+       - 4 call_context read
        - 2 stack operations
        - 1 storage reads
        - 1 access_list write
-     - `SSTORE`: +10
-       - 3 call_context read
+     - `SSTORE`: +11
+       - 4 call_context read
        - 2 stack operations
        - 2 storage reads/writes
        - 1 access_list write
@@ -68,21 +68,23 @@
              - `original_value == 0`: gas_refund + SSTORE_SET_GAS - SLOAD_GAS
              - `original_value != 0`: gas_refund + SSTORE_RESET_GAS - SLOAD_GAS
 3. lookups:
-   - `SLOAD`: 7 busmapping lookups
+   - `SLOAD`: 8 busmapping lookups
      - call_context:
        - `tx_id`: Read the `tx_id` for this tx.
        - `rw_counter_end_of_reversion`: Read the `rw_counter_end` if this tx get reverted.
        - `is_persistent`: Read if this tx will be reverted.
+       - `callee_address`: Read the `callee_address` of this call.
      - stack:
        - `key` is popped off the top of the stack
        - `value` is pushed on top of the stack
      - storage: The 32 bytes of `value` are read from storage at `key`
      - access_list: Write as `true` for `key`
-   - `SSTORE`: 10 busmapping lookups
+   - `SSTORE`: 11 busmapping lookups
      - call_context:
        - `tx_id`: Read the `tx_id` for this tx.
        - `rw_counter_end_of_reversion`: Read the `rw_counter_end` if this tx get reverted.
        - `is_persistent`: Read if this tx will be reverted.
+       - `callee_address`: Read the `callee_address` of this call.
      - stack:
        - `key` is popped off the top of the stack
        - `value` is popped off the top of the stack

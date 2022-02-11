@@ -142,16 +142,28 @@ def test_sstore(
                     1,
                     CallContextFieldTag.RwCounterEndOfReversion,
                     0,
-                    0 if result else 15,
+                    0 if result else 16,
                     0,
                     0,
                     0,
                 ),
                 (3, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.IsPersistent, 0, result, 0, 0, 0),
-                (4, RW.Read, RWTableTag.Stack, 1, 1022, 0, storage_key, 0, 0, 0),
-                (5, RW.Read, RWTableTag.Stack, 1, 1023, 0, value, 0, 0, 0),
                 (
-                    6,
+                    4,
+                    RW.Read,
+                    RWTableTag.CallContext,
+                    1,
+                    CallContextFieldTag.CalleeAddress,
+                    0,
+                    tx.callee_address,
+                    0,
+                    0,
+                    0,
+                ),
+                (5, RW.Read, RWTableTag.Stack, 1, 1022, 0, storage_key, 0, 0, 0),
+                (6, RW.Read, RWTableTag.Stack, 1, 1023, 0, value, 0, 0, 0),
+                (
+                    7,
                     RW.Read,
                     RWTableTag.AccountStorage,
                     tx.callee_address,
@@ -163,7 +175,7 @@ def test_sstore(
                     original_value,
                 ),
                 (
-                    7,
+                    8,
                     RW.Write,
                     RWTableTag.AccountStorage,
                     tx.callee_address,
@@ -175,7 +187,7 @@ def test_sstore(
                     original_value,
                 ),
                 (
-                    8,
+                    9,
                     RW.Write,
                     RWTableTag.TxAccessListAccountStorage,
                     tx.id,
@@ -186,15 +198,15 @@ def test_sstore(
                     0,
                     0,
                 ),
-                (9, RW.Read, RWTableTag.TxRefund, tx.id, 0, 0, old_gas_refund, 0, 0, 0),
-                (10, RW.Write, RWTableTag.TxRefund, tx.id, 0, 0, gas_refund, old_gas_refund, 0, 0),
+                (10, RW.Read, RWTableTag.TxRefund, tx.id, 0, 0, old_gas_refund, 0, 0, 0),
+                (11, RW.Write, RWTableTag.TxRefund, tx.id, 0, 0, gas_refund, old_gas_refund, 0, 0),
             ]
             + (
                 []
                 if result
                 else [
                     (
-                        13,
+                        14,
                         RW.Write,
                         RWTableTag.TxRefund,
                         tx.id,
@@ -206,7 +218,7 @@ def test_sstore(
                         0,
                     ),
                     (
-                        14,
+                        15,
                         RW.Write,
                         RWTableTag.TxAccessListAccountStorage,
                         tx.id,
@@ -218,7 +230,7 @@ def test_sstore(
                         0,
                     ),
                     (
-                        15,
+                        16,
                         RW.Write,
                         RWTableTag.AccountStorage,
                         tx.callee_address,
@@ -252,7 +264,7 @@ def test_sstore(
             ),
             StepState(
                 execution_state=ExecutionState.STOP if result else ExecutionState.REVERT,
-                rw_counter=11,
+                rw_counter=12,
                 call_id=1,
                 is_root=True,
                 is_create=False,
