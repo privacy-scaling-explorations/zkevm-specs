@@ -15,14 +15,14 @@ NUM_ADDRESS_BYTES_USED = 5
 def address_low(
     address: Sequence[U8],
 ) -> U64:
-    return sum(x * (2 ** (8 * i)) for i, x in enumerate(address[:NUM_ADDRESS_BYTES_USED]))
-
+    _sum = sum(x * (2 ** (8 * i)) for i, x in enumerate(address[:NUM_ADDRESS_BYTES_USED]))
+    return U64(_sum)
 
 @is_circuit_code
 def address_high(
     address: Sequence[U8],
 ) -> U256:
-    return sum(address[NUM_ADDRESS_BYTES_USED:])
+    return U256(sum(address[NUM_ADDRESS_BYTES_USED:]))
 
 
 @is_circuit_code
@@ -38,7 +38,7 @@ def select(
     when_true: U256,
     when_false: U256,
 ) -> U256:
-    return selector * when_true + (1 - selector) * when_false
+    return U256(selector * when_true + (1 - selector) * when_false)
 
 
 @is_circuit_code
@@ -46,8 +46,8 @@ def div(
     value: U256,
     divisor: U64,
 ) -> Tuple[U256, U256]:
-    quotient = value // divisor
-    remainder = value % divisor
+    quotient = U256(value // divisor)
+    remainder = U256(value % divisor)
     return (quotient, remainder)
 
 
@@ -56,7 +56,7 @@ def lt(
     lhs: U256,
     rhs: U256,
 ) -> U256:
-    return lhs < rhs
+    return U256(lhs < rhs)
 
 
 @is_circuit_code
@@ -71,7 +71,7 @@ def max(
 def memory_size(
     address: U64,
 ) -> U64:
-    return (address + 31) // 32
+    return U64((address + 31) // 32)
 
 
 @is_circuit_code

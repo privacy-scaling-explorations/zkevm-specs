@@ -34,7 +34,7 @@ def compare(
     assert len(result) == 16
 
     # Before we do any comparison, the previous result is "equal"
-    result = result[:] + [0]
+    result = list(result[:]) + [Sign(0)]
 
     for i in reversed(range(0, 32, 2)):
         a16 = a8s[i] + 256 * a8s[i + 1]
