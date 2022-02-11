@@ -14,6 +14,9 @@ lint: ## Check whether the code is formated correctly
 	black . --check
 	mdformat specs/ --number --check
 
+type: ## Check the typing of the Python code
+	mypy src
+
 test: ## Run tests
 	pytest
 
