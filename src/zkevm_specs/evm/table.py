@@ -3,7 +3,7 @@ from typing import Sequence, Set, Tuple
 from enum import IntEnum, auto
 from itertools import chain, product
 
-from ..util import Array3, Array4, Array10
+from ..util import FQ, RLC, Array3, Array4, Array10
 from .execution_state import ExecutionState
 from .opcode import (
     invalid_opcodes,
@@ -337,4 +337,4 @@ def _lookup(
     elif len(matched_rows) > 1:
         raise LookupAmbiguousFailure(table_name, inputs, matched_rows)
 
-    return matched_rows[0]
+    return [v if isinstance(v, RLC) else FQ(v) for v in matched_rows[0]]

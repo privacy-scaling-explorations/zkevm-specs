@@ -39,7 +39,7 @@ def begin_tx(instruction: Instruction):
 
     # TODO: Handle gas cost of tx level access list (EIP 2930)
     tx_call_data_gas_cost = instruction.tx_context_lookup(tx_id, TxContextFieldTag.CallDataGasCost)
-    gas_left = tx_gas - (GAS_COST_CREATION_TX if tx_is_create else GAS_COST_TX) - tx_call_data_gas_cost
+    gas_left = tx_gas - (GAS_COST_CREATION_TX if tx_is_create == 1 else GAS_COST_TX) - tx_call_data_gas_cost
     instruction.constrain_gas_left_not_underflow(gas_left)
 
     # Prepare access list of caller and callee
@@ -56,7 +56,7 @@ def begin_tx(instruction: Instruction):
         rw_counter_end_of_reversion,
     )
 
-    if tx_is_create:
+    if tx_is_create == 1:
         # TODO: Verify created address
         # TODO: Decide what code_source should be (tx_id or hash of creation code)
         raise NotImplementedError
