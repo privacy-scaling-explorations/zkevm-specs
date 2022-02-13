@@ -23,12 +23,12 @@
        - 2 stack operations
        - 1 storage reads
        - 1 access_list write
-     - `SSTORE`: +11
+     - `SSTORE`: +10
        - 4 call_context read
        - 2 stack operations
        - 2 storage reads/writes
        - 1 access_list write
-       - 2 gas_refund reads/writes
+       - 1 gas_refund reads/writes
    - stack_pointer
      - `SLOAD`: remains the same
      - `SSTORE`: -2
@@ -79,7 +79,7 @@
        - `value` is pushed on top of the stack
      - storage: The 32 bytes of `value` are read from storage at `key`
      - access_list: Write as `true` for `key`
-   - `SSTORE`: 11 busmapping lookups
+   - `SSTORE`: 10 busmapping lookups
      - call_context:
        - `tx_id`: Read the `tx_id` for this tx.
        - `rw_counter_end_of_reversion`: Read the `rw_counter_end` if this tx get reverted.
@@ -93,7 +93,6 @@
        - The 32 bytes of new `value` are written to storage at `key`
      - access_list: Write as `true` for `key`
      - gas_refund:
-       - Read the accumulated gas_refund for this tx
        - Write the new accumulated gas_refund for this tx
 
 ## Exceptions

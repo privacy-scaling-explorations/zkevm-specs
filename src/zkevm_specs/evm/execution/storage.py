@@ -66,23 +66,23 @@ def sstore(instruction: Instruction):
         tx_id, callee_address, storage_key, is_persistent, rw_counter_end_of_reversion
     )
 
-    gas_refund = instruction.tx_refund_read(tx_id)
+    gas_refund, gas_refund_prev = instruction.tx_refund_write_with_reversion(tx_id, is_persistent, rw_counter_end_of_reversion)
+    new_gas_refund = gas_refund_prev
     if current_value != new_value:
         if original_value == current_value:
             if original_value != 0 and new_value == 0:
-                gas_refund = gas_refund + SSTORE_CLEARS_SCHEDULE
+                new_gas_refund = new_gas_refund + SSTORE_CLEARS_SCHEDULE
         else:
             if original_value != 0:
                 if current_value == 0:
-                    gas_refund = gas_refund - SSTORE_CLEARS_SCHEDULE
+                    new_gas_refund = new_gas_refund - SSTORE_CLEARS_SCHEDULE
                 if new_value == 0:
-                    gas_refund = gas_refund + SSTORE_CLEARS_SCHEDULE
+                    new_gas_refund = new_gas_refund + SSTORE_CLEARS_SCHEDULE
             if original_value == new_value:
                 if original_value == 0:
-                    gas_refund = gas_refund + SSTORE_SET_GAS - SLOAD_GAS
+                    new_gas_refund = new_gas_refund + SSTORE_SET_GAS - SLOAD_GAS
                 else:
-                    gas_refund = gas_refund + SSTORE_RESET_GAS - SLOAD_GAS
-    new_gas_refund, _ = instruction.tx_refund_write_with_reversion(tx_id, is_persistent, rw_counter_end_of_reversion)
+                    new_gas_refund = new_gas_refund + SSTORE_RESET_GAS - SLOAD_GAS
     instruction.constrain_equal(gas_refund, new_gas_refund)
 
     # TODO: Use intrinsic gas (EIP 2028, 2930)
@@ -101,7 +101,7 @@ def sstore(instruction: Instruction):
 
     instruction.step_state_transition_in_same_context(
         opcode,
-        rw_counter=Transition.delta(11),
+        rw_counter=Transition.delta(10),
         program_counter=Transition.delta(1),
         stack_pointer=Transition.delta(2),
         state_write_counter=Transition.delta(3),
