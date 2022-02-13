@@ -66,7 +66,9 @@ def sstore(instruction: Instruction):
         tx_id, callee_address, storage_key, is_persistent, rw_counter_end_of_reversion
     )
 
-    gas_refund, gas_refund_prev = instruction.tx_refund_write_with_reversion(tx_id, is_persistent, rw_counter_end_of_reversion)
+    gas_refund, gas_refund_prev = instruction.tx_refund_write_with_reversion(
+        tx_id, is_persistent, rw_counter_end_of_reversion
+    )
     new_gas_refund = gas_refund_prev
     if current_value != new_value:
         if original_value == current_value:
