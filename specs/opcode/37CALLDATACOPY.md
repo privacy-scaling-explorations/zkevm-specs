@@ -25,24 +25,24 @@ copying data to the memory if `length > 0`.
 1. opId = 0x37
 2. State transition:
    - rw_counter
-        - +4 for root calls (3 stack read, 1 call context read)
-        - +6 for internal calls (3 stack read, 3 call context read)
+     - +4 for root calls (3 stack read, 1 call context read)
+     - +6 for internal calls (3 stack read, 3 call context read)
    - stack_pointer + 3
    - pc + 1
    - gas + 3 + dynamic cost (memory expansion and copier cost when `length > 0`)
    - memory_size
-        - `max(prev_memory_size, (memory_offset + length + 31) / 32)` if `length > 0`
-        - `prev_memory_size` if `length = 0`.
+     - `max(prev_memory_size, (memory_offset + length + 31) / 32)` if `length > 0`
+     - `prev_memory_size` if `length = 0`.
 3. Lookups: 5 (root calls) or 6 (internal calls)
    - `memory_offset` is at the top of the stack
    - `data_offset` is at the second position of the stack
    - `length` is at the third position of the stack
    - `tx_id` is in the rw table (call context)
    - for root calls (`is_root = 1`):
-        - `call_data_length` is in the tx table
+     - `call_data_length` is in the tx table
    - for internal calls (`is_root = 0`):
-        - `call_data_length` is in the rw table (call context)
-        - `call_data_offset` is in the rw table (call context)
+     - `call_data_length` is in the rw table (call context)
+     - `call_data_offset` is in the rw table (call context)
 
 ## Exceptions
 

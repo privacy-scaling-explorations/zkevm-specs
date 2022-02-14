@@ -24,23 +24,24 @@ next execution state to still be `CopyToMemory` and add extra constraints on the
 ## Constraints
 
 Define two auxiliary variables:
+
 - `nbytes_written`: the number of bytes written to the memory. It could be either `MAX_COPY_BYTES`
-    or number of bytes left to copy.
+  or number of bytes left to copy.
 - `nbytes_read`: the number of bytes read from tx table or memory. It's no more than
-    `nbytes_written`. `nbytes_read` is smaller than `nbytes_written` when there's out-of-bound
-    access to the src buffer.
+  `nbytes_written`. `nbytes_read` is smaller than `nbytes_written` when there's out-of-bound
+  access to the src buffer.
 
 1. State transition:
    - rw_counter
-        - from tx: + nbytes_written
-        - from memory: + nbytes_written + nbytes_read
+     - from tx: + nbytes_written
+     - from memory: + nbytes_written + nbytes_read
 2. Lookups: nbytes_read + nbytes_written
    - from tx:
-        - `nbytes_read` lookups from tx context table
-        - `nbytes_written` lookups from rw table (memory write)
+     - `nbytes_read` lookups from tx context table
+     - `nbytes_written` lookups from rw table (memory write)
    - from memory:
-        - `nbytes_read` lookups from rw table (memory read)
-        - `nbytes_written` lookups from rw table (memory write)
+     - `nbytes_read` lookups from rw table (memory read)
+     - `nbytes_written` lookups from rw table (memory write)
 
 ## Exceptions
 
