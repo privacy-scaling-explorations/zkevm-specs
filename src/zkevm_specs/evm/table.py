@@ -1,9 +1,11 @@
 from __future__ import annotations
-from typing import Sequence, Set, Tuple
-from enum import IntEnum, auto
+from typing import Mapping, Sequence, Set, List, TypeVar, Any, Type, Optional, Dict
+from enum import IntEnum, auto, Enum
 from itertools import chain, product
+from dataclasses import dataclass, field, asdict, fields
 
-from ..util import FQ, RLC, Array3, Array4, Array10
+
+from ..util import FQ, IntOrFQ
 from .execution_state import ExecutionState
 from .opcode import (
     invalid_opcodes,
@@ -40,45 +42,55 @@ class FixedTableTag(IntEnum):
     StackOverflow = auto()  # opcode, stack_pointer, 0
     StackUnderflow = auto()  # opcode, stack_pointer, 0
 
-    def table_assignments(self) -> Sequence[Array4]:
+    def table_assignments(self) -> List[FixedTableRow]:
         if self == FixedTableTag.Range16:
-            return [(self, i, 0, 0) for i in range(16)]
+            return [FixedTableRow(FQ(self.value), FQ(i)) for i in range(16)]
         elif self == FixedTableTag.Range32:
-            return [(self, i, 0, 0) for i in range(32)]
+            return [FixedTableRow(FQ(self.value), FQ(i)) for i in range(32)]
         elif self == FixedTableTag.Range64:
-            return [(self, i, 0, 0) for i in range(64)]
+            return [FixedTableRow(FQ(self.value), FQ(i)) for i in range(64)]
         elif self == FixedTableTag.Range256:
-            return [(self, i, 0, 0) for i in range(256)]
+            return [FixedTableRow(FQ(self.value), FQ(i)) for i in range(256)]
         elif self == FixedTableTag.Range512:
-            return [(self, i, 0, 0) for i in range(512)]
+            return [FixedTableRow(FQ(self.value), FQ(i)) for i in range(512)]
         elif self == FixedTableTag.Range1024:
-            return [(self, i, 0, 0) for i in range(1024)]
+            return [FixedTableRow(FQ(self.value), FQ(i)) for i in range(1024)]
         elif self == FixedTableTag.SignByte:
-            return [(self, i, (i >> 7) * 0xFF, 0) for i in range(256)]
+            return [FixedTableRow(FQ(self.value), FQ(i), FQ((i >> 7) * 0xFF)) for i in range(256)]
         elif self == FixedTableTag.BitwiseAnd:
-            return [(self, lhs, rhs, lhs & rhs) for lhs, rhs in product(range(256), range(256))]
+            return [
+                FixedTableRow(FQ(self.value), FQ(lhs), FQ(rhs), FQ(lhs & rhs))
+                for lhs, rhs in product(range(256), range(256))
+            ]
         elif self == FixedTableTag.BitwiseOr:
-            return [(self, lhs, rhs, lhs | rhs) for lhs, rhs in product(range(256), range(256))]
+            return [
+                FixedTableRow(FQ(self.value), FQ(lhs), FQ(rhs), FQ(lhs | rhs))
+                for lhs, rhs in product(range(256), range(256))
+            ]
         elif self == FixedTableTag.BitwiseXor:
-            return [(self, lhs, rhs, lhs ^ rhs) for lhs, rhs in product(range(256), range(256))]
+            return [
+                FixedTableRow(FQ(self.value), FQ(lhs), FQ(rhs), FQ(lhs ^ rhs))
+                for lhs, rhs in product(range(256), range(256))
+            ]
         elif self == FixedTableTag.ResponsibleOpcode:
             return [
-                (self, execution_state, opcode, 0)
+                FixedTableRow(FQ(self.value), FQ(execution_state), FQ(opcode))
                 for execution_state in list(ExecutionState)
                 for opcode in execution_state.responsible_opcode()
             ]
         elif self == FixedTableTag.InvalidOpcode:
-            return [(self, opcode, 0, 0) for opcode in invalid_opcodes()]
+            return [FixedTableRow(FQ(self.value), FQ(opcode)) for opcode in invalid_opcodes()]
         elif self == FixedTableTag.StateWriteOpcode:
-            return [(self, opcode, 0, 0) for opcode in state_write_opcodes()]
+            return [FixedTableRow(FQ(self.value), FQ(opcode)) for opcode in state_write_opcodes()]
         elif self == FixedTableTag.StackOverflow:
             return [
-                (self, opcode, stack_pointer, 0)
+                FixedTableRow(FQ(self.value), FQ(opcode), FQ(stack_pointer))
                 for opcode, stack_pointer in stack_underflow_pairs()
             ]
         elif self == FixedTableTag.StackUnderflow:
             return [
-                (self, opcode, stack_pointer, 0) for opcode, stack_pointer in stack_overflow_pairs()
+                FixedTableRow(FQ(self.value), FQ(opcode), FQ(stack_pointer))
+                for opcode, stack_pointer in stack_overflow_pairs()
             ]
         else:
             raise ValueError("Unreacheable")
@@ -139,7 +151,7 @@ class TxContextFieldTag(IntEnum):
     CallData = auto()
 
 
-class RW:
+class RW(Enum):
     Read = False
     Write = True
 
@@ -232,6 +244,11 @@ class CallContextFieldTag(IntEnum):
     StateWriteCounter = auto()
 
 
+class WrongQueryKey(Exception):
+    def __init__(self, table_name: str, diff: Set[str]) -> None:
+        self.message = f"Lookup {table_name} with invalid keys {diff}"
+
+
 class LookupUnsatFailure(Exception):
     def __init__(self, table_name: str, inputs: Tuple[int, ...]) -> None:
         self.inputs = inputs
@@ -239,11 +256,70 @@ class LookupUnsatFailure(Exception):
 
 
 class LookupAmbiguousFailure(Exception):
-    def __init__(
-        self, table_name: str, inputs: Tuple[int, ...], matched_rows: Sequence[Tuple[int, ...]]
-    ) -> None:
+    def __init__(self, table_name: str, inputs: Tuple[int, ...], matched_rows: Sequence[Any]) -> None:
         self.inputs = inputs
         self.message = f"Lookup {table_name} is ambiguous on inputs {inputs}, ${len(matched_rows)} matched rows found: {matched_rows}"
+
+
+class TableRow:
+    @classmethod
+    def validate_query(cls, table_name: str, query: Mapping[str, Any]):
+        names = set([field.name for field in fields(cls)])
+        queried = set(query.keys())
+        if not queried.issubset(names):
+            raise WrongQueryKey(table_name, queried - names)
+
+    def match(self, query: Mapping[str, Any]) -> bool:
+        kv = asdict(self)
+        return all([int(kv[key]) == int(value) for key, value in query.items()])
+
+
+@dataclass(frozen=True)
+class FixedTableRow(TableRow):
+    tag: FixedTableTag
+    value1: FQ
+    value2: FQ = field(default=FQ(0))
+    value3: FQ = field(default=FQ(0))
+
+
+@dataclass(frozen=True)
+class BlockTableRow(TableRow):
+    tag: BlockContextFieldTag
+    # meaningful only for HistoryHash, will be zero for other tags
+    block_number_or_zero: FQ
+    value: FQ
+
+
+@dataclass(frozen=True)
+class TxTableRow(TableRow):
+    tx_id: FQ
+    tag: FQ
+    # meaningful only for CallData, will be zero for other tags
+    call_data_index_or_zero: FQ
+    value: FQ
+
+
+@dataclass(frozen=True)
+class BytecodeTableRow(TableRow):
+    bytecode_hash: FQ
+    index: FQ
+    byte: FQ
+    is_code: FQ
+
+
+@dataclass(frozen=True)
+class RWTableRow(TableRow):
+    rw_counter: FQ
+    is_write: FQ
+    # key1 is also the tag
+    key1: FQ
+    key2: FQ
+    key3: FQ
+    key4: FQ
+    value: FQ
+    value_prev: FQ
+    aux1: FQ
+    aux2: FQ
 
 
 class Tables:
@@ -253,95 +329,77 @@ class Tables:
 
     _: Placeholder = Placeholder()
 
-    # Each row in FixedTable contains:
-    # - tag
-    # - value1
-    # - value2
-    # - value3
-    fixed_table: Set[Array4] = set(chain(*[tag.table_assignments() for tag in list(FixedTableTag)]))
-
-    # Each row in BlockTable contains:
-    # - tag
-    # - block_number_or_zero (meaningful only for HistoryHash, will be zero for other tags)
-    # - value
-    block_table: Set[Array3]
-
-    # Each row in TxTable contains:
-    # - tx_id
-    # - tag
-    # - call_data_index_or_zero (meaningful only for CallData, will be zero for other tags)
-    # - value
-    tx_table: Set[Array4]
-
-    # Each row in BytecodeTable contains:
-    # - bytecode_hash
-    # - index
-    # - byte
-    # - is_code
-    bytecode_table: Set[Array4]
-
-    # Each row in RWTable contains:
-    # - rw_counter
-    # - is_write
-    # - key1 (tag)
-    # - key2
-    # - key3
-    # - key4
-    # - value
-    # - value_prev
-    # - aux1
-    # - aux2
-    rw_table: Set[Array10]
+    fixed_table: Set[FixedTableRow] = set(
+        chain(*[tag.table_assignments() for tag in list(FixedTableTag)])
+    )
+    block_table: Set[BlockTableRow]
+    tx_table: Set[TxTableRow]
+    bytecode_table: Set[BytecodeTableRow]
+    rw_table: Set[RWTableRow]
 
     def __init__(
         self,
-        block_table: Set[Array3],
-        tx_table: Set[Array4],
-        bytecode_table: Set[Array4],
-        rw_table: Set[Array10],
+        block_table: Set[BlockTableRow],
+        tx_table: Set[TxTableRow],
+        bytecode_table: Set[BytecodeTableRow],
+        rw_table: Set[RWTableRow],
     ) -> None:
         self.block_table = block_table
         self.tx_table = tx_table
         self.bytecode_table = bytecode_table
         self.rw_table = rw_table
 
-    def fixed_lookup(self, inputs: Sequence[int]) -> Array4:
-        assert len(inputs) <= 4
-        return _lookup("fixed_table", self.fixed_table, inputs)
+    def fixed_lookup(
+        self, tag: FixedTableTag, value1: FQ, value2: FQ = None, value3: FQ = None
+    ) -> FixedTableRow:
+        query: Dict[str, Optional[IntOrFQ]] = {
+            "tag": tag,
+            "value1": value1,
+            "value2": value2,
+            "value3": value3,
+        }
+        return _lookup(FixedTableRow, self.fixed_table, query)
 
-    def block_lookup(self, inputs: Sequence[int]) -> Array3:
-        assert len(inputs) <= 3
-        return _lookup("block_table", self.block_table, inputs)
+    def block_lookup(self, tag: BlockContextFieldTag, index: FQ = FQ(0)) -> BlockTableRow:
+        query: Dict[str, Optional[IntOrFQ]] = {"tag": tag, "block_number_or_zero": index}
+        return _lookup(BlockTableRow, self.block_table, query)
 
-    def tx_lookup(self, inputs: Sequence[int]) -> Array4:
-        assert len(inputs) <= 4
-        return _lookup("tx_table", self.tx_table, inputs)
+    def tx_lookup(self, tx_id: int, field_tag: TxContextFieldTag, index: FQ) -> TxTableRow:
+        query: Dict[str, Optional[IntOrFQ]] = {"tx_id": tx_id, "tag": field_tag, "call_data_index_or_zero": index}
+        return _lookup(TxTableRow, self.tx_table, query)
 
-    def bytecode_lookup(self, inputs: Sequence[int]) -> Array4:
-        assert len(inputs) <= 4
-        return _lookup("bytecode_table", self.bytecode_table, inputs)
+    def bytecode_lookup(self, bytecode_hash: FQ, index: FQ, is_code: FQ) -> BytecodeTableRow:
+        query: Dict[str, Optional[IntOrFQ]] = {
+            "bytecode_hash": bytecode_hash,
+            "index": index,
+            "is_code": is_code,
+        }
+        return _lookup(BytecodeTableRow, self.bytecode_table, query)
 
-    def rw_lookup(self, inputs: Sequence[int]) -> Array10:
-        assert len(inputs) <= 10
-        return _lookup("rw_table", self.rw_table, inputs)
+    def rw_lookup(self, rw_counter: FQ, rw: RW, tag: RWTableTag, **other_queries: IntOrFQ) -> RWTableRow:
+        query: Dict[str, Optional[IntOrFQ]] = {"rw_counter": rw_counter, "rw": int(rw.value), "tag": tag, **other_queries}
+        return _lookup(RWTableRow, self.rw_table, query)
+
+
+T = TypeVar("T", bound=TableRow)
 
 
 def _lookup(
-    table_name: str,
-    table: Set[Tuple[int, ...]],
-    inputs: Sequence[int],
-) -> Tuple[int, ...]:
-    inputs = tuple(inputs)
-    inputs_len = len(inputs)
-    matched_rows = []
+    table_cls: Type[T],
+    table: Set[T],
+    query: Mapping[str, Optional[IntOrFQ]],
+) -> T:
+    # cleanup none value
+    query = {k: v for k, v in query.items() if v is not None}
 
-    for row in table:
-        if inputs == row[:inputs_len]:
-            matched_rows.append(row)
+    table_name = table_cls.__name__
+    table_cls.validate_query(table_name, query)
+
+    matched_rows = [row for row in table if row.match(query)]
 
     if len(matched_rows) == 0:
-        raise LookupUnsatFailure(table_name, inputs)
+        raise LookupUnsatFailure(table_name, query)
     elif len(matched_rows) > 1:
-        raise LookupAmbiguousFailure(table_name, inputs, matched_rows)
+        raise LookupAmbiguousFailure(table_name, query, matched_rows)
 
-    return [v if isinstance(v, RLC) else FQ(v) for v in matched_rows[0]]
+    return matched_rows[0]

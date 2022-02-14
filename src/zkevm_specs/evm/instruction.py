@@ -3,8 +3,6 @@ from enum import IntEnum, auto
 from typing import Optional, Sequence, Tuple, Union, Mapping
 
 from ..util import (
-    Array4,
-    Array10,
     FQ,
     IntOrFQ,
     RLC,
@@ -27,6 +25,8 @@ from .table import (
     TxContextFieldTag,
     RW,
     RWTableTag,
+    RWTableRow,
+    FixedTableRow,
 )
 
 
@@ -325,8 +325,8 @@ class Instruction:
         except OverflowError:
             raise ConstraintUnsatFailure(f"Value {value} has too many bytes to fit {n_bytes} bytes")
 
-    def fixed_lookup(self, tag: FixedTableTag, inputs: Sequence[FQ]) -> Array4:
-        return self.tables.fixed_lookup([tag] + inputs)
+    def fixed_lookup(self, tag: FixedTableTag, inputs: Sequence[FQ]) -> FixedTableRow:
+        return self.tables.fixed_lookup(tag, *inputs)
 
     def block_context_lookup(self, tag: BlockContextFieldTag, index: FQ = FQ.zero()) -> FQ:
         return self.tables.block_lookup([tag, index])[2]
@@ -361,9 +361,7 @@ class Instruction:
         else:
             return self.bytecode_lookup(self.curr.code_source, index, is_code)
 
-    def rw_lookup(
-        self, rw: RW, tag: RWTableTag, inputs: Sequence[int], rw_counter: Optional[int] = None
-    ) -> Array10:
+    def rw_lookup(self, rw: RW, tag: RWTableTag, inputs: Sequence[int], rw_counter: Optional[int] = None) -> RWTableRow:
         if rw_counter is None:
             rw_counter = self.curr.rw_counter + self.rw_counter_offset
             self.rw_counter_offset += 1
@@ -374,7 +372,7 @@ class Instruction:
         tag: RWTableTag,
         inputs: Sequence[int],
         is_persistent: bool,
-    ) -> Array10:
+    ) -> RWTableRow:
         assert tag.write_only_persistent()
 
         if is_persistent:
@@ -389,7 +387,7 @@ class Instruction:
         is_persistent: bool,
         rw_counter_end_of_reversion: int,
         state_write_counter: Optional[int] = None,
-    ) -> Array10:
+    ) -> RWTableRow:
         assert tag.write_with_reversion()
 
         row = self.rw_lookup(RW.Write, tag, inputs)

@@ -7,14 +7,18 @@ from ..util import (
     U64,
     U160,
     U256,
-    Array3,
-    Array4,
     RLC,
     keccak256,
     GAS_COST_TX_CALL_DATA_PER_NON_ZERO_BYTE,
     GAS_COST_TX_CALL_DATA_PER_ZERO_BYTE,
 )
-from .table import BlockContextFieldTag, TxContextFieldTag
+from .table import (
+    BlockContextFieldTag,
+    TxContextFieldTag,
+    BytecodeTableRow,
+    TxTableRow,
+    BlockTableRow,
+)
 from .opcode import get_push_size, Opcode
 
 
@@ -56,7 +60,7 @@ class Block:
         self.base_fee = base_fee
         self.history_hashes = history_hashes
 
-    def table_assignments(self, randomness: int) -> Sequence[Array3]:
+    def table_assignments(self, randomness: int) -> Sequence[BlockTableRow]:
         return [
             (BlockContextFieldTag.Coinbase, 0, self.coinbase),
             (BlockContextFieldTag.GasLimit, 0, self.gas_limit),
@@ -114,7 +118,7 @@ class Transaction:
             0,
         )
 
-    def table_assignments(self, randomness: int) -> Iterator[Array4]:
+    def table_assignments(self, randomness: int) -> Iterator[TxTableRow]:
         return chain(
             [
                 (self.id, TxContextFieldTag.Nonce, 0, self.nonce),
@@ -186,7 +190,7 @@ class Bytecode:
     def hash(self) -> int:
         return int.from_bytes(keccak256(self.code), "big")
 
-    def table_assignments(self, randomness: int) -> Iterator[Array4]:
+    def table_assignments(self, randomness: int) -> Iterator[BytecodeTableRow]:
         class BytecodeIterator:
             idx: int
             push_data_left: int
