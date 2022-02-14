@@ -11,8 +11,7 @@ class BufferReaderGadget:
         self.bound_dist_is_zero = [inst.is_zero(bound_dist) for bound_dist in self.bound_dist]
 
         # constraint on bound_dist[0]
-        inst.constrain_equal(self.bound_dist[0],
-                             addr_end - inst.min(addr_end, addr_start, N_BYTES_MEMORY_ADDRESS))
+        inst.constrain_equal(self.bound_dist[0], addr_end - inst.min(addr_end, addr_start, N_BYTES_MEMORY_ADDRESS))
         # constraints on bound_dist[1:]
         for i in range(1, max_bytes):
             diff = self.bound_dist[i - 1] - self.bound_dist[i]

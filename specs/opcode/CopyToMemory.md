@@ -34,7 +34,7 @@ Define two auxiliary variables:
    - rw_counter
         - from tx: + nbytes_written
         - from memory: + nbytes_written + nbytes_read
-3. Lookups: nbytes_read + nbytes_written
+2. Lookups: nbytes_read + nbytes_written
    - from tx:
         - `nbytes_read` lookups from tx context table
         - `nbytes_written` lookups from rw table (memory write)
