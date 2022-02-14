@@ -14,7 +14,9 @@ def push(instruction: Instruction):
     for idx in range(32):
         index = instruction.curr.program_counter + num_pushed - idx
         if idx == 0 or selectors[idx - 1]:
-            instruction.constrain_equal(value_le_bytes[idx], instruction.opcode_lookup_at(index, False))
+            instruction.constrain_equal(
+                value_le_bytes[idx], instruction.opcode_lookup_at(index, False)
+            )
         else:
             instruction.constrain_zero(value_le_bytes[idx])
 

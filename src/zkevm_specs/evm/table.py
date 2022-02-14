@@ -72,9 +72,14 @@ class FixedTableTag(IntEnum):
         elif self == FixedTableTag.StateWriteOpcode:
             return [(self, opcode, 0, 0) for opcode in state_write_opcodes()]
         elif self == FixedTableTag.StackOverflow:
-            return [(self, opcode, stack_pointer, 0) for opcode, stack_pointer in stack_underflow_pairs()]
+            return [
+                (self, opcode, stack_pointer, 0)
+                for opcode, stack_pointer in stack_underflow_pairs()
+            ]
         elif self == FixedTableTag.StackUnderflow:
-            return [(self, opcode, stack_pointer, 0) for opcode, stack_pointer in stack_overflow_pairs()]
+            return [
+                (self, opcode, stack_pointer, 0) for opcode, stack_pointer in stack_overflow_pairs()
+            ]
         else:
             ValueError("Unreacheable")
 
@@ -234,7 +239,9 @@ class LookupUnsatFailure(Exception):
 
 
 class LookupAmbiguousFailure(Exception):
-    def __init__(self, table_name: str, inputs: Tuple[int, ...], matched_rows: Sequence[Tuple[int, ...]]) -> None:
+    def __init__(
+        self, table_name: str, inputs: Tuple[int, ...], matched_rows: Sequence[Tuple[int, ...]]
+    ) -> None:
         self.inputs = inputs
         self.message = f"Lookup {table_name} is ambiguous on inputs {inputs}, ${len(matched_rows)} matched rows found: {matched_rows}"
 

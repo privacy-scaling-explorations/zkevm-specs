@@ -46,32 +46,47 @@ TESTING_DATA = (
     ),
     # Transfer random ether, successfully
     (
-        Transaction(caller_address=rand_address(), callee_address=CALLEE_ADDRESS, value=rand_range(1e20)),
+        Transaction(
+            caller_address=rand_address(), callee_address=CALLEE_ADDRESS, value=rand_range(1e20)
+        ),
         CALLEE_WITH_RETURN_BYTECODE,
         True,
     ),
     # Transfer nothing with random gas_price, successfully
     (
-        Transaction(caller_address=rand_address(), callee_address=CALLEE_ADDRESS, gas_price=rand_range(42857142857143)),
+        Transaction(
+            caller_address=rand_address(),
+            callee_address=CALLEE_ADDRESS,
+            gas_price=rand_range(42857142857143),
+        ),
         CALLEE_WITH_RETURN_BYTECODE,
         True,
     ),
     # Transfer random ether, tx reverts
     (
-        Transaction(caller_address=rand_address(), callee_address=CALLEE_ADDRESS, value=rand_range(1e20)),
+        Transaction(
+            caller_address=rand_address(), callee_address=CALLEE_ADDRESS, value=rand_range(1e20)
+        ),
         CALLEE_WITH_REVERT_BYTECODE,
         False,
     ),
     # Transfer nothing with random gas_price, tx reverts
     (
-        Transaction(caller_address=rand_address(), callee_address=CALLEE_ADDRESS, gas_price=rand_range(42857142857143)),
+        Transaction(
+            caller_address=rand_address(),
+            callee_address=CALLEE_ADDRESS,
+            gas_price=rand_range(42857142857143),
+        ),
         CALLEE_WITH_REVERT_BYTECODE,
         False,
     ),
     # Transfer nothing with some calldata
     (
         Transaction(
-            caller_address=0xFE, callee_address=CALLEE_ADDRESS, gas=21080, call_data=bytes([1, 2, 3, 4, 0, 0, 0, 0])
+            caller_address=0xFE,
+            callee_address=CALLEE_ADDRESS,
+            gas=21080,
+            call_data=bytes([1, 2, 3, 4, 0, 0, 0, 0]),
         ),
         CALLEE_WITH_RETURN_BYTECODE,
         True,
@@ -97,7 +112,18 @@ def test_begin_tx(tx: Transaction, callee: Account, result: bool):
         bytecode_table=set(callee.code.table_assignments(randomness)),
         rw_table=set(
             [
-                (1, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.TxId, 0, tx.id, 0, 0, 0),
+                (
+                    1,
+                    RW.Read,
+                    RWTableTag.CallContext,
+                    1,
+                    CallContextFieldTag.TxId,
+                    0,
+                    tx.id,
+                    0,
+                    0,
+                    0,
+                ),
                 (
                     2,
                     RW.Read,
@@ -110,7 +136,18 @@ def test_begin_tx(tx: Transaction, callee: Account, result: bool):
                     0,
                     0,
                 ),
-                (3, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.IsPersistent, 0, result, 0, 0, 0),
+                (
+                    3,
+                    RW.Read,
+                    RWTableTag.CallContext,
+                    1,
+                    CallContextFieldTag.IsPersistent,
+                    0,
+                    result,
+                    0,
+                    0,
+                    0,
+                ),
                 (
                     4,
                     RW.Write,
@@ -186,7 +223,18 @@ def test_begin_tx(tx: Transaction, callee: Account, result: bool):
                     0,
                     0,
                 ),
-                (13, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.CallDataOffset, 0, 0, 0, 0, 0),
+                (
+                    13,
+                    RW.Read,
+                    RWTableTag.CallContext,
+                    1,
+                    CallContextFieldTag.CallDataOffset,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                ),
                 (
                     14,
                     RW.Read,
@@ -211,10 +259,54 @@ def test_begin_tx(tx: Transaction, callee: Account, result: bool):
                     0,
                     0,
                 ),
-                (16, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.IsStatic, 0, 0, 0, 0, 0),
-                (17, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.LastCalleeId, 0, 0, 0, 0, 0),
-                (18, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.LastCalleeReturnDataOffset, 0, 0, 0, 0, 0),
-                (19, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.LastCalleeReturnDataLength, 0, 0, 0, 0, 0),
+                (
+                    16,
+                    RW.Read,
+                    RWTableTag.CallContext,
+                    1,
+                    CallContextFieldTag.IsStatic,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                ),
+                (
+                    17,
+                    RW.Read,
+                    RWTableTag.CallContext,
+                    1,
+                    CallContextFieldTag.LastCalleeId,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                ),
+                (
+                    18,
+                    RW.Read,
+                    RWTableTag.CallContext,
+                    1,
+                    CallContextFieldTag.LastCalleeReturnDataOffset,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                ),
+                (
+                    19,
+                    RW.Read,
+                    RWTableTag.CallContext,
+                    1,
+                    CallContextFieldTag.LastCalleeReturnDataLength,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                ),
             ]
             + (
                 []
@@ -258,7 +350,9 @@ def test_begin_tx(tx: Transaction, callee: Account, result: bool):
                 rw_counter=1,
             ),
             StepState(
-                execution_state=ExecutionState.EndTx if callee.code_hash() == EMPTY_CODE_HASH else ExecutionState.PUSH,
+                execution_state=ExecutionState.EndTx
+                if callee.code_hash() == EMPTY_CODE_HASH
+                else ExecutionState.PUSH,
                 rw_counter=20,
                 call_id=1,
                 is_root=True,
