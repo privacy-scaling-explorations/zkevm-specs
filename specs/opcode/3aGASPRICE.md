@@ -22,7 +22,7 @@ The `GASPRICE` opcode loads a 256-bit value from the Tx context (the gas price),
    - pc + 1
    - gas + 2
 3. Lookups:
-   - `tx_id` is on current call context 
+   - `tx_id` is on current call context
    - `gasprice` is on the top of stack
    - `gasprice` is in the transaction context table
 
