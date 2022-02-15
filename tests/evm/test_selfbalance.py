@@ -32,32 +32,11 @@ def test_selfbalance(callee_address: U160, balance: U256):
         bytecode_table=set(bytecode.table_assignments(randomness)),
         rw_table=set(
             [
-                (
-                    9,
-                    RW.Read,
-                    RWTableTag.CallContext,
-                    1,
-                    CallContextFieldTag.CalleeAddress,
-                    0,
-                    callee_address,
-                    0,
-                    0,
-                    0,
-                ),
-                (
-                    10,
-                    RW.Read,
-                    RWTableTag.Account,
-                    callee_address,
-                    AccountFieldTag.Balance,
-                    0,
-                    rlc_balance,
-                    rlc_balance,
-                    0,
-                    0,
-                    0,
-                ),
+                # fmt: off
+                (9, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.CalleeAddress, 0, callee_address, 0, 0, 0),
+                (10, RW.Read, RWTableTag.Account, callee_address, AccountFieldTag.Balance, 0, rlc_balance, rlc_balance, 0, 0, 0),
                 (11, RW.Write, RWTableTag.Stack, 1, 1023, 0, rlc_balance, 0, 0, 0),
+                # fmt: on
             ]
         ),
     )

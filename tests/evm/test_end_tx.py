@@ -64,61 +64,17 @@ def test_end_tx(tx: Transaction, gas_left: int, refund: int, is_last_tx: bool):
         bytecode_table=set(),
         rw_table=set(
             [
-                (
-                    17,
-                    RW.Read,
-                    RWTableTag.CallContext,
-                    1,
-                    CallContextFieldTag.TxId,
-                    0,
-                    tx.id,
-                    0,
-                    0,
-                    0,
-                ),
+                # fmt: off
+                (17, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.TxId, 0, tx.id, 0, 0, 0),
                 (18, RW.Read, RWTableTag.TxRefund, tx.id, 0, 0, refund, refund, 0, 0),
-                (
-                    19,
-                    RW.Write,
-                    RWTableTag.Account,
-                    tx.caller_address,
-                    AccountFieldTag.Balance,
-                    0,
-                    RLC(caller_balance, randomness),
-                    RLC(caller_balance_prev, randomness),
-                    0,
-                    0,
-                ),
-                (
-                    20,
-                    RW.Write,
-                    RWTableTag.Account,
-                    block.coinbase,
-                    AccountFieldTag.Balance,
-                    0,
-                    RLC(coinbase_balance, randomness),
-                    RLC(coinbase_balance_prev, randomness),
-                    0,
-                    0,
-                ),
+                (19, RW.Write, RWTableTag.Account, tx.caller_address, AccountFieldTag.Balance, 0, RLC(caller_balance, randomness), RLC(caller_balance_prev, randomness), 0, 0),
+                (20, RW.Write, RWTableTag.Account, block.coinbase, AccountFieldTag.Balance, 0, RLC(coinbase_balance, randomness), RLC(coinbase_balance_prev, randomness), 0, 0),
+                # fmt: on
             ]
             + (
                 []
                 if is_last_tx
-                else [
-                    (
-                        21,
-                        RW.Read,
-                        RWTableTag.CallContext,
-                        22,
-                        CallContextFieldTag.TxId,
-                        0,
-                        tx.id + 1,
-                        0,
-                        0,
-                        0,
-                    )
-                ]
+                else [(21, RW.Read, RWTableTag.CallContext, 22, CallContextFieldTag.TxId, 0, tx.id + 1, 0, 0, 0)]  # fmt: skip
             )
         ),
     )
