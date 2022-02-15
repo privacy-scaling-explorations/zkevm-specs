@@ -142,7 +142,7 @@ def test_sstore(
                     1,
                     CallContextFieldTag.RwCounterEndOfReversion,
                     0,
-                    0 if result else 15,
+                    0 if result else 14,
                     0,
                     0,
                     0,
@@ -164,18 +164,6 @@ def test_sstore(
                 (6, RW.Read, RWTableTag.Stack, 1, 1023, 0, value, 0, 0, 0),
                 (
                     7,
-                    RW.Read,
-                    RWTableTag.AccountStorage,
-                    tx.callee_address,
-                    storage_key,
-                    0,
-                    value_prev,
-                    original_value,
-                    tx.id,
-                    original_value,
-                ),
-                (
-                    8,
                     RW.Write,
                     RWTableTag.AccountStorage,
                     tx.callee_address,
@@ -187,7 +175,7 @@ def test_sstore(
                     original_value,
                 ),
                 (
-                    9,
+                    8,
                     RW.Write,
                     RWTableTag.TxAccessListAccountStorage,
                     tx.id,
@@ -198,14 +186,14 @@ def test_sstore(
                     0,
                     0,
                 ),
-                (10, RW.Write, RWTableTag.TxRefund, tx.id, 0, 0, gas_refund, old_gas_refund, 0, 0),
+                (9, RW.Write, RWTableTag.TxRefund, tx.id, 0, 0, gas_refund, old_gas_refund, 0, 0),
             ]
             + (
                 []
                 if result
                 else [
                     (
-                        13,
+                        12,
                         RW.Write,
                         RWTableTag.TxRefund,
                         tx.id,
@@ -217,7 +205,7 @@ def test_sstore(
                         0,
                     ),
                     (
-                        14,
+                        13,
                         RW.Write,
                         RWTableTag.TxAccessListAccountStorage,
                         tx.id,
@@ -229,7 +217,7 @@ def test_sstore(
                         0,
                     ),
                     (
-                        15,
+                        14,
                         RW.Write,
                         RWTableTag.AccountStorage,
                         tx.callee_address,
@@ -263,7 +251,7 @@ def test_sstore(
             ),
             StepState(
                 execution_state=ExecutionState.STOP if result else ExecutionState.REVERT,
-                rw_counter=11,
+                rw_counter=10,
                 call_id=1,
                 is_root=True,
                 is_create=False,
