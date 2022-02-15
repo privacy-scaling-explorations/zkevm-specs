@@ -250,13 +250,13 @@ class WrongQueryKey(Exception):
 
 
 class LookupUnsatFailure(Exception):
-    def __init__(self, table_name: str, inputs: Tuple[int, ...]) -> None:
+    def __init__(self, table_name: str, inputs: Any) -> None:
         self.inputs = inputs
         self.message = f"Lookup {table_name} is unsatisfied on inputs {inputs}"
 
 
 class LookupAmbiguousFailure(Exception):
-    def __init__(self, table_name: str, inputs: Tuple[int, ...], matched_rows: Sequence[Any]) -> None:
+    def __init__(self, table_name: str, inputs: Any, matched_rows: Sequence[Any]) -> None:
         self.inputs = inputs
         self.message = f"Lookup {table_name} is ambiguous on inputs {inputs}, ${len(matched_rows)} matched rows found: {matched_rows}"
 
@@ -364,8 +364,12 @@ class Tables:
         query: Dict[str, Optional[IntOrFQ]] = {"tag": tag, "block_number_or_zero": index}
         return _lookup(BlockTableRow, self.block_table, query)
 
-    def tx_lookup(self, tx_id: int, field_tag: TxContextFieldTag, index: FQ) -> TxTableRow:
-        query: Dict[str, Optional[IntOrFQ]] = {"tx_id": tx_id, "tag": field_tag, "call_data_index_or_zero": index}
+    def tx_lookup(self, tx_id: FQ, field_tag: TxContextFieldTag, index: FQ) -> TxTableRow:
+        query: Dict[str, Optional[IntOrFQ]] = {
+            "tx_id": tx_id,
+            "tag": field_tag,
+            "call_data_index_or_zero": index,
+        }
         return _lookup(TxTableRow, self.tx_table, query)
 
     def bytecode_lookup(self, bytecode_hash: FQ, index: FQ, is_code: FQ) -> BytecodeTableRow:
@@ -376,8 +380,24 @@ class Tables:
         }
         return _lookup(BytecodeTableRow, self.bytecode_table, query)
 
-    def rw_lookup(self, rw_counter: FQ, rw: RW, tag: RWTableTag, **other_queries: IntOrFQ) -> RWTableRow:
-        query: Dict[str, Optional[IntOrFQ]] = {"rw_counter": rw_counter, "rw": int(rw.value), "tag": tag, **other_queries}
+    def rw_lookup(
+        self, rw_counter: FQ, rw: RW, tag: RWTableTag, *other_queries: IntOrFQ
+    ) -> RWTableRow:
+        rest_keys = [
+            "key2",
+            "key3",
+            "key4",
+            "value",
+            "value_prev",
+            "aux1",
+            "aux2",
+        ]
+        query: Dict[str, Optional[IntOrFQ]] = {
+            "rw_counter": rw_counter,
+            "rw": int(rw.value),
+            "tag": tag,
+            **zip(rest_keys, other_queries),
+        }
         return _lookup(RWTableRow, self.rw_table, query)
 
 

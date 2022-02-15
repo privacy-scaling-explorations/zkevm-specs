@@ -27,6 +27,9 @@ from .table import (
     RWTableTag,
     RWTableRow,
     FixedTableRow,
+    BlockTableRow,
+    TxTableRow,
+    BytecodeTableRow,
 )
 
 
@@ -49,13 +52,16 @@ class Transition:
         self.kind = kind
         self.value = value
 
-    def same() -> Transition:
+    @classmethod
+    def same(cls) -> Transition:
         return Transition(TransitionKind.Same)
 
-    def delta(delta: int):
+    @classmethod
+    def delta(cls, delta: int):
         return Transition(TransitionKind.Delta, delta)
 
-    def to(to: int):
+    @classmethod
+    def to(cls, to: int):
         return Transition(TransitionKind.To, to)
 
 
@@ -107,7 +113,7 @@ class Instruction:
     def constrain_gas_left_not_underflow(self, gas_left: FQ):
         self.range_check(gas_left, N_BYTES_GAS)
 
-    def constrain_step_state_transition(self, **kwargs: Mapping[str, Transition]):
+    def constrain_step_state_transition(self, **kwargs: Transition):
         keys = set(
             [
                 "rw_counter",
@@ -198,7 +204,7 @@ class Instruction:
         )
 
     def sum(self, values: Sequence[FQ]) -> FQ:
-        return sum(values)
+        return FQ(sum(values))
 
     def is_zero(self, value: Union[FQ, RLC]) -> bool:
         return value == 0
@@ -223,8 +229,8 @@ class Instruction:
     def constant_divmod(
         self, numerator: IntOrFQ, denominator: IntOrFQ, n_bytes: int
     ) -> Tuple[FQ, FQ]:
-        quotient, remainder = divmod(FQ(numerator).n, FQ(denominator).n)
-        quotient, remainder = FQ(quotient), FQ(remainder)
+        _quotient, _remainder = divmod(FQ(numerator).n, FQ(denominator).n)
+        quotient, remainder = FQ(_quotient), FQ(_remainder)
         self.range_check(quotient, n_bytes)
         return quotient, remainder
 
@@ -246,12 +252,11 @@ class Instruction:
         addends_lo, addends_hi = list(zip(*map(self.word_to_lo_hi, addends)))
 
         carry_lo, sum_lo = divmod(self.sum(addends_lo).n, 1 << 128)
-        carry_hi, sum_hi = divmod((self.sum(addends_hi) + carry_lo).n, 1 << 128)
+        carry_hi, sum_hi = divmod(self.sum(addends_hi).n + carry_lo, 1 << 128)
 
         sum_bytes = sum_lo.to_bytes(16, "little") + sum_hi.to_bytes(16, "little")
-        carry_hi = FQ(carry_hi)
 
-        return RLC(sum_bytes, self.randomness), carry_hi
+        return RLC(sum_bytes, self.randomness, 32), FQ(carry_hi)
 
     def sub_word(self, minuend: RLC, subtrahend: RLC) -> Tuple[RLC, bool]:
         minuend_lo, minuend_hi = self.word_to_lo_hi(minuend)
@@ -273,18 +278,11 @@ class Instruction:
         quotient_hi, product_hi = divmod((multiplicand_hi * multiplier + quotient_lo).n, 1 << 128)
 
         product_bytes = product_lo.to_bytes(16, "little") + product_hi.to_bytes(16, "little")
-        quotient_hi = FQ(quotient_hi)
 
-        return RLC(product_bytes, self.randomness), quotient_hi
+        return RLC(product_bytes, self.randomness), FQ(quotient_hi)
 
     def rlc_to_le_bytes(self, rlc: RLC) -> bytes:
         return rlc.le_bytes
-
-    def rlc_to_fq_unchecked(self, rlc: RLC, n_bytes: int) -> FQ:
-        rlc_le_bytes = self.rlc_to_le_bytes(rlc)
-        return self.bytes_to_fq(rlc_le_bytes[:n_bytes]), self.is_zero(
-            self.sum(rlc_le_bytes[n_bytes:])
-        )
 
     def rlc_to_fq_exact(self, rlc: RLC, n_bytes: int) -> FQ:
         rlc_le_bytes = self.rlc_to_le_bytes(rlc)
@@ -311,7 +309,7 @@ class Instruction:
         return FQ(int.from_bytes(value, "little"))
 
     def range_lookup(self, value: FQ, range: int):
-        self.tables.fixed_lookup([FixedTableTag.range_table_tag(range), value, 0, 0])
+        self.tables.fixed_lookup(FixedTableTag.range_table_tag(range), value)
 
     def byte_range_lookup(self, value: FQ):
         assert isinstance(value, FQ), f"Expect type FQ, but get type {type(value)}"
@@ -329,24 +327,26 @@ class Instruction:
         return self.tables.fixed_lookup(tag, *inputs)
 
     def block_context_lookup(self, tag: BlockContextFieldTag, index: FQ = FQ.zero()) -> FQ:
-        return self.tables.block_lookup([tag, index])[2]
+        return self.tables.block_lookup(tag, index).value
 
     def tx_context_lookup(
         self, tx_id: FQ, field_tag: TxContextFieldTag, index: FQ = FQ.zero()
-    ) -> Union[FQ, RLC]:
-        return self.tables.tx_lookup([tx_id, field_tag, index])[3]
+    ) -> FQ:
+        return self.tables.tx_lookup(tx_id, field_tag, index).value
 
     def tx_calldata_lookup(self, tx_id: FQ, index: FQ) -> FQ:
-        return self.tables.tx_lookup([tx_id, TxContextFieldTag.CallData, index])[3]
+        return self.tables.tx_lookup(tx_id, TxContextFieldTag.CallData, index).value
 
     def bytecode_lookup(self, bytecode_hash: RLC, index: FQ, is_code: FQ) -> FQ:
-        return self.tables.bytecode_lookup([bytecode_hash, index, Tables._, is_code])[2]
+        return self.tables.bytecode_lookup(bytecode_hash.value, index, is_code).byte
 
     def tx_gas_price(self, tx_id: FQ) -> FQ:
         return self.tx_context_lookup(tx_id, TxContextFieldTag.GasPrice)
 
     def responsible_opcode_lookup(self, opcode: int):
-        self.fixed_lookup(FixedTableTag.ResponsibleOpcode, [self.curr.execution_state, opcode])
+        self.tables.fixed_lookup(
+            FixedTableTag.ResponsibleOpcode, FQ(self.curr.execution_state.value), FQ(opcode)
+        )
 
     def opcode_lookup(self, is_code: bool) -> FQ:
         index = self.curr.program_counter + self.program_counter_offset
@@ -359,26 +359,16 @@ class Instruction:
                 "The opcode source when is_root and is_create (root creation call) is not determined yet"
             )
         else:
-            return self.bytecode_lookup(self.curr.code_source, index, is_code)
+            return self.bytecode_lookup(self.curr.code_source, index, FQ(is_code))
 
-    def rw_lookup(self, rw: RW, tag: RWTableTag, inputs: Sequence[int], rw_counter: Optional[int] = None) -> RWTableRow:
+    def rw_lookup(
+        self, rw: RW, tag: RWTableTag, inputs: Sequence[IntOrFQ], rw_counter: Optional[FQ] = None
+    ) -> RWTableRow:
         if rw_counter is None:
             rw_counter = self.curr.rw_counter + self.rw_counter_offset
             self.rw_counter_offset += 1
-        return self.tables.rw_lookup([rw_counter, rw, tag] + inputs)
 
-    def state_write_only_persistent(
-        self,
-        tag: RWTableTag,
-        inputs: Sequence[int],
-        is_persistent: bool,
-    ) -> RWTableRow:
-        assert tag.write_only_persistent()
-
-        if is_persistent:
-            return self.rw_lookup(RW.Write, tag, inputs)
-
-        return 10 * [None]
+        return self.tables.rw_lookup(rw_counter, rw, tag, *inputs)
 
     def state_write_with_reversion(
         self,
@@ -386,61 +376,73 @@ class Instruction:
         inputs: Sequence[int],
         is_persistent: bool,
         rw_counter_end_of_reversion: int,
-        state_write_counter: Optional[int] = None,
+        _state_write_counter: Optional[FQ] = None,
     ) -> RWTableRow:
         assert tag.write_with_reversion()
 
         row = self.rw_lookup(RW.Write, tag, inputs)
 
-        if state_write_counter is None:
-            state_write_counter = self.curr.state_write_counter + self.state_write_counter_offset
+        if _state_write_counter is None:
             self.state_write_counter_offset += 1
+
+        state_write_counter = (
+            self.curr.state_write_counter + self.state_write_counter_offset
+            if _state_write_counter is None
+            else _state_write_counter
+        )
 
         rw_counter = rw_counter_end_of_reversion - state_write_counter
 
         if not is_persistent:
             # Swap value and value_prev
-            inputs = list(row[3:])
-            inputs[-3], inputs[-4] = inputs[-4], inputs[-3]
-            self.rw_lookup(RW.Write, tag, inputs, rw_counter=rw_counter)
+            inputs2 = [
+                row.key2,
+                row.key3,
+                row.key4,
+                row.value_prev,
+                row.value,
+                row.aux1,
+                row.aux2,
+            ]
+            self.rw_lookup(RW.Write, tag, inputs2, rw_counter=rw_counter)
 
         return row
 
     def call_context_lookup(
-        self, field_tag: CallContextFieldTag, rw: RW = RW.Read, call_id: Optional[int] = None
-    ) -> Union[FQ, RLC]:
-        if call_id is None:
-            call_id = self.curr.call_id
-        return self.rw_lookup(rw, RWTableTag.CallContext, [call_id, field_tag])[-4]
+        self, field_tag: CallContextFieldTag, rw: RW = RW.Read, _call_id: Optional[FQ] = None
+    ) -> FQ:
+        call_id = self.curr.call_id if _call_id is None else _call_id
+
+        return self.rw_lookup(rw, RWTableTag.CallContext, [call_id, field_tag.value]).value
 
     def stack_pop(self) -> Union[FQ, RLC]:
         stack_pointer_offset = self.stack_pointer_offset
         self.stack_pointer_offset += 1
-        return self.stack_lookup(False, stack_pointer_offset)
+        return self.stack_lookup(RW.Read, stack_pointer_offset)
 
     def stack_push(self) -> Union[FQ, RLC]:
         self.stack_pointer_offset -= 1
-        return self.stack_lookup(True, self.stack_pointer_offset)
+        return self.stack_lookup(RW.Write, self.stack_pointer_offset)
 
     def stack_lookup(self, rw: RW, stack_pointer_offset: int) -> Union[FQ, RLC]:
         stack_pointer = self.curr.stack_pointer + stack_pointer_offset
-        return self.rw_lookup(rw, RWTableTag.Stack, [self.curr.call_id, stack_pointer])[-4]
+        return self.rw_lookup(rw, RWTableTag.Stack, [self.curr.call_id, stack_pointer]).value
 
-    def memory_write(self, memory_address: int, call_id: Optional[int] = None) -> FQ:
+    def memory_write(self, memory_address: int, call_id: Optional[FQ] = None) -> FQ:
         return self.memory_lookup(RW.Write, memory_address, call_id)
 
-    def memory_lookup(self, rw: RW, memory_address: int, call_id: Optional[int] = None) -> FQ:
-        if call_id is None:
-            call_id = self.curr.call_id
-        return self.rw_lookup(rw, RWTableTag.Memory, [call_id, memory_address])[-4]
+    def memory_lookup(self, rw: RW, memory_address: int, _call_id: Optional[FQ] = None) -> FQ:
+        call_id = self.curr.call_id if _call_id is None else _call_id
+
+        return self.rw_lookup(rw, RWTableTag.Memory, [call_id, memory_address]).value
 
     def tx_refund_read(self, tx_id) -> FQ:
         row = self.rw_lookup(RW.Read, RWTableTag.TxRefund, [tx_id])
-        return row[-4]
+        return row.value
 
     def account_read(self, account_address: int, account_field_tag: AccountFieldTag) -> FQ:
         row = self.rw_lookup(RW.Read, RWTableTag.Account, [account_address, account_field_tag])
-        return row[-4]
+        return row.value
 
     def account_write(
         self,
@@ -452,7 +454,7 @@ class Instruction:
             RWTableTag.Account,
             [account_address, account_field_tag],
         )
-        return row[-4], row[-3]
+        return row.value, row.value_prev
 
     def account_write_with_reversion(
         self,
@@ -460,7 +462,7 @@ class Instruction:
         account_field_tag: AccountFieldTag,
         is_persistent: bool,
         rw_counter_end_of_reversion: int,
-        state_write_counter: Optional[int] = None,
+        state_write_counter: Optional[FQ] = None,
     ) -> Tuple[FQ, FQ]:
         row = self.state_write_with_reversion(
             RWTableTag.Account,
@@ -469,22 +471,22 @@ class Instruction:
             rw_counter_end_of_reversion,
             state_write_counter,
         )
-        return row[-4], row[-3]
+        return row.value, row.value_prev
 
-    def add_balance(self, account_address: int, values: Sequence[int]) -> Tuple[FQ, FQ]:
+    def add_balance(self, account_address: int, values: Sequence[RLC]) -> Tuple[FQ, FQ]:
         balance, balance_prev = self.account_write(account_address, AccountFieldTag.Balance)
-        result, carry = self.add_words([balance_prev, *values])
-        self.constrain_equal(balance, result)
+        result, carry = self.add_words([RLC(balance_prev, self.randomness), *values])
+        self.constrain_equal(balance, result.value)
         self.constrain_zero(carry)
         return balance, balance_prev
 
     def add_balance_with_reversion(
         self,
         account_address: int,
-        values: Sequence[int],
+        values: Sequence[RLC],
         is_persistent: bool,
         rw_counter_end_of_reversion: int,
-        state_write_counter: Optional[int] = None,
+        state_write_counter: Optional[FQ] = None,
     ) -> Tuple[FQ, FQ]:
         balance, balance_prev = self.account_write_with_reversion(
             account_address,
@@ -493,25 +495,25 @@ class Instruction:
             rw_counter_end_of_reversion,
             state_write_counter,
         )
-        result, carry = self.add_words([balance_prev, *values])
-        self.constrain_equal(balance, result)
+        result, carry = self.add_words([RLC(balance_prev, self.randomness), *values])
+        self.constrain_equal(balance, result.value)
         self.constrain_zero(carry)
         return balance, balance_prev
 
-    def sub_balance(self, account_address: int, values: Sequence[int]) -> Tuple[FQ, FQ]:
+    def sub_balance(self, account_address: int, values: Sequence[RLC]) -> Tuple[FQ, FQ]:
         balance, balance_prev = self.account_write(account_address, AccountFieldTag.Balance)
-        result, carry = self.add_words([balance, *values])
-        self.constrain_equal(balance_prev, result)
+        result, carry = self.add_words([RLC(balance, self.randomness), *values])
+        self.constrain_equal(balance_prev, result.value)
         self.constrain_zero(carry)
         return balance, balance_prev
 
     def sub_balance_with_reversion(
         self,
         account_address: int,
-        values: Sequence[int],
+        values: Sequence[RLC],
         is_persistent: bool,
         rw_counter_end_of_reversion: int,
-        state_write_counter: Optional[int] = None,
+        state_write_counter: Optional[FQ] = None,
     ) -> Tuple[FQ, FQ]:
         balance, balance_prev = self.account_write_with_reversion(
             account_address,
@@ -520,8 +522,8 @@ class Instruction:
             rw_counter_end_of_reversion,
             state_write_counter,
         )
-        result, carry = self.add_words([balance, *values])
-        self.constrain_equal(balance_prev, result)
+        result, carry = self.add_words([RLC(balance, self.randomness), *values])
+        self.constrain_equal(balance_prev, result.value)
         self.constrain_zero(carry)
         return balance, balance_prev
 
@@ -535,7 +537,7 @@ class Instruction:
             RWTableTag.TxAccessListAccount,
             [tx_id, account_address, 0, 1],
         )
-        return row[-4] - row[-3]
+        return row.value - row.value_prev
 
     def add_account_to_access_list_with_reversion(
         self,
@@ -543,7 +545,7 @@ class Instruction:
         account_address: int,
         is_persistent: bool,
         rw_counter_end_of_reversion: int,
-        state_write_counter: Optional[int] = None,
+        state_write_counter: Optional[FQ] = None,
     ) -> FQ:
         row = self.state_write_with_reversion(
             RWTableTag.TxAccessListAccount,
@@ -552,7 +554,7 @@ class Instruction:
             rw_counter_end_of_reversion,
             state_write_counter,
         )
-        return row[-4] - row[-3]
+        return row.value - row.value_prev
 
     def add_account_storage_to_access_list(
         self,
@@ -565,7 +567,7 @@ class Instruction:
             RWTableTag.TxAccessListAccountStorage,
             [tx_id, account_address, storage_key, 1],
         )
-        return row[-4] - row[-3]
+        return (row.value - row.value_prev) == 1
 
     def add_account_storage_to_access_list_with_reversion(
         self,
@@ -574,7 +576,7 @@ class Instruction:
         storage_key: int,
         is_persistent: bool,
         rw_counter_end_of_reversion: int,
-        state_write_counter: Optional[int] = None,
+        state_write_counter: Optional[FQ] = None,
     ) -> bool:
         row = self.state_write_with_reversion(
             RWTableTag.TxAccessListAccountStorage,
@@ -583,14 +585,14 @@ class Instruction:
             rw_counter_end_of_reversion,
             state_write_counter,
         )
-        return row[-4] - row[-3]
+        return (row.value - row.value_prev) == 1
 
     def transfer_with_gas_fee(
         self,
         sender_address: int,
         receiver_address: int,
-        value: int,
-        gas_fee: int,
+        value: RLC,
+        gas_fee: RLC,
         is_persistent: bool,
         rw_counter_end_of_reversion: int,
     ) -> Tuple[Tuple[FQ, FQ], Tuple[FQ, FQ]]:
@@ -612,11 +614,11 @@ class Instruction:
         self,
         sender_address: int,
         receiver_address: int,
-        value: int,
+        value: RLC,
         is_persistent: bool,
         rw_counter_end_of_reversion: int,
-        state_write_counter: Optional[int] = None,
-    ) -> Tuple[Tuple[int, int], Tuple[int, int]]:
+        state_write_counter: Optional[FQ] = None,
+    ) -> Tuple[Tuple[FQ, FQ], Tuple[FQ, FQ]]:
         sender_balance_pair = self.sub_balance_with_reversion(
             sender_address,
             [value],
@@ -634,11 +636,11 @@ class Instruction:
         return sender_balance_pair, receiver_balance_pair
 
     def memory_offset_and_length(self, offset: RLC, length: RLC) -> Tuple[FQ, FQ]:
-        length = self.rlc_to_fq_exact(length, N_BYTES_MEMORY_SIZE)
-        if self.is_zero(length):
+        _length = self.rlc_to_fq_exact(length, N_BYTES_MEMORY_SIZE)
+        if self.is_zero(_length):
             return FQ.zero(), FQ.zero()
-        offset = self.rlc_to_fq_exact(offset, N_BYTES_MEMORY_ADDRESS)
-        return offset, length
+        _offset = self.rlc_to_fq_exact(offset, N_BYTES_MEMORY_ADDRESS)
+        return _offset, _length
 
     def memory_gas_cost(self, memory_size: FQ) -> FQ:
         quadratic_cost, _ = self.constant_divmod(
@@ -652,7 +654,7 @@ class Instruction:
 
         next_memory_size = self.max(self.curr.memory_size, memory_size, N_BYTES_MEMORY_SIZE)
 
-        memory_gas_cost = self.memory_expansion_gas_cost(self.curr.memory_size)
+        memory_gas_cost = self.memory_gas_cost(self.curr.memory_size)
         memory_gas_cost_next = self.memory_gas_cost(next_memory_size)
         memory_expansion_gas_cost = memory_gas_cost_next - memory_gas_cost
 
@@ -671,6 +673,7 @@ class Instruction:
         next_memory_size = self.max(self.curr.memory_size, cd_memory_size, N_BYTES_MEMORY_SIZE)
 
         if rd_offset is not None:
+            rd_length = 0 if _rd_length is None else _rd_length
             rd_memory_size, _ = self.constant_divmod(
                 rd_offset + rd_length + 31, 32, N_BYTES_MEMORY_SIZE
             )

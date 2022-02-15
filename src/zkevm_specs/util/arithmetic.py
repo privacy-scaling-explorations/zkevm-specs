@@ -25,7 +25,7 @@ class RLC:
     value: FQ
 
     def __init__(
-        self, int_or_bytes: Union[IntOrFQ, bytes], randomness: int, n_bytes: int = 32
+        self, int_or_bytes: Union[IntOrFQ, bytes], randomness: IntOrFQ, n_bytes: int = 32
     ) -> None:
         if isinstance(int_or_bytes, int):
             assert (
