@@ -29,7 +29,11 @@ def select(
 
 @is_circuit_code
 def check_bytecode_row(
-    row: Row, prev_row: Row, push_table: Set[Tuple[int, int]], keccak_table: Set[Tuple[int, int, int]], r: int
+    row: Row,
+    prev_row: Row,
+    push_table: Set[Tuple[int, int]],
+    keccak_table: Set[Tuple[int, int, int]],
+    r: int,
 ):
     row = Row(*[v if isinstance(v, RLC) else FQ(v) for v in row])
     prev_row = Row(*[v if isinstance(v, RLC) else FQ(v) for v in prev_row])
@@ -62,7 +66,9 @@ def check_bytecode_row(
     # padding needs to be boolean
     assert_bool(row.padding)
     # push_data_left := is_code ? byte_push_size : push_data_left_prev - 1
-    assert row.push_data_left == select(row.is_code, row.byte_push_size, prev_row.push_data_left - 1)
+    assert row.push_data_left == select(
+        row.is_code, row.byte_push_size, prev_row.push_data_left - 1
+    )
 
     # Padding
     if row.q_first == 0:

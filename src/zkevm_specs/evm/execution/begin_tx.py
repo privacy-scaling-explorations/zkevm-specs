@@ -12,7 +12,9 @@ def begin_tx(instruction: Instruction):
     rw_counter_end_of_reversion = instruction.call_context_lookup(
         CallContextFieldTag.RwCounterEndOfReversion, call_id=call_id
     )
-    is_persistent = instruction.call_context_lookup(CallContextFieldTag.IsPersistent, call_id=call_id)
+    is_persistent = instruction.call_context_lookup(
+        CallContextFieldTag.IsPersistent, call_id=call_id
+    )
 
     if instruction.is_first_step:
         instruction.constrain_equal(instruction.curr.rw_counter, 1)
@@ -39,7 +41,11 @@ def begin_tx(instruction: Instruction):
 
     # TODO: Handle gas cost of tx level access list (EIP 2930)
     tx_call_data_gas_cost = instruction.tx_context_lookup(tx_id, TxContextFieldTag.CallDataGasCost)
-    gas_left = tx_gas - (GAS_COST_CREATION_TX if tx_is_create == 1 else GAS_COST_TX) - tx_call_data_gas_cost
+    gas_left = (
+        tx_gas
+        - (GAS_COST_CREATION_TX if tx_is_create == 1 else GAS_COST_TX)
+        - tx_call_data_gas_cost
+    )
     instruction.constrain_gas_left_not_underflow(gas_left)
 
     # Prepare access list of caller and callee
@@ -84,7 +90,9 @@ def begin_tx(instruction: Instruction):
             (CallContextFieldTag.LastCalleeReturnDataOffset, 0),
             (CallContextFieldTag.LastCalleeReturnDataLength, 0),
         ]:
-            instruction.constrain_equal(instruction.call_context_lookup(tag, call_id=call_id), value)
+            instruction.constrain_equal(
+                instruction.call_context_lookup(tag, call_id=call_id), value
+            )
 
         instruction.step_state_transition_to_new_context(
             rw_counter=Transition.delta(19),

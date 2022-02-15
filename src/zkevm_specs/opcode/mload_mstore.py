@@ -91,7 +91,9 @@ def memory_expansion(
 
     # Calculate the gas cost for the memory expansion
     # This gas cost is the difference between the next and current memory costs
-    memory_gas_cost = (next_memory_size - curr_memory_size) * G_MEM + (next_quad_memory_cost - curr_quad_memory_cost)
+    memory_gas_cost = (next_memory_size - curr_memory_size) * G_MEM + (
+        next_quad_memory_cost - curr_quad_memory_cost
+    )
 
     # Return the new memory size and the memory expansion gas cost
     return (next_memory_size, memory_gas_cost)
@@ -124,7 +126,9 @@ def check_memory_ops(
     address = address_low(address8s)
 
     # Calculate the next memory size and the gas cost for this memory access
-    (next_memory_size, memory_cost) = memory_expansion(curr_memory_size, address + 1 + is_not_mstore8 * 31)
+    (next_memory_size, memory_cost) = memory_expansion(
+        curr_memory_size, address + 1 + is_not_mstore8 * 31
+    )
     assert next_memory_size == expected_next_memory_size
     assert memory_cost == expected_memory_cost
 

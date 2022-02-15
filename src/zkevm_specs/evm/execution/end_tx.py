@@ -10,13 +10,17 @@ def end_tx(instruction: Instruction):
     # Handle gas refund (refund is capped to gas_used // MAX_REFUND_QUOTIENT_OF_GAS_USED in EIP 3529)
     tx_gas = instruction.tx_context_lookup(tx_id, TxContextFieldTag.Gas)
     gas_used = tx_gas - instruction.curr.gas_left
-    max_refund, _ = instruction.constant_divmod(gas_used, MAX_REFUND_QUOTIENT_OF_GAS_USED, N_BYTES_GAS)
+    max_refund, _ = instruction.constant_divmod(
+        gas_used, MAX_REFUND_QUOTIENT_OF_GAS_USED, N_BYTES_GAS
+    )
     refund = instruction.tx_refund_read(tx_id)
     effective_refund = instruction.min(max_refund, refund, 8)
 
     # Add effective_refund * gas_price back to caller's balance
     tx_gas_price = instruction.tx_gas_price(tx_id)
-    value, carry = instruction.mul_word_by_u64(tx_gas_price, instruction.curr.gas_left + effective_refund)
+    value, carry = instruction.mul_word_by_u64(
+        tx_gas_price, instruction.curr.gas_left + effective_refund
+    )
     instruction.constrain_zero(carry)
     tx_caller_address = instruction.tx_context_lookup(tx_id, TxContextFieldTag.CallerAddress)
     instruction.add_balance(tx_caller_address, [value])
@@ -33,7 +37,9 @@ def end_tx(instruction: Instruction):
     if instruction.next.execution_state == ExecutionState.BeginTx:
         # Check next tx_id is increased by 1
         instruction.constrain_equal(
-            instruction.call_context_lookup(CallContextFieldTag.TxId, call_id=instruction.next.rw_counter),
+            instruction.call_context_lookup(
+                CallContextFieldTag.TxId, call_id=instruction.next.rw_counter
+            ),
             tx_id + 1,
         )
 

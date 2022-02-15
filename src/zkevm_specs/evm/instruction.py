@@ -94,10 +94,14 @@ class Instruction:
         assert value == 0, ConstraintUnsatFailure(f"Expected value to be 0, but got {value}")
 
     def constrain_equal(self, lhs: FQ, rhs: FQ):
-        assert lhs == rhs, ConstraintUnsatFailure(f"Expected values to be equal, but got {lhs} and {rhs}")
+        assert lhs == rhs, ConstraintUnsatFailure(
+            f"Expected values to be equal, but got {lhs} and {rhs}"
+        )
 
     def constrain_bool(self, num: FQ):
-        assert num.n in [0, 1], ConstraintUnsatFailure(f"Expected value to be a bool, but got {num}")
+        assert num.n in [0, 1], ConstraintUnsatFailure(
+            f"Expected value to be a bool, but got {num}"
+        )
 
     def constrain_gas_left_not_underflow(self, gas_left: FQ):
         self.bytes_range_lookup(gas_left, N_BYTES_GAS)
@@ -125,7 +129,9 @@ class Instruction:
         for key, transition in kwargs.items():
             curr, next = getattr(self.curr, key), getattr(self.next, key)
             if transition.kind == TransitionKind.Same:
-                assert next == curr, ConstraintUnsatFailure(f"State {key} should be same as {curr}, but got {next}")
+                assert next == curr, ConstraintUnsatFailure(
+                    f"State {key} should be same as {curr}, but got {next}"
+                )
             elif transition.kind == TransitionKind.Delta:
                 assert next == curr + transition.value, ConstraintUnsatFailure(
                     f"State {key} should transit to {curr + transition.value}, but got {next}"
@@ -213,7 +219,9 @@ class Instruction:
     def pair_select(self, value: int, lhs: int, rhs: int) -> Tuple[bool, bool]:
         return value == lhs, value == rhs
 
-    def constant_divmod(self, numerator: IntOrFQ, denominator: IntOrFQ, n_bytes: int) -> Tuple[int, int]:
+    def constant_divmod(
+        self, numerator: IntOrFQ, denominator: IntOrFQ, n_bytes: int
+    ) -> Tuple[int, int]:
         quotient, remainder = divmod(FQ(numerator).n, FQ(denominator).n)
         quotient, remainder = FQ(quotient), FQ(remainder)
         self.bytes_range_lookup(quotient, n_bytes)
@@ -272,7 +280,9 @@ class Instruction:
 
     def rlc_to_int_unchecked(self, rlc: RLC, n_bytes: int) -> int:
         rlc_le_bytes = self.rlc_to_le_bytes(rlc)
-        return self.bytes_to_int(rlc_le_bytes[:n_bytes]), self.is_zero(self.sum(rlc_le_bytes[n_bytes:]))
+        return self.bytes_to_int(rlc_le_bytes[:n_bytes]), self.is_zero(
+            self.sum(rlc_le_bytes[n_bytes:])
+        )
 
     def rlc_to_int_exact(self, rlc: RLC, n_bytes: int) -> int:
         rlc_le_bytes = self.rlc_to_le_bytes(rlc)
@@ -349,7 +359,9 @@ class Instruction:
         else:
             return self.bytecode_lookup(self.curr.code_source, index, is_code)
 
-    def rw_lookup(self, rw: RW, tag: RWTableTag, inputs: Sequence[int], rw_counter: Optional[int] = None) -> Array10:
+    def rw_lookup(
+        self, rw: RW, tag: RWTableTag, inputs: Sequence[int], rw_counter: Optional[int] = None
+    ) -> Array10:
         if rw_counter is None:
             rw_counter = self.curr.rw_counter + self.rw_counter_offset
             self.rw_counter_offset += 1
@@ -478,7 +490,11 @@ class Instruction:
         state_write_counter: Optional[int] = None,
     ) -> Tuple[FQ, FQ]:
         balance, balance_prev = self.account_write_with_reversion(
-            account_address, AccountFieldTag.Balance, is_persistent, rw_counter_end_of_reversion, state_write_counter
+            account_address,
+            AccountFieldTag.Balance,
+            is_persistent,
+            rw_counter_end_of_reversion,
+            state_write_counter,
         )
         result, carry = self.add_words([balance_prev, *values])
         self.constrain_equal(balance, result)
@@ -501,7 +517,11 @@ class Instruction:
         state_write_counter: Optional[int] = None,
     ) -> Tuple[FQ, FQ]:
         balance, balance_prev = self.account_write_with_reversion(
-            account_address, AccountFieldTag.Balance, is_persistent, rw_counter_end_of_reversion, state_write_counter
+            account_address,
+            AccountFieldTag.Balance,
+            is_persistent,
+            rw_counter_end_of_reversion,
+            state_write_counter,
         )
         result, carry = self.add_words([balance, *values])
         self.constrain_equal(balance_prev, result)
@@ -649,11 +669,15 @@ class Instruction:
         rd_offset: Optional[int] = None,
         rd_length: Optional[int] = None,
     ) -> Tuple[int, int]:
-        cd_memory_size, _ = self.constant_divmod(cd_offset + cd_length + 31, 32, N_BYTES_MEMORY_SIZE)
+        cd_memory_size, _ = self.constant_divmod(
+            cd_offset + cd_length + 31, 32, N_BYTES_MEMORY_SIZE
+        )
         next_memory_size = self.max(self.curr.memory_size, cd_memory_size, N_BYTES_MEMORY_SIZE)
 
         if rd_offset is not None:
-            rd_memory_size, _ = self.constant_divmod(rd_offset + rd_length + 31, 32, N_BYTES_MEMORY_SIZE)
+            rd_memory_size, _ = self.constant_divmod(
+                rd_offset + rd_length + 31, 32, N_BYTES_MEMORY_SIZE
+            )
             next_memory_size = self.max(next_memory_size, rd_memory_size, N_BYTES_MEMORY_SIZE)
 
         memory_gas_cost = self.memory_gas_cost(self.curr.memory_size)

@@ -77,4 +77,6 @@ def test_check_byte():
                     r8s[j] = sign_byte
                     selectors[j - 1] = 1
 
-            check_signextend(value, i8s, r8s, sign_byte if i < 31 else 0, selectors, sign_byte_table)
+            check_signextend(
+                value, i8s, r8s, sign_byte if i < 31 else 0, selectors, sign_byte_table
+            )
