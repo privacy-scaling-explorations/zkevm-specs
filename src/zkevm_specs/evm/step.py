@@ -50,7 +50,7 @@ class StepState:
         call_id: int = 0,
         is_root: bool = False,
         is_create: bool = False,
-        code_source: int = 0,
+        code_source: RLC = RLC(0, 0),
         program_counter: int = 0,
         stack_pointer: int = 1024,
         gas_left: int = 0,
