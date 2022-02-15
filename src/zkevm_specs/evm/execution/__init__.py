@@ -14,6 +14,7 @@ from .calldatasize import *
 from .caller import *
 from .callvalue import *
 from .gas import *
+from .gasprice import *
 from .jump import *
 from .jumpi import *
 from .push import *
@@ -37,4 +38,5 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.SCMP: scmp,
     ExecutionState.GAS: gas,
     ExecutionState.SELFBALANCE: selfbalance,
+    ExecutionState.GASPRICE: gasprice,
 }
