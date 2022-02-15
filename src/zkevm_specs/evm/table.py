@@ -44,52 +44,52 @@ class FixedTableTag(IntEnum):
 
     def table_assignments(self) -> List[FixedTableRow]:
         if self == FixedTableTag.Range16:
-            return [FixedTableRow(FQ(self.value), FQ(i)) for i in range(16)]
+            return [FixedTableRow(self, FQ(i)) for i in range(16)]
         elif self == FixedTableTag.Range32:
-            return [FixedTableRow(FQ(self.value), FQ(i)) for i in range(32)]
+            return [FixedTableRow(self, FQ(i)) for i in range(32)]
         elif self == FixedTableTag.Range64:
-            return [FixedTableRow(FQ(self.value), FQ(i)) for i in range(64)]
+            return [FixedTableRow(self, FQ(i)) for i in range(64)]
         elif self == FixedTableTag.Range256:
-            return [FixedTableRow(FQ(self.value), FQ(i)) for i in range(256)]
+            return [FixedTableRow(self, FQ(i)) for i in range(256)]
         elif self == FixedTableTag.Range512:
-            return [FixedTableRow(FQ(self.value), FQ(i)) for i in range(512)]
+            return [FixedTableRow(self, FQ(i)) for i in range(512)]
         elif self == FixedTableTag.Range1024:
-            return [FixedTableRow(FQ(self.value), FQ(i)) for i in range(1024)]
+            return [FixedTableRow(self, FQ(i)) for i in range(1024)]
         elif self == FixedTableTag.SignByte:
-            return [FixedTableRow(FQ(self.value), FQ(i), FQ((i >> 7) * 0xFF)) for i in range(256)]
+            return [FixedTableRow(self, FQ(i), FQ((i >> 7) * 0xFF)) for i in range(256)]
         elif self == FixedTableTag.BitwiseAnd:
             return [
-                FixedTableRow(FQ(self.value), FQ(lhs), FQ(rhs), FQ(lhs & rhs))
+                FixedTableRow(self, FQ(lhs), FQ(rhs), FQ(lhs & rhs))
                 for lhs, rhs in product(range(256), range(256))
             ]
         elif self == FixedTableTag.BitwiseOr:
             return [
-                FixedTableRow(FQ(self.value), FQ(lhs), FQ(rhs), FQ(lhs | rhs))
+                FixedTableRow(self, FQ(lhs), FQ(rhs), FQ(lhs | rhs))
                 for lhs, rhs in product(range(256), range(256))
             ]
         elif self == FixedTableTag.BitwiseXor:
             return [
-                FixedTableRow(FQ(self.value), FQ(lhs), FQ(rhs), FQ(lhs ^ rhs))
+                FixedTableRow(self, FQ(lhs), FQ(rhs), FQ(lhs ^ rhs))
                 for lhs, rhs in product(range(256), range(256))
             ]
         elif self == FixedTableTag.ResponsibleOpcode:
             return [
-                FixedTableRow(FQ(self.value), FQ(execution_state), FQ(opcode))
+                FixedTableRow(self, FQ(execution_state), FQ(opcode))
                 for execution_state in list(ExecutionState)
                 for opcode in execution_state.responsible_opcode()
             ]
         elif self == FixedTableTag.InvalidOpcode:
-            return [FixedTableRow(FQ(self.value), FQ(opcode)) for opcode in invalid_opcodes()]
+            return [FixedTableRow(self, FQ(opcode)) for opcode in invalid_opcodes()]
         elif self == FixedTableTag.StateWriteOpcode:
-            return [FixedTableRow(FQ(self.value), FQ(opcode)) for opcode in state_write_opcodes()]
+            return [FixedTableRow(self, FQ(opcode)) for opcode in state_write_opcodes()]
         elif self == FixedTableTag.StackOverflow:
             return [
-                FixedTableRow(FQ(self.value), FQ(opcode), FQ(stack_pointer))
+                FixedTableRow(self, FQ(opcode), FQ(stack_pointer))
                 for opcode, stack_pointer in stack_underflow_pairs()
             ]
         elif self == FixedTableTag.StackUnderflow:
             return [
-                FixedTableRow(FQ(self.value), FQ(opcode), FQ(stack_pointer))
+                FixedTableRow(self, FQ(opcode), FQ(stack_pointer))
                 for opcode, stack_pointer in stack_overflow_pairs()
             ]
         else:
@@ -293,7 +293,7 @@ class BlockTableRow(TableRow):
 @dataclass(frozen=True)
 class TxTableRow(TableRow):
     tx_id: FQ
-    tag: FQ
+    tag: TxContextFieldTag
     # meaningful only for CallData, will be zero for other tags
     call_data_index_or_zero: FQ
     value: FQ
@@ -312,7 +312,7 @@ class RWTableRow(TableRow):
     rw_counter: FQ
     is_write: FQ
     # key1 is also the tag
-    key1: FQ
+    key1: RWTableTag
     key2: FQ
     key3: FQ
     key4: FQ

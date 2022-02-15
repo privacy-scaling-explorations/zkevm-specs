@@ -7,7 +7,7 @@ def _hash_fq(v: FQ) -> int:
     return hash(v.n)
 
 
-FQ.__hash__ = _hash_fq # type: ignore
+FQ.__hash__ = _hash_fq  # type: ignore
 IntOrFQ = Union[int, FQ]
 
 

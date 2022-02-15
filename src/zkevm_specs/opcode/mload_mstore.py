@@ -18,6 +18,7 @@ def address_low(
     _sum = sum(x * (2 ** (8 * i)) for i, x in enumerate(address[:NUM_ADDRESS_BYTES_USED]))
     return U64(_sum)
 
+
 @is_circuit_code
 def address_high(
     address: Sequence[U8],

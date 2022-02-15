@@ -1,9 +1,10 @@
 from __future__ import annotations
-from typing import Any, Dict, Iterator, NewType, Optional, Sequence
+from typing import Any, Dict, Iterator, NewType, Optional, Sequence, List
 from functools import reduce
 from itertools import chain
 
 from ..util import (
+    FQ,
     U64,
     U160,
     U256,
@@ -42,12 +43,12 @@ class Block:
 
     def __init__(
         self,
-        coinbase: U160 = 0x10,
-        gas_limit: U64 = int(15e6),
-        number: U256 = 0,
-        timestamp: U64 = 0,
-        difficulty: U256 = 0,
-        base_fee: U256 = int(1e9),
+        coinbase: U160 = U160(0x10),
+        gas_limit: U64 = U64(15_000_000),
+        number: U256 = U256(0),
+        timestamp: U64 = U64(0),
+        difficulty: U256 = U256(0),
+        base_fee: U256 = U256(1_000_000_000),
         history_hashes: Sequence[U256] = [],
     ) -> None:
         assert len(history_hashes) <= min(256, number)
@@ -60,16 +61,24 @@ class Block:
         self.base_fee = base_fee
         self.history_hashes = history_hashes
 
-    def table_assignments(self, randomness: int) -> Sequence[BlockTableRow]:
+    def table_assignments(self, randomness: int) -> List[BlockTableRow]:
         return [
-            (BlockContextFieldTag.Coinbase, 0, self.coinbase),
-            (BlockContextFieldTag.GasLimit, 0, self.gas_limit),
-            (BlockContextFieldTag.Number, 0, RLC(self.number, randomness)),
-            (BlockContextFieldTag.Timestamp, 0, self.timestamp),
-            (BlockContextFieldTag.Difficulty, 0, RLC(self.difficulty, randomness)),
-            (BlockContextFieldTag.BaseFee, 0, RLC(self.base_fee, randomness)),
+            BlockTableRow(BlockContextFieldTag.Coinbase, FQ(0), FQ(self.coinbase)),
+            BlockTableRow(BlockContextFieldTag.GasLimit, FQ(0), FQ(self.gas_limit)),
+            BlockTableRow(BlockContextFieldTag.Number, FQ(0), RLC(self.number, randomness).value),
+            BlockTableRow(BlockContextFieldTag.Timestamp, FQ(0), FQ(self.timestamp)),
+            BlockTableRow(
+                BlockContextFieldTag.Difficulty, FQ(0), RLC(self.difficulty, randomness).value
+            ),
+            BlockTableRow(
+                BlockContextFieldTag.BaseFee, FQ(0), RLC(self.base_fee, randomness).value
+            ),
         ] + [
-            (BlockContextFieldTag.HistoryHash, self.number - idx - 1, RLC(history_hash, randomness))
+            BlockTableRow(
+                BlockContextFieldTag.HistoryHash,
+                FQ(self.number - idx - 1),
+                RLC(history_hash, randomness).value,
+            )
             for idx, history_hash in enumerate(reversed(self.history_hashes))
         ]
 
@@ -87,12 +96,12 @@ class Transaction:
     def __init__(
         self,
         id: int = 1,
-        nonce: U64 = 0,
-        gas: U64 = 21000,
-        gas_price: U256 = int(2e9),
-        caller_address: U160 = 0,
+        nonce: U64 = U64(0),
+        gas: U64 = U64(21_000),
+        gas_price: U256 = U256(2_000_000_000),
+        caller_address: U160 = U160(0),
         callee_address: Optional[U160] = None,
-        value: U256 = 0,
+        value: U256 = U256(0),
         call_data: bytes = bytes(),
     ) -> None:
         self.id = id
@@ -121,18 +130,40 @@ class Transaction:
     def table_assignments(self, randomness: int) -> Iterator[TxTableRow]:
         return chain(
             [
-                (self.id, TxContextFieldTag.Nonce, 0, self.nonce),
-                (self.id, TxContextFieldTag.Gas, 0, self.gas),
-                (self.id, TxContextFieldTag.GasPrice, 0, RLC(self.gas_price, randomness)),
-                (self.id, TxContextFieldTag.CallerAddress, 0, self.caller_address),
-                (self.id, TxContextFieldTag.CalleeAddress, 0, self.callee_address),
-                (self.id, TxContextFieldTag.IsCreate, 0, self.callee_address is None),
-                (self.id, TxContextFieldTag.Value, 0, RLC(self.value, randomness)),
-                (self.id, TxContextFieldTag.CallDataLength, 0, len(self.call_data)),
-                (self.id, TxContextFieldTag.CallDataGasCost, 0, self.call_data_gas_cost()),
+                TxTableRow(FQ(self.id), TxContextFieldTag.Nonce, FQ(0), FQ(self.nonce)),
+                TxTableRow(FQ(self.id), TxContextFieldTag.Gas, FQ(0), FQ(self.gas)),
+                TxTableRow(
+                    FQ(self.id),
+                    TxContextFieldTag.GasPrice,
+                    FQ(0),
+                    RLC(self.gas_price, randomness).value,
+                ),
+                TxTableRow(
+                    FQ(self.id), TxContextFieldTag.CallerAddress, FQ(0), FQ(self.caller_address)
+                ),
+                TxTableRow(
+                    FQ(self.id), TxContextFieldTag.CalleeAddress, FQ(0), FQ(self.callee_address)
+                ),
+                TxTableRow(
+                    FQ(self.id), TxContextFieldTag.IsCreate, FQ(0), FQ(self.callee_address is None)
+                ),
+                TxTableRow(
+                    FQ(self.id), TxContextFieldTag.Value, FQ(0), RLC(self.value, randomness).value
+                ),
+                TxTableRow(
+                    FQ(self.id), TxContextFieldTag.CallDataLength, FQ(0), FQ(len(self.call_data))
+                ),
+                TxTableRow(
+                    FQ(self.id),
+                    TxContextFieldTag.CallDataGasCost,
+                    FQ(0),
+                    FQ(self.call_data_gas_cost()),
+                ),
             ],
             map(
-                lambda item: (self.id, TxContextFieldTag.CallData, item[0], item[1]),
+                lambda item: TxTableRow(
+                    FQ(self.id), TxContextFieldTag.CallData, FQ(item[0]), FQ(item[1])
+                ),
                 enumerate(self.call_data),
             ),
         )
@@ -187,8 +218,8 @@ class Bytecode:
 
         return self
 
-    def hash(self) -> int:
-        return int.from_bytes(keccak256(self.code), "big")
+    def hash(self) -> U256:
+        return U256(int.from_bytes(keccak256(self.code), "big"))
 
     def table_assignments(self, randomness: int) -> Iterator[BytecodeTableRow]:
         class BytecodeIterator:
@@ -235,9 +266,9 @@ class Account:
 
     def __init__(
         self,
-        address: U160 = 0,
-        nonce: U256 = 0,
-        balance: U256 = 0,
+        address: U160 = U160(0),
+        nonce: U256 = U256(0),
+        balance: U256 = U256(0),
         code: Optional[Bytecode] = None,
         storage: Optional[Storage] = None,
     ) -> None:
@@ -245,7 +276,7 @@ class Account:
         self.nonce = nonce
         self.balance = balance
         self.code = Bytecode() if code is None else code
-        self.storage = dict() if storage is None else storage
+        self.storage = Storage(dict()) if storage is None else storage
 
     def code_hash(self) -> U256:
         return self.code.hash()
