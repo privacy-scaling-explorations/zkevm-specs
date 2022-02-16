@@ -39,7 +39,18 @@ def test_gasprice(gasprice: U256):
         bytecode_table=set(bytecode.table_assignments(randomness)),
         rw_table=set(
             [
-                (9, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.TxId, 0, tx.id, 0, 0, 0),
+                (
+                    9,
+                    RW.Read,
+                    RWTableTag.CallContext,
+                    1,
+                    CallContextFieldTag.TxId,
+                    0,
+                    tx.id,
+                    0,
+                    0,
+                    0,
+                ),
                 (10, RW.Write, RWTableTag.Stack, 1, 1023, 0, RLC(gasprice, randomness), 0, 0, 0),
             ]
         ),
