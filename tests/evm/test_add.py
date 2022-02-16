@@ -27,7 +27,11 @@ TESTING_DATA = (
 def test_add(opcode: Opcode, a: int, b: int, c: Optional[int]):
     randomness = rand_fp()
 
-    c = RLC(c, randomness) if c is not None else RLC((a + b if opcode == Opcode.ADD else a - b) % 2**256, randomness)
+    c = (
+        RLC(c, randomness)
+        if c is not None
+        else RLC((a + b if opcode == Opcode.ADD else a - b) % 2**256, randomness)
+    )
     a = RLC(a, randomness)
     b = RLC(b, randomness)
 

@@ -103,7 +103,12 @@ class Transaction:
     def call_data_gas_cost(self) -> int:
         return reduce(
             lambda acc, byte: (
-                acc + (GAS_COST_TX_CALL_DATA_PER_ZERO_BYTE if byte is 0 else GAS_COST_TX_CALL_DATA_PER_NON_ZERO_BYTE)
+                acc
+                + (
+                    GAS_COST_TX_CALL_DATA_PER_ZERO_BYTE
+                    if byte == 0
+                    else GAS_COST_TX_CALL_DATA_PER_NON_ZERO_BYTE
+                )
             ),
             self.call_data,
             0,
@@ -122,7 +127,10 @@ class Transaction:
                 (self.id, TxContextFieldTag.CallDataLength, 0, len(self.call_data)),
                 (self.id, TxContextFieldTag.CallDataGasCost, 0, self.call_data_gas_cost()),
             ],
-            map(lambda item: (self.id, TxContextFieldTag.CallData, item[0], item[1]), enumerate(self.call_data)),
+            map(
+                lambda item: (self.id, TxContextFieldTag.CallData, item[0], item[1]),
+                enumerate(self.call_data),
+            ),
         )
 
 

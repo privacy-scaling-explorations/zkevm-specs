@@ -20,6 +20,7 @@ from .slt_sgt import *
 from .gas import *
 from .storage import *
 from .storage_gas import *
+from .selfbalance import *
 
 
 EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
@@ -39,4 +40,5 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.GAS: gas,
     ExecutionState.SLOAD: sload,
     ExecutionState.SSTORE: sstore,
+    ExecutionState.SELFBALANCE: selfbalance,
 }

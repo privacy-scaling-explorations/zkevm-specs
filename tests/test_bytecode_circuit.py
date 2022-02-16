@@ -120,8 +120,9 @@ def test_bytecode_invalid_index():
 
     # Don't increment an index once
     invalid = deepcopy(unrolled)
-    row = unrolled.rows[-1]
-    invalid.rows[-1] = (row[0].value - 1, row[1], row[2], row[3])
+    invalid_cell = invalid.rows[-1][0]
+    invalid_cell.value -= 1
+    invalid.rows[-1] = (invalid_cell, row[1], row[2], row[3])
     verify(k, [invalid], randomness, False)
 
 

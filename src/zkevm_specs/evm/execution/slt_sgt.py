@@ -22,11 +22,12 @@ def scmp(instruction: Instruction):
     b8s = instruction.rlc_to_le_bytes(bb)
     c8s = instruction.rlc_to_le_bytes(c)
 
-    a_lo = int.from_bytes(a8s[:16], "little")
-    a_hi = int.from_bytes(a8s[16:], "little")
-    b_lo = int.from_bytes(b8s[:16], "little")
-    b_hi = int.from_bytes(b8s[16:], "little")
-    cc = int.from_bytes(c8s, "little")
+    a_lo = instruction.bytes_to_fq(a8s[:16])
+    a_hi = instruction.bytes_to_fq(a8s[16:])
+    b_lo = instruction.bytes_to_fq(b8s[:16])
+    b_hi = instruction.bytes_to_fq(b8s[16:])
+    assert c8s[31] == 0
+    cc = instruction.bytes_to_fq(c8s[:31])
 
     a_lt_b_lo, a_eq_b_lo = instruction.compare(a_lo, b_lo, 16)
     a_lt_b_hi, a_eq_b_hi = instruction.compare(a_hi, b_hi, 16)
