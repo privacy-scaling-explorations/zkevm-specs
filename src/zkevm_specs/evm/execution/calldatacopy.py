@@ -20,10 +20,16 @@ def calldatacopy(instruction: Instruction):
         call_data_length = instruction.tx_context_lookup(tx_id, TxContextFieldTag.CallDataLength)
         call_data_offset = FQ.zero()
     else:
-        call_data_length = instruction.call_context_lookup(CallContextFieldTag.CallDataLength, RW.Read)
-        call_data_offset = instruction.call_context_lookup(CallContextFieldTag.CallDataOffset, RW.Read)
+        call_data_length = instruction.call_context_lookup(
+            CallContextFieldTag.CallDataLength, RW.Read
+        )
+        call_data_offset = instruction.call_context_lookup(
+            CallContextFieldTag.CallDataOffset, RW.Read
+        )
 
-    next_memory_size, memory_expansion_gas_cost = instruction.memory_expansion_dynamic_length(memory_offset, length)
+    next_memory_size, memory_expansion_gas_cost = instruction.memory_expansion_dynamic_length(
+        memory_offset, length
+    )
     gas_cost = instruction.memory_copier_gas_cost(length, memory_expansion_gas_cost)
 
     # When length != 0, constrain the state in the next execution state CopyToMemory

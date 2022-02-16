@@ -128,10 +128,7 @@ class Instruction:
         ), f"Invalid keys {list(set(kwargs.keys()).difference(keys))} for step state transition"
 
         for key, transition in kwargs.items():
-            # for key in keys:
             curr, next = getattr(self.curr, key), getattr(self.next, key)
-            # transition = kwargs.get(key, Transition.same())
-            # print(key, curr, next)
             if transition.kind == TransitionKind.Same:
                 assert next == curr, ConstraintUnsatFailure(
                     f"State {key} should be same as {curr}, but got {next}"
@@ -334,7 +331,9 @@ class Instruction:
     def block_context_lookup(self, tag: BlockContextFieldTag, index: FQ = FQ.zero()) -> FQ:
         return self.tables.block_lookup([tag, index])[2]
 
-    def tx_context_lookup(self, tx_id: FQ, field_tag: TxContextFieldTag, index: FQ = FQ.zero()) -> Union[FQ, RLC]:
+    def tx_context_lookup(
+        self, tx_id: FQ, field_tag: TxContextFieldTag, index: FQ = FQ.zero()
+    ) -> Union[FQ, RLC]:
         return self.tables.tx_lookup([tx_id, field_tag, index])[3]
 
     def tx_calldata_lookup(self, tx_id: FQ, index: FQ) -> FQ:

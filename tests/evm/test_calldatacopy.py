@@ -171,7 +171,9 @@ def memory_gas_cost(memory_word_size: int) -> int:
     return quad_cost + linear_cost
 
 
-def memory_copier_gas_cost(curr_memory_word_size: int, next_memory_word_size: int, length: int) -> int:
+def memory_copier_gas_cost(
+    curr_memory_word_size: int, next_memory_word_size: int, length: int
+) -> int:
     curr_memory_cost = memory_gas_cost(curr_memory_word_size)
     next_memory_cost = memory_gas_cost(next_memory_word_size)
     return to_word_size(length) * GAS_COST_COPY + next_memory_cost - curr_memory_cost

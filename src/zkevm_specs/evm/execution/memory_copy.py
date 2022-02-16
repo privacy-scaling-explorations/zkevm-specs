@@ -13,7 +13,9 @@ def copy_to_memory(instruction: Instruction):
     aux = instruction.curr.aux_data
     assert isinstance(aux, CopyToMemoryAuxData)
 
-    buffer_reader = BufferReaderGadget(instruction, MAX_COPY_BYTES, aux.src_addr, aux.src_addr_end, aux.bytes_left)
+    buffer_reader = BufferReaderGadget(
+        instruction, MAX_COPY_BYTES, aux.src_addr, aux.src_addr_end, aux.bytes_left
+    )
 
     data = []
     rw_counter_delta = 0
@@ -21,7 +23,9 @@ def copy_to_memory(instruction: Instruction):
         if not buffer_reader.read_flag(i):
             byte = FQ.zero()
         elif aux.from_tx == 1:
-            byte = instruction.tx_context_lookup(aux.tx_id, TxContextFieldTag.CallData, aux.src_addr + i)
+            byte = instruction.tx_context_lookup(
+                aux.tx_id, TxContextFieldTag.CallData, aux.src_addr + i
+            )
         else:
             byte = instruction.memory_lookup(RW.Read, aux.src_addr + i)
         buffer_reader.constrain_byte(i, byte)
