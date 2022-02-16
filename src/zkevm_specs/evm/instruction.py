@@ -447,7 +447,7 @@ class Instruction:
         is_persistent: bool,
         rw_counter_end_of_reversion: int,
         state_write_counter: Optional[int] = None,
-    ) -> Tuple[int, int]:
+    ) -> Tuple[FQ, FQ]:
         row = self.state_write_with_reversion(
             RWTableTag.TxRefund,
             [tx_id],
@@ -555,7 +555,7 @@ class Instruction:
         is_persistent: bool,
         rw_counter_end_of_reversion: int,
         state_write_counter: Optional[int] = None,
-    ) -> Tuple[int, int, int, int]:
+    ) -> Tuple[FQ, FQ, FQ, FQ]:
         row = self.state_write_with_reversion(
             RWTableTag.AccountStorage,
             [account_address, storage_key],
@@ -615,7 +615,7 @@ class Instruction:
         is_persistent: bool,
         rw_counter_end_of_reversion: int,
         state_write_counter: Optional[int] = None,
-    ) -> Tuple[int, int]:
+    ) -> Tuple[FQ, FQ]:
         row = self.state_write_with_reversion(
             RWTableTag.TxAccessListAccountStorage,
             [tx_id, account_address, storage_key, 1],
