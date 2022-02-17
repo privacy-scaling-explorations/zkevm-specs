@@ -11,9 +11,8 @@ FQ.__hash__ = _hash_fq  # type: ignore
 IntOrFQ = Union[int, FQ]
 
 
-def fp_linear_combine(le_bytes: Union[bytes, Sequence[int]], _factor: int) -> FQ:
+def fp_linear_combine(le_bytes: Union[bytes, Sequence[int]], factor: FQ) -> FQ:
     ret = FQ.zero()
-    factor = FQ(_factor)
     for byte in reversed(le_bytes):
         assert 0 <= byte < 256, "Each byte in le_bytes for linear combination should fit in 8-bit"
         ret = ret * factor + byte
@@ -25,7 +24,7 @@ class RLC:
     value: FQ
 
     def __init__(
-        self, int_or_bytes: Union[IntOrFQ, bytes], randomness: IntOrFQ, n_bytes: int = 32
+        self, int_or_bytes: Union[IntOrFQ, bytes], randomness: FQ, n_bytes: int = 32
     ) -> None:
         if isinstance(int_or_bytes, int):
             assert (

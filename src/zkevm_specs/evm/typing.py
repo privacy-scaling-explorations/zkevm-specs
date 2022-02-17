@@ -61,7 +61,7 @@ class Block:
         self.base_fee = base_fee
         self.history_hashes = history_hashes
 
-    def table_assignments(self, randomness: int) -> List[BlockTableRow]:
+    def table_assignments(self, randomness: FQ) -> List[BlockTableRow]:
         return [
             BlockTableRow(BlockContextFieldTag.Coinbase, FQ(0), FQ(self.coinbase)),
             BlockTableRow(BlockContextFieldTag.GasLimit, FQ(0), FQ(self.gas_limit)),
@@ -127,7 +127,7 @@ class Transaction:
             0,
         )
 
-    def table_assignments(self, randomness: int) -> Iterator[TxTableRow]:
+    def table_assignments(self, randomness: FQ) -> Iterator[TxTableRow]:
         return chain(
             [
                 TxTableRow(FQ(self.id), TxContextFieldTag.Nonce, FQ(0), FQ(self.nonce)),
@@ -221,7 +221,7 @@ class Bytecode:
     def hash(self) -> U256:
         return U256(int.from_bytes(keccak256(self.code), "big"))
 
-    def table_assignments(self, randomness: int) -> Iterator[BytecodeTableRow]:
+    def table_assignments(self, randomness: FQ) -> Iterator[BytecodeTableRow]:
         class BytecodeIterator:
             idx: int
             push_data_left: int

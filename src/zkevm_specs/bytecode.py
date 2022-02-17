@@ -178,7 +178,7 @@ def assign_push_table():
 
 
 # Generate keccak table
-def assign_keccak_table(bytecodes: Sequence[bytes], randomness: int):
+def assign_keccak_table(bytecodes: Sequence[bytes], randomness: FQ):
     keccak_table = []
     for bytecode in bytecodes:
         hash = RLC(bytes(reversed(keccak256(bytecode))), randomness)
