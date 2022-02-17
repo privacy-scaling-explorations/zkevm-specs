@@ -6,3 +6,4 @@ from .precompiled import *
 from .step import *
 from .table import *
 from .typing import *
+from . import util

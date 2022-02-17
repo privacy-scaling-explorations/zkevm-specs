@@ -40,6 +40,9 @@ class StepState:
     memory_size: FQ
     state_write_counter: FQ
 
+    # Auxilary witness data needed by gadgets
+    aux_data: Any
+
     def __init__(
         self,
         execution_state: ExecutionState,
@@ -53,6 +56,7 @@ class StepState:
         gas_left: int = 0,
         memory_size: int = 0,
         state_write_counter: int = 0,
+        aux_data: Any = None,
     ) -> None:
         self.execution_state = execution_state
         self.rw_counter = FQ(rw_counter)
@@ -65,3 +69,29 @@ class StepState:
         self.gas_left = FQ(gas_left)
         self.memory_size = FQ(memory_size)
         self.state_write_counter = FQ(state_write_counter)
+        self.aux_data = aux_data
+
+
+class CopyToMemoryAuxData:
+    src_addr: FQ
+    dst_addr: FQ
+    bytes_left: FQ
+    src_addr_end: FQ
+    from_tx: FQ
+    tx_id: FQ
+
+    def __init__(
+        self,
+        src_addr: int,
+        dst_addr: int,
+        bytes_left: int,
+        src_addr_end: int,
+        from_tx: bool,
+        tx_id: int,
+    ):
+        self.src_addr = FQ(src_addr)
+        self.dst_addr = FQ(dst_addr)
+        self.bytes_left = FQ(bytes_left)
+        self.src_addr_end = FQ(src_addr_end)
+        self.from_tx = FQ(from_tx)
+        self.tx_id = FQ(tx_id)
