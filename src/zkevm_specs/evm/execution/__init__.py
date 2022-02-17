@@ -13,11 +13,13 @@ from .block_timestamp import *
 from .calldatasize import *
 from .caller import *
 from .callvalue import *
+from .gas import *
 from .jump import *
 from .jumpi import *
 from .push import *
 from .slt_sgt import *
 from .gas import *
+from .gasprice import *
 from .storage import *
 from .storage_gas import *
 from .selfbalance import *
@@ -41,4 +43,5 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.SLOAD: sload,
     ExecutionState.SSTORE: sstore,
     ExecutionState.SELFBALANCE: selfbalance,
+    ExecutionState.GASPRICE: gasprice,
 }
