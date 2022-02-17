@@ -415,16 +415,16 @@ class Instruction:
 
         return self.rw_lookup(rw, RWTableTag.CallContext, [call_id, field_tag.value]).value
 
-    def stack_pop(self) -> Union[FQ, RLC]:
+    def stack_pop(self) -> FQ:
         stack_pointer_offset = self.stack_pointer_offset
         self.stack_pointer_offset += 1
         return self.stack_lookup(RW.Read, stack_pointer_offset)
 
-    def stack_push(self) -> Union[FQ, RLC]:
+    def stack_push(self) -> FQ:
         self.stack_pointer_offset -= 1
         return self.stack_lookup(RW.Write, self.stack_pointer_offset)
 
-    def stack_lookup(self, rw: RW, stack_pointer_offset: int) -> Union[FQ, RLC]:
+    def stack_lookup(self, rw: RW, stack_pointer_offset: int) -> FQ:
         stack_pointer = self.curr.stack_pointer + stack_pointer_offset
         return self.rw_lookup(rw, RWTableTag.Stack, [self.curr.call_id, stack_pointer]).value
 
@@ -665,7 +665,7 @@ class Instruction:
         cd_offset: FQ,
         cd_length: FQ,
         rd_offset: Optional[FQ] = None,
-        rd_length: Optional[FQ] = None,
+        _rd_length: Optional[FQ] = None,
     ) -> Tuple[FQ, FQ]:
         cd_memory_size, _ = self.constant_divmod(
             cd_offset + cd_length + 31, 32, N_BYTES_MEMORY_SIZE

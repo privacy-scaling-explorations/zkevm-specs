@@ -1,4 +1,4 @@
-from typing import Sequence, Tuple
+from zkevm_specs.util import FQ
 
 from ..instruction import Instruction, Transition
 from ..opcode import Opcode
@@ -7,7 +7,7 @@ from ..opcode import Opcode
 def scmp(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
 
-    is_sgt, _ = instruction.pair_select(opcode, Opcode.SGT, Opcode.SLT)
+    is_sgt, _ = instruction.pair_select(opcode, FQ(Opcode.SGT.value), FQ(Opcode.SLT.value))
 
     a = instruction.stack_pop()
     b = instruction.stack_pop()
