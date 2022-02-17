@@ -30,7 +30,7 @@ def copy_to_memory(instruction: Instruction):
             byte = instruction.memory_lookup(RW.Read, aux.src_addr + i)
         buffer_reader.constrain_byte(i, byte)
         if buffer_reader.has_data(i):
-            assert byte == instruction.memory_lookup(RW.Write, aux.dst_addr + i)
+            instruction.constrain_equal(byte, instruction.memory_lookup(RW.Write, aux.dst_addr + i))
 
     copied_bytes = buffer_reader.num_bytes()
     lt, finished = instruction.compare(copied_bytes, aux.bytes_left, N_BYTES_MEMORY_SIZE)

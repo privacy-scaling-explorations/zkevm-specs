@@ -2,21 +2,21 @@
 
 ## Procedure
 
-The `CALLDATACOPY` opcode pops `memory offset`, `data offset`, and `length` from the stack.
-It then copies `length` bytes from call data buffer starting from `data offset` to memory at
-address `memory offset`. EVM also left-pads 0 to the call data buffer in case the access to the
-call data buffer is out of bound.
+The `CALLDATACOPY` opcode pops `memory_offset`, `data_offset`, and `length` from the stack.
+It then copies `length` bytes from call data buffer at the offset `data_offset` to the memory at the
+address `memory_offset`. EVM also pads 0 to the end of call data buffer in the case of out-of-bound
+access to the call data buffer.
 
 The gas cost of `CALLDATACOPY` opcode consists of two parts: constant cost 3 and dynamic cost.
 The dynamic cost includes the memory expansion cost and copier cost in terms of the number of
 words copied. Note that when `length = 0`, the memory expansion cost is 0 regardless of
-`memory offset`.
+`memory_offset` value.
 
 ## Circuit behaviour
 
 Because the `length` is dynamic, it requires multiple step slots to fully verify the `CALLDATACOPY`.
-In the `CALLDATACOPY` gadget, it constrains the stack pops, state transition, and lookups to
-retrieve the additional information such as tx id, call data offset for internal calls, etc.
+In the `CALLDATACOPY` circuit, it only constrains the stack pops, state transition, and lookups to
+retrieve the additional information such as tx id, call data offset, etc.
 Then the gadget transits to an internal state called `CopyToMemory`, which can loop itself for
 copying data to the memory if `length > 0`.
 
