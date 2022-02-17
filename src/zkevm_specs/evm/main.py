@@ -1,3 +1,4 @@
+# type: ignore
 from typing import Sequence
 
 from ..util import FQ

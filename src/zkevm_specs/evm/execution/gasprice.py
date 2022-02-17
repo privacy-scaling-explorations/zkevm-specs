@@ -1,3 +1,4 @@
+# type: ignore
 from ..instruction import Instruction, Transition
 from ..opcode import Opcode
 from ..table import CallContextFieldTag, TxContextFieldTag

@@ -1,3 +1,5 @@
+# type: ignore
+
 from zkevm_specs.util import FQ
 
 from ..instruction import Instruction, Transition

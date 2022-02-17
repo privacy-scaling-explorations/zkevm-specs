@@ -1,3 +1,4 @@
+# type: ignore
 from ...util import GAS_COST_TX, GAS_COST_CREATION_TX, EMPTY_CODE_HASH
 from ..execution_state import ExecutionState
 from ..instruction import Instruction, Transition

@@ -1,3 +1,4 @@
+# type: ignore
 from ...util import N_BYTES_GAS, MAX_REFUND_QUOTIENT_OF_GAS_USED
 from ..execution_state import ExecutionState
 from ..instruction import Instruction, Transition

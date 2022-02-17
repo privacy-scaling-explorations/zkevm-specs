@@ -1,3 +1,4 @@
+# type: ignore
 from ...util import FQ, N_BYTES_MEMORY_SIZE
 from ..execution_state import ExecutionState
 from ..instruction import Instruction, Transition
@@ -17,8 +18,6 @@ def copy_to_memory(instruction: Instruction):
         instruction, MAX_COPY_BYTES, aux.src_addr, aux.src_addr_end, aux.bytes_left
     )
 
-    data = []
-    rw_counter_delta = 0
     for i in range(MAX_COPY_BYTES):
         if not buffer_reader.read_flag(i):
             byte = FQ.zero()
