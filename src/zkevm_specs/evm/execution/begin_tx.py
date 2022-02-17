@@ -1,5 +1,5 @@
 # type: ignore
-from ...util import GAS_COST_TX, GAS_COST_CREATION_TX, EMPTY_CODE_HASH
+from ...util import GAS_COST_TX, GAS_COST_CREATION_TX, EMPTY_CODE_HASH, RLC
 from ..execution_state import ExecutionState
 from ..instruction import Instruction, Transition
 from ..precompiled import PrecompiledAddress

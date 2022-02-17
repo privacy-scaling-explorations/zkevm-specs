@@ -92,13 +92,13 @@ def test_bytecode_invalid_hash_data():
     # Change the hash on the first position
     invalid = deepcopy(unrolled)
     row = unrolled.rows[0]
-    invalid.rows[0] = (row[0].value + 1, row[1], row[2], row[3])
+    invalid.rows[0] = (row[0] + 1, row[1], row[2], row[3])
     verify(k, [invalid], randomness, False)
 
     # Change the hash on another position
     invalid = deepcopy(unrolled)
     row = unrolled.rows[4]
-    invalid.rows[0] = (row[0].value + 1, row[1], row[2], row[3])
+    invalid.rows[0] = (row[0] + 1, row[1], row[2], row[3])
     verify(k, [invalid], randomness, False)
 
     # Change all the hashes so it doesn't match the keccak lookup hash
@@ -115,13 +115,13 @@ def test_bytecode_invalid_index():
     # Start the index at 1
     invalid = deepcopy(unrolled)
     for idx, row in enumerate(unrolled.rows):
-        invalid.rows[idx] = (row[0].value + 1, row[1], row[2], row[3])
+        invalid.rows[idx] = (row[0] + 1, row[1], row[2], row[3])
     verify(k, [invalid], randomness, False)
 
     # Don't increment an index once
     invalid = deepcopy(unrolled)
     invalid_cell = invalid.rows[-1][0]
-    invalid_cell.value -= 1
+    invalid_cell -= 1
     invalid.rows[-1] = (invalid_cell, row[1], row[2], row[3])
     verify(k, [invalid], randomness, False)
 

@@ -409,11 +409,11 @@ class Instruction:
         return row
 
     def call_context_lookup(
-        self, field_tag: CallContextFieldTag, rw: RW = RW.Read, _call_id: Optional[FQ] = None
+        self, field_tag: CallContextFieldTag, rw: RW = RW.Read, call_id: Optional[FQ] = None
     ) -> FQ:
-        call_id = self.curr.call_id if _call_id is None else _call_id
+        _call_id = self.curr.call_id if call_id is None else call_id
 
-        return self.rw_lookup(rw, RWTableTag.CallContext, [call_id, field_tag.value]).value
+        return self.rw_lookup(rw, RWTableTag.CallContext, [_call_id, field_tag.value]).value
 
     def stack_pop(self) -> FQ:
         stack_pointer_offset = self.stack_pointer_offset
@@ -463,7 +463,7 @@ class Instruction:
         is_persistent: bool,
         rw_counter_end_of_reversion: int,
         state_write_counter: Optional[FQ] = None,
-    ) -> Tuple[FQ, FQ]:
+    ) -> Tuple[RLC, RLC]:
         row = self.state_write_with_reversion(
             RWTableTag.Account,
             [account_address, account_field_tag],
@@ -473,9 +473,9 @@ class Instruction:
         )
         return row.value, row.value_prev
 
-    def add_balance(self, account_address: int, values: Sequence[RLC]) -> Tuple[FQ, FQ]:
+    def add_balance(self, account_address: int, values: Sequence[RLC]) -> Tuple[RLC, RLC]:
         balance, balance_prev = self.account_write(account_address, AccountFieldTag.Balance)
-        result, carry = self.add_words([RLC(balance_prev, self.randomness), *values])
+        result, carry = self.add_words([balance_prev, *values])
         self.constrain_equal(balance, result.value)
         self.constrain_zero(carry)
         return balance, balance_prev
@@ -487,7 +487,7 @@ class Instruction:
         is_persistent: bool,
         rw_counter_end_of_reversion: int,
         state_write_counter: Optional[FQ] = None,
-    ) -> Tuple[FQ, FQ]:
+    ) -> Tuple[RLC, RLC]:
         balance, balance_prev = self.account_write_with_reversion(
             account_address,
             AccountFieldTag.Balance,
@@ -495,14 +495,14 @@ class Instruction:
             rw_counter_end_of_reversion,
             state_write_counter,
         )
-        result, carry = self.add_words([RLC(balance_prev, self.randomness), *values])
+        result, carry = self.add_words([balance_prev, *values])
         self.constrain_equal(balance, result.value)
         self.constrain_zero(carry)
         return balance, balance_prev
 
-    def sub_balance(self, account_address: int, values: Sequence[RLC]) -> Tuple[FQ, FQ]:
+    def sub_balance(self, account_address: int, values: Sequence[RLC]) -> Tuple[RLC, RLC]:
         balance, balance_prev = self.account_write(account_address, AccountFieldTag.Balance)
-        result, carry = self.add_words([RLC(balance, self.randomness), *values])
+        result, carry = self.add_words([balance, *values])
         self.constrain_equal(balance_prev, result.value)
         self.constrain_zero(carry)
         return balance, balance_prev
@@ -514,7 +514,7 @@ class Instruction:
         is_persistent: bool,
         rw_counter_end_of_reversion: int,
         state_write_counter: Optional[FQ] = None,
-    ) -> Tuple[FQ, FQ]:
+    ) -> Tuple[RLC, RLC]:
         balance, balance_prev = self.account_write_with_reversion(
             account_address,
             AccountFieldTag.Balance,
@@ -522,7 +522,7 @@ class Instruction:
             rw_counter_end_of_reversion,
             state_write_counter,
         )
-        result, carry = self.add_words([RLC(balance, self.randomness), *values])
+        result, carry = self.add_words([balance, *values])
         self.constrain_equal(balance_prev, result.value)
         self.constrain_zero(carry)
         return balance, balance_prev

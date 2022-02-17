@@ -65,19 +65,15 @@ class Block:
         return [
             BlockTableRow(BlockContextFieldTag.Coinbase, FQ(0), FQ(self.coinbase)),
             BlockTableRow(BlockContextFieldTag.GasLimit, FQ(0), FQ(self.gas_limit)),
-            BlockTableRow(BlockContextFieldTag.Number, FQ(0), RLC(self.number, randomness).value),
+            BlockTableRow(BlockContextFieldTag.Number, FQ(0), RLC(self.number, randomness)),
             BlockTableRow(BlockContextFieldTag.Timestamp, FQ(0), FQ(self.timestamp)),
-            BlockTableRow(
-                BlockContextFieldTag.Difficulty, FQ(0), RLC(self.difficulty, randomness).value
-            ),
-            BlockTableRow(
-                BlockContextFieldTag.BaseFee, FQ(0), RLC(self.base_fee, randomness).value
-            ),
+            BlockTableRow(BlockContextFieldTag.Difficulty, FQ(0), RLC(self.difficulty, randomness)),
+            BlockTableRow(BlockContextFieldTag.BaseFee, FQ(0), RLC(self.base_fee, randomness)),
         ] + [
             BlockTableRow(
                 BlockContextFieldTag.HistoryHash,
                 FQ(self.number - idx - 1),
-                RLC(history_hash, randomness).value,
+                RLC(history_hash, randomness),
             )
             for idx, history_hash in enumerate(reversed(self.history_hashes))
         ]
@@ -136,19 +132,22 @@ class Transaction:
                     FQ(self.id),
                     TxContextFieldTag.GasPrice,
                     FQ(0),
-                    RLC(self.gas_price, randomness).value,
+                    RLC(self.gas_price, randomness),
                 ),
                 TxTableRow(
                     FQ(self.id), TxContextFieldTag.CallerAddress, FQ(0), FQ(self.caller_address)
                 ),
                 TxTableRow(
-                    FQ(self.id), TxContextFieldTag.CalleeAddress, FQ(0), FQ(self.callee_address)
+                    FQ(self.id),
+                    TxContextFieldTag.CalleeAddress,
+                    FQ(0),
+                    FQ(self.callee_address or 0),
                 ),
                 TxTableRow(
                     FQ(self.id), TxContextFieldTag.IsCreate, FQ(0), FQ(self.callee_address is None)
                 ),
                 TxTableRow(
-                    FQ(self.id), TxContextFieldTag.Value, FQ(0), RLC(self.value, randomness).value
+                    FQ(self.id), TxContextFieldTag.Value, FQ(0), RLC(self.value, randomness)
                 ),
                 TxTableRow(
                     FQ(self.id), TxContextFieldTag.CallDataLength, FQ(0), FQ(len(self.call_data))
@@ -249,7 +248,7 @@ class Bytecode:
 
                 self.idx += 1
 
-                return (self.hash, idx, byte, is_code)
+                return (self.hash.value, idx, byte, is_code)
 
         return BytecodeIterator(RLC(self.hash(), randomness), self.code)
 

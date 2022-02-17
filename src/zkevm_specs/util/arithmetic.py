@@ -62,5 +62,8 @@ class RLC:
     def __repr__(self) -> str:
         return "RLC(%s)" % int.from_bytes(self.le_bytes, "little")
 
+    def __int__(self) -> int:
+        return int.from_bytes(self.le_bytes, "little")
+
     def be_bytes(self) -> bytes:
         return bytes(reversed(self.le_bytes))

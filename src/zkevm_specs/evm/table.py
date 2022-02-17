@@ -1,11 +1,10 @@
 from __future__ import annotations
-from typing import Mapping, Sequence, Set, List, TypeVar, Any, Type, Optional, Dict
+from typing import Mapping, Sequence, Set, List, TypeVar, Any, Type, Optional, Dict, Union
 from enum import IntEnum, auto, Enum
 from itertools import chain, product
 from dataclasses import dataclass, field, asdict, fields
 
-
-from ..util import FQ, IntOrFQ
+from ..util import FQ, IntOrFQ, RLC
 from .execution_state import ExecutionState
 from .opcode import (
     invalid_opcodes,
@@ -155,6 +154,9 @@ class RW(Enum):
     Read = False
     Write = True
 
+    def __int__(self):
+        return self.value
+
 
 class RWTableTag(IntEnum):
     """
@@ -287,7 +289,7 @@ class BlockTableRow(TableRow):
     tag: BlockContextFieldTag
     # meaningful only for HistoryHash, will be zero for other tags
     block_number_or_zero: FQ
-    value: FQ
+    value: Union[FQ, RLC]
 
 
 @dataclass(frozen=True)
@@ -296,7 +298,7 @@ class TxTableRow(TableRow):
     tag: TxContextFieldTag
     # meaningful only for CallData, will be zero for other tags
     call_data_index_or_zero: FQ
-    value: FQ
+    value: Union[FQ, RLC]
 
 
 @dataclass(frozen=True)
@@ -339,15 +341,27 @@ class Tables:
 
     def __init__(
         self,
-        block_table: Set[BlockTableRow],
-        tx_table: Set[TxTableRow],
-        bytecode_table: Set[BytecodeTableRow],
-        rw_table: Set[RWTableRow],
+        block_table: Union[Set[Sequence[IntOrFQ]], Set[BlockTableRow]],
+        tx_table: Union[Set[Sequence[IntOrFQ]], Set[TxTableRow]],
+        bytecode_table: Union[Set[Sequence[IntOrFQ]], Set[BytecodeTableRow]],
+        rw_table: Union[Set[Sequence[IntOrFQ]], Set[RWTableRow]],
     ) -> None:
-        self.block_table = block_table
-        self.tx_table = tx_table
-        self.bytecode_table = bytecode_table
-        self.rw_table = rw_table
+        self.block_table = set(
+            row if isinstance(row, BlockTableRow) else BlockTableRow(*row)  # type: ignore  # (BlockTableRow input args)
+            for row in block_table
+        )
+        self.tx_table = set(
+            row if isinstance(row, TxTableRow) else TxTableRow(*row)  # type: ignore  # (TxTableRow input args)
+            for row in tx_table
+        )
+        self.bytecode_table = set(
+            row if isinstance(row, BytecodeTableRow) else BytecodeTableRow(*row)  # type: ignore  # (BytecodeTableRow input args)
+            for row in bytecode_table
+        )
+        self.rw_table = set(
+            row if isinstance(row, RWTableRow) else RWTableRow(*row)  # type: ignore  # (RWTableRow input args)
+            for row in rw_table
+        )
 
     def fixed_lookup(
         self, tag: FixedTableTag, value1: FQ, value2: FQ = None, value3: FQ = None
@@ -394,9 +408,9 @@ class Tables:
         ]
         query: Dict[str, Optional[IntOrFQ]] = {
             "rw_counter": rw_counter,
-            "rw": int(rw.value),
-            "tag": tag,
-            **zip(rest_keys, other_queries),
+            "is_write": int(rw.value),
+            "key1": tag,
+            **dict(zip(rest_keys, other_queries)),
         }
         return _lookup(RWTableRow, self.rw_table, query)
 

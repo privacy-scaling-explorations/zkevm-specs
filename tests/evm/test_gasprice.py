@@ -51,7 +51,18 @@ def test_gasprice(gasprice: U256):
                     0,
                     0,
                 ),
-                (10, RW.Write, RWTableTag.Stack, 1, 1023, 0, RLC(gasprice, randomness), 0, 0, 0),
+                (
+                    10,
+                    RW.Write,
+                    RWTableTag.Stack,
+                    1,
+                    1023,
+                    0,
+                    RLC(gasprice, randomness).value,
+                    0,
+                    0,
+                    0,
+                ),
             ]
         ),
     )
