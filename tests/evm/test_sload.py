@@ -62,7 +62,18 @@ def test_sload(tx: Transaction, storage_key_be_bytes: bytes, warm: bool, result:
         bytecode_table=set(bytecode.table_assignments(randomness)),
         rw_table=set(
             [
-                (9, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.TxId, 0, tx.id, 0, 0, 0),
+                (
+                    9,
+                    RW.Read,
+                    RWTableTag.CallContext,
+                    1,
+                    CallContextFieldTag.TxId,
+                    0,
+                    tx.id,
+                    0,
+                    0,
+                    0,
+                ),
                 (
                     10,
                     RW.Read,
@@ -75,7 +86,18 @@ def test_sload(tx: Transaction, storage_key_be_bytes: bytes, warm: bool, result:
                     0,
                     0,
                 ),
-                (11, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.IsPersistent, 0, result, 0, 0, 0),
+                (
+                    11,
+                    RW.Read,
+                    RWTableTag.CallContext,
+                    1,
+                    CallContextFieldTag.IsPersistent,
+                    0,
+                    result,
+                    0,
+                    0,
+                    0,
+                ),
                 (
                     12,
                     RW.Read,

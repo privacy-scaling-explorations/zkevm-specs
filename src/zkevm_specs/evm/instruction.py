@@ -221,7 +221,7 @@ class Instruction:
 
     def constant_divmod(
         self, numerator: IntOrFQ, denominator: IntOrFQ, n_bytes: int
-    ) -> Tuple[int, int]:
+    ) -> Tuple[FQ, FQ]:
         quotient, remainder = divmod(FQ(numerator).n, FQ(denominator).n)
         quotient, remainder = FQ(quotient), FQ(remainder)
         self.bytes_range_lookup(quotient, n_bytes)
@@ -409,7 +409,7 @@ class Instruction:
 
     def call_context_lookup(
         self, field_tag: CallContextFieldTag, rw: RW = RW.Read, call_id: Optional[int] = None
-    ) -> int:
+    ) -> FQ:
         if call_id is None:
             call_id = self.curr.call_id
 
@@ -544,7 +544,7 @@ class Instruction:
         self.constrain_zero(carry)
         return balance, balance_prev
 
-    def account_storage_read(self, account_address: int, storage_key: int) -> Tuple[int, int, int, int]:
+    def account_storage_read(self, account_address: int, storage_key: int) -> Tuple[FQ, FQ, FQ, FQ]:
         row = self.rw_lookup(RW.Read, RWTableTag.AccountStorage, [account_address, storage_key, 0])
         return row[-4], row[-3], row[-2], row[-1]
 
@@ -599,7 +599,7 @@ class Instruction:
         tx_id: int,
         account_address: int,
         storage_key: int,
-    ) -> Tuple[int, int]:
+    ) -> Tuple[FQ, FQ]:
         row = self.rw_lookup(
             RW.Write,
             RWTableTag.TxAccessListAccountStorage,
@@ -633,7 +633,7 @@ class Instruction:
         gas_fee: int,
         is_persistent: bool,
         rw_counter_end_of_reversion: int,
-    ) -> Tuple[Tuple[int, int], Tuple[int, int]]:
+    ) -> Tuple[Tuple[FQ, FQ], Tuple[FQ, FQ]]:
         sender_balance_pair = self.sub_balance_with_reversion(
             sender_address,
             [value, gas_fee],
@@ -656,7 +656,7 @@ class Instruction:
         is_persistent: bool,
         rw_counter_end_of_reversion: int,
         state_write_counter: Optional[int] = None,
-    ) -> Tuple[Tuple[int, int], Tuple[int, int]]:
+    ) -> Tuple[Tuple[FQ, FQ], Tuple[FQ, FQ]]:
         sender_balance_pair = self.sub_balance_with_reversion(
             sender_address,
             [value],

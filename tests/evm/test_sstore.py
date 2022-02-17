@@ -60,7 +60,9 @@ def gen_test_cases():
             for persist_case in persist_cases:
                 test_cases.append(
                     (
-                        Transaction(caller_address=rand_address(), callee_address=rand_address()),  # tx
+                        Transaction(
+                            caller_address=rand_address(), callee_address=rand_address()
+                        ),  # tx
                         bytes([i for i in range(32, 0, -1)]),  # storage_key
                         value_case[0],  # new_value
                         value_case[1],  # value_prev_diff
@@ -76,7 +78,8 @@ TESTING_DATA = gen_test_cases()
 
 
 @pytest.mark.parametrize(
-    "tx, storage_key_be_bytes, value_be_bytes, value_prev_be_bytes, original_value_be_bytes, warm, result", TESTING_DATA
+    "tx, storage_key_be_bytes, value_be_bytes, value_prev_be_bytes, original_value_be_bytes, warm, result",
+    TESTING_DATA,
 )
 def test_sstore(
     tx: Transaction,
@@ -134,7 +137,18 @@ def test_sstore(
         bytecode_table=set(bytecode.table_assignments(randomness)),
         rw_table=set(
             [
-                (1, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.TxId, 0, tx.id, 0, 0, 0),
+                (
+                    1,
+                    RW.Read,
+                    RWTableTag.CallContext,
+                    1,
+                    CallContextFieldTag.TxId,
+                    0,
+                    tx.id,
+                    0,
+                    0,
+                    0,
+                ),
                 (
                     2,
                     RW.Read,
@@ -147,7 +161,18 @@ def test_sstore(
                     0,
                     0,
                 ),
-                (3, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.IsPersistent, 0, result, 0, 0, 0),
+                (
+                    3,
+                    RW.Read,
+                    RWTableTag.CallContext,
+                    1,
+                    CallContextFieldTag.IsPersistent,
+                    0,
+                    result,
+                    0,
+                    0,
+                    0,
+                ),
                 (
                     4,
                     RW.Read,

@@ -16,7 +16,9 @@ def sload(instruction: Instruction):
     instruction.constrain_equal(opcode, Opcode.SLOAD)
 
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
-    rw_counter_end_of_reversion = instruction.call_context_lookup(CallContextFieldTag.RwCounterEndOfReversion)
+    rw_counter_end_of_reversion = instruction.call_context_lookup(
+        CallContextFieldTag.RwCounterEndOfReversion
+    )
     is_persistent = instruction.call_context_lookup(CallContextFieldTag.IsPersistent)
     callee_address = instruction.call_context_lookup(CallContextFieldTag.CalleeAddress)
 
@@ -48,7 +50,9 @@ def sstore(instruction: Instruction):
     instruction.constrain_equal(opcode, Opcode.SSTORE)
 
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
-    rw_counter_end_of_reversion = instruction.call_context_lookup(CallContextFieldTag.RwCounterEndOfReversion)
+    rw_counter_end_of_reversion = instruction.call_context_lookup(
+        CallContextFieldTag.RwCounterEndOfReversion
+    )
     is_persistent = instruction.call_context_lookup(CallContextFieldTag.IsPersistent)
     callee_address = instruction.call_context_lookup(CallContextFieldTag.CalleeAddress)
 
