@@ -1,5 +1,6 @@
 from typing import Sequence
 
+from ..util import FQ
 from .execution import EXECUTION_STATE_IMPL
 from .execution_state import ExecutionState
 from .instruction import Instruction
@@ -8,7 +9,7 @@ from .table import Tables
 
 
 def verify_steps(
-    randomness: int,
+    randomness: FQ,
     tables: Tables,
     steps: Sequence[StepState],
     begin_with_first_step: bool = False,

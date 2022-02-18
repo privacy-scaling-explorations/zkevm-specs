@@ -12,8 +12,8 @@ def rand_range(stop: Union[int, float] = 2**256) -> int:
     return randrange(0, int(stop))
 
 
-def rand_fp() -> int:
-    return rand_range(FQ.field_modulus)
+def rand_fp() -> FQ:
+    return FQ(rand_range(FQ.field_modulus))
 
 
 def rand_address() -> U160:
