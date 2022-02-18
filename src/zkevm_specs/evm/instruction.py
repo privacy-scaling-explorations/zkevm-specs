@@ -543,9 +543,9 @@ class Instruction:
         self.constrain_zero(carry)
         return balance, balance_prev
 
-    def account_storage_read(self, account_address: int, storage_key: int) -> Tuple[FQ, FQ, FQ, FQ]:
-        row = self.rw_lookup(RW.Read, RWTableTag.AccountStorage, [account_address, storage_key, 0])
-        return row[-4], row[-3], row[-2], row[-1]
+    def account_storage_read(self, account_address: int, storage_key: int, tx_id: int) -> FQ:
+        row = self.rw_lookup(RW.Read, RWTableTag.AccountStorage, [account_address, storage_key, 0, Tables._, Tables._, tx_id])
+        return row[-4]
 
     def account_storage_write_with_reversion(
         self,

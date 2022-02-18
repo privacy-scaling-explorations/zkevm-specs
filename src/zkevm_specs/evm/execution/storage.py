@@ -24,13 +24,14 @@ def sload(instruction: Instruction):
 
     storage_key = instruction.stack_pop()
 
-    instruction.account_storage_read(callee_address, storage_key)
+    instruction.constrain_equal(
+        instruction.account_storage_read(callee_address, storage_key, tx_id),
+        instruction.stack_push(),
+    )
 
     is_warm_new, is_warm = instruction.add_account_storage_to_access_list_with_reversion(
         tx_id, callee_address, storage_key, is_persistent, rw_counter_end_of_reversion
     )
-
-    instruction.stack_push()
 
     dynamic_gas_cost = WARM_STORAGE_READ_COST if is_warm == 1 else COLD_SLOAD_COST
 
