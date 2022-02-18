@@ -57,12 +57,11 @@ def sstore(instruction: Instruction):
     callee_address = instruction.call_context_lookup(CallContextFieldTag.CalleeAddress)
 
     storage_key = instruction.stack_pop()
-    value_new = instruction.stack_pop()
-
-    _, value_prev, txid, original_value = instruction.account_storage_write_with_reversion(
-        callee_address, storage_key, is_persistent, rw_counter_end_of_reversion
+    storage_value = instruction.stack_pop()
+    value, value_prev, original_value = instruction.account_storage_write_with_reversion(
+        callee_address, storage_key, tx_id, is_persistent, rw_counter_end_of_reversion
     )
-    instruction.constrain_equal(tx_id, txid)
+    instruction.constrain_equal(storage_value, value)
 
     is_warm_new, is_warm = instruction.add_account_storage_to_access_list_with_reversion(
         tx_id, callee_address, storage_key, is_persistent, rw_counter_end_of_reversion
@@ -72,24 +71,24 @@ def sstore(instruction: Instruction):
         tx_id, is_persistent, rw_counter_end_of_reversion
     )
     gas_refund_new = gas_refund_prev
-    if value_prev != value_new:
+    if value_prev != value:
         if original_value == value_prev:
-            if original_value != 0 and value_new == 0:
+            if original_value != 0 and value == 0:
                 gas_refund_new = gas_refund_new + SSTORE_CLEARS_SCHEDULE
         else:
             if original_value != 0:
                 if value_prev == 0:
                     gas_refund_new = gas_refund_new - SSTORE_CLEARS_SCHEDULE
-                if value_new == 0:
+                if value == 0:
                     gas_refund_new = gas_refund_new + SSTORE_CLEARS_SCHEDULE
-            if original_value == value_new:
+            if original_value == value:
                 if original_value == 0:
                     gas_refund_new = gas_refund_new + SSTORE_SET_GAS - SLOAD_GAS
                 else:
                     gas_refund_new = gas_refund_new + SSTORE_RESET_GAS - SLOAD_GAS
     instruction.constrain_equal(gas_refund, gas_refund_new)
 
-    if value_prev == value_new:
+    if value_prev == value:
         dynamic_gas_cost = SLOAD_GAS
     else:
         if original_value == value_prev:

@@ -555,18 +555,19 @@ class Instruction:
         self,
         account_address: int,
         storage_key: int,
+        tx_id: int,
         is_persistent: bool,
         rw_counter_end_of_reversion: int,
         state_write_counter: Optional[int] = None,
-    ) -> Tuple[FQ, FQ, FQ, FQ]:
+    ) -> Tuple[FQ, FQ, FQ]:
         row = self.state_write_with_reversion(
             RWTableTag.AccountStorage,
-            [account_address, storage_key],
+            [account_address, storage_key, Tables._, Tables._, Tables._, tx_id],
             is_persistent,
             rw_counter_end_of_reversion,
             state_write_counter,
         )
-        return row[-4], row[-3], row[-2], row[-1]
+        return row[-4], row[-3], row[-1]
 
     def add_account_to_access_list(
         self,
