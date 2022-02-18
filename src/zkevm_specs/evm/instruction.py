@@ -562,7 +562,7 @@ class Instruction:
     ) -> Tuple[FQ, FQ, FQ]:
         row = self.state_write_with_reversion(
             RWTableTag.AccountStorage,
-            [account_address, storage_key, Tables._, Tables._, Tables._, tx_id],
+            [account_address, storage_key, 0, Tables._, Tables._, tx_id],
             is_persistent,
             rw_counter_end_of_reversion,
             state_write_counter,
