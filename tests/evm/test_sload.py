@@ -123,8 +123,9 @@ def test_sload(tx: Transaction, storage_key_be_bytes: bytes, warm: bool, result:
                     tx.id,
                     value_committed,
                 ),
+                (15, RW.Write, RWTableTag.Stack, 1, 1023, 0, value, 0, 0, 0),
                 (
-                    15,
+                    16,
                     RW.Write,
                     RWTableTag.TxAccessListAccountStorage,
                     tx.id,
@@ -135,7 +136,6 @@ def test_sload(tx: Transaction, storage_key_be_bytes: bytes, warm: bool, result:
                     0,
                     0,
                 ),
-                (16, RW.Write, RWTableTag.Stack, 1, 1023, 0, value, 0, 0, 0),
             ]
             + (
                 []
