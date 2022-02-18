@@ -32,7 +32,6 @@ def sload(instruction: Instruction):
 
     instruction.stack_push()
 
-    # TODO: Use intrinsic gas (EIP 2028, 2930)
     dynamic_gas_cost = WARM_STORAGE_READ_COST if is_warm == 1 else COLD_SLOAD_COST
 
     instruction.step_state_transition_in_same_context(
@@ -89,7 +88,6 @@ def sstore(instruction: Instruction):
                     gas_refund_new = gas_refund_new + SSTORE_RESET_GAS - SLOAD_GAS
     instruction.constrain_equal(gas_refund, gas_refund_new)
 
-    # TODO: Use intrinsic gas (EIP 2028, 2930)
     if value_prev == value_new:
         dynamic_gas_cost = SLOAD_GAS
     else:
