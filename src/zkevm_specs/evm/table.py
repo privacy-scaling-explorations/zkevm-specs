@@ -283,14 +283,14 @@ class Tables:
     # Each row in RWTable contains:
     # - rw_counter
     # - is_write
-    # - key1 (tag)
+    # - key0 (tag)
+    # - key1
     # - key2
     # - key3
-    # - key4
     # - value
     # - value_prev
+    # - aux0
     # - aux1
-    # - aux2
     rw_table: Set[Array10]
 
     def __init__(
