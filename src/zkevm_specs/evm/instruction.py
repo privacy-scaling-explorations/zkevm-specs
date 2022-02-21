@@ -561,13 +561,13 @@ class Instruction:
         tx_id: int,
         account_address: int,
         storage_key: int,
-    ) -> bool:
+    ) -> Tuple[bool, bool]:
         row = self.rw_lookup(
             RW.Write,
             RWTableTag.TxAccessListAccountStorage,
             [tx_id, account_address, storage_key, 1],
         )
-        return row[-4] - row[-3]
+        return row[-4], row[-3]
 
     def add_account_storage_to_access_list_with_reversion(
         self,
@@ -577,7 +577,7 @@ class Instruction:
         is_persistent: bool,
         rw_counter_end_of_reversion: int,
         state_write_counter: Optional[int] = None,
-    ) -> bool:
+    ) -> Tuple[bool, bool]:
         row = self.state_write_with_reversion(
             RWTableTag.TxAccessListAccountStorage,
             [tx_id, account_address, storage_key, 1],
@@ -585,7 +585,7 @@ class Instruction:
             rw_counter_end_of_reversion,
             state_write_counter,
         )
-        return row[-4] - row[-3]
+        return row[-4], row[-3]
 
     def transfer_with_gas_fee(
         self,
