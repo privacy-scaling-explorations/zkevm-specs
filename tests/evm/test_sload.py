@@ -5,15 +5,13 @@ from zkevm_specs.evm import (
     StepState,
     verify_steps,
     Tables,
-    RWTableTag,
-    RW,
     CallContextFieldTag,
     Transaction,
     Block,
     Bytecode,
+    RWDictionary,
 )
-from zkevm_specs.util.param import COLD_SLOAD_COST, WARM_STORAGE_READ_COST
-from zkevm_specs.util import rand_fp, rand_address, RLC
+from zkevm_specs.util import rand_fq, rand_address, RLC, COLD_SLOAD_COST, WARM_STORAGE_READ_COST
 
 TESTING_DATA = (
     (
@@ -43,118 +41,38 @@ TESTING_DATA = (
 )
 
 
-@pytest.mark.parametrize("tx, storage_key_be_bytes, warm, result", TESTING_DATA)
-def test_sload(tx: Transaction, storage_key_be_bytes: bytes, warm: bool, result: bool):
-    randomness = rand_fp()
+@pytest.mark.parametrize("tx, storage_key_be_bytes, warm, is_persistent", TESTING_DATA)
+def test_sload(tx: Transaction, storage_key_be_bytes: bytes, warm: bool, is_persistent: bool):
+    randomness = rand_fq()
 
     storage_key = RLC(bytes(reversed(storage_key_be_bytes)), randomness)
 
     bytecode = Bytecode().push32(storage_key_be_bytes).sload().stop()
     bytecode_hash = RLC(bytecode.hash(), randomness)
 
-    value = 2
-    value_prev = 0
-    value_committed = 0
+    value = RLC(2, randomness)
+    value_committed = RLC(0, randomness)
+
+    rw_counter_end_of_reversion = 19
+    state_write_counter = 3
 
     tables = Tables(
         block_table=set(Block().table_assignments(randomness)),
         tx_table=set(tx.table_assignments(randomness)),
         bytecode_table=set(bytecode.table_assignments(randomness)),
         rw_table=set(
-            [
-                (
-                    9,
-                    RW.Read,
-                    RWTableTag.CallContext,
-                    1,
-                    CallContextFieldTag.TxId,
-                    0,
-                    tx.id,
-                    0,
-                    0,
-                    0,
-                ),
-                (
-                    10,
-                    RW.Read,
-                    RWTableTag.CallContext,
-                    1,
-                    CallContextFieldTag.RwCounterEndOfReversion,
-                    0,
-                    0 if result else 19,
-                    0,
-                    0,
-                    0,
-                ),
-                (
-                    11,
-                    RW.Read,
-                    RWTableTag.CallContext,
-                    1,
-                    CallContextFieldTag.IsPersistent,
-                    0,
-                    result,
-                    0,
-                    0,
-                    0,
-                ),
-                (
-                    12,
-                    RW.Read,
-                    RWTableTag.CallContext,
-                    1,
-                    CallContextFieldTag.CalleeAddress,
-                    0,
-                    tx.callee_address,
-                    0,
-                    0,
-                    0,
-                ),
-                (13, RW.Read, RWTableTag.Stack, 1, 1023, 0, storage_key, 0, 0, 0),
-                (
-                    14,
-                    RW.Read,
-                    RWTableTag.AccountStorage,
-                    tx.callee_address,
-                    storage_key,
-                    0,
-                    value,
-                    value_prev,
-                    tx.id,
-                    value_committed,
-                ),
-                (15, RW.Write, RWTableTag.Stack, 1, 1023, 0, value, 0, 0, 0),
-                (
-                    16,
-                    RW.Write,
-                    RWTableTag.TxAccessListAccountStorage,
-                    tx.id,
-                    tx.callee_address,
-                    storage_key,
-                    1,
-                    1 if warm else 0,
-                    0,
-                    0,
-                ),
-            ]
-            + (
-                []
-                if result
-                else [
-                    (
-                        19,
-                        RW.Write,
-                        RWTableTag.TxAccessListAccountStorage,
-                        tx.id,
-                        tx.callee_address,
-                        storage_key,
-                        1 if warm else 0,
-                        1,
-                        0,
-                        0,
-                    ),
-                ]
-            )
+            # fmt: off
+            RWDictionary(9)
+            .call_context_read(1, CallContextFieldTag.TxId, tx.id)
+            .call_context_read(1, CallContextFieldTag.RwCounterEndOfReversion, 0 if is_persistent else rw_counter_end_of_reversion)
+            .call_context_read(1, CallContextFieldTag.IsPersistent, is_persistent)
+            .call_context_read(1, CallContextFieldTag.CalleeAddress, tx.callee_address)
+            .stack_read(1, 1023, storage_key)
+            .account_storage_read(tx.callee_address, storage_key, value, tx.id, value_committed)
+            .stack_write(1, 1023, value)
+            .tx_access_list_account_storage_write(tx.id, tx.callee_address, storage_key, 1, 1 if warm else 0, rw_counter_of_reversion=None if is_persistent else rw_counter_end_of_reversion - state_write_counter)
+            .rws
+            # fmt: on
         ),
     )
 
@@ -171,11 +89,11 @@ def test_sload(tx: Transaction, storage_key_be_bytes: bytes, warm: bool, result:
                 code_source=bytecode_hash,
                 program_counter=33,
                 stack_pointer=1023,
-                state_write_counter=0,
+                state_write_counter=state_write_counter,
                 gas_left=WARM_STORAGE_READ_COST if warm else COLD_SLOAD_COST,
             ),
             StepState(
-                execution_state=ExecutionState.STOP if result else ExecutionState.REVERT,
+                execution_state=ExecutionState.STOP if is_persistent else ExecutionState.REVERT,
                 rw_counter=17,
                 call_id=1,
                 is_root=True,
@@ -183,7 +101,7 @@ def test_sload(tx: Transaction, storage_key_be_bytes: bytes, warm: bool, result:
                 code_source=bytecode_hash,
                 program_counter=34,
                 stack_pointer=1023,
-                state_write_counter=1,
+                state_write_counter=state_write_counter + 1,
                 gas_left=0,
             ),
         ],

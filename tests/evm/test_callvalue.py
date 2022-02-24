@@ -3,16 +3,13 @@ import pytest
 from zkevm_specs.evm import (
     ExecutionState,
     StepState,
-    Opcode,
     verify_steps,
     Tables,
-    RWTableTag,
-    RW,
     CallContextFieldTag,
     Bytecode,
+    RWDictionary,
 )
-from zkevm_specs.util import rand_fp, RLC, U256
-from zkevm_specs.util.param import N_BYTES_WORD
+from zkevm_specs.util import rand_fq, RLC, U256
 
 
 TESTING_DATA = (
@@ -25,9 +22,7 @@ TESTING_DATA = (
 
 @pytest.mark.parametrize("callvalue", TESTING_DATA)
 def test_callvalue(callvalue: U256):
-    randomness = rand_fp()
-
-    callvalue_rlc = RLC(callvalue, randomness, N_BYTES_WORD)
+    randomness = rand_fq()
 
     bytecode = Bytecode().callvalue()
     bytecode_hash = RLC(bytecode.hash(), randomness)
@@ -37,12 +32,10 @@ def test_callvalue(callvalue: U256):
         tx_table=set(),
         bytecode_table=set(bytecode.table_assignments(randomness)),
         rw_table=set(
-            [
-                # fmt: off
-                (9, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.Value, 0, callvalue_rlc, 0, 0, 0),
-                (10, RW.Write, RWTableTag.Stack, 1, 1023, 0, callvalue_rlc, 0, 0, 0),
-                # fmt: on
-            ]
+            RWDictionary(9)
+            .call_context_read(1, CallContextFieldTag.Value, RLC(callvalue, randomness))
+            .stack_write(1, 1023, RLC(callvalue, randomness))
+            .rws
         ),
     )
 
