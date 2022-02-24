@@ -1,4 +1,4 @@
-from typing import Any, Sequence
+from typing import Any
 from .execution_state import ExecutionState
 from ..util import FQ, RLC
 
@@ -40,7 +40,7 @@ class StepState:
     memory_size: FQ
     state_write_counter: FQ
 
-    # Auxilary witness data needed by gadgets
+    # Auxiliary witness data needed by gadgets
     aux_data: Any
 
     def __init__(
@@ -50,7 +50,7 @@ class StepState:
         call_id: int = 0,
         is_root: bool = False,
         is_create: bool = False,
-        code_source: int = 0,
+        code_source: RLC = RLC(0),
         program_counter: int = 0,
         stack_pointer: int = 1024,
         gas_left: int = 0,

@@ -15,7 +15,6 @@ def jump(instruction: Instruction):
     dest_value = instruction.rlc_to_fq_exact(dest, N_BYTES_PROGRAM_COUNTER)
 
     # Verify `dest` is code within byte code table
-    # assert Opcode.JUMPDEST == instruction.opcode_lookup_at(dest_value, True)
     instruction.constrain_equal(Opcode.JUMPDEST, instruction.opcode_lookup_at(dest_value, True))
 
     instruction.step_state_transition_in_same_context(

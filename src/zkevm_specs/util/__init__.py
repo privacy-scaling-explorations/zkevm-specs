@@ -12,16 +12,16 @@ def rand_range(stop: Union[int, float] = 2**256) -> int:
     return randrange(0, int(stop))
 
 
-def rand_fp() -> FQ:
+def rand_fq() -> FQ:
     return FQ(rand_range(FQ.field_modulus))
 
 
 def rand_address() -> U160:
-    return rand_range(2**160)
+    return U160(rand_range(2**160))
 
 
 def rand_word() -> U256:
-    return rand_range(2**256)
+    return U256(rand_range(2**256))
 
 
 def rand_bytes(n_bytes: int = 32) -> bytes:
