@@ -18,6 +18,7 @@ from .calldatacopy import *
 from .gas import *
 from .jump import *
 from .jumpi import *
+from .origin import *
 from .push import *
 from .slt_sgt import *
 from .gas import *
@@ -32,6 +33,7 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.EndBlock: end_block,
     ExecutionState.CopyToMemory: copy_to_memory,
     ExecutionState.ADD: add,
+    ExecutionState.ORIGIN: origin,
     ExecutionState.CALLER: caller,
     ExecutionState.CALLVALUE: callvalue,
     ExecutionState.CALLDATACOPY: calldatacopy,
