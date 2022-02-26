@@ -124,6 +124,8 @@ class Instruction:
             assert curr.halts() or curr == ExecutionState.BeginTx
         elif next == ExecutionState.EndBlock:
             assert curr in [ExecutionState.EndTx, ExecutionState.EndBlock]
+        elif next == ExecutionState.CopyToMemory:
+            assert curr in [ExecutionState.CopyToMemory, ExecutionState.CALLDATACOPY]
 
     def constrain_step_state_transition(self, **kwargs: Transition):
         keys = set(

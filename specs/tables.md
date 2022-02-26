@@ -149,8 +149,4 @@ Proved by the block circuit.
 | BitwiseAnd        | lhs=0..256            | rhs=0..256                                | $lhs AND $rhs |
 | BitwiseOr         | lhs=0..256            | rhs=0..256                                | $lhs OR $rhs  |
 | BitwiseXor        | lhs=0..256            | rhs=0..256                                | $lhs XOR $rhs |
-| ResponsibleOpcode | $execution_state      | execution_state.responsible_opcode()      | 0             |
-| InvalidOpcode     | invalid_opcodes()     | 0                                         | 0             |
-| StateWriteOpcode  | state_write_opcodes() | 0                                         | 0             |
-| StackOverflow     | $overflow_opcode      | stack_overflow_pairs\[overflow_opcode\]   | 0             |
-| StackUnderflow    | $underflow_opcode     | stack_underflow_pairs\[underflow_opcode\] | 0             |
+| ResponsibleOpcode | $execution_state      | $responsible_opcode                       | $auxiliary    |

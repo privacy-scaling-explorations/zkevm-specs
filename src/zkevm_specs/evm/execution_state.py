@@ -1,7 +1,13 @@
 from enum import IntEnum, auto
-from typing import Sequence
+from typing import Sequence, Tuple, Union
 
-from .opcode import Opcode
+from .opcode import (
+    Opcode,
+    invalid_opcodes,
+    state_write_opcodes,
+    stack_underflow_pairs,
+    stack_overflow_pairs,
+)
 
 
 class ExecutionState(IntEnum):
@@ -87,10 +93,9 @@ class ExecutionState(IntEnum):
 
     # Error cases
     ErrorInvalidOpcode = auto()
-    # For opcodes which push more than pop
-    ErrorStackOverflow = auto()
-    # For opcodes which pop and DUP, SWAP which peek deeper element directly
-    ErrorStackUnderflow = auto()
+    # For opcodes which triggers stackoverflow by doing push more than pop,
+    # or stackunderflow by doing pop and DUP, SWAP which peek deeper element directly
+    ErrorStack = auto()
     # For SSTORE, LOG0, LOG1, LOG2, LOG3, LOG4, CREATE, CALL, CREATE2, SELFDESTRUCT
     ErrorWriteProtection = auto()
     # For CALL, CALLCODE, DELEGATECALL, STATICCALL
@@ -135,7 +140,7 @@ class ExecutionState(IntEnum):
 
     # TODO: Precompile success and error cases
 
-    def responsible_opcode(self) -> Sequence[Opcode]:
+    def responsible_opcode(self) -> Union[Sequence[int], Sequence[Tuple[int, int]]]:
         if self == ExecutionState.STOP:
             return [Opcode.STOP]
         elif self == ExecutionState.ADD:
@@ -365,6 +370,12 @@ class ExecutionState(IntEnum):
             return [Opcode.REVERT]
         elif self == ExecutionState.SELFDESTRUCT:
             return [Opcode.SELFDESTRUCT]
+        elif self == ExecutionState.ErrorInvalidOpcode:
+            return invalid_opcodes()
+        elif self == ExecutionState.ErrorStack:
+            return stack_overflow_pairs() + stack_underflow_pairs()
+        elif self == ExecutionState.ErrorWriteProtection:
+            return state_write_opcodes()
         return []
 
     def halts(self):
@@ -380,8 +391,7 @@ class ExecutionState(IntEnum):
     def halts_in_exception(self):
         return self in [
             ExecutionState.ErrorInvalidOpcode,
-            ExecutionState.ErrorStackOverflow,
-            ExecutionState.ErrorStackUnderflow,
+            ExecutionState.ErrorStack,
             ExecutionState.ErrorWriteProtection,
             ExecutionState.ErrorDepth,
             ExecutionState.ErrorInsufficientBalance,

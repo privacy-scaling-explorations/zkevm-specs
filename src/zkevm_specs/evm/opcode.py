@@ -1,5 +1,6 @@
 from enum import IntEnum
-from typing import Final, Dict, Sequence, Tuple, Union
+from typing import Final, Dict, List, Tuple
+
 from ..util.param import *
 
 
@@ -346,15 +347,15 @@ OPCODE_INFO_MAP: Final[Dict[Opcode, OpcodeInfo]] = dict(
 )
 
 
-def valid_opcodes() -> Sequence[Opcode]:
+def valid_opcodes() -> List[Opcode]:
     return list(Opcode)
 
 
-def invalid_opcodes() -> Sequence[int]:
+def invalid_opcodes() -> List[int]:
     return [opcode for opcode in range(256) if opcode not in valid_opcodes()]
 
 
-def stack_overflow_pairs() -> Sequence[Tuple[int, int]]:
+def stack_overflow_pairs() -> List[Tuple[Opcode, int]]:
     pairs = []
     for opcode in valid_opcodes():
         if opcode.min_stack_pointer() > 0:
@@ -363,7 +364,7 @@ def stack_overflow_pairs() -> Sequence[Tuple[int, int]]:
     return pairs
 
 
-def stack_underflow_pairs() -> Sequence[Tuple[int, int]]:
+def stack_underflow_pairs() -> List[Tuple[Opcode, int]]:
     pairs = []
     for opcode in valid_opcodes():
         if opcode.max_stack_pointer() < 1024:
@@ -372,7 +373,7 @@ def stack_underflow_pairs() -> Sequence[Tuple[int, int]]:
     return pairs
 
 
-def constant_gas_cost_pairs() -> Sequence[Tuple[int, int]]:
+def constant_gas_cost_pairs() -> List[Tuple[Opcode, int]]:
     pairs = []
     for opcode in valid_opcodes():
         if not opcode.has_dynamic_gas() and opcode.constant_gas_cost() > 0:
@@ -380,7 +381,7 @@ def constant_gas_cost_pairs() -> Sequence[Tuple[int, int]]:
     return pairs
 
 
-def state_write_opcodes() -> Sequence[int]:
+def state_write_opcodes() -> List[Opcode]:
     return [
         Opcode.SSTORE,
         Opcode.LOG0,
@@ -395,19 +396,19 @@ def state_write_opcodes() -> Sequence[int]:
     ]
 
 
-def call_opcodes() -> Sequence[int]:
+def call_opcodes() -> List[Opcode]:
     return [Opcode.CALL, Opcode.CALLCODE, Opcode.DELEGATECALL, Opcode.STATICCALL]
 
 
-def ether_transfer_opcdes() -> Sequence[int]:
+def ether_transfer_opcdes() -> List[Opcode]:
     return [Opcode.CALL, Opcode.CALLCODE]
 
 
-def create_opcodes() -> Sequence[int]:
+def create_opcodes() -> List[Opcode]:
     return [Opcode.CREATE, Opcode.CREATE2]
 
 
-def jump_opcodes() -> Sequence[int]:
+def jump_opcodes() -> List[Opcode]:
     return [Opcode.JUMP, Opcode.JUMPI]
 
 
