@@ -53,7 +53,7 @@ class FixedTableTag(IntEnum):
             return [(self, lhs, rhs, lhs ^ rhs) for lhs, rhs in product(range(256), range(256))]
         elif self == FixedTableTag.ResponsibleOpcode:
             return [
-                (self, execution_state, opcode, aux, opcode, aux)
+                (self, execution_state, opcode, aux)
                 for execution_state in list(ExecutionState)
                 for opcode, aux in map(
                     lambda pair: pair if isinstance(pair, tuple) else (pair, 0),
