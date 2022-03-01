@@ -14,23 +14,33 @@ def calldataload(instruction: Instruction):
     calldata_end = calldata_start + N_BYTES_WORD
 
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId, RW.Read)
+
     calldata_size = instruction.tx_context_lookup(tx_id, TxContextFieldTag.CallDataLength)
-
-    expected_stack_top = instruction.rlc_to_le_bytes(instruction.stack_push())
-
     bytes_left = (
         N_BYTES_WORD if calldata_size.n > calldata_end.n else calldata_size - calldata_start
     )
     buffer_reader = BufferReaderGadget(
         instruction, N_BYTES_WORD, calldata_start, calldata_end, bytes_left
     )
+
+    calldata_word = []
     for idx in range(32):
         if buffer_reader.read_flag(idx):
-            buffer_reader.constrain_byte(
-                idx, instruction.tx_calldata_lookup(tx_id, calldata_start + idx)
-            )
+            if instruction.curr.is_root:
+                tx_byte = instruction.tx_calldata_lookup(tx_id, calldata_start + idx)
+                buffer_reader.constrain_byte(idx, tx_byte)
+                calldata_word.append(int(tx_byte))
+            else:
+                mem_byte = instruction.memory_lookup(RW.Read, calldata_start + idx)
+                buffer_reader.constrain_byte(idx, mem_byte)
+                calldata_word.append(int(mem_byte))
         else:
             buffer_reader.constrain_byte(idx, 0)
+            calldata_word.append(0)
+
+    calldata_word = bytes(calldata_word)
+    expected_stack_top = instruction.stack_push()
+    instruction.constrain_equal(expected_stack_top, instruction.bytes_to_rlc(calldata_word))
 
     instruction.step_state_transition_in_same_context(
         opcode,

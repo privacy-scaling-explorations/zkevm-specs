@@ -230,8 +230,8 @@ class Instruction:
 
     def compare(self, lhs: FQ, rhs: FQ, n_bytes: int) -> Tuple[bool, bool]:
         assert n_bytes <= MAX_N_BYTES, "Too many bytes to composite an integer in field"
-        assert lhs.n < 256**n_bytes, f"lhs {lhs} exceeds the range of {n_bytes} bytes"
-        assert rhs.n < 256**n_bytes, f"rhs {rhs} exceeds the range of {n_bytes} bytes"
+        assert lhs.n < 256 ** n_bytes, f"lhs {lhs} exceeds the range of {n_bytes} bytes"
+        assert rhs.n < 256 ** n_bytes, f"rhs {rhs} exceeds the range of {n_bytes} bytes"
         return lhs.n < rhs.n, lhs.n == rhs.n
 
     def min(self, lhs: FQ, rhs: FQ, n_bytes: int) -> FQ:
@@ -301,6 +301,9 @@ class Instruction:
 
     def int_to_rlc(self, value: int, n_bytes: int) -> RLC:
         return RLC(value, self.randomness, n_bytes)
+
+    def bytes_to_rlc(self, value: bytes) -> RLC:
+        return RLC(value, self.randomness, len(value))
 
     def bytes_to_int(self, value: bytes) -> int:
         assert len(value) <= MAX_N_BYTES, "Too many bytes to composite an integer in field"
