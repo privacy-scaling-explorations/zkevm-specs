@@ -9,29 +9,37 @@ def calldataload(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
     instruction.constrain_equal(opcode, Opcode.CALLDATALOAD)
 
-    # callldata_start is the 64-bit offset to start reading 32-bytes from calldata.
-    calldata_start = instruction.rlc_to_fq_exact(instruction.stack_pop(), n_bytes=8)
-    calldata_end = calldata_start + N_BYTES_WORD
+    # offset is the 64-bit offset to start reading 32-bytes from start of calldata.
+    offset = instruction.rlc_to_fq_exact(instruction.stack_pop(), n_bytes=8)
 
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId, RW.Read)
 
-    calldata_size = instruction.tx_context_lookup(tx_id, TxContextFieldTag.CallDataLength)
-    bytes_left = (
-        N_BYTES_WORD if calldata_size.n > calldata_end.n else calldata_size - calldata_start
-    )
+    if instruction.curr.is_root:
+        calldata_length = instruction.tx_context_lookup(tx_id, TxContextFieldTag.CallDataLength)
+        calldata_offset = 0
+        src_addr = offset
+        src_addr_end = calldata_length
+    else:
+        calldata_length = instruction.call_context_lookup(CallContextFieldTag.CallDataLength)
+        calldata_offset = instruction.call_context_lookup(CallContextFieldTag.CallDataOffset)
+        src_addr = offset + calldata_offset
+        src_addr_end = calldata_offset + calldata_length
+
+    bytes_left = N_BYTES_WORD if calldata_length.n > src_addr_end.n else src_addr_end - src_addr
+    print("bytes left = ", bytes_left)
     buffer_reader = BufferReaderGadget(
-        instruction, N_BYTES_WORD, calldata_start, calldata_end, bytes_left
+        instruction, N_BYTES_WORD, src_addr, src_addr_end, bytes_left
     )
 
     calldata_word = []
     for idx in range(32):
         if buffer_reader.read_flag(idx):
             if instruction.curr.is_root:
-                tx_byte = instruction.tx_calldata_lookup(tx_id, calldata_start + idx)
+                tx_byte = instruction.tx_calldata_lookup(tx_id, offset + idx)
                 buffer_reader.constrain_byte(idx, tx_byte)
                 calldata_word.append(int(tx_byte))
             else:
-                mem_byte = instruction.memory_lookup(RW.Read, calldata_start + idx)
+                mem_byte = instruction.memory_lookup(RW.Read, offset + idx)
                 buffer_reader.constrain_byte(idx, mem_byte)
                 calldata_word.append(int(mem_byte))
         else:

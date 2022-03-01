@@ -63,11 +63,39 @@ def test_calldataload(call_data: bytes, offset: U64, expected_stack_top: bytes, 
     if is_root:
         rws.add((4, RW.Write, RWTableTag.Stack, 1, 1023, 0, expected_stack_top, 0, 0, 0))
     else:
-        for i in range(offset, len(call_data)):
-            rws.add((4 + i - offset, RW.Read, RWTableTag.Memory, 1, i, 0, call_data[i], 0, 0, 0))
         rws.add(
             (
-                4 + len(call_data) - offset,
+                4,
+                RW.Read,
+                RWTableTag.CallContext,
+                1,
+                CallContextFieldTag.CallDataLength,
+                0,
+                len(call_data),
+                0,
+                0,
+                0,
+            )
+        )
+        rws.add(
+            (
+                5,
+                RW.Read,
+                RWTableTag.CallContext,
+                1,
+                CallContextFieldTag.CallDataOffset,
+                0,
+                0,
+                0,
+                0,
+                0,
+            )
+        )
+        for i in range(offset, len(call_data)):
+            rws.add((6 + i - offset, RW.Read, RWTableTag.Memory, 1, i, 0, call_data[i], 0, 0, 0))
+        rws.add(
+            (
+                6 + len(call_data) - offset,
                 RW.Write,
                 RWTableTag.Stack,
                 1,
