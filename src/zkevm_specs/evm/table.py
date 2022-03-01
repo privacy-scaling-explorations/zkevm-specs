@@ -5,12 +5,6 @@ from itertools import chain, product
 
 from ..util import FQ, RLC, Array3, Array4, Array10
 from .execution_state import ExecutionState
-from .opcode import (
-    invalid_opcodes,
-    state_write_opcodes,
-    stack_underflow_pairs,
-    stack_overflow_pairs,
-)
 
 
 class Placeholder:
@@ -34,11 +28,7 @@ class FixedTableTag(IntEnum):
     BitwiseAnd = auto()  # lhs, rhs, lhs & rhs, 0
     BitwiseOr = auto()  # lhs, rhs, lhs | rhs, 0
     BitwiseXor = auto()  # lhs, rhs, lhs ^ rhs, 0
-    ResponsibleOpcode = auto()  # execution_state, opcode, 0
-    InvalidOpcode = auto()  # opcode, 0, 0
-    StateWriteOpcode = auto()  # opcode, 0, 0
-    StackOverflow = auto()  # opcode, stack_pointer, 0
-    StackUnderflow = auto()  # opcode, stack_pointer, 0
+    ResponsibleOpcode = auto()  # execution_state, opcode, aux
 
     def table_assignments(self) -> Sequence[Array4]:
         if self == FixedTableTag.Range16:
@@ -63,25 +53,15 @@ class FixedTableTag(IntEnum):
             return [(self, lhs, rhs, lhs ^ rhs) for lhs, rhs in product(range(256), range(256))]
         elif self == FixedTableTag.ResponsibleOpcode:
             return [
-                (self, execution_state, opcode, 0)
+                (self, execution_state, opcode, aux)
                 for execution_state in list(ExecutionState)
-                for opcode in execution_state.responsible_opcode()
-            ]
-        elif self == FixedTableTag.InvalidOpcode:
-            return [(self, opcode, 0, 0) for opcode in invalid_opcodes()]
-        elif self == FixedTableTag.StateWriteOpcode:
-            return [(self, opcode, 0, 0) for opcode in state_write_opcodes()]
-        elif self == FixedTableTag.StackOverflow:
-            return [
-                (self, opcode, stack_pointer, 0)
-                for opcode, stack_pointer in stack_underflow_pairs()
-            ]
-        elif self == FixedTableTag.StackUnderflow:
-            return [
-                (self, opcode, stack_pointer, 0) for opcode, stack_pointer in stack_overflow_pairs()
+                for opcode, aux in map(
+                    lambda pair: pair if isinstance(pair, tuple) else (pair, 0),
+                    execution_state.responsible_opcode(),
+                )
             ]
         else:
-            ValueError("Unreacheable")
+            raise ValueError("Unreacheable")
 
     def range_table_tag(range: int) -> FixedTableTag:
         if range == 16:

@@ -15,24 +15,26 @@ def verify_steps(
     begin_with_first_step: bool = False,
     end_with_last_step: bool = False,
 ):
-    # TODO: Enforce general ExecutionState transition constraint
+    # For the last step, the next step is meaningless
+    if end_with_last_step:
+        steps += [None]
 
-    for idx in range(len(steps) if end_with_last_step else len(steps) - 1):
+    for idx in range(len(steps) - 1):
+        curr, next = steps[idx], steps[idx + 1]
+
         verify_step(
             Instruction(
                 randomness=randomness,
                 tables=tables,
-                curr=steps[idx],
-                next=steps[idx + 1] if idx + 1 < len(steps) else None,
+                curr=curr,
+                next=next,
                 is_first_step=begin_with_first_step and idx == 0,
-                is_last_step=idx + 1 == len(steps),
-            ),
+                is_last_step=end_with_last_step and next is None,
+            )
         )
 
 
-def verify_step(
-    instruction: Instruction,
-):
+def verify_step(instruction: Instruction):
     if instruction.is_first_step:
         instruction.constrain_equal(instruction.curr.execution_state, ExecutionState.BeginTx)
 
@@ -43,3 +45,5 @@ def verify_step(
 
     if instruction.is_last_step:
         instruction.constrain_equal(instruction.curr.execution_state, ExecutionState.EndBlock)
+    else:
+        instruction.constrain_execution_state_transition()

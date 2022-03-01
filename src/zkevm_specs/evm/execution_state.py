@@ -1,7 +1,13 @@
 from enum import IntEnum, auto
-from typing import Sequence
+from typing import Sequence, Tuple, Union
 
-from .opcode import Opcode
+from .opcode import (
+    Opcode,
+    invalid_opcodes,
+    state_write_opcodes,
+    stack_underflow_pairs,
+    stack_overflow_pairs,
+)
 
 
 class ExecutionState(IntEnum):
@@ -74,7 +80,7 @@ class ExecutionState(IntEnum):
     PUSH = auto()  # PUSH1, PUSH2, ..., PUSH32
     DUP = auto()  # DUP1, DUP2, ..., DUP16
     SWAP = auto()  # SWAP1, SWAP2, ..., SWAP16
-    LOG = auto()  # LOG1, LOG2, ..., LOG5
+    LOG = auto()  # LOG0, LOG1, LOG2, LOG3, LOG4
     CREATE = auto()
     CALL = auto()
     CALLCODE = auto()
@@ -87,10 +93,9 @@ class ExecutionState(IntEnum):
 
     # Error cases
     ErrorInvalidOpcode = auto()
-    # For opcodes which push more than pop
-    ErrorStackOverflow = auto()
-    # For opcodes which pop and DUP, SWAP which peek deeper element directly
-    ErrorStackUnderflow = auto()
+    # For opcodes which triggers stackoverflow by doing push more than pop,
+    # or stackunderflow by doing pop and DUP, SWAP which peek deeper element directly
+    ErrorStack = auto()
     # For SSTORE, LOG0, LOG1, LOG2, LOG3, LOG4, CREATE, CALL, CREATE2, SELFDESTRUCT
     ErrorWriteProtection = auto()
     # For CALL, CALLCODE, DELEGATECALL, STATICCALL
@@ -102,34 +107,40 @@ class ExecutionState(IntEnum):
     ErrorInvalidCreationCode = auto()
     # For opcode RETURN which needs to store code when it's is creation
     ErrorMaxCodeSizeExceeded = auto()
-    # For REVERT
-    ErrorReverted = auto()
     # For JUMP, JUMPI
     ErrorInvalidJump = auto()
     # For RETURNDATACOPY
     ErrorReturnDataOutOfBound = auto()
     # For opcodes which have non-zero constant gas cost
     ErrorOutOfGasConstant = auto()
-    # For opcodes MLOAD, MSTORE, MSTORE8, CREATE, RETURN, REVERT, which have pure memory expansion gas cost
-    ErrorOutOfGasPureMemory = auto()
+    # For opcodes MLOAD, MSTORE, MSTORE8, which have static size memory expansion gas cost
+    ErrorOutOfGasStaticMemoryExpansion = auto()
+    # For opcodes CREATE, RETURN, REVERT, which have dynamic size memory expansion gas cost
+    ErrorOutOfGasDynamicMemoryExpansion = auto()
+    # For opcode CALLDATACOPY, CODECOPY, RETURNDATACOPY, which copies a specified chunk of memory
+    ErrorOutOfGasMemoryCopy = auto()
+    # For opcodes BALANCE, EXTCODESIZE, EXTCODEHASH, which possibly touches an extra account
+    ErrorOutOfGasAccountAccess = auto()
     # For opcode RETURN which has code storing gas cost when it's is creation
     ErrorOutOfGasCodeStore = auto()
-    # For opcodes which have dynamic gas usage rather than pure memory expansion
-    ErrorOutOfGasSHA3 = auto()
-    ErrorOutOfGasCALLDATACOPY = auto()
-    ErrorOutOfGasCODECOPY = auto()
-    ErrorOutOfGasEXTCODECOPY = auto()
-    ErrorOutOfGasRETURNDATACOPY = auto()
+    # For opcodes LOG0, LOG1, LOG2, LOG3, LOG4
     ErrorOutOfGasLOG = auto()
+    # For opcodes which have their own gas calculation
+    ErrorOutOfGasEXP = auto()
+    ErrorOutOfGasSHA3 = auto()
+    ErrorOutOfGasEXTCODECOPY = auto()
+    ErrorOutOfGasSLOAD = auto()
+    ErrorOutOfGasSSTORE = auto()
     ErrorOutOfGasCALL = auto()
     ErrorOutOfGasCALLCODE = auto()
     ErrorOutOfGasDELEGATECALL = auto()
     ErrorOutOfGasCREATE2 = auto()
     ErrorOutOfGasSTATICCALL = auto()
+    ErrorOutOfGasSELFDESTRUCT = auto()
 
     # TODO: Precompile success and error cases
 
-    def responsible_opcode(self) -> Sequence[Opcode]:
+    def responsible_opcode(self) -> Union[Sequence[int], Sequence[Tuple[int, int]]]:
         if self == ExecutionState.STOP:
             return [Opcode.STOP]
         elif self == ExecutionState.ADD:
@@ -359,4 +370,52 @@ class ExecutionState(IntEnum):
             return [Opcode.REVERT]
         elif self == ExecutionState.SELFDESTRUCT:
             return [Opcode.SELFDESTRUCT]
+        elif self == ExecutionState.ErrorInvalidOpcode:
+            return invalid_opcodes()
+        elif self == ExecutionState.ErrorStack:
+            return stack_overflow_pairs() + stack_underflow_pairs()
+        elif self == ExecutionState.ErrorWriteProtection:
+            return state_write_opcodes()
         return []
+
+    def halts(self):
+        return self.halts_in_success() or self.halts_in_exception() or self == ExecutionState.REVERT
+
+    def halts_in_success(self):
+        return self in [
+            ExecutionState.STOP,
+            ExecutionState.RETURN,
+            ExecutionState.SELFDESTRUCT,
+        ]
+
+    def halts_in_exception(self):
+        return self in [
+            ExecutionState.ErrorInvalidOpcode,
+            ExecutionState.ErrorStack,
+            ExecutionState.ErrorWriteProtection,
+            ExecutionState.ErrorDepth,
+            ExecutionState.ErrorInsufficientBalance,
+            ExecutionState.ErrorContractAddressCollision,
+            ExecutionState.ErrorInvalidCreationCode,
+            ExecutionState.ErrorMaxCodeSizeExceeded,
+            ExecutionState.ErrorInvalidJump,
+            ExecutionState.ErrorReturnDataOutOfBound,
+            ExecutionState.ErrorOutOfGasConstant,
+            ExecutionState.ErrorOutOfGasStaticMemoryExpansion,
+            ExecutionState.ErrorOutOfGasDynamicMemoryExpansion,
+            ExecutionState.ErrorOutOfGasMemoryCopy,
+            ExecutionState.ErrorOutOfGasAccountAccess,
+            ExecutionState.ErrorOutOfGasCodeStore,
+            ExecutionState.ErrorOutOfGasLOG,
+            ExecutionState.ErrorOutOfGasEXP,
+            ExecutionState.ErrorOutOfGasSHA3,
+            ExecutionState.ErrorOutOfGasEXTCODECOPY,
+            ExecutionState.ErrorOutOfGasSLOAD,
+            ExecutionState.ErrorOutOfGasSSTORE,
+            ExecutionState.ErrorOutOfGasCALL,
+            ExecutionState.ErrorOutOfGasCALLCODE,
+            ExecutionState.ErrorOutOfGasDELEGATECALL,
+            ExecutionState.ErrorOutOfGasCREATE2,
+            ExecutionState.ErrorOutOfGasSTATICCALL,
+            ExecutionState.ErrorOutOfGasSELFDESTRUCT,
+        ]

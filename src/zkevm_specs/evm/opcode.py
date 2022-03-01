@@ -1,5 +1,6 @@
 from enum import IntEnum
-from typing import Final, Dict, Sequence, Tuple, Union
+from typing import Final, Dict, List, Tuple
+
 from ..util.param import *
 
 
@@ -184,11 +185,6 @@ class OpcodeInfo:
     max_stack_pointer: int
     constant_gas_cost: int
     has_dynamic_gas: bool
-    pure_memory_expansion_info: Tuple[
-        int,  # offset stack_pointer_offset
-        int,  # length stack_pointer_offset
-        int,  # constant length
-    ]
 
     def __init__(
         self,
@@ -196,13 +192,11 @@ class OpcodeInfo:
         max_stack_pointer: int,
         constant_gas_cost: int,
         has_dynamic_gas: bool = False,
-        pure_memory_expansion_info: Union[Tuple[int, int, int], None] = None,
     ) -> None:
         self.min_stack_pointer = min_stack_pointer
         self.max_stack_pointer = max_stack_pointer
         self.constant_gas_cost = constant_gas_cost
         self.has_dynamic_gas = has_dynamic_gas
-        self.pure_memory_expansion_info = pure_memory_expansion_info
 
 
 OPCODE_INFO_MAP: Final[Dict[Opcode, OpcodeInfo]] = dict(
@@ -260,9 +254,9 @@ OPCODE_INFO_MAP: Final[Dict[Opcode, OpcodeInfo]] = dict(
         Opcode.SELFBALANCE: OpcodeInfo(1, 1024, GAS_COST_FAST),
         Opcode.BASEFEE: OpcodeInfo(1, 1024, GAS_COST_QUICK),
         Opcode.POP: OpcodeInfo(-1, 1023, GAS_COST_QUICK),
-        Opcode.MLOAD: OpcodeInfo(0, 1023, GAS_COST_FASTEST, True, (0, 0, 32)),
-        Opcode.MSTORE: OpcodeInfo(-2, 1022, GAS_COST_FASTEST, True, (0, 0, 32)),
-        Opcode.MSTORE8: OpcodeInfo(-2, 1022, GAS_COST_FASTEST, True, (0, 0, 1)),
+        Opcode.MLOAD: OpcodeInfo(0, 1023, GAS_COST_FASTEST, True),
+        Opcode.MSTORE: OpcodeInfo(-2, 1022, GAS_COST_FASTEST, True),
+        Opcode.MSTORE8: OpcodeInfo(-2, 1022, GAS_COST_FASTEST, True),
         Opcode.SLOAD: OpcodeInfo(0, 1023, GAS_COST_ZERO, True),
         Opcode.SSTORE: OpcodeInfo(-2, 1022, GAS_COST_ZERO, True),
         Opcode.JUMP: OpcodeInfo(-1, 1023, GAS_COST_MID),
@@ -340,28 +334,28 @@ OPCODE_INFO_MAP: Final[Dict[Opcode, OpcodeInfo]] = dict(
         Opcode.LOG2: OpcodeInfo(-4, 1020, GAS_COST_ZERO, True),
         Opcode.LOG3: OpcodeInfo(-5, 1019, GAS_COST_ZERO, True),
         Opcode.LOG4: OpcodeInfo(-6, 1018, GAS_COST_ZERO, True),
-        Opcode.CREATE: OpcodeInfo(-2, 1021, GAS_COST_CREATE, True, (1, 2, 0)),
+        Opcode.CREATE: OpcodeInfo(-2, 1021, GAS_COST_CREATE, True),
         Opcode.CALL: OpcodeInfo(-6, 1017, GAS_COST_WARM_ACCESS, True),
         Opcode.CALLCODE: OpcodeInfo(-6, 1017, GAS_COST_WARM_ACCESS, True),
-        Opcode.RETURN: OpcodeInfo(-2, 1022, GAS_COST_ZERO, True, (0, 1, 0)),
+        Opcode.RETURN: OpcodeInfo(-2, 1022, GAS_COST_ZERO, True),
         Opcode.DELEGATECALL: OpcodeInfo(-5, 1018, GAS_COST_WARM_ACCESS, True),
         Opcode.CREATE2: OpcodeInfo(-3, 1020, GAS_COST_CREATE2, True),
         Opcode.STATICCALL: OpcodeInfo(-5, 1018, GAS_COST_WARM_ACCESS, True),
-        Opcode.REVERT: OpcodeInfo(-2, 1022, GAS_COST_ZERO, True, (0, 1, 0)),
+        Opcode.REVERT: OpcodeInfo(-2, 1022, GAS_COST_ZERO, True),
         Opcode.SELFDESTRUCT: OpcodeInfo(-1, 1023, GAS_COST_SELF_DESTRUCT, True),
     }
 )
 
 
-def valid_opcodes() -> Sequence[Opcode]:
+def valid_opcodes() -> List[Opcode]:
     return list(Opcode)
 
 
-def invalid_opcodes() -> Sequence[int]:
+def invalid_opcodes() -> List[int]:
     return [opcode for opcode in range(256) if opcode not in valid_opcodes()]
 
 
-def stack_overflow_pairs() -> Sequence[Tuple[int, int]]:
+def stack_overflow_pairs() -> List[Tuple[Opcode, int]]:
     pairs = []
     for opcode in valid_opcodes():
         if opcode.min_stack_pointer() > 0:
@@ -370,7 +364,7 @@ def stack_overflow_pairs() -> Sequence[Tuple[int, int]]:
     return pairs
 
 
-def stack_underflow_pairs() -> Sequence[Tuple[int, int]]:
+def stack_underflow_pairs() -> List[Tuple[Opcode, int]]:
     pairs = []
     for opcode in valid_opcodes():
         if opcode.max_stack_pointer() < 1024:
@@ -379,7 +373,7 @@ def stack_underflow_pairs() -> Sequence[Tuple[int, int]]:
     return pairs
 
 
-def opcode_constant_gas_cost_pairs() -> Sequence[Tuple[int, int]]:
+def constant_gas_cost_pairs() -> List[Tuple[Opcode, int]]:
     pairs = []
     for opcode in valid_opcodes():
         if not opcode.has_dynamic_gas() and opcode.constant_gas_cost() > 0:
@@ -387,7 +381,7 @@ def opcode_constant_gas_cost_pairs() -> Sequence[Tuple[int, int]]:
     return pairs
 
 
-def state_write_opcodes() -> Sequence[int]:
+def state_write_opcodes() -> List[Opcode]:
     return [
         Opcode.SSTORE,
         Opcode.LOG0,
@@ -402,19 +396,19 @@ def state_write_opcodes() -> Sequence[int]:
     ]
 
 
-def call_opcodes() -> Sequence[int]:
+def call_opcodes() -> List[Opcode]:
     return [Opcode.CALL, Opcode.CALLCODE, Opcode.DELEGATECALL, Opcode.STATICCALL]
 
 
-def ether_transfer_opcdes() -> Sequence[int]:
+def ether_transfer_opcdes() -> List[Opcode]:
     return [Opcode.CALL, Opcode.CALLCODE]
 
 
-def create_opcodes() -> Sequence[int]:
+def create_opcodes() -> List[Opcode]:
     return [Opcode.CREATE, Opcode.CREATE2]
 
 
-def jump_opcodes() -> Sequence[int]:
+def jump_opcodes() -> List[Opcode]:
     return [Opcode.JUMP, Opcode.JUMPI]
 
 
