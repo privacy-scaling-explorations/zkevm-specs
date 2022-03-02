@@ -271,7 +271,7 @@ def check_state_row(row: Row, row_prev: Row, randomness: FQ):
     #
 
     # 0. key0, key1, key3 are in the expected range
-    assert_in_range(row.keys[0], 0, MAX_KEY0)
+    assert_in_range(row.keys[0], 1, MAX_KEY0)
     assert_in_range(row.keys[1], 0, MAX_KEY1)
     assert_in_range(row.keys[3], 0, MAX_KEY3)
 
