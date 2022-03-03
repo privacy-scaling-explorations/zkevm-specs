@@ -101,3 +101,19 @@ class CopyToMemoryAuxData:
         self.src_addr_end = FQ(src_addr_end)
         self.from_tx = FQ(from_tx)
         self.tx_id = FQ(tx_id)
+
+
+class CopyToLogAuxData:
+    src_addr: FQ
+    bytes_left: FQ
+    src_addr_end: FQ
+
+    def __init__(
+        self,
+        src_addr: int,
+        bytes_left: int,
+        src_addr_end: int,
+    ):
+        self.src_addr = FQ(src_addr)
+        self.bytes_left = FQ(bytes_left)
+        self.src_addr_end = FQ(src_addr_end)
