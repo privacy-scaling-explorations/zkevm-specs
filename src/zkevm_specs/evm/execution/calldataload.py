@@ -29,7 +29,7 @@ def calldataload(instruction: Instruction):
     )
 
     calldata_word = []
-    for idx in range(32):
+    for idx in range(N_BYTES_WORD):
         if buffer_reader.read_flag(idx):
             if instruction.curr.is_root:
                 tx_byte = instruction.tx_calldata_lookup(tx_id, offset + idx)
@@ -43,9 +43,10 @@ def calldataload(instruction: Instruction):
             buffer_reader.constrain_byte(idx, 0)
             calldata_word.append(0)
 
-    calldata_word = bytes(calldata_word)
-    expected_stack_top = instruction.stack_push()
-    instruction.constrain_equal(expected_stack_top, instruction.bytes_to_rlc(calldata_word))
+    instruction.constrain_equal(
+        instruction.stack_push(),
+        instruction.bytes_to_rlc(bytes(calldata_word)),
+    )
 
     instruction.step_state_transition_in_same_context(
         opcode,
