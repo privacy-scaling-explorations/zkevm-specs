@@ -114,16 +114,13 @@ def sstore(instruction: Instruction):
     instruction.constrain_equal(gas_refund, gas_refund_new)
 
     warm_case_gas = instruction.select(
-        instruction.is_equal(value_prev, value),
+        instruction.is_equal(value_prev, value)
+        or (not instruction.is_equal(original_value, value_prev)),
         SLOAD_GAS,
         instruction.select(
-            instruction.is_equal(original_value, value_prev),
-            instruction.select(
-                instruction.is_zero(original_value),
-                SSTORE_SET_GAS,
-                SSTORE_RESET_GAS,
-            ),
-            SLOAD_GAS,
+            instruction.is_zero(original_value),
+            SSTORE_SET_GAS,
+            SSTORE_RESET_GAS,
         ),
     )
     dynamic_gas_cost = instruction.select(is_warm, warm_case_gas, warm_case_gas + COLD_SLOAD_COST)
