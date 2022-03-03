@@ -62,6 +62,7 @@ def test_calldataload(call_data: bytes, offset: U64, expected_stack_top: bytes, 
     )
     if is_root:
         rws.add((4, RW.Write, RWTableTag.Stack, 1, 1023, 0, expected_stack_top, 0, 0, 0))
+        rw_counter_stop = 5
     else:
         rws.add(
             (
@@ -107,6 +108,7 @@ def test_calldataload(call_data: bytes, offset: U64, expected_stack_top: bytes, 
                 0,
             )
         )
+        rw_counter_stop = 7 + len(call_data) - offset
 
     tables = Tables(
         block_table=set(),
@@ -143,7 +145,7 @@ def test_calldataload(call_data: bytes, offset: U64, expected_stack_top: bytes, 
             ),
             StepState(
                 execution_state=ExecutionState.STOP,
-                rw_counter=5,
+                rw_counter=rw_counter_stop,
                 call_id=1,
                 is_root=is_root,
                 is_create=False,

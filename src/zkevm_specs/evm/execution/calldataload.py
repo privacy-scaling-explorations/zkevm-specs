@@ -17,18 +17,15 @@ def calldataload(instruction: Instruction):
     if instruction.curr.is_root:
         calldata_length = instruction.tx_context_lookup(tx_id, TxContextFieldTag.CallDataLength)
         calldata_offset = 0
-        src_addr = offset
-        src_addr_end = calldata_length
     else:
         calldata_length = instruction.call_context_lookup(CallContextFieldTag.CallDataLength)
         calldata_offset = instruction.call_context_lookup(CallContextFieldTag.CallDataOffset)
-        src_addr = offset + calldata_offset
-        src_addr_end = calldata_offset + calldata_length
 
-    bytes_left = N_BYTES_WORD if calldata_length.n > src_addr_end.n else src_addr_end - src_addr
-    print("bytes left = ", bytes_left)
+    src_addr = offset + calldata_offset
+    src_addr_end = calldata_length + calldata_offset
+
     buffer_reader = BufferReaderGadget(
-        instruction, N_BYTES_WORD, src_addr, src_addr_end, bytes_left
+        instruction, N_BYTES_WORD, src_addr, src_addr_end, N_BYTES_WORD
     )
 
     calldata_word = []
@@ -52,7 +49,7 @@ def calldataload(instruction: Instruction):
 
     instruction.step_state_transition_in_same_context(
         opcode,
-        rw_counter=Transition.delta(3),
+        rw_counter=Transition.delta(instruction.rw_counter_offset),
         program_counter=Transition.delta(1),
         stack_pointer=Transition.delta(0),
     )
