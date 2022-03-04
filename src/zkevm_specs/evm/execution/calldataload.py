@@ -32,11 +32,11 @@ def calldataload(instruction: Instruction):
     for idx in range(N_BYTES_WORD):
         if buffer_reader.read_flag(idx):
             if instruction.curr.is_root:
-                tx_byte = instruction.tx_calldata_lookup(tx_id, offset + idx)
+                tx_byte = instruction.tx_calldata_lookup(tx_id, src_addr + idx)
                 buffer_reader.constrain_byte(idx, tx_byte)
                 calldata_word.append(int(tx_byte))
             else:
-                mem_byte = instruction.memory_lookup(RW.Read, offset + idx)
+                mem_byte = instruction.memory_lookup(RW.Read, src_addr + idx)
                 buffer_reader.constrain_byte(idx, mem_byte)
                 calldata_word.append(int(mem_byte))
         else:

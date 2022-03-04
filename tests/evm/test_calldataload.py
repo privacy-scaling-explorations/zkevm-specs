@@ -1,5 +1,6 @@
 import pytest
 
+from typing import Optional
 from zkevm_specs.evm import (
     Bytecode,
     CallContextFieldTag,
@@ -16,33 +17,59 @@ from zkevm_specs.util import rand_fp, RLC, U64
 TESTING_DATA = (
     (
         bytes.fromhex("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"),
+        0x20,
         0x00,
         bytes.fromhex("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"),
         True,
+        None,
     ),
     (
         bytes.fromhex("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"),
+        0x20,
         0x1F,
         bytes.fromhex("FF00000000000000000000000000000000000000000000000000000000000000"),
         True,
+        None,
     ),
     (
         bytes.fromhex("a1bacf5488bfafc33bad736db41f06866eaeb35e1c1dd81dfc268357ec98563f"),
+        0x20,
         0x10,
         bytes.fromhex("6eaeb35e1c1dd81dfc268357ec98563f00000000000000000000000000000000"),
         True,
+        None,
     ),
     (
         bytes.fromhex("a1bacf5488bfafc33bad736db41f06866eaeb35e1c1dd81dfc268357ec98563f"),
+        0x20,
         0x10,
         bytes.fromhex("6eaeb35e1c1dd81dfc268357ec98563f00000000000000000000000000000000"),
         False,
+        0x00,
+    ),
+    (
+        bytes.fromhex("a1bacf5488bfafc33bad736db41f06866eaeb35e1c1dd81dfc268357ec98563fab"),
+        0x20,
+        0x10,
+        bytes.fromhex("aeb35e1c1dd81dfc268357ec98563fab00000000000000000000000000000000"),
+        False,
+        0x01,
     ),
 )
 
 
-@pytest.mark.parametrize("call_data, offset, expected_stack_top, is_root", TESTING_DATA)
-def test_calldataload(call_data: bytes, offset: U64, expected_stack_top: bytes, is_root: bool):
+@pytest.mark.parametrize(
+    "call_data, call_data_length, offset, expected_stack_top, is_root, call_data_offset",
+    TESTING_DATA,
+)
+def test_calldataload(
+    call_data: bytes,
+    call_data_length: U64,
+    offset: U64,
+    expected_stack_top: bytes,
+    is_root: bool,
+    call_data_offset: Optional[U64],
+):
     randomness = rand_fp()
 
     tx = Transaction(id=1, call_data=call_data)
@@ -64,6 +91,7 @@ def test_calldataload(call_data: bytes, offset: U64, expected_stack_top: bytes, 
         rws.add((4, RW.Write, RWTableTag.Stack, 1, 1023, 0, expected_stack_top, 0, 0, 0))
         rw_counter_stop = 5
     else:
+        # add to RW table call context, call data length (read)
         rws.add(
             (
                 4,
@@ -72,12 +100,13 @@ def test_calldataload(call_data: bytes, offset: U64, expected_stack_top: bytes, 
                 1,
                 CallContextFieldTag.CallDataLength,
                 0,
-                len(call_data),
+                call_data_length,
                 0,
                 0,
                 0,
             )
         )
+        # add to RW table call context, call data offset (read)
         rws.add(
             (
                 5,
@@ -86,17 +115,25 @@ def test_calldataload(call_data: bytes, offset: U64, expected_stack_top: bytes, 
                 1,
                 CallContextFieldTag.CallDataOffset,
                 0,
-                0,
+                call_data_offset,
                 0,
                 0,
                 0,
             )
         )
-        for i in range(offset, len(call_data)):
-            rws.add((6 + i - offset, RW.Read, RWTableTag.Memory, 1, i, 0, call_data[i], 0, 0, 0))
+        rw_counter = 6
+        # add to RW table memory (read)
+        for i in range(0, len(call_data)):
+            idx = offset + call_data_offset + i
+            if idx < len(call_data):
+                rws.add(
+                    (rw_counter, RW.Read, RWTableTag.Memory, 1, idx, 0, call_data[idx], 0, 0, 0)
+                )
+                rw_counter += 1
+        # add to RW table stack (write)
         rws.add(
             (
-                6 + len(call_data) - offset,
+                rw_counter,
                 RW.Write,
                 RWTableTag.Stack,
                 1,
@@ -108,7 +145,7 @@ def test_calldataload(call_data: bytes, offset: U64, expected_stack_top: bytes, 
                 0,
             )
         )
-        rw_counter_stop = 7 + len(call_data) - offset
+        rw_counter_stop = rw_counter + 1
 
     tables = Tables(
         block_table=set(),
