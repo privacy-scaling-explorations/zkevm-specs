@@ -2,10 +2,10 @@
 
 MPT circuit checks that the modification of the trie state happened correctly.
 
-Let's assume there are two proofs (as retured by `eth getProof`):
+Let's assume there are two proofs (as returned by `eth getProof`):
 
-- A proof that there exists value `val1` at key `key1` for the trie root `root1`.
-- A proof that there exists value `val2` at key `key1` for the trie root `root2`.
+- A proof that there exists value `val1` at key `key1` for the trie with root `root1`.
+- A proof that there exists value `val2` at key `key1` for the trie with root `root2`.
 
 The circuit checks the transition from `val1` to `val2` at `key1` that led to the change
 of trie root from `root1` to `root2` (the chaining of such proofs is yet to be added).
@@ -102,12 +102,12 @@ The first 2 columns are RLP specific as we will see below.
 
 In the codebase, the columns are named:
 
-- s_rlp1
-- s_rlp2
-- s_advices (32 columns)
-- c_rlp1
-- c_rlp2
-- c_advices (32 columns)
+- `s_rlp1`
+- `s_rlp2`
+- `s_advices` (32 columns)
+- `c_rlp1`
+- `c_rlp2`
+- `c_advices` (32 columns)
 
 ### Branch
 
@@ -121,7 +121,7 @@ Branch comprises 19 rows:
 | --------------------- | ------------------------------------------------------------------ |
 | Branch init            | `0, 1, 0, 1, 249, 2, 17, 249, 2, 17, 13`                                     |
 | Node 0              | `0, 160, 215, 178, 43, ..., 0, 160, 215, 178,...`                                      |
-| Node 1              | `0, 160, 195, 19, 38, ..., 0, 160, 195, 19, 38,...`                                      |
+| Node 1              | `0, 160, 195, 189, 38, ..., 0, 160, 195, 19, 38,...`                                      |
 | Node 2 (empty)              | `0, 0, 128, 0, 0, ..., 0, 0, 128, 0, 0,...`                                      |
 | ...              | ...                                      |
 | Node 15              | `0, 160, 22, 99, 129, ..., 0, 160, 22, 99, 129,...`                                      |
@@ -137,15 +137,15 @@ The first two columns specify whether S branch has two or three RLP meta bytes
 
 For example, a branch with two RLP meta bytes starts like:
 `248, 81, 128, 128,... `
-This means there are 81 bytes from position two onward.
+This means there are 81 bytes from position two onward in the branch RLP stream.
 
 To check whether the length of the stream correspond to the length specified
 with the RLP meta bytes, we use column 0. In each row we subtract the number
 of bytes in a row. In the last row we checked whether the value is 0.
 
-Note that branch node row can have either 33 bytes or 1 byte. 1 byte occurs
+Note that branch node row can either have 33 bytes or 1 byte. 1 byte occurs
 when the node is empty, in this case only the value 128 appears, which is stored
-in position 2 in MPT circuit layout.
+in column 2.
 
 For example, a branch with three RLP meta bytes starts like:
 `249, 1, 81, 128, 16, ... `
@@ -170,35 +170,38 @@ Example 34 S columns:
 
 `0, 160, 215, 178, 43, ..., 23`
 
-The first column in branch node rows is used for checking the RLP stream
-length.
+The first columns of S and C proof (`s_rlp1` and `c_rlp1`) in branch node rows are
+used to check the RLP stream length.
 
-The second column is RLP encoding of the length of the substream.
-It is always 160, because this denotes the length of the
+The second columns (`s_rlp2` and `c_rlp2`) are for RLP encoding of the length
+of the substream.
+For non-empty rows, it is always 160, because this denotes the length of the
 substream which is 32 (= 160 - 128). The substream in this case is hash of a
 node.
 
-When there is an empty node, the columns look like:
-`0, 0, 128, 0, ..., 0`
+When there is an empty node, the column looks like:
+`0, 0, 128, 0, ..., 0`.
 
 Empty node in a RLP stream is denoted only by one byte - value 128.
-MPT circuit uses this kind of padding with 0s to simplify the comparison
-between S and C branch. For example, when a value is stored at a key that
-hasn't been used yet, we will get empty node in S branch and non-empty node
+MPT circuit uses padding with 0s to simplify the comparison
+between S and C branch. This way, the branch nodes are aligned horizontally
+for both proofs.
+
+For example, when a value is stored at a key that
+hasn't been used yet, we will get an empty node in S branch and non-empty node
 in C branch. We need to compare whether this change corresponds to the
 key (key determines the index of the node in branch where change occurs).
 
 #### Extension node rows
 
 Extension node can be viewed as a special branch. It contains a regular branch
-with the addition of a key extension. Key extension is a couple of nibbles (most
+with the addition of a key extension. Key extension is set of nibbles (most
 often only one or two nibbles) that "extend" the path to the branch.
 
-The extension node element in proof contains the information about nibbles
-and the hash of the underlying branch.
+The extension node element in proof (returned by `eth getProof`) contains
+the information about nibbles and the hash of the underlying branch.
 
-For example, the proof element (returned by `eth getProof`) of
-an extension node looks like:
+For example, the proof element of an extension node looks like:
 
 `228,130,0,149,160,114,253,150,133,18,192,156,19,241,162,51,210,24,1,151,16,48,7,177,42,60,49,34,230,254,242,79,132,165,90,75,249`
 
@@ -209,20 +212,38 @@ The two nibbles compressed are 9 and 5 (149 = 9 * 16 + 5).
 
 The bytes after 160 present a hash of the underlying branch.
 
-MPT layout uses s_rlp1, s_rlp2, and s_advices for RLP meta bytes and nibbles,
-while c_advices are used for branch hash (c_rlp2 stores 160 - denoting the number
+MPT layout uses `s_rlp1`, `s_rlp2`, and `s_advices` for RLP meta bytes and nibbles,
+while `c_advices` are used for branch hash (`c_rlp2` stores 160 - denoting the number
 of hash bytes).
 
 There are two extension node rows - one for S proof, one for C proof.
-However, the nibbles information is the same for both proofs.
-For this reason, in C row, we store some additional witness for nibbles (because
-the nibbles are actually given compressed in bytes).
+However, the extension key (nibbles) is the same for both proofs, we don't need
+to double this information.
+For this reason, in C row, we don't put key into `s_rlp1`, `s_rlp2`, and `s_advices`,
+we just put hash of C extension node underlying branch in `c_advices`.
+
+However, in C row, we store additional witness for nibbles (because nibbles are
+given compressed in bytes) into `s_rlp1`, `s_rlp2`, and `s_advices`.
+
+For example:
+`0, 0, 5, 0, 0, ...`
+
+Here, 5 presents the second nibbles of 149 (see above). Having the second nibble
+enables us to compute the first nibble.
+
+Thus, the two extension rows look like:
+
+`228,130,0,149, 0, ..., 0, 160, S underlying branch hash`
+`0, 0, 5, 0, ..., 0, 160, C underlying branch hash`
+
+There is bit of a difference in RLP stream when only one nibble appears.
+In this case there is no byte specifying the length of the key extension
+(130 in the above case).
+For example, in the case below, the nibble is 0 (16 - 16):
 
 `226,16,160,172,105,12...`
 
-`228, 130, 0, 187, 0, ...`
-
-`0, 0, 11, 0, 0, ...`
+In this case special witnesses for nibbles are not needed.
 
 ### Storage leaf
 
@@ -231,8 +252,11 @@ There are 5 rows for a storage leaf.
 (it might be optimized to have only one row for a storage leaf).
 1 row for cases when a leaf is turned into a branch or extension node.
 
-`227, 161, 32, 187, 41, ..., 11`
+`228, 159, 55, 204, 40,...`
 
+______________________________________________________________________
+
+`227, 161, 32, 187, 41, ..., 11`
 `225, 159, 57, 202, 166, ..., 17`
 
 ## Key RLC
