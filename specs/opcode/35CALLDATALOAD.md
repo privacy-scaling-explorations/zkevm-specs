@@ -8,25 +8,27 @@ The `CALLDATALOAD` opcode gets input data of current environment.
 
 Stack input is the byte offset to read call data from. Stack output is a 32-byte value starting from the given offset of the call data. All bytes after the end of the call data are set to `0`.
 
-## Circuit Behaviour
-
-1. Do busmapping lookup for stack read operation.
-2. Construct call context table in RW table (for `tx.id`).
-3. Construct tx context table in RW table (for every single byte of `tx.calldata`).
-4. Do busmapping lookup for call context `txid` read operation.
-5. Do busmapping lookup for tx context `calldata` read operation (for each one of the 32 bytes of the stack output).
-6. Do busmapping lookup for stack write operation.
-
 ## Constraints
 
 1. opId == 0x35
 2. State Transition:
-   - gc + 3 (1 stack read, 1 call context read, 1 stack write)
+   - if is_root_call:
+     - rw_counter += 3 (1 stack read, 1 call context read, 1 stack write)
+   - if is_internal_call:
+     - rw_counter += rw_counter_offset ∈ {4, 5, ..., 35, 36} (1 stack read, 2 call context reads, i ∈ {0, 1, ..., 31, 32} memory reads, 1 stack write)
    - stack_pointer unchanged
    - pc + 1
    - gas - 3
 3. Lookups:
-   - for index `i in range(32)`: `stack_top[i]` is in the RW table {tx context, call data, i}
+   - `offset` is at the top of the stack
+   - `tx_id` is in the RW table (call context)
+   - if is_root_call (where `src_addr = offset`):
+     - `calldata_length` is in the TX table
+     - i ∈ {0, 1, ..., 31, 32} lookups for `i in range(32)`: if `buffer.read_flag(i)` then the i'th byte of the element on top of the stack `calldata_word[i]` is in the TX table {tx id, call data, src_addr + i}
+   - if is_internal_call (where `src_addr = offset + calldata_offset`):
+     - `calldata_length` is in the RW table (call context)
+     - `calldata_offset` is in the RW table (call context)
+     - i ∈ {0, 1, ..., 31, 32} lookups for `i in range(32)`: if `buffer.read_flag(i)` then the i'th byte of the element on top of the stack `calldata_word[i]` is in the RW table {memory, src_addr + i}
 
 ## Exceptions
 
