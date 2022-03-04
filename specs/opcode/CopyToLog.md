@@ -2,7 +2,7 @@
 
 ## Circuit behaviour
 
-`CopyToLog` is an internal execution state and doesn't correspond to a EVM opcode. It copies
+`CopyToLog` is an internal execution state and doesn't correspond to an EVM opcode. It copies
 data from memory RW `Txlog` entries. This gadget needs to loop itself if it hasn't finished
 the copy.
 
@@ -19,16 +19,18 @@ Define two auxiliary variables:
 
 - `nbytes_written`: the number of bytes written to `TxLog`. It could be either `MAX_COPY_BYTES`
   or number of bytes left to copy.
-- `nbytes_read`: the number of bytes read from tx table or memory. It's no more than
+- `nbytes_read`: the number of bytes read from memory. It's no more than
   `nbytes_written`. `nbytes_read` is smaller than `nbytes_written` when there's out-of-bound
   access to the src buffer.
 
 1. State transition:
    - rw_counter
-     - from memory: + nbytes_written + nbytes_read
-2. Lookups: nbytes_read + nbytes_written
+     - from memory:  + nbytes_read
+     - to txlog:  + nbytes_written
+2. Lookups:
    - from memory:
      - `nbytes_read` lookups from rw table (memory read)
+   - to txlog:
      - `nbytes_written` lookups from rw table (TxLog write)
 
 ## Exceptions

@@ -23,13 +23,11 @@ denote `LOGN` where `N` in `[0,4]` meaning topic count.
 
 ## Circuit behavior
 
-1. extend RW table with `TxLog` field tag
-2. stack read memory data for `mStart`, `mSize` and topics
-3. constrain topics exists in tx log entries
-4. check copied memory data exists in tx log entries
-5. constrain contract address etc. in tx log entries
-6. constrain current call is not static call
-7. dynamic memory expansion cost deduction
+Because the `msize` is dynamic, it requires multiple step slots to fully verify the `CALLDATACOPY`.
+In the `Log` circuit, it only constrains the stack pops, state transition, and lookups to
+retrieve the additional information such as contract address, `is_static`, etc.
+Then the gadget transits to an internal state called `CopyToLog`, which can loop itself for
+copying memory data to the RW log entries.
 
 ## Constraints
 
@@ -37,7 +35,7 @@ denote `LOGN` where `N` in `[0,4]` meaning topic count.
 
 2. State transition:
 
-   - gc + 5 + 2 * `N` + 2 * `mSize`
+   - gc + 5( 2 stack reads + 2 callcontext reads + 1 txlog read) + 2 * `N` + 2 * `mSize`:
    - stack_pointer + 2 + `N`
    - pc + 1
    - state_write_counter + 1:
