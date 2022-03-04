@@ -6,6 +6,7 @@ from .begin_tx import *
 from .end_tx import *
 from .end_block import *
 from .memory_copy import *
+from .copy_to_log import *
 
 # Opcode's successful cases
 from .add import *
@@ -56,5 +57,6 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.SELFBALANCE: selfbalance,
     ExecutionState.GASPRICE: gasprice,
     ExecutionState.EXTCODEHASH: extcodehash,
+    ExecutionState.CopyToLog: copy_to_log,
     ExecutionState.LOG: log,
 }

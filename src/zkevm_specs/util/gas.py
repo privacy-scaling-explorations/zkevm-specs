@@ -35,7 +35,9 @@ def memory_expansion(
 
     # Calculate the gas cost for the memory expansion
     # This gas cost is the difference between the next and current memory costs
-    memory_gas_cost = (next_memory_size - curr_memory_size) * G_MEM + (next_quad_memory_cost - curr_quad_memory_cost)
+    memory_gas_cost = (next_memory_size - curr_memory_size) * G_MEM + (
+        next_quad_memory_cost - curr_quad_memory_cost
+    )
 
     # Return the new memory size and the memory expansion gas cost
     return next_memory_size, memory_gas_cost

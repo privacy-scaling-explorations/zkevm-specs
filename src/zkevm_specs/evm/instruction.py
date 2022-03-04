@@ -234,7 +234,7 @@ class Instruction:
         memory_size: Transition = Transition.same(),
         state_write_counter: Transition = Transition.same(),
         dynamic_gas_cost: IntOrFQ = 0,
-        log_index: IntOrFQ = 0,
+        log_index: Transition = Transition.same(),
     ):
         self.responsible_opcode_lookup(opcode)
 
@@ -248,7 +248,7 @@ class Instruction:
             gas_left=Transition.delta(-gas_cost),
             memory_size=memory_size,
             state_write_counter=state_write_counter,
-            log_index=Transition.delta(log_index),
+            log_index=log_index,
             # Always stay same
             call_id=Transition.same(),
             is_root=Transition.same(),
@@ -388,7 +388,7 @@ class Instruction:
     def tx_calldata_lookup(self, tx_id: Expression, call_data_index: Expression) -> Expression:
         return self.tables.tx_lookup(tx_id, FQ(TxContextFieldTag.CallData), call_data_index).value
 
-  def tx_log_lookup(self, field_tag: TxContextFieldTag, index: int = 0) -> Union[int, RLC]:
+    def tx_log_lookup(self, field_tag: TxContextFieldTag, index: int = 0) -> Union[int, RLC]:
         return self.rw_lookup(RW.Write, RWTableTag.TxLog, [self.curr.log_index, index, field_tag])[-4]
 
     def bytecode_lookup(
