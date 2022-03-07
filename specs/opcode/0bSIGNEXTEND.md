@@ -1,4 +1,4 @@
-# SIGNEXTEND op code
+# SIGNEXTEND opcode
 
 ## Procedure
 

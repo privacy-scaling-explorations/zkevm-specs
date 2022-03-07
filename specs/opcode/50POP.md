@@ -1,4 +1,4 @@
-# POP op code
+# POP opcode
 
 ## Procedure
 

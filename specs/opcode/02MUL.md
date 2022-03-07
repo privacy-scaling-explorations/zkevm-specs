@@ -1,4 +1,4 @@
-# MUL op code
+# MUL opcode
 
 ## Procedure
 

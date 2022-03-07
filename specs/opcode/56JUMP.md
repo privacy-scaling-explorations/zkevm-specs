@@ -1,4 +1,4 @@
-# JUMP code
+# JUMP opcode
 
 ## Procedure
 

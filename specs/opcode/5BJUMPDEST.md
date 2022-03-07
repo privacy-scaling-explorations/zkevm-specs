@@ -1,4 +1,4 @@
-# JUMPDEST op code
+# JUMPDEST opcode
 
 ## Procedure
 

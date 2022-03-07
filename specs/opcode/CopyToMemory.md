@@ -1,4 +1,4 @@
-# CopyToMemory
+# CopyToMemory opcode
 
 ## Circuit behaviour
 

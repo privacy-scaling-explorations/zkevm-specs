@@ -1,4 +1,4 @@
-# MSIZE op code
+# MSIZE opcode
 
 ## Procedure
 
