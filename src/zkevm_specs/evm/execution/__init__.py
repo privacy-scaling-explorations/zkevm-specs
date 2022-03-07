@@ -11,6 +11,7 @@ from .memory_copy import *
 from .add import *
 from .block_coinbase import *
 from .block_timestamp import *
+from .block_number import *
 from .calldatasize import *
 from .caller import *
 from .callvalue import *
@@ -40,6 +41,7 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.CALLDATASIZE: calldatasize,
     ExecutionState.COINBASE: coinbase,
     ExecutionState.TIMESTAMP: timestamp,
+    ExecutionState.NUMBER: number,
     ExecutionState.JUMP: jump,
     ExecutionState.JUMPI: jumpi,
     ExecutionState.PUSH: push,
