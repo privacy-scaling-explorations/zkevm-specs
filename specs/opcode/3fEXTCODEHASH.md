@@ -12,7 +12,7 @@ the stack instead.
 1. opId = 0x3f
 2. State transition:
    - gc + 7 (1 stack read, 1 stack write, 1 call context read, 3 account reads,
-             1 transaction access list write)
+     1 transaction access list write)
    - stack_pointer + 0 (one pop and one push)
    - pc + 1
    - gas:
