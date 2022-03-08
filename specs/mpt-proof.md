@@ -125,7 +125,8 @@ Branch comprises 19 rows:
 | Node 2 (empty)              | `0, 0, 128, 0, 0, ..., 0, 0, 128, 0, 0,...`                                      |
 | ...              | ...                                      |
 | Node 15              | `0, 160, 22, 99, 129, ..., 0, 160, 22, 99, 129,...`                                      |
-| Extension row S              | `228, 160, 22, 99, 129, ..., 0, 160, 22, 99, 129,...`                                      |
+| Extension row S              | `228, 130, 0, 149, 0,..., 0, 160, 57, 70,...`                                      |
+| Extension row C              | `0, 0, 5, 0, ...,0, 160, 57, 70,... 0`                                      |
 
 #### Branch init row
 
@@ -192,7 +193,64 @@ hasn't been used yet, we will get an empty node in S branch and non-empty node
 in C branch. We need to compare whether this change corresponds to the
 key (key determines the index of the node in branch where change occurs).
 
-#### Extension node rows
+#### Constraints
+
+![branch](./img/branch.png)
+
+In the picture, the last two rows are all zeros because this is a regular branch,
+not an extension node.
+
+##### Constraint: hash of the branch is in the parent branch
+
+`is_modified` selector denotes the position in branch which corresponds to the key
+(the branch child where the change occurs).
+
+The whole branch needs to be hashed and the result needs to be checked
+to be in the parent branch. This is checked in `BranchHashInParentChip`
+using a lookup which takes as an input:
+
+- Random Linear Combination (RLC) of the branch
+- parent branch `s_advices/c_advices` RLC at `is_modified` position
+
+Currently, instead of `s_advices/c_advices` RLC, four columns (bytes into words)
+are used: `s_keccak/c_keccak` (to be fixed).
+
+The final lookup will look like (for S):
+`lookup(S branch RLC, S branch length, s_advices RLC`.
+
+To simplify the constraints, the hash of the modified node is stored in each
+branch node. This is to enable rotations back to access the RLC of the modified node.
+Thus, for example, when checking the branch hash to be in a parent branch,
+we can rotate back to the last row in the parent branch and use the value from this
+row for the lookup.
+
+To enable this, we need to have constraints for the node hash in branch rows.
+
+##### Constraints: node hash in branch rows
+
+For all branch rows (TODO: replace s_keccak/c_keccak with two RLC columns):
+
+```
+s_keccak_prev = s_keccak
+c_keccak_prev = c_keccak
+```
+
+At `is_modified` position (TODO: \*\_keccak -> RLC):
+
+```
+s_keccak = convert_into_words(s_advices)
+c_keccak = convert_into_words(c_advices)
+```
+
+##### Constraint: no change except at is_modified position
+
+In all branch rows, except at `is_modified` position, it needs to hold:
+
+```
+s_advices = c_advices
+```
+
+### Extension node rows
 
 Extension node can be viewed as a special branch. It contains a regular branch
 with the addition of a key extension. Key extension is set of nibbles (most
@@ -228,13 +286,15 @@ given compressed in bytes) into `s_rlp1`, `s_rlp2`, and `s_advices`.
 For example:
 `0, 0, 5, 0, 0, ...`
 
-Here, 5 presents the second nibbles of 149 (see above). Having the second nibble
-enables us to compute the first nibble.
+Here, 5 presents the second nibbles of 149 (see above).
+Having the second nibble simplifies the computation of the first nibble.
 
 Thus, the two extension rows look like:
 
-`228,130,0,149, 0, ..., 0, 160, S underlying branch hash`
-`0, 0, 5, 0, ..., 0, 160, C underlying branch hash`
+```
+228,130,0,149, 0, ..., 0, 160, S underlying branch hash
+0, 0, 5, 0, ..., 0, 160, C underlying branch hash
+```
 
 There is bit of a difference in RLP stream when only one nibble appears.
 In this case there is no byte specifying the length of the key extension
