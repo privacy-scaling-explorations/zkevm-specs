@@ -80,15 +80,21 @@ def test_calldataload(
     bytecode = Bytecode().push(offset_rlc, n_bytes=32).calldataload().stop()
     bytecode_hash = RLC(bytecode.hash(), randomness)
 
+    if is_root:
+        call_id = 1
+    else:
+        call_id = 2
+        parent_call_id = 1
+
     rws = set(
         [
-            (1, RW.Write, RWTableTag.Stack, 1, 1023, 0, offset_rlc, 0, 0, 0),
-            (2, RW.Read, RWTableTag.Stack, 1, 1023, 0, offset_rlc, 0, 0, 0),
-            (3, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.TxId, 0, 1, 0, 0, 0),
+            (1, RW.Write, RWTableTag.Stack, call_id, 1023, 0, offset_rlc, 0, 0, 0),
+            (2, RW.Read, RWTableTag.Stack, call_id, 1023, 0, offset_rlc, 0, 0, 0),
+            (3, RW.Read, RWTableTag.CallContext, call_id, CallContextFieldTag.TxId, 0, 1, 0, 0, 0),
         ]
     )
     if is_root:
-        rws.add((4, RW.Write, RWTableTag.Stack, 1, 1023, 0, expected_stack_top, 0, 0, 0))
+        rws.add((4, RW.Write, RWTableTag.Stack, call_id, 1023, 0, expected_stack_top, 0, 0, 0))
         rw_counter_stop = 5
     else:
         # add to RW table call context, call data length (read)
@@ -97,7 +103,7 @@ def test_calldataload(
                 4,
                 RW.Read,
                 RWTableTag.CallContext,
-                1,
+                call_id,
                 CallContextFieldTag.CallDataLength,
                 0,
                 call_data_length,
@@ -112,7 +118,7 @@ def test_calldataload(
                 5,
                 RW.Read,
                 RWTableTag.CallContext,
-                1,
+                call_id,
                 CallContextFieldTag.CallDataOffset,
                 0,
                 call_data_offset,
@@ -121,13 +127,39 @@ def test_calldataload(
                 0,
             )
         )
-        rw_counter = 6
+        # add to RW table call context, caller'd ID (read)
+        rws.add(
+            (
+                6,
+                RW.Read,
+                RWTableTag.CallContext,
+                call_id,
+                CallContextFieldTag.CallerId,
+                0,
+                parent_call_id,
+                0,
+                0,
+                0,
+            )
+        )
+        rw_counter = 7
         # add to RW table memory (read)
         for i in range(0, len(call_data)):
             idx = offset + call_data_offset + i
             if idx < len(call_data):
                 rws.add(
-                    (rw_counter, RW.Read, RWTableTag.Memory, 1, idx, 0, call_data[idx], 0, 0, 0)
+                    (
+                        rw_counter,
+                        RW.Read,
+                        RWTableTag.Memory,
+                        parent_call_id,
+                        idx,
+                        0,
+                        call_data[idx],
+                        0,
+                        0,
+                        0,
+                    )
                 )
                 rw_counter += 1
         # add to RW table stack (write)
@@ -136,7 +168,7 @@ def test_calldataload(
                 rw_counter,
                 RW.Write,
                 RWTableTag.Stack,
-                1,
+                call_id,
                 1023,
                 0,
                 expected_stack_top,
@@ -161,7 +193,7 @@ def test_calldataload(
             StepState(
                 execution_state=ExecutionState.PUSH,
                 rw_counter=1,
-                call_id=1,
+                call_id=call_id,
                 is_root=is_root,
                 is_create=False,
                 code_source=bytecode_hash,
@@ -172,7 +204,7 @@ def test_calldataload(
             StepState(
                 execution_state=ExecutionState.CALLDATALOAD,
                 rw_counter=2,
-                call_id=1,
+                call_id=call_id,
                 is_root=is_root,
                 is_create=False,
                 code_source=bytecode_hash,
@@ -183,7 +215,7 @@ def test_calldataload(
             StepState(
                 execution_state=ExecutionState.STOP,
                 rw_counter=rw_counter_stop,
-                call_id=1,
+                call_id=call_id,
                 is_root=is_root,
                 is_create=False,
                 code_source=bytecode_hash,

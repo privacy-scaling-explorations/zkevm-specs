@@ -15,7 +15,7 @@ Stack input is the byte offset to read call data from. Stack output is a 32-byte
    - if is_root_call:
      - rw_counter += 3 (1 stack read, 1 call context read, 1 stack write)
    - if is_internal_call:
-     - rw_counter += rw_counter_offset ∈ {4, 5, ..., 35, 36} (1 stack read, 2 call context reads, i ∈ {0, 1, ..., 31, 32} memory reads, 1 stack write)
+     - rw_counter += rw_counter_offset ∈ {5, 6, ..., 36, 37} (1 stack read, 3 call context reads, i ∈ {0, 1, ..., 31, 32} memory reads, 1 stack write)
    - stack_pointer unchanged
    - pc + 1
    - gas - 3
@@ -28,7 +28,8 @@ Stack input is the byte offset to read call data from. Stack output is a 32-byte
    - if is_internal_call (where `src_addr = offset + calldata_offset`):
      - `calldata_length` is in the RW table (call context)
      - `calldata_offset` is in the RW table (call context)
-     - i ∈ {0, 1, ..., 31, 32} lookups for `i in range(32)`: if `buffer.read_flag(i)` then the i'th byte of the element on top of the stack `calldata_word[i]` is in the RW table {memory, src_addr + i}
+     - `caller_id` is in the RW table (call context)
+     - i ∈ {0, 1, ..., 31, 32} lookups for `i in range(32)`: if `buffer.read_flag(i)` then the i'th byte of the element on top of the stack `calldata_word[i]` is in the RW table {memory, src_addr + i, caller_id}
 
 ## Exceptions
 

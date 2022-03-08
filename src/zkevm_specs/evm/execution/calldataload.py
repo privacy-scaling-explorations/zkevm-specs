@@ -20,6 +20,7 @@ def calldataload(instruction: Instruction):
     else:
         calldata_length = instruction.call_context_lookup(CallContextFieldTag.CallDataLength)
         calldata_offset = instruction.call_context_lookup(CallContextFieldTag.CallDataOffset)
+        caller_id = instruction.call_context_lookup(CallContextFieldTag.CallerId)
 
     src_addr = offset + calldata_offset
     src_addr_end = calldata_length + calldata_offset
@@ -36,7 +37,7 @@ def calldataload(instruction: Instruction):
                 buffer_reader.constrain_byte(idx, tx_byte)
                 calldata_word.append(int(tx_byte))
             else:
-                mem_byte = instruction.memory_lookup(RW.Read, src_addr + idx)
+                mem_byte = instruction.memory_lookup(RW.Read, src_addr + idx, caller_id)
                 buffer_reader.constrain_byte(idx, mem_byte)
                 calldata_word.append(int(mem_byte))
         else:
