@@ -23,11 +23,13 @@ denote `LOGN` where `N` in `[0,4]` meaning topic count.
 
 ## Circuit behavior
 
-Because the `msize` is dynamic, it requires multiple step slots to fully verification.
-In the `Log` circuit, it only constrains the stack pops, state transition, and lookups to
-retrieve the additional information such as contract address, `is_static`, etc.
-Then the gadget transits to an internal state called `CopyToLog`, which can loop itself for
-copying memory data to the RW log entries.
+1. constrain `mStart`, `mSize` pop from stack
+2. constrain contract address in CallContext & TxLog
+3. constrain call context is not static call
+4. constrain topics pop from stack and add into TxLog topic field, topic count is correct
+5. constrain memory data [`mStart`, `mStart` + `mSize`], copied to tx log data field,
+  it takes use of one or more `CopyToLog` inner gadgets as one `CopyToLog` gadget can only handle fixed
+amount of bytes.
 
 ## Constraints
 
