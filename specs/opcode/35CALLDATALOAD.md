@@ -32,7 +32,7 @@ Stack input is the byte offset to read call data from. Stack output is a 32-byte
 
 ## Exceptions
 
-1. Stack overflow: stack is full, stack pointer = 0
+1. Stack underflow: stack is empty, stack pointer = 1024
 2. Out of gas: remaining gas is not enough for this opcode
 
 ## Code

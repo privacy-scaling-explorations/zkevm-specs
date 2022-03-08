@@ -52,5 +52,5 @@ def calldataload(instruction: Instruction):
         opcode,
         rw_counter=Transition.delta(instruction.rw_counter_offset),
         program_counter=Transition.delta(1),
-        stack_pointer=Transition.delta(0),
+        stack_pointer=Transition.same(),
     )
