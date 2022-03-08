@@ -4,9 +4,7 @@ from ..instruction import Instruction, Transition
 from ..step import CopyToLogAuxData
 from ..table import RW, TxLogFieldTag
 from ..util import BufferReaderGadget
-
-
-MAX_COPY_BYTES = 71
+from ...util import MAX_COPY_BYTES
 
 
 def copy_to_log(instruction: Instruction):

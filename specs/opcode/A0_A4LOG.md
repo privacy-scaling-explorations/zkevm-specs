@@ -23,7 +23,7 @@ denote `LOGN` where `N` in `[0,4]` meaning topic count.
 
 ## Circuit behavior
 
-Because the `msize` is dynamic, it requires multiple step slots to fully verify the `CALLDATACOPY`.
+Because the `msize` is dynamic, it requires multiple step slots to fully verification.
 In the `Log` circuit, it only constrains the stack pops, state transition, and lookups to
 retrieve the additional information such as contract address, `is_static`, etc.
 Then the gadget transits to an internal state called `CopyToLog`, which can loop itself for

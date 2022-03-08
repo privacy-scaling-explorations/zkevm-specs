@@ -4,9 +4,7 @@ from ..instruction import Instruction, Transition
 from ..step import CopyToMemoryAuxData
 from ..table import RW
 from ..util import BufferReaderGadget
-
-
-MAX_COPY_BYTES = 71
+from ...util import MAX_COPY_BYTES
 
 
 def copy_to_memory(instruction: Instruction):

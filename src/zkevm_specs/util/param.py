@@ -79,3 +79,6 @@ SSTORE_CLEARS_SCHEDULE = 15000
 
 # log static gas
 LOG_STATIC_GAS = 375
+# The max number of bytes that can be copied in a step limited by the number
+# of cells in a step
+MAX_COPY_BYTES = 71
