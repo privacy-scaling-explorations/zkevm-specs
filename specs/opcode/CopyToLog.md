@@ -9,8 +9,8 @@ the copy.
 The `CopyToLog` circuit uses gadget `BufferReaderGadget` like `CopyToMemory`.
 
 In the `CopyToLog` circuit, it needs to lookup the bytes that is read from the buffer according
-to `BufferReaderGadget` in the memory. it needs to check if the copy is finished. If not, it constrains the
-next execution state to still be `CopyToLog` and add extra constraints on the states in the next
+to `BufferReaderGadget` in the memory. It needs to check if the copy is finished. If not, it constrains the
+next execution state to still be `CopyToLog` and adds extra constraints on the states in the next
 `CopyToLog`.
 
 ## Constraints
