@@ -6,7 +6,7 @@ from .arithmetic import *
 from .hash import *
 from .param import *
 from .typing import *
-from .gas import *
+from .testing import *
 
 
 def rand_range(stop: Union[int, float] = 2**256) -> int:

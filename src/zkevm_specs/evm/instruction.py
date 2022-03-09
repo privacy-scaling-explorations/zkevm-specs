@@ -389,7 +389,9 @@ class Instruction:
         return self.tables.tx_lookup(tx_id, FQ(TxContextFieldTag.CallData), call_data_index).value
 
     def tx_log_lookup(self, field_tag: TxContextFieldTag, index: int = 0) -> Union[int, RLC]:
+        # evm only write tx log
         return self.rw_lookup(RW.Write, RWTableTag.TxLog, [self.curr.log_index, index, field_tag])[-4]
+
 
     def bytecode_lookup(
         self, bytecode_hash: Expression, index: Expression, is_code: bool

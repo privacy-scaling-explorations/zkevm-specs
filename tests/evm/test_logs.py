@@ -16,7 +16,7 @@ from zkevm_specs.evm import (
     Block,
     Transaction,
     Bytecode,
-    LOG_STATIC_GAS,
+    GAS_COST_LOG,
 )
 from zkevm_specs.evm.execution.copy_to_log import MAX_COPY_BYTES
 from zkevm_specs.util import (
@@ -176,7 +176,7 @@ def test_logs(topics: list, mstart: U64, msize: U64):
 
     topic_count = len(topics)
     next_memory_size, memory_expansion_cost = memory_expansion(mstart, msize)
-    dynamic_gas = LOG_STATIC_GAS * topic_count + 8 * msize + memory_expansion_cost
+    dynamic_gas = GAS_COST_LOG * topic_count + 8 * msize + memory_expansion_cost
 
     bytecode = bytecodes[topic_count]
     bytecode_hash = RLC(bytecode.hash(), randomness)

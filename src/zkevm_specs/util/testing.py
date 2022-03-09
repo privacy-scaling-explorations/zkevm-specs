@@ -1,7 +1,6 @@
 from ..encoding import U8, U64, U128, U256
 from typing import Sequence, Tuple
-
-G_MEM = 3
+from .param import MEMORY_EXPANSION_LINEAR_COEFF
 
 
 def memory_size(
@@ -35,7 +34,7 @@ def memory_expansion(
 
     # Calculate the gas cost for the memory expansion
     # This gas cost is the difference between the next and current memory costs
-    memory_gas_cost = (next_memory_size - curr_memory_size) * G_MEM + (
+    memory_gas_cost = (next_memory_size - curr_memory_size) * MEMORY_EXPANSION_LINEAR_COEFF + (
         next_quad_memory_cost - curr_quad_memory_cost
     )
 

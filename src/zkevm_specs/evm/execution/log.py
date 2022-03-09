@@ -2,7 +2,7 @@ from ..instruction import Instruction, Transition
 from ..table import CallContextFieldTag, TxLogFieldTag, TxContextFieldTag
 from ..opcode import Opcode
 from ..execution_state import ExecutionState
-from ...util.param import LOG_STATIC_GAS
+from ...util.param import GAS_COST_LOG
 
 
 def log(instruction: Instruction):
@@ -41,7 +41,7 @@ def log(instruction: Instruction):
     next_memory_size, memory_expansion_gas = instruction.memory_expansion_dynamic_length(
         mstart, msize
     )
-    dynamic_gas = LOG_STATIC_GAS * (opcode - Opcode.LOG0) + 8 * msize + memory_expansion_gas
+    dynamic_gas = GAS_COST_LOG * (opcode - Opcode.LOG0) + 8 * msize + memory_expansion_gas
 
     instruction.step_state_transition_in_same_context(
         opcode,

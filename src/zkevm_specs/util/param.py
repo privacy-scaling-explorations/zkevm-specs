@@ -43,6 +43,8 @@ GAS_COST_SELF_DESTRUCT = 5000
 GAS_COST_COPY = 3
 # Gas cost of non-creation transaction
 GAS_COST_TX = 21000
+# log static gas
+GAS_COST_LOG = 375
 # Gas cost of creation transaction
 GAS_COST_CREATION_TX = 53000
 # Gas cost of transaction call_data per non-zero byte
@@ -77,8 +79,6 @@ SSTORE_SET_GAS = 20000
 SSTORE_RESET_GAS = 2900
 SSTORE_CLEARS_SCHEDULE = 15000
 
-# log static gas
-LOG_STATIC_GAS = 375
 # The max number of bytes that can be copied in a step limited by the number
 # of cells in a step
 MAX_COPY_BYTES = 71
