@@ -22,9 +22,16 @@ def log(instruction: Instruction):
     instruction.constrain_equal(0, instruction.call_context_lookup(CallContextFieldTag.IsStatic))
 
     # constrain topics in stack & logs
-    for i in range(int(opcode) - Opcode.LOG0):
-        topic = instruction.stack_pop()
-        instruction.constrain_equal(topic, instruction.tx_log_lookup(TxLogFieldTag.Topics, i))
+    topic_is_zeros = [1] * 4
+    topic_count = int(opcode) - Opcode.LOG0
+    for i in range(4):
+        if i < topic_count:
+            topic_is_zeros[i] = 0
+            topic = instruction.stack_pop()
+            instruction.constrain_equal(topic, instruction.tx_log_lookup(TxLogFieldTag.Topics, i))
+
+    # TOPIC_COUNT == Non zero topic count
+    assert sum(topic_is_zeros) == 4 - topic_count
 
     # check memory copy, should do in next step here
     # When length != 0, constrain the state in the next execution state CopyToLog

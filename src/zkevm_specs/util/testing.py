@@ -3,7 +3,7 @@ from typing import Sequence, Tuple
 from .param import MEMORY_EXPANSION_LINEAR_COEFF
 
 
-def memory_size(
+def memory_word_size(
     address: U64,
 ) -> U64:
     return (address + 31) // 32
@@ -23,7 +23,7 @@ def memory_expansion(
     address: U64,
 ) -> Tuple[U64, U128]:
     # The memory size required for the used address
-    address_memory_size = memory_size(address)
+    address_memory_size = memory_word_size(address)
 
     # Expand the memory if needed
     next_memory_size = max(address_memory_size, curr_memory_size)
