@@ -130,10 +130,21 @@ Branch comprises 19 rows:
 
 ![branch](./img/branch.png)
 
-In the picture, the last two rows are all zeros because this is a regular branch,
+The picture presents a branch which has 14 empty nodes and 2 non-empty nodes.
+The last two rows are all zeros because this is a regular branch,
 not an extension node.
 
-`s_advices/c_advices` present the hash of a branch child.
+Non-empty nodes are at positions 3 and 11. Position 11 corresponds to the key (that
+means the key nibble that determines the position of a node in this branch is 11).
+
+`s_advices/c_advices` present the hash of a branch child/node.
+
+One can observe that in position 3: `s_advices = c_advices`,
+while in position 11: `s_advices != c_advices`.
+
+That is because this is due to the modification at `key1` from `val1` to `val2`,
+the nibble 11 corresponds to `key1`.
+
 We need `s_advices/c_advices` for two things:
 
 - to compute the overall branch RLC (to be able to check the hash of a branch)
@@ -152,6 +163,71 @@ just need to compute `mult * *_advices_RLC` and add this to the current RLC valu
 
 The layout then be simply:
 `s_rlp1, s_rlp2, s_child_rlc, c_rlp1, c_rlp2, c_child_rlc`
+
+#### Key RLC in branch
+
+There are further columns (not shown in picture or table):
+
+- `node_index`
+- `is_modified`
+- `modified_node`
+
+In the example branch from the picture, `modified_node` would be 11.
+`node_index` is simply an index running from 0 to 15. `modified_node` is 1 at
+position 11, otherwise 0.
+
+Let's see a branch layout where we replace 32 columns of `s_advices` with
+one column `s_child_rlc` and 32 columns of `c_advices` with
+one column `c_child_rlc` (this simplification will most likely be implemented):
+
+```
+s_rlp1_0, s_rlp2_0, s_child0_rlc, c_rlp1_0, c_rlp2_0, c_child0_rlc
+s_rlp1_1, s_rlp2_1, s_child1_rlc, c_rlp1_1, c_rlp2_1, c_child1_rlc
+...
+s_rlp1_15, s_rlp2_15, s_child15_rlc, c_rlp1_15, c_rlp2_15, c_child15_rlc
+```
+
+With the three `modified_node` related columns:
+
+```
+s_rlp1_0, s_rlp2_0, s_child0_rlc, c_rlp1_0, c_rlp2_0, c_child0_rlc, 0 (node_index), 0 (is_modified), 11 (modified_node)
+s_rlp1_1, s_rlp2_1, s_child1_rlc, c_rlp1_1, c_rlp2_1, c_child1_rlc, 1 (node_index), 0 (is_modified), 11 (modified_node)
+...
+s_rlp1_11, s_rlp2_11, s_child11_rlc, c_rlp1_11, c_rlp2_11, c_child11_rlc, 11 (node_index), 1 (is_modified), 11 (modified_node)
+...
+s_rlp1_15, s_rlp2_15, s_child15_rlc, c_rlp1_15, c_rlp2_15, c_child15_rlc, 15 (node_index), 0 (is_modified), 11 (modified_node)
+```
+
+While navigating through branches, key RLC is being computed in the last branch child
+row. Let us say there are six branches with the following `modified_node` values:
+3, 11, 15, 14, 2, 1.
+
+These values present the first six nibbles of the key (after it is hashed).
+That means the first three bytes of the key are: `3 * 16 + 11`, `15 * 16 + 14`,
+`2 * 16 + 1`.
+
+To compute (partial) key RLC, we need to compute:
+
+```
+(3 * 16 + 11) + (15 * 16 + 14) * r + (2 * 16 + 1) * r^2
+```
+
+Once we reach the leaf node, we take the rest of the nibbles there and compute
+the full key RLC. This value needs to correspond to `key1` RLC.
+
+In the last branch child row, we compute `11 * 16 * key_rlc_mult`
+or `11 * key_rlc_mult` and add this value to the value in `key_rlc` row.
+
+Columns (not shown in picture or table):
+
+- `key_rlc_mult`
+- `key_rlc`
+- `sel1`
+- `sel2`
+
+Whether the factor 16 is used or not is determined by `sel1/sel2` columns.
+`sel1/sel2` are boolean values and it holds `sel1 + sel2 = 0`.
+The constraints for `sel1/sel2` are implemented in `BranchKeyChip`.
 
 #### Branch init row
 
@@ -307,12 +383,49 @@ modified_node_s_rlc_cur = modified_node_s_rlc_prev
 modified_node_c_rlc_cur = modified_node_c_rlc_prev
 ```
 
+##### Constraint: RLC of branch child at modified_node
+
+At `modified_node` position, `modified_node_s_rlc` and `modified_node_c_rlc`
+need to be the RLC of `s_advices` and `c_advices` of the node that correspond
+to the key (modified node).
+
+```
+rlc(s_advices) = modified_node_s_rlc at position modified_node
+rlc(c_advices) = modified_node_c_rlc at position modified_node
+```
+
 ##### Constraint: no change except at is_modified position
 
-In all branch rows, except at `is_modified` position, it needs to hold:
+In all branch rows, except at `modified_node` position, it needs to hold:
+
+```
+s_child_rlc = c_child_rlc
+```
+
+With current implementation:
 
 ```
 s_advices = c_advices
+```
+
+##### Constraint: is_modifed = 1 at modified_node, otherwise is_modified = 0
+
+At `modified_node` position, it needs to hold:
+
+```
+is_modified = 1
+```
+
+At other positions:
+
+```
+is_modified = 0
+```
+
+##### Constraint: node_index increases by 1
+
+```
+node_index_cur = node_index_prev + 1
 ```
 
 ### Extension node rows
