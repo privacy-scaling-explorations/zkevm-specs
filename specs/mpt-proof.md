@@ -128,6 +128,31 @@ Branch comprises 19 rows:
 | Extension row S              | `228, 130, 0, 149, 0,..., 0, 160, 57, 70,...`                                      |
 | Extension row C              | `0, 0, 5, 0, ...,0, 160, 57, 70,... 0`                                      |
 
+![branch](./img/branch.png)
+
+In the picture, the last two rows are all zeros because this is a regular branch,
+not an extension node.
+
+`s_advices/c_advices` present the hash of a branch child.
+We need `s_advices/c_advices` for two things:
+
+- to compute the overall branch RLC (to be able to check the hash of a branch)
+- to check whether `s_advices/c_advices` (at `is_modified` position)
+  present the hash of the next element in a proof
+
+Hash lookup looks like (for example for branch S):
+
+```
+lookup(S branch RLC, S branch length, s_advices RLC at the is_modified position in parent branch)
+```
+
+TODO: instead of 32 columns for `*_advices`, use only the RLC of `*_advices`.
+To integrate `*_advices` RLC into the computation of the whole branch RLC, we
+just need to compute `mult * *_advices_RLC` and add this to the current RLC value.
+
+The layout then be simply:
+`s_rlp1, s_rlp2, s_child_rlc, c_rlp1, c_rlp2, c_child_rlc`
+
 #### Branch init row
 
 The first two columns specify whether S branch has two or three RLP meta bytes
@@ -195,11 +220,6 @@ key (key determines the index of the node in branch where change occurs).
 
 #### Constraints
 
-![branch](./img/branch.png)
-
-In the picture, the last two rows are all zeros because this is a regular branch,
-not an extension node.
-
 ##### Constraint: hash of the branch is in the parent branch
 
 `is_modified` selector denotes the position in branch which corresponds to the key
@@ -215,31 +235,76 @@ using a lookup which takes as an input:
 Currently, instead of `s_advices/c_advices` RLC, four columns (bytes into words)
 are used: `s_keccak/c_keccak` (to be fixed).
 
-The final lookup will look like (for S):
-`lookup(S branch RLC, S branch length, s_advices RLC`.
+Hash lookup looks like (for S):
+`lookup(S branch RLC, S branch length, s_advices RLC)`.
 
-To simplify the constraints, the hash of the modified node is stored in each
+To simplify the constraints, the modified node RLC is stored in each
 branch node. This is to enable rotations back to access the RLC of the modified node.
 Thus, for example, when checking the branch hash to be in a parent branch,
 we can rotate back to the last row in the parent branch and use the value from this
 row for the lookup.
 
-To enable this, we need to have constraints for the node hash in branch rows.
+Let's see an example.
+Let's say we have a branch where `modified_node = 1`. For clarity, let's
+denote `s_rlp1, s_rlp2, c_rlp1, c_rlp2` simply with `_`.
+
+```
+_, _, b0_s_child0_rlc, _, _, b0_c_child0_rlc
+_, _, b0_s_child1_rlc, _, _, b0_c_child1_rlc
+...
+_, _, b0_s_child15_rlc, _, _, b0_c_child15_rlc
+```
+
+Let's say the next element in a proof is another branch:
+
+```
+_, _, b1_s_child0_rlc, _, _, b1_c_child0_rlc
+_, _, b1_s_child1_rlc, _, _, b1_c_child1_rlc
+...
+_, _, b1_s_child15_rlc, _, _, b1_c_child15_rlc
+```
+
+The hash of this second branch is in the parent branch at position 1.
+Let `b1_s` be the RLC of S part of this second branch and
+`b1_c` be the RLC of C part of this second branch.
+Then:
+
+```
+hash(b1_s) = b0_s_child1_rlc
+hash(b1_c) = b0_c_child1_rlc
+```
+
+Hash lookup like is needed (for S):
+`lookup(b1_s, len(b1_s), b0_s_child1_rlc)`
+
+We need a rotation to access `b0_s_child1_rlc`, but we cannot fix the rotation
+as the `modified_node` can be any value between 0 and 15 - any of the following
+values can appear to be needed: ` b0_s_child0_rlc, b0_s_child1_rlc, ..., b0_s_child15_rlc`.
+
+For this reason there are two additional columns in all 16 branch children rows
+that specify the `modified_node` RLC: `modified_node_s_rlc` and `modified_node_c_rlc`.
+
+```
+_, _, b0_s_child0_rlc, _, _, b0_c_child0_rlc, b0_modified_node_s_rlc, b0_modified_node_c_rlc
+_, _, b0_s_child1_rlc, _, _, b0_c_child1_rlc, b0_modified_node_s_rlc, b0_modified_node_c_rlc
+...
+_, _, b0_s_child15_rlc, _, _, b0_c_child15_rlc, b0_modified_node_s_rlc, b0_modified_node_c_rlc
+```
+
+Now, we can rotate back to any of the branch children rows of `b0` to
+access the RLC of the modified node.
+
+Note: currently, the implementation uses `s_keccak/c_keccak` columns
+instead of `modified_node_s_rlc` and `modified_node_c_rlc`.
 
 ##### Constraints: node hash in branch rows
 
-For all branch rows (TODO: replace s_keccak/c_keccak with two RLC columns):
+We need to make sure `modified_node_s_rlc` and `modified_node_c_rlc`
+is the same in all branch children rows.
 
 ```
-s_keccak_prev = s_keccak
-c_keccak_prev = c_keccak
-```
-
-At `is_modified` position (TODO: \*\_keccak -> RLC):
-
-```
-s_keccak = convert_into_words(s_advices)
-c_keccak = convert_into_words(c_advices)
+modified_node_s_rlc_cur = modified_node_s_rlc_prev
+modified_node_c_rlc_cur = modified_node_c_rlc_prev
 ```
 
 ##### Constraint: no change except at is_modified position
