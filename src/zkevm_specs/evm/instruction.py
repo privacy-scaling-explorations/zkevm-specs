@@ -322,6 +322,9 @@ class Instruction:
     def int_to_rlc(self, value: int, n_bytes: int) -> RLC:
         return RLC(value, self.randomness, n_bytes)
 
+    def bytes_to_rlc(self, value: bytes) -> RLC:
+        return RLC(value, self.randomness, len(value))
+
     def bytes_to_int(self, value: bytes) -> int:
         assert len(value) <= MAX_N_BYTES, "Too many bytes to composite an integer in field"
         return int.from_bytes(value, "little")
