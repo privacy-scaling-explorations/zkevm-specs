@@ -72,7 +72,9 @@ def test_calldataload(
 ):
     randomness = rand_fp()
 
-    tx = Transaction(id=1, call_data=call_data)
+    tx = Transaction(id=1)
+    if is_root:
+        tx.call_data = call_data
 
     offset_rlc = RLC(offset, randomness)
     expected_stack_top = RLC(expected_stack_top, randomness)
