@@ -27,9 +27,9 @@ denote `LOGN` where `N` in `[0,4]` meaning topic count.
 2. constrain contract address in CallContext & TxLog
 3. constrain call context is not static call
 4. constrain topics pop from stack and add into TxLog topic field, topic count is correct
-5. constrain memory data [`mStart`, `mStart` + `mSize`], copied to tx log data field,
-  it takes use of one or more `CopyToLog` inner gadgets as one `CopyToLog` gadget can only handle fixed
-amount of bytes.
+5. constrain memory data \[`mStart`, `mStart` + `mSize`\], copied to tx log data field,
+   it takes use of one or more `CopyToLog` inner gadgets as one `CopyToLog` gadget can only handle fixed
+   amount of bytes.
 
 ## Constraints
 
