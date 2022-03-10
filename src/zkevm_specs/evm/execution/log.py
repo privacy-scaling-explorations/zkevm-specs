@@ -3,6 +3,7 @@ from ..table import CallContextFieldTag, TxLogFieldTag, TxContextFieldTag
 from ..opcode import Opcode
 from ..execution_state import ExecutionState
 from ...util.param import GAS_COST_LOG
+from ...util import FQ
 
 
 def log(instruction: Instruction):
@@ -22,16 +23,20 @@ def log(instruction: Instruction):
     instruction.constrain_equal(0, instruction.call_context_lookup(CallContextFieldTag.IsStatic))
 
     # constrain topics in stack & logs
-    topic_is_zeros = [1] * 4
+    is_topic_zeros = [1] * 4
     topic_count = int(opcode) - Opcode.LOG0
     for i in range(4):
         if i < topic_count:
-            topic_is_zeros[i] = 0
+            is_topic_zeros[i] = 0
             topic = instruction.stack_pop()
             instruction.constrain_equal(topic, instruction.tx_log_lookup(TxLogFieldTag.Topics, i))
 
     # TOPIC_COUNT == Non zero topic count
-    assert sum(topic_is_zeros) == 4 - topic_count
+    assert sum(is_topic_zeros) == 4 - topic_count
+    # `is_topic_zeros` order must be from 0 --> 1
+    for i in range(1, 4):
+        diff = is_topic_zeros[i] - is_topic_zeros[i - 1]
+        instruction.constrain_bool(FQ(diff))
 
     # check memory copy, should do in next step here
     # When length != 0, constrain the state in the next execution state CopyToLog

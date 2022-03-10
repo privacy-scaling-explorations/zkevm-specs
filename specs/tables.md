@@ -45,9 +45,14 @@ Type sizes:
 > - **memoryAddress**: 40 bytes
 > - **Memory -> value, valuePrev**: 1 byte
 > - **storageKey**: field size, RLC encoded (Random Linear Combination)
-> - **value, valuePrev**: variable size, depending on Key 0 (Tag) and Key 3 where appropiate.
-> - **Key2** is reserved for Ethereum Address key type
-> - **Key4** is reserved for RLC encoded key type
+
+- **value, valuePrev**: variable size, depending on Key 0 (Tag) and Key 3 where appropiate.
+- **Key2** is reserved for Ethereum Address key type
+- **Key4** is reserved for RLC encoded key type
+- **log_index**, 8 bytes
+- **topics**, field size, RLC encoded (Random Linear Combination)
+- **TxLog -> data**, 1 byte
+- **index**, 8 byte, indicates order in tx log data or topics
 
 | 0 *rwc*  | 1 *isWrite* | 2 *Key0 (Tag)*             | 3 *Key1* | 4 *Key2* | 5 *Key3*                   | 6 *Key4*    | 7 *Value0* | 8 *Value1* | 9 *Aux0* | 10 *Aux1*       |
 | -------- | ----------- | -------------------------- | -------- | -------- | -------------------------- | ----------- | ---------  | ---------- | -------- | --------------- |
@@ -96,6 +101,10 @@ Type sizes:
 | $counter | $isWrite    | Stack                      | $callID  |          | $stackPointer              |             | $value     | 0          | 0        | 0               |
 | $counter | $isWrite    | Memory                     | $callID  |          | $memoryAddress             |             | $value     | 0          | 0        | 0               |
 | $counter | $isWrite    | AccountStorage             |          | $address |                            | $storageKey | $value     | $valuePrev | $txID    | $CommittedValue |
+|          |             |                            |          |          |                            |             |            |            |          |                 |
+| $counter | true        | TxLog                     |$log_index | 0        |  $address                  |             | $value     | 0          | 0        | 0               |
+| $counter | true        | TxLog                     |$log_index | $index   |  $Topics                   |             | $value     | 0          | 0        | 0               |
+| $counter | true        | TxLog                     |$log_index | $index   |  $Data                     |             | $value     | 0          | 0        | 0               |
 
 ## `bytecode_table`
 
