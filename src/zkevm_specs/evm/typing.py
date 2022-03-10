@@ -27,7 +27,10 @@ class Block:
     gas_limit: U64
 
     # For other fields, we follow the size defined in yellow paper for now.
-    number: U256
+    # as described in https://eips.ethereum.org/EIPS/eip-1985,
+    # block number, timestamp is a range between 0 and 0x7fffffffffffffff
+    # (2**63 - 1, 9223372036854775807).
+    number: U64
     timestamp: U64
     difficulty: U256
     base_fee: U256
@@ -40,7 +43,7 @@ class Block:
         self,
         coinbase: U160 = 0x10,
         gas_limit: U64 = int(15e6),
-        number: U256 = 0,
+        number: U64 = 0,
         timestamp: U64 = 0,
         difficulty: U256 = 0,
         base_fee: U256 = int(1e9),
@@ -60,7 +63,7 @@ class Block:
         return [
             (BlockContextFieldTag.Coinbase, 0, self.coinbase),
             (BlockContextFieldTag.GasLimit, 0, self.gas_limit),
-            (BlockContextFieldTag.Number, 0, RLC(self.number, randomness)),
+            (BlockContextFieldTag.Number, 0, self.number),
             (BlockContextFieldTag.Timestamp, 0, self.timestamp),
             (BlockContextFieldTag.Difficulty, 0, RLC(self.difficulty, randomness)),
             (BlockContextFieldTag.BaseFee, 0, RLC(self.base_fee, randomness)),

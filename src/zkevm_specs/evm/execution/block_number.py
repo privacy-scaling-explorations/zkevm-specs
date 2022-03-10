@@ -10,7 +10,10 @@ def number(instruction: Instruction):
     # check block table for number
     instruction.constrain_equal(
         number,
-        instruction.block_context_lookup(BlockContextFieldTag.Number),
+        instruction.int_to_rlc(
+            instruction.block_context_lookup(BlockContextFieldTag.Number),
+            8,
+        ),
     )
 
     instruction.step_state_transition_in_same_context(
