@@ -27,14 +27,14 @@ def sload(instruction: Instruction):
         instruction.stack_push(),
     )
 
-    is_cold = instruction.add_account_storage_to_access_list(
+    is_warm = instruction.add_account_storage_to_access_list(
         tx_id,
         callee_address,
         storage_key,
         reversion_info,
     )
 
-    dynamic_gas_cost = instruction.select(is_cold, FQ(COLD_SLOAD_COST), FQ(WARM_STORAGE_READ_COST))
+    dynamic_gas_cost = instruction.select(is_warm, FQ(WARM_STORAGE_READ_COST), FQ(COLD_SLOAD_COST))
 
     instruction.step_state_transition_in_same_context(
         opcode,
@@ -64,7 +64,7 @@ def sstore(instruction: Instruction):
     )
     instruction.constrain_equal(storage_value, value)
 
-    is_cold = instruction.add_account_storage_to_access_list(
+    is_warm = instruction.add_account_storage_to_access_list(
         tx_id,
         callee_address,
         storage_key,
@@ -126,7 +126,7 @@ def sstore(instruction: Instruction):
             FQ(SSTORE_RESET_GAS),
         ),
     )
-    dynamic_gas_cost = instruction.select(is_cold, warm_case_gas + COLD_SLOAD_COST, warm_case_gas)
+    dynamic_gas_cost = instruction.select(is_warm, warm_case_gas, warm_case_gas + COLD_SLOAD_COST)
 
     instruction.step_state_transition_in_same_context(
         opcode,

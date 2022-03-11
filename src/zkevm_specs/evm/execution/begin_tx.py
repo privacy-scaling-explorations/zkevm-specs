@@ -44,12 +44,8 @@ def begin_tx(instruction: Instruction):
     instruction.constrain_gas_left_not_underflow(gas_left)
 
     # Prepare access list of caller and callee
-    instruction.constrain_equal(
-        instruction.add_account_to_access_list(tx_id, tx_caller_address), FQ(1)
-    )
-    instruction.constrain_equal(
-        instruction.add_account_to_access_list(tx_id, tx_callee_address), FQ(1)
-    )
+    instruction.constrain_zero(instruction.add_account_to_access_list(tx_id, tx_caller_address))
+    instruction.constrain_zero(instruction.add_account_to_access_list(tx_id, tx_callee_address))
 
     # Verify transfer
     instruction.transfer_with_gas_fee(
