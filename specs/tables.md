@@ -102,9 +102,9 @@ Type sizes:
 | $counter | $isWrite    | Memory                     | $callID  |          | $memoryAddress             |             | $value     | 0          | 0        | 0               |
 | $counter | $isWrite    | AccountStorage             |          | $address |                            | $storageKey | $value     | $valuePrev | $txID    | $CommittedValue |
 |          |             |                            |          |          |                            |             |            |            |          |                 |
-| $counter | true        | TxLog                     |$log_index | 0        |  $address                  |             | $value     | 0          | 0        | 0               |
-| $counter | true        | TxLog                     |$log_index | $index   |  $Topics                   |             | $value     | 0          | 0        | 0               |
-| $counter | true        | TxLog                     |$log_index | $index   |  $Data                     |             | $value     | 0          | 0        | 0               |
+| $counter | true        | TxLog                     |$logID | 0        |  Address                  |             | $value     | 0          | 0        | 0               |
+| $counter | true        | TxLog                     |$logID | $topicIndex   |  Topic                   |             | $value     | 0          | 0        | 0               |
+| $counter | true        | TxLog                     |$logID | $byteIndex   |  Data                     |             | $value     | 0          | 0        | 0               |
 
 ## `bytecode_table`
 
