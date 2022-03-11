@@ -1,5 +1,5 @@
-from ...util import N_BYTES_MEMORY_ADDRESS, FQ
-from ..instruction import Instruction, Transition
+from ...util import N_BYTES_MEMORY_ADDRESS, FQ, Expression
+from ..instruction import Instruction
 
 
 class BufferReaderGadget:
@@ -24,7 +24,7 @@ class BufferReaderGadget:
                 diff, inst.select(self.bound_dist_is_zero[i - 1], FQ.zero(), FQ.one())
             )
 
-    def constrain_byte(self, idx: int, byte: FQ):
+    def constrain_byte(self, idx: int, byte: Expression):
         # bytes[idx] == 0 when selectors[idx] == 0
         self.instruction.constrain_zero(byte * (1 - self.selectors[idx]))
         # bytes[idx] == 0 when bound_dist[idx] == 0
@@ -33,8 +33,8 @@ class BufferReaderGadget:
     def num_bytes(self) -> FQ:
         return FQ(sum(self.selectors))
 
-    def has_data(self, idx: int) -> bool:
+    def has_data(self, idx: int) -> FQ:
         return self.selectors[idx]
 
-    def read_flag(self, idx: int) -> bool:
-        return self.selectors[idx] and not self.bound_dist_is_zero[idx]
+    def read_flag(self, idx: int) -> FQ:
+        return self.selectors[idx] * (1 - self.bound_dist_is_zero[idx])

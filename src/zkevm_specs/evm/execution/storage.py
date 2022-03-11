@@ -1,7 +1,5 @@
-from ..instruction import Instruction, Transition
-from ..opcode import Opcode
-from ..table import CallContextFieldTag, TxContextFieldTag
-from ...util.param import (
+from ...util import (
+    FQ,
     COLD_SLOAD_COST,
     WARM_STORAGE_READ_COST,
     SLOAD_GAS,
@@ -9,6 +7,9 @@ from ...util.param import (
     SSTORE_RESET_GAS,
     SSTORE_CLEARS_SCHEDULE,
 )
+from ..instruction import Instruction, Transition
+from ..opcode import Opcode
+from ..table import CallContextFieldTag
 
 
 def sload(instruction: Instruction):
@@ -16,10 +17,7 @@ def sload(instruction: Instruction):
     instruction.constrain_equal(opcode, Opcode.SLOAD)
 
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
-    rw_counter_end_of_reversion = instruction.call_context_lookup(
-        CallContextFieldTag.RwCounterEndOfReversion
-    )
-    is_persistent = instruction.call_context_lookup(CallContextFieldTag.IsPersistent)
+    reversion_info = instruction.reversion_info()
     callee_address = instruction.call_context_lookup(CallContextFieldTag.CalleeAddress)
 
     storage_key = instruction.stack_pop()
@@ -29,11 +27,14 @@ def sload(instruction: Instruction):
         instruction.stack_push(),
     )
 
-    is_warm_new, is_warm = instruction.add_account_storage_to_access_list_with_reversion(
-        tx_id, callee_address, storage_key, is_persistent, rw_counter_end_of_reversion
+    is_cold = instruction.add_account_storage_to_access_list(
+        tx_id,
+        callee_address,
+        storage_key,
+        reversion_info,
     )
 
-    dynamic_gas_cost = instruction.select(is_warm, WARM_STORAGE_READ_COST, COLD_SLOAD_COST)
+    dynamic_gas_cost = instruction.select(is_cold, FQ(COLD_SLOAD_COST), FQ(WARM_STORAGE_READ_COST))
 
     instruction.step_state_transition_in_same_context(
         opcode,
@@ -50,26 +51,27 @@ def sstore(instruction: Instruction):
     instruction.constrain_equal(opcode, Opcode.SSTORE)
 
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
-    rw_counter_end_of_reversion = instruction.call_context_lookup(
-        CallContextFieldTag.RwCounterEndOfReversion
-    )
-    is_persistent = instruction.call_context_lookup(CallContextFieldTag.IsPersistent)
+    reversion_info = instruction.reversion_info()
     callee_address = instruction.call_context_lookup(CallContextFieldTag.CalleeAddress)
 
     storage_key = instruction.stack_pop()
     storage_value = instruction.stack_pop()
-    value, value_prev, original_value = instruction.account_storage_write_with_reversion(
-        callee_address, storage_key, tx_id, is_persistent, rw_counter_end_of_reversion
+    value, value_prev, original_value = instruction.account_storage_write(
+        callee_address,
+        storage_key,
+        tx_id,
+        reversion_info,
     )
     instruction.constrain_equal(storage_value, value)
 
-    is_warm_new, is_warm = instruction.add_account_storage_to_access_list_with_reversion(
-        tx_id, callee_address, storage_key, is_persistent, rw_counter_end_of_reversion
+    is_cold = instruction.add_account_storage_to_access_list(
+        tx_id,
+        callee_address,
+        storage_key,
+        reversion_info,
     )
 
-    gas_refund, gas_refund_prev = instruction.tx_refund_write_with_reversion(
-        tx_id, is_persistent, rw_counter_end_of_reversion
-    )
+    gas_refund, gas_refund_prev = instruction.tx_refund_write(tx_id, reversion_info)
 
     # original_value, value_prev, value all are different; original_value!=0
     nz_allne_case_refund = instruction.select(
@@ -113,17 +115,18 @@ def sstore(instruction: Instruction):
 
     instruction.constrain_equal(gas_refund, gas_refund_new)
 
+    eq_prev = instruction.is_equal(value_prev, value)
+    prev_ne_original = 1 - instruction.is_equal(value_prev, original_value)
     warm_case_gas = instruction.select(
-        instruction.is_equal(value_prev, value)
-        or (not instruction.is_equal(original_value, value_prev)),
-        SLOAD_GAS,
+        eq_prev + prev_ne_original - eq_prev * prev_ne_original,
+        FQ(SLOAD_GAS),
         instruction.select(
             instruction.is_zero(original_value),
-            SSTORE_SET_GAS,
-            SSTORE_RESET_GAS,
+            FQ(SSTORE_SET_GAS),
+            FQ(SSTORE_RESET_GAS),
         ),
     )
-    dynamic_gas_cost = instruction.select(is_warm, warm_case_gas, warm_case_gas + COLD_SLOAD_COST)
+    dynamic_gas_cost = instruction.select(is_cold, warm_case_gas + COLD_SLOAD_COST, warm_case_gas)
 
     instruction.step_state_transition_in_same_context(
         opcode,

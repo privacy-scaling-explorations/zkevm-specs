@@ -3,17 +3,14 @@ import pytest
 from zkevm_specs.evm import (
     Block,
     Bytecode,
-    CallContextFieldTag,
     ExecutionState,
     StepState,
-    Opcode,
-    RW,
-    RWTableTag,
     Tables,
     Transaction,
     verify_steps,
+    RWDictionary,
 )
-from zkevm_specs.util import rand_fp, rand_range, RLC
+from zkevm_specs.util import rand_fq, rand_range, RLC
 
 # Start with different values for `gas` before calling the `GAS` opcode.
 TESTING_DATA = tuple([i for i in range(2, 10)] + [rand_range(2**64) for i in range(0, 10)])
@@ -21,9 +18,9 @@ TESTING_DATA = tuple([i for i in range(2, 10)] + [rand_range(2**64) for i in ran
 
 @pytest.mark.parametrize("gas", TESTING_DATA)
 def test_gas(gas: int):
-    randomness = rand_fp()
+    randomness = rand_fq()
 
-    tx = Transaction(gas=gas)
+    tx = Transaction()
 
     bytecode = Bytecode().gas().stop()
     bytecode_hash = RLC(bytecode.hash(), randomness)
@@ -36,11 +33,7 @@ def test_gas(gas: int):
         block_table=set(Block().table_assignments(randomness)),
         tx_table=set(tx.table_assignments(randomness)),
         bytecode_table=set(bytecode.table_assignments(randomness)),
-        rw_table=set(
-            [
-                (2, RW.Write, RWTableTag.Stack, 1, 1023, 0, RLC(gas_left, randomness), 0, 0, 0),
-            ]
-        ),
+        rw_table=set(RWDictionary(2).stack_write(1, 1023, RLC(gas_left, randomness)).rws),
     )
 
     verify_steps(

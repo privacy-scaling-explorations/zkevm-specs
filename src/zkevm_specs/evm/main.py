@@ -15,12 +15,8 @@ def verify_steps(
     begin_with_first_step: bool = False,
     end_with_last_step: bool = False,
 ):
-    # For the last step, the next step is meaningless
-    if end_with_last_step:
-        steps += [None]
-
-    for idx in range(len(steps) - 1):
-        curr, next = steps[idx], steps[idx + 1]
+    for idx in range(len(steps) - 1 + end_with_last_step):
+        curr, next = steps[idx], None if len(steps) == idx + 1 else steps[idx + 1]
 
         verify_step(
             Instruction(

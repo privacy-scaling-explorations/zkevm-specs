@@ -1,12 +1,13 @@
 from enum import IntEnum, auto
 from typing import Sequence, Tuple, Union
 
+from ..util import FQ
 from .opcode import (
     Opcode,
     invalid_opcodes,
-    state_write_opcodes,
-    stack_underflow_pairs,
     stack_overflow_pairs,
+    stack_underflow_pairs,
+    state_write_opcodes,
 )
 
 
@@ -139,6 +140,9 @@ class ExecutionState(IntEnum):
     ErrorOutOfGasSELFDESTRUCT = auto()
 
     # TODO: Precompile success and error cases
+
+    def expr(self) -> FQ:
+        return FQ(self)
 
     def responsible_opcode(self) -> Union[Sequence[int], Sequence[Tuple[int, int]]]:
         if self == ExecutionState.STOP:
@@ -378,17 +382,17 @@ class ExecutionState(IntEnum):
             return state_write_opcodes()
         return []
 
-    def halts(self):
+    def halts(self) -> bool:
         return self.halts_in_success() or self.halts_in_exception() or self == ExecutionState.REVERT
 
-    def halts_in_success(self):
+    def halts_in_success(self) -> bool:
         return self in [
             ExecutionState.STOP,
             ExecutionState.RETURN,
             ExecutionState.SELFDESTRUCT,
         ]
 
-    def halts_in_exception(self):
+    def halts_in_exception(self) -> bool:
         return self in [
             ExecutionState.ErrorInvalidOpcode,
             ExecutionState.ErrorStack,

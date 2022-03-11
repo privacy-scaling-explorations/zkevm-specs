@@ -5,17 +5,15 @@ from zkevm_specs.evm import (
     StepState,
     verify_steps,
     Tables,
-    RWTableTag,
-    RW,
     AccountFieldTag,
     CallContextFieldTag,
     Block,
     Transaction,
     Account,
     Bytecode,
+    RWDictionary,
 )
-from zkevm_specs.util import rand_fp, rand_address, rand_range, RLC
-from zkevm_specs.util.hash import EMPTY_CODE_HASH
+from zkevm_specs.util import rand_fq, rand_address, rand_range, RLC, EMPTY_CODE_HASH
 
 RETURN_BYTECODE = Bytecode().return_(0, 0)
 REVERT_BYTECODE = Bytecode().revert(0, 0)
@@ -94,9 +92,9 @@ TESTING_DATA = (
 )
 
 
-@pytest.mark.parametrize("tx, callee, result", TESTING_DATA)
-def test_begin_tx(tx: Transaction, callee: Account, result: bool):
-    randomness = rand_fp()
+@pytest.mark.parametrize("tx, callee, is_success", TESTING_DATA)
+def test_begin_tx(tx: Transaction, callee: Account, is_success: bool):
+    randomness = rand_fq()
 
     rw_counter_end_of_reversion = 23
     caller_balance_prev = int(1e20)
@@ -112,58 +110,28 @@ def test_begin_tx(tx: Transaction, callee: Account, result: bool):
         bytecode_table=set(callee.code.table_assignments(randomness)),
         rw_table=set(
             # fmt: off
-            [
-                (1, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.TxId, 0, tx.id, 0, 0, 0),
-                (2, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.RwCounterEndOfReversion, 0, 0 if result else rw_counter_end_of_reversion, 0, 0, 0),
-                (3, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.IsPersistent, 0, result, 0, 0, 0),
-                (4, RW.Write, RWTableTag.Account, tx.caller_address, AccountFieldTag.Nonce, 0, tx.nonce + 1, tx.nonce, 0, 0),
-                (5, RW.Write, RWTableTag.TxAccessListAccount, 1, tx.caller_address, 0, 1, 0, 0, 0),
-                (6, RW.Write, RWTableTag.TxAccessListAccount, 1, tx.callee_address, 0, 1, 0, 0, 0),
-                (7, RW.Write, RWTableTag.Account, tx.caller_address, AccountFieldTag.Balance, 0, RLC(caller_balance, randomness), RLC(caller_balance_prev, randomness), 0, 0),
-                (8, RW.Write, RWTableTag.Account, tx.callee_address, AccountFieldTag.Balance, 0, RLC(callee_balance, randomness), RLC(callee_balance_prev, randomness), 0, 0),
-                (9, RW.Read, RWTableTag.Account, tx.callee_address, AccountFieldTag.CodeHash, 0, bytecode_hash, bytecode_hash, 0, 0),
-                (10, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.Depth, 0, 1, 0, 0, 0),
-                (11, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.CallerAddress, 0, tx.caller_address, 0, 0, 0),
-                (12, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.CalleeAddress, 0, tx.callee_address, 0, 0, 0),
-                (13, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.CallDataOffset, 0, 0, 0, 0, 0),
-                (14, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.CallDataLength, 0, len(tx.call_data), 0, 0, 0),
-                (15, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.Value, 0, RLC(tx.value, randomness), 0, 0, 0),
-                (16, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.IsStatic, 0, 0, 0, 0, 0),
-                (17, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.LastCalleeId, 0, 0, 0, 0, 0),
-                (18, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.LastCalleeReturnDataOffset, 0, 0, 0, 0, 0),
-                (19, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.LastCalleeReturnDataLength, 0, 0, 0, 0, 0),
-            ]
+            RWDictionary(1)
+            .call_context_read(1, CallContextFieldTag.TxId, tx.id)
+            .call_context_read(1, CallContextFieldTag.RwCounterEndOfReversion, 0 if is_success else rw_counter_end_of_reversion)
+            .call_context_read(1, CallContextFieldTag.IsPersistent, is_success)
+            .account_write(tx.caller_address, AccountFieldTag.Nonce, tx.nonce + 1, tx.nonce)
+            .tx_access_list_account_write(tx.id, tx.caller_address, True, False)
+            .tx_access_list_account_write(tx.id, tx.callee_address, True, False)
+            .account_write(tx.caller_address, AccountFieldTag.Balance, RLC(caller_balance, randomness), RLC(caller_balance_prev, randomness), rw_counter_of_reversion=None if is_success else rw_counter_end_of_reversion)
+            .account_write(tx.callee_address, AccountFieldTag.Balance, RLC(callee_balance, randomness), RLC(callee_balance_prev, randomness), rw_counter_of_reversion=None if is_success else rw_counter_end_of_reversion - 1)
+            .account_read(tx.callee_address, AccountFieldTag.CodeHash, bytecode_hash)
+            .call_context_read(1, CallContextFieldTag.Depth, 1)
+            .call_context_read(1, CallContextFieldTag.CallerAddress, tx.caller_address)
+            .call_context_read(1, CallContextFieldTag.CalleeAddress, tx.callee_address)
+            .call_context_read(1, CallContextFieldTag.CallDataOffset, 0)
+            .call_context_read(1, CallContextFieldTag.CallDataLength, len(tx.call_data))
+            .call_context_read(1, CallContextFieldTag.Value, RLC(tx.value, randomness))
+            .call_context_read(1, CallContextFieldTag.IsStatic, 0)
+            .call_context_read(1, CallContextFieldTag.LastCalleeId, 0)
+            .call_context_read(1, CallContextFieldTag.LastCalleeReturnDataOffset, 0)
+            .call_context_read(1, CallContextFieldTag.LastCalleeReturnDataLength, 0)
+            .rws,
             # fmt: on
-            + (
-                []
-                if result
-                else [
-                    (
-                        rw_counter_end_of_reversion - 1,
-                        RW.Write,
-                        RWTableTag.Account,
-                        tx.callee_address,
-                        AccountFieldTag.Balance,
-                        0,
-                        RLC(callee_balance_prev, randomness),
-                        RLC(callee_balance, randomness),
-                        0,
-                        0,
-                    ),
-                    (
-                        rw_counter_end_of_reversion,
-                        RW.Write,
-                        RWTableTag.Account,
-                        tx.caller_address,
-                        AccountFieldTag.Balance,
-                        0,
-                        RLC(caller_balance_prev, randomness),
-                        RLC(caller_balance, randomness),
-                        0,
-                        0,
-                    ),
-                ]
-            )
         ),
     )
 

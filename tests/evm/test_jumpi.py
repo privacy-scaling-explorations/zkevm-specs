@@ -6,12 +6,11 @@ from zkevm_specs.evm import (
     Opcode,
     verify_steps,
     Tables,
-    RWTableTag,
-    RW,
     Block,
     Bytecode,
+    RWDictionary,
 )
-from zkevm_specs.util import rand_fp, RLC
+from zkevm_specs.util import rand_fq, RLC
 
 
 TESTING_DATA = ((Opcode.JUMPI, bytes([40]), bytes([7])),)
@@ -19,7 +18,7 @@ TESTING_DATA = ((Opcode.JUMPI, bytes([40]), bytes([7])),)
 
 @pytest.mark.parametrize("opcode, cond_bytes, dest_bytes", TESTING_DATA)
 def test_jumpi_cond_nonzero(opcode: Opcode, cond_bytes: bytes, dest_bytes: bytes):
-    randomness = rand_fp()
+    randomness = rand_fq()
     cond = RLC(bytes(reversed(cond_bytes)), randomness)
     dest = RLC(bytes(reversed(dest_bytes)), randomness)
 
@@ -33,12 +32,7 @@ def test_jumpi_cond_nonzero(opcode: Opcode, cond_bytes: bytes, dest_bytes: bytes
         block_table=set(block.table_assignments(randomness)),
         tx_table=set(),
         bytecode_table=set(bytecode.table_assignments(randomness)),
-        rw_table=set(
-            [
-                (9, RW.Read, RWTableTag.Stack, 1, 1021, 0, dest, 0, 0, 0),
-                (10, RW.Read, RWTableTag.Stack, 1, 1022, 0, cond, 0, 0, 0),
-            ],
-        ),
+        rw_table=set(RWDictionary(9).stack_read(1, 1021, dest).stack_read(1, 1022, cond).rws),
     )
 
     verify_steps(
@@ -76,7 +70,7 @@ TESTING_DATA_ZERO_COND = ((Opcode.JUMPI, bytes([0]), bytes([8])),)
 
 @pytest.mark.parametrize("opcode, cond_bytes, dest_bytes", TESTING_DATA_ZERO_COND)
 def test_jumpi_cond_zero(opcode: Opcode, cond_bytes: bytes, dest_bytes: bytes):
-    randomness = rand_fp()
+    randomness = rand_fq()
     cond = RLC(bytes(reversed(cond_bytes)), randomness)
     dest = RLC(bytes(reversed(dest_bytes)), randomness)
 
@@ -90,12 +84,7 @@ def test_jumpi_cond_zero(opcode: Opcode, cond_bytes: bytes, dest_bytes: bytes):
         block_table=set(block.table_assignments(randomness)),
         tx_table=set(),
         bytecode_table=set(bytecode.table_assignments(randomness)),
-        rw_table=set(
-            [
-                (9, RW.Read, RWTableTag.Stack, 1, 1021, 0, dest, 0, 0, 0),
-                (10, RW.Read, RWTableTag.Stack, 1, 1022, 0, cond, 0, 0, 0),
-            ],
-        ),
+        rw_table=set(RWDictionary(9).stack_read(1, 1021, dest).stack_read(1, 1022, cond).rws),
     )
 
     verify_steps(

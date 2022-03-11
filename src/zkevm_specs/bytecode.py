@@ -1,7 +1,7 @@
-from typing import Sequence, Union, Tuple, Set
+from typing import Sequence, Union, Tuple, Set, NamedTuple
 from collections import namedtuple
 from .util import keccak256, FQ, RLC
-from .evm.opcode import get_push_size
+from .evm import get_push_size, BytecodeTableRow
 from .encoding import U8, U256, is_circuit_code
 
 # Row in the circuit
@@ -10,7 +10,9 @@ Row = namedtuple(
     "q_first q_last hash index byte is_code push_data_left hash_rlc hash_length byte_push_size is_final padding",
 )
 # Unrolled bytecode
-UnrolledBytecode = namedtuple("UnrolledBytecode", "bytes rows")
+class UnrolledBytecode(NamedTuple):
+    bytes: bytes
+    rows: Sequence[BytecodeTableRow]
 
 
 @is_circuit_code
@@ -24,7 +26,7 @@ def select(
     when_true: U256,
     when_false: U256,
 ) -> U256:
-    return selector * when_true + (1 - selector) * when_false
+    return U256(selector * when_true + (1 - selector) * when_false)
 
 
 @is_circuit_code
@@ -107,21 +109,21 @@ def assign_bytecode_circuit(k: int, bytecodes: Sequence[UnrolledBytecode], rando
         for idx, row in enumerate(bytecode.rows):
             # Track which byte is an opcode and which is push data
             is_code = push_data_left == 0
-            byte_push_size = get_push_size(row[2])
+            byte_push_size = get_push_size(row.byte)
             push_data_left = byte_push_size if is_code else push_data_left - 1
 
             # Add the byte to the accumulator
-            hash_rlc = hash_rlc * randomness + row[2]
+            hash_rlc = hash_rlc * randomness + row.byte
 
             # Set the data for this row
             rows.append(
                 Row(
                     offset == 0,
                     offset == last_row_offset,
-                    row[0],
-                    row[1],
-                    row[2],
-                    row[3],
+                    row.bytecode_hash,
+                    row.index,
+                    row.byte,
+                    row.is_code,
                     push_data_left,
                     hash_rlc,
                     len(bytecode.bytes),
@@ -178,10 +180,10 @@ def assign_push_table():
 
 
 # Generate keccak table
-def assign_keccak_table(bytecodes: Sequence[bytes], randomness: int):
+def assign_keccak_table(bytecodes: Sequence[bytes], randomness: FQ):
     keccak_table = []
     for bytecode in bytecodes:
         hash = RLC(bytes(reversed(keccak256(bytecode))), randomness)
         rlc = RLC(bytes(reversed(bytecode)), randomness, len(bytecode))
-        keccak_table.append((rlc, len(bytecode), hash))
+        keccak_table.append((rlc.expr(), len(bytecode), hash.expr()))
     return _convert_table(keccak_table)

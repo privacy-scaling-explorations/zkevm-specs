@@ -7,12 +7,11 @@ from zkevm_specs.evm import (
     Opcode,
     verify_steps,
     Tables,
-    RWTableTag,
-    RW,
     Block,
     Bytecode,
+    RWDictionary,
 )
-from zkevm_specs.util import rand_fp, rand_word, RLC
+from zkevm_specs.util import rand_fq, rand_word, RLC
 
 
 TESTING_DATA = (
@@ -25,7 +24,7 @@ TESTING_DATA = (
 
 @pytest.mark.parametrize("opcode, a, b, c", TESTING_DATA)
 def test_add(opcode: Opcode, a: int, b: int, c: Optional[int]):
-    randomness = rand_fp()
+    randomness = rand_fq()
 
     c = (
         RLC(c, randomness)
@@ -43,11 +42,11 @@ def test_add(opcode: Opcode, a: int, b: int, c: Optional[int]):
         tx_table=set(),
         bytecode_table=set(bytecode.table_assignments(randomness)),
         rw_table=set(
-            [
-                (9, RW.Read, RWTableTag.Stack, 1, 1022, 0, a, 0, 0, 0),
-                (10, RW.Read, RWTableTag.Stack, 1, 1023, 0, b, 0, 0, 0),
-                (11, RW.Write, RWTableTag.Stack, 1, 1023, 0, c, 0, 0, 0),
-            ]
+            RWDictionary(9)
+            .stack_read(1, 1022, a)
+            .stack_read(1, 1023, b)
+            .stack_write(1, 1023, c)
+            .rws
         ),
     )
 

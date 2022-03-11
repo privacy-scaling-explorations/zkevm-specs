@@ -1,9 +1,10 @@
 import traceback
 from typing import Union, List
-from zkevm_specs.state import *
-from zkevm_specs.util import rand_fp, FQ, RLC
 
-randomness = rand_fp()
+from zkevm_specs.state import *
+from zkevm_specs.util import rand_fq, FQ, RLC
+
+randomness = rand_fq()
 r = randomness
 
 # Verify the state circuit with the given data

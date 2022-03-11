@@ -27,5 +27,7 @@ jobs:
         make install
     - name: Lint
       run: make lint
+    - name: Type check
+      run: make type
     - name: Test with pytest
       run: make test

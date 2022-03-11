@@ -1,6 +1,6 @@
 from typing import Sequence
 
-from ..encoding import is_circuit_code, U8, U256, u256_to_u8s
+from ..encoding import is_circuit_code, U8
 
 
 def lt_circuit(
@@ -34,7 +34,7 @@ def lt_circuit(
     # lower 16 bytes
     # a[15:0] + c[15:0] == carry * 256^16 + b[15:0]
     lhs = 0
-    rhs = carry
+    rhs = int(carry)
     for i in reversed(range(16)):
         lhs = lhs * 256 + a8s[i] + c8s[i]
         rhs = rhs * 256 + b8s[i]

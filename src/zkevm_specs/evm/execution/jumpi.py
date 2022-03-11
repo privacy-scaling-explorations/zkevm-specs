@@ -1,4 +1,4 @@
-from ...util.param import N_BYTES_PROGRAM_COUNTER
+from ...util import FQ, N_BYTES_PROGRAM_COUNTER
 from ..instruction import Instruction, Transition
 from ..opcode import Opcode
 
@@ -14,7 +14,7 @@ def jumpi(instruction: Instruction):
 
     # check `cond` is zero or not
     if instruction.is_zero(cond):
-        pc_diff = 1
+        pc_diff = FQ(1)
     else:
         # Get `dest` raw value in max 8 bytes
         dest_value = instruction.rlc_to_fq_exact(dest, N_BYTES_PROGRAM_COUNTER)

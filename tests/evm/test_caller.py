@@ -5,13 +5,11 @@ from zkevm_specs.evm import (
     StepState,
     verify_steps,
     Tables,
-    RWTableTag,
-    RW,
     CallContextFieldTag,
     Bytecode,
+    RWDictionary,
 )
-from zkevm_specs.util import rand_address, rand_fp, RLC, U160
-from zkevm_specs.util.param import N_BYTES_ACCOUNT_ADDRESS
+from zkevm_specs.util import rand_address, rand_fq, RLC, U160
 
 
 TESTING_DATA = (
@@ -25,7 +23,7 @@ TESTING_DATA = (
 
 @pytest.mark.parametrize("caller", TESTING_DATA)
 def test_caller(caller: U160):
-    randomness = rand_fp()
+    randomness = rand_fq()
 
     bytecode = Bytecode().caller()
     bytecode_hash = RLC(bytecode.hash(), randomness)
@@ -35,12 +33,10 @@ def test_caller(caller: U160):
         tx_table=set(),
         bytecode_table=set(bytecode.table_assignments(randomness)),
         rw_table=set(
-            [
-                # fmt: off
-                (9, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.CallerAddress, 0, caller, 0, 0, 0),
-                (10, RW.Write, RWTableTag.Stack, 1, 1023, 0, RLC(caller, randomness, N_BYTES_ACCOUNT_ADDRESS), 0, 0, 0),
-                # fmt: on
-            ]
+            RWDictionary(9)
+            .call_context_read(1, CallContextFieldTag.CallerAddress, caller)
+            .stack_write(1, 1023, RLC(caller, randomness))
+            .rws
         ),
     )
 

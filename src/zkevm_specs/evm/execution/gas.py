@@ -1,6 +1,6 @@
+from ...util import N_BYTES_GAS
 from ..instruction import Instruction, Transition
 from ..opcode import Opcode
-from ..table import CallContextFieldTag, TxContextFieldTag
 
 
 def gas(instruction: Instruction):
@@ -8,8 +8,7 @@ def gas(instruction: Instruction):
     instruction.constrain_equal(opcode, Opcode.GAS)
 
     # fetch gas from rw table and consider only the lower 8 bytes (uint64)
-    gas = instruction.rlc_to_le_bytes(instruction.stack_push())
-    gas = int.from_bytes(gas[0:8], "little")
+    gas = instruction.rlc_to_fq_exact(instruction.stack_push(), N_BYTES_GAS)
 
     instruction.constrain_equal(
         gas,

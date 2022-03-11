@@ -5,14 +5,13 @@ from zkevm_specs.evm import (
     StepState,
     verify_steps,
     Tables,
-    RWTableTag,
-    RW,
     AccountFieldTag,
     CallContextFieldTag,
     Block,
     Transaction,
+    RWDictionary,
 )
-from zkevm_specs.util import rand_fp, RLC, EMPTY_CODE_HASH, MAX_REFUND_QUOTIENT_OF_GAS_USED
+from zkevm_specs.util import rand_fq, RLC, EMPTY_CODE_HASH, MAX_REFUND_QUOTIENT_OF_GAS_USED
 
 CALLEE_ADDRESS = 0xFF
 
@@ -49,7 +48,7 @@ TESTING_DATA = (
 
 @pytest.mark.parametrize("tx, gas_left, refund, is_last_tx", TESTING_DATA)
 def test_end_tx(tx: Transaction, gas_left: int, refund: int, is_last_tx: bool):
-    randomness = rand_fp()
+    randomness = rand_fq()
 
     block = Block()
     effective_refund = min(refund, (tx.gas - gas_left) // MAX_REFUND_QUOTIENT_OF_GAS_USED)
@@ -58,25 +57,23 @@ def test_end_tx(tx: Transaction, gas_left: int, refund: int, is_last_tx: bool):
     coinbase_balance_prev = 0
     coinbase_balance = coinbase_balance_prev + (tx.gas - gas_left) * (tx.gas_price - block.base_fee)
 
+    rw_dictionary = (
+        # fmt: off
+        RWDictionary(17)
+            .call_context_read(1, CallContextFieldTag.TxId, tx.id)
+            .tx_refund_read(tx.id, refund)
+            .account_write(tx.caller_address, AccountFieldTag.Balance, RLC(caller_balance, randomness), RLC(caller_balance_prev, randomness))
+            .account_write(block.coinbase, AccountFieldTag.Balance, RLC(coinbase_balance, randomness), RLC(coinbase_balance_prev, randomness))
+        # fmt: on
+    )
+    if not is_last_tx:
+        rw_dictionary.call_context_read(22, CallContextFieldTag.TxId, tx.id + 1)
+
     tables = Tables(
         block_table=set(block.table_assignments(randomness)),
         tx_table=set(tx.table_assignments(randomness)),
         bytecode_table=set(),
-        rw_table=set(
-            [
-                # fmt: off
-                (17, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.TxId, 0, tx.id, 0, 0, 0),
-                (18, RW.Read, RWTableTag.TxRefund, tx.id, 0, 0, refund, refund, 0, 0),
-                (19, RW.Write, RWTableTag.Account, tx.caller_address, AccountFieldTag.Balance, 0, RLC(caller_balance, randomness), RLC(caller_balance_prev, randomness), 0, 0),
-                (20, RW.Write, RWTableTag.Account, block.coinbase, AccountFieldTag.Balance, 0, RLC(coinbase_balance, randomness), RLC(coinbase_balance_prev, randomness), 0, 0),
-                # fmt: on
-            ]
-            + (
-                []
-                if is_last_tx
-                else [(21, RW.Read, RWTableTag.CallContext, 22, CallContextFieldTag.TxId, 0, tx.id + 1, 0, 0, 0)]  # fmt: skip
-            )
-        ),
+        rw_table=set(rw_dictionary.rws),
     )
 
     verify_steps(

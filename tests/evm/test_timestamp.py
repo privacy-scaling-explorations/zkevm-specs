@@ -5,19 +5,18 @@ from zkevm_specs.evm import (
     StepState,
     verify_steps,
     Tables,
-    RWTableTag,
-    RW,
     Block,
     Bytecode,
+    RWDictionary,
 )
-from zkevm_specs.util import rand_range, rand_fp, RLC, U64
+from zkevm_specs.util import rand_range, rand_fq, RLC, U64
 
-TESTING_DATA = (0, 1, 2**64 - 1, rand_range(2**64))
+TESTING_DATA = (0, 1, 2**63 - 1, rand_range(2**63))
 
 
 @pytest.mark.parametrize("timestamp", TESTING_DATA)
 def test_timestamp(timestamp: U64):
-    randomness = rand_fp()
+    randomness = rand_fq()
 
     block = Block(timestamp=timestamp)
 
@@ -28,11 +27,7 @@ def test_timestamp(timestamp: U64):
         block_table=set(block.table_assignments(randomness)),
         tx_table=set(),
         bytecode_table=set(bytecode.table_assignments(randomness)),
-        rw_table=set(
-            [
-                (9, RW.Write, RWTableTag.Stack, 1, 1023, 0, RLC(timestamp, randomness, 8), 0, 0, 0),
-            ]
-        ),
+        rw_table=set(RWDictionary(9).stack_write(1, 1023, RLC(timestamp, randomness)).rws),
     )
 
     verify_steps(

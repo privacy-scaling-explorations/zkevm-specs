@@ -1,7 +1,7 @@
 import random
 import pytest
 
-from zkevm_specs.encoding import u256_to_u8s, u8s_to_u256
+from zkevm_specs.encoding import u256_to_u8s
 from zkevm_specs.opcode import check_and, check_or, check_xor
 
 
@@ -28,8 +28,7 @@ def test_check_or():
 
 
 def test_check_xor():
-    for i in range(5):
-        print(i)
+    for _ in range(5):
         a = random.randint(0, 2**256)
         b = random.randint(0, 2**256)
         c = a ^ b
