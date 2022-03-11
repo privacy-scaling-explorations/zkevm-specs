@@ -49,8 +49,8 @@ Type sizes:
 - **value, valuePrev**: variable size, depending on Key 0 (Tag) and Key 3 where appropiate.
 - **Key2** is reserved for Ethereum Address key type
 - **Key4** is reserved for RLC encoded key type
-- **log_index**, 8 bytes
-- **topics**, field size, RLC encoded (Random Linear Combination)
+- **logID**, 8 bytes
+- **topic**, field size, RLC encoded (Random Linear Combination)
 - **TxLog -> data**, 1 byte
 - **index**, 8 byte, indicates order in tx log data or topics
 

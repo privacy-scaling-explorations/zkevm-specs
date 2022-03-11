@@ -42,7 +42,7 @@ class StepState:
 
     # log index of current tx/receipt, this field maybe moved if we find them
     # not often used.
-    log_index: int
+    log_id: FQ
 
     # Auxilary witness data needed by gadgets
     aux_data: Any

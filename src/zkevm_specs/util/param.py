@@ -43,7 +43,7 @@ GAS_COST_SELF_DESTRUCT = 5000
 GAS_COST_COPY = 3
 # Gas cost of non-creation transaction
 GAS_COST_TX = 21000
-# log static gas
+# Constant gas cost of LOG
 GAS_COST_LOG = 375
 # Gas cost of creation transaction
 GAS_COST_CREATION_TX = 53000
