@@ -1,8 +1,9 @@
 from ..instruction import Instruction, Transition
 from ..table import CallContextFieldTag, AccountFieldTag
 from ..opcode import Opcode
-from ...util.param import N_BYTES_MEMORY_ADDRESS
+from ...util.param import EXTRA_GAS_COST_ACCOUNT_COLD_ACCESS, GAS_COST_WARM_ACCESS
 from ...util import keccak256
+from ...util.hash import EMPTY_CODE_HASH
 
 
 def extcodehash(instruction: Instruction):
@@ -11,7 +12,7 @@ def extcodehash(instruction: Instruction):
     address = instruction.stack_pop()
 
     call_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
-    is_warm = instruction.add_account_to_access_list(call_id, address)
+    is_cold = instruction.add_account_to_access_list(call_id, address)
 
     nonce = instruction.account_read(address, AccountFieldTag.Nonce)
     balance = instruction.account_read(address, AccountFieldTag.Balance)
@@ -20,11 +21,11 @@ def extcodehash(instruction: Instruction):
     is_empty = (
         instruction.is_zero(nonce)
         * instruction.is_zero(balance)
-        * instruction.is_zero(code_hash - int.from_bytes(keccak256(""), "big"))
+        * instruction.is_zero(code_hash - EMPTY_CODE_HASH)
     )
 
     instruction.constrain_equal(
-        instruction.select(is_empty, 0, code_hash),
+        instruction.select(not instruction.is_zero(is_empty), 0, code_hash),
         instruction.stack_push(),
     )
 
@@ -33,5 +34,5 @@ def extcodehash(instruction: Instruction):
         rw_counter=Transition.delta(7),
         program_counter=Transition.delta(1),
         stack_pointer=Transition.delta(0),
-        dynamic_gas_cost=0 if is_warm else COLD_ACCOUNT_ACCESS_COST - WARM_STORAGE_READ_COST,
+        dynamic_gas_cost=is_cold * EXTRA_GAS_COST_ACCOUNT_COLD_ACCESS,
     )
