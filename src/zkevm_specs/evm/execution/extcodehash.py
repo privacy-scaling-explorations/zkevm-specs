@@ -17,10 +17,14 @@ def extcodehash(instruction: Instruction):
     balance = instruction.account_read(address, AccountFieldTag.Balance)
     code_hash = instruction.account_read(address, AccountFieldTag.CodeHash)
 
-    is_empty = nonce == 0 and balance == 0 and code_hash == int.from_bytes(keccak256(""), "big")
+    is_empty = (
+        instruction.is_zero(nonce)
+        * instruction.is_zero(balance)
+        * instruction.is_zero(code_hash - int.from_bytes(keccak256(""), "big"))
+    )
 
     instruction.constrain_equal(
-        0 if is_empty else code_hash,
+        instruction.select(is_empty, 0, code_hash),
         instruction.stack_push(),
     )
 
