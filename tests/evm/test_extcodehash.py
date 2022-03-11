@@ -23,7 +23,9 @@ from zkevm_specs.util import (
     RLC,
     rand_bytes,
 )
-from zkevm_specs.util.param import N_BYTES_WORD
+from zkevm_specs.util.param import EXTRA_GAS_COST_ACCOUNT_COLD_ACCESS, GAS_COST_WARM_ACCESS
+from zkevm_specs.util.hash import EMPTY_CODE_HASH
+
 
 TESTING_DATA = [
     (0x30000, 0, 0, bytes(), True),  # warm empty account
@@ -38,12 +40,8 @@ TESTING_DATA = [
 def test_extcodehash(address: U160, nonce: U256, balance: U256, code: bytes, is_warm: bool):
     randomness = rand_fp()
 
-    bytecode = Bytecode().extcodehash()
-
     code_hash = int.from_bytes(keccak256(code), "big")
-    result = 0 if (address == 0 and nonce == 0 and code_hash == keccak256("")) else code_hash
-    rlc_code_hash = RLC(code_hash, randomness)
-
+    result = 0 if (nonce == 0 and balance == 0 and code_hash == EMPTY_CODE_HASH) else code_hash
     rw_table = {
         (0, RW.Read, RWTableTag.Stack, 1, 1023, 0, address, 0, 0, 0),
         (1, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.TxId, 0, 1, 0, 0, 0),
@@ -54,6 +52,7 @@ def test_extcodehash(address: U160, nonce: U256, balance: U256, code: bytes, is_
         (6, RW.Write, RWTableTag.Stack, 1, 1023, 0, result, 0, 0, 0),
     }
 
+    bytecode = Bytecode().extcodehash()
     tables = Tables(
         block_table=Block(),
         tx_table=set(),
@@ -75,7 +74,7 @@ def test_extcodehash(address: U160, nonce: U256, balance: U256, code: bytes, is_
                 code_source=bytecode_hash,
                 program_counter=0,
                 stack_pointer=1023,
-                gas_left=100,
+                gas_left=GAS_COST_WARM_ACCESS + (not is_warm) * EXTRA_GAS_COST_ACCOUNT_COLD_ACCESS,
             ),
             StepState(
                 execution_state=ExecutionState.STOP,
