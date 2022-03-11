@@ -6,11 +6,11 @@ from ..opcode import Opcode
 def timestamp(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
     instruction.constrain_equal(opcode, Opcode.TIMESTAMP)
-    timestamp = instruction.stack_push()
+
     # check block table for timestamp
     instruction.constrain_equal(
-        timestamp,
-        instruction.int_to_rlc(instruction.block_context_lookup(BlockContextFieldTag.Timestamp), 8),
+        instruction.block_context_lookup(BlockContextFieldTag.Timestamp),
+        instruction.rlc_to_fq_exact(instruction.stack_push(), 8),
     )
 
     instruction.step_state_transition_in_same_context(

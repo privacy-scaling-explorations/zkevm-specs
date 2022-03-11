@@ -6,15 +6,12 @@ from zkevm_specs.evm import (
     CallContextFieldTag,
     ExecutionState,
     StepState,
-    Opcode,
-    RW,
-    RWTableTag,
     Tables,
     Transaction,
     verify_steps,
+    RWDictionary,
 )
-from zkevm_specs.util import rand_fp, rand_range, RLC
-from zkevm_specs.util.typing import U256
+from zkevm_specs.util import rand_fq, RLC, U256
 
 TESTING_DATA = (
     0x00,
@@ -26,7 +23,7 @@ TESTING_DATA = (
 
 @pytest.mark.parametrize("gasprice", TESTING_DATA)
 def test_gasprice(gasprice: U256):
-    randomness = rand_fp()
+    randomness = rand_fq()
 
     tx = Transaction(gas_price=gasprice)
 
@@ -34,25 +31,14 @@ def test_gasprice(gasprice: U256):
     bytecode_hash = RLC(bytecode.hash(), randomness)
 
     tables = Tables(
-        block_table=set(),
+        block_table=set(Block().table_assignments(randomness)),
         tx_table=set(tx.table_assignments(randomness)),
         bytecode_table=set(bytecode.table_assignments(randomness)),
         rw_table=set(
-            [
-                (
-                    9,
-                    RW.Read,
-                    RWTableTag.CallContext,
-                    1,
-                    CallContextFieldTag.TxId,
-                    0,
-                    tx.id,
-                    0,
-                    0,
-                    0,
-                ),
-                (10, RW.Write, RWTableTag.Stack, 1, 1023, 0, RLC(gasprice, randomness), 0, 0, 0),
-            ]
+            RWDictionary(9)
+            .call_context_read(1, CallContextFieldTag.TxId, tx.id)
+            .stack_write(1, 1023, RLC(gasprice, randomness))
+            .rws
         ),
     )
 

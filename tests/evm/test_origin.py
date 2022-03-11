@@ -5,15 +5,12 @@ from zkevm_specs.evm import (
     CallContextFieldTag,
     ExecutionState,
     StepState,
-    RW,
-    RWTableTag,
     Tables,
     Transaction,
     verify_steps,
+    RWDictionary,
 )
-from zkevm_specs.util import rand_fp, rand_address, RLC
-from zkevm_specs.util.typing import U256
-from zkevm_specs.util.param import N_BYTES_ACCOUNT_ADDRESS
+from zkevm_specs.util import rand_fq, rand_address, RLC, U256
 
 TESTING_DATA = (
     0x00,
@@ -26,7 +23,7 @@ TESTING_DATA = (
 
 @pytest.mark.parametrize("origin", TESTING_DATA)
 def test_origin(origin: U256):
-    randomness = rand_fp()
+    randomness = rand_fq()
 
     tx = Transaction(caller_address=origin)
 
@@ -38,32 +35,10 @@ def test_origin(origin: U256):
         tx_table=set(tx.table_assignments(randomness)),
         bytecode_table=set(bytecode.table_assignments(randomness)),
         rw_table=set(
-            [
-                (
-                    9,
-                    RW.Read,
-                    RWTableTag.CallContext,
-                    1,
-                    CallContextFieldTag.TxId,
-                    0,
-                    tx.id,
-                    0,
-                    0,
-                    0,
-                ),
-                (
-                    10,
-                    RW.Write,
-                    RWTableTag.Stack,
-                    1,
-                    1023,
-                    0,
-                    RLC(origin, randomness, N_BYTES_ACCOUNT_ADDRESS),
-                    0,
-                    0,
-                    0,
-                ),
-            ]
+            RWDictionary(9)
+            .call_context_read(1, CallContextFieldTag.TxId, tx.id)
+            .stack_write(1, 1023, RLC(origin, randomness))
+            .rws
         ),
     )
 

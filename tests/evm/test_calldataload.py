@@ -5,14 +5,13 @@ from zkevm_specs.evm import (
     Bytecode,
     CallContextFieldTag,
     ExecutionState,
-    RW,
-    RWTableTag,
     StepState,
     Tables,
     Transaction,
     verify_steps,
+    RWDictionary,
 )
-from zkevm_specs.util import rand_fp, RLC, U64
+from zkevm_specs.util import rand_fq, RLC, U64
 
 TESTING_DATA = (
     (
@@ -21,7 +20,7 @@ TESTING_DATA = (
         0x00,
         bytes.fromhex("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"),
         True,
-        None,
+        0,
     ),
     (
         bytes.fromhex("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"),
@@ -29,7 +28,7 @@ TESTING_DATA = (
         0x1F,
         bytes.fromhex("FF00000000000000000000000000000000000000000000000000000000000000"),
         True,
-        None,
+        0,
     ),
     (
         bytes.fromhex("a1bacf5488bfafc33bad736db41f06866eaeb35e1c1dd81dfc268357ec98563f"),
@@ -37,7 +36,7 @@ TESTING_DATA = (
         0x10,
         bytes.fromhex("6eaeb35e1c1dd81dfc268357ec98563f00000000000000000000000000000000"),
         True,
-        None,
+        0,
     ),
     (
         bytes.fromhex("a1bacf5488bfafc33bad736db41f06866eaeb35e1c1dd81dfc268357ec98563f"),
@@ -68,9 +67,9 @@ def test_calldataload(
     offset: U64,
     expected_stack_top: bytes,
     is_root: bool,
-    call_data_offset: Optional[U64],
+    call_data_offset: U64,
 ):
-    randomness = rand_fp()
+    randomness = rand_fq()
 
     tx = Transaction(id=1)
     if is_root:
@@ -88,104 +87,38 @@ def test_calldataload(
         call_id = 2
         parent_call_id = 1
 
-    rws = set(
-        [
-            (1, RW.Write, RWTableTag.Stack, call_id, 1023, 0, offset_rlc, 0, 0, 0),
-            (2, RW.Read, RWTableTag.Stack, call_id, 1023, 0, offset_rlc, 0, 0, 0),
-            (3, RW.Read, RWTableTag.CallContext, call_id, CallContextFieldTag.TxId, 0, 1, 0, 0, 0),
-        ]
+    rw_dictionary = (
+        RWDictionary(1)
+        .stack_write(call_id, 1023, offset_rlc)
+        .stack_read(call_id, 1023, offset_rlc)
+        .call_context_read(call_id, CallContextFieldTag.TxId, 1)
     )
     if is_root:
-        rws.add((4, RW.Write, RWTableTag.Stack, call_id, 1023, 0, expected_stack_top, 0, 0, 0))
-        rw_counter_stop = 5
+        rw_dictionary.stack_write(call_id, 1023, expected_stack_top)
     else:
         # add to RW table call context, call data length (read)
-        rws.add(
-            (
-                4,
-                RW.Read,
-                RWTableTag.CallContext,
-                call_id,
-                CallContextFieldTag.CallDataLength,
-                0,
-                call_data_length,
-                0,
-                0,
-                0,
-            )
+        rw_dictionary.call_context_read(
+            call_id, CallContextFieldTag.CallDataLength, call_data_length
         )
         # add to RW table call context, call data offset (read)
-        rws.add(
-            (
-                5,
-                RW.Read,
-                RWTableTag.CallContext,
-                call_id,
-                CallContextFieldTag.CallDataOffset,
-                0,
-                call_data_offset,
-                0,
-                0,
-                0,
-            )
+        rw_dictionary.call_context_read(
+            call_id, CallContextFieldTag.CallDataOffset, call_data_offset
         )
         # add to RW table call context, caller'd ID (read)
-        rws.add(
-            (
-                6,
-                RW.Read,
-                RWTableTag.CallContext,
-                call_id,
-                CallContextFieldTag.CallerId,
-                0,
-                parent_call_id,
-                0,
-                0,
-                0,
-            )
-        )
-        rw_counter = 7
+        rw_dictionary.call_context_read(call_id, CallContextFieldTag.CallerId, parent_call_id)
         # add to RW table memory (read)
         for i in range(0, len(call_data)):
             idx = offset + call_data_offset + i
             if idx < len(call_data):
-                rws.add(
-                    (
-                        rw_counter,
-                        RW.Read,
-                        RWTableTag.Memory,
-                        parent_call_id,
-                        idx,
-                        0,
-                        call_data[idx],
-                        0,
-                        0,
-                        0,
-                    )
-                )
-                rw_counter += 1
+                rw_dictionary.memory_read(parent_call_id, idx, call_data[idx])
         # add to RW table stack (write)
-        rws.add(
-            (
-                rw_counter,
-                RW.Write,
-                RWTableTag.Stack,
-                call_id,
-                1023,
-                0,
-                expected_stack_top,
-                0,
-                0,
-                0,
-            )
-        )
-        rw_counter_stop = rw_counter + 1
+        rw_dictionary.stack_write(call_id, 1023, expected_stack_top)
 
     tables = Tables(
         block_table=set(),
         tx_table=set(tx.table_assignments(randomness)),
         bytecode_table=set(bytecode.table_assignments(randomness)),
-        rw_table=rws,
+        rw_table=rw_dictionary.rws,
     )
 
     verify_steps(
@@ -216,7 +149,7 @@ def test_calldataload(
             ),
             StepState(
                 execution_state=ExecutionState.STOP,
-                rw_counter=rw_counter_stop,
+                rw_counter=rw_dictionary.rw_counter,
                 call_id=call_id,
                 is_root=is_root,
                 is_create=False,

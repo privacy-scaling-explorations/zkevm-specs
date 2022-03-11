@@ -1,6 +1,7 @@
 from enum import IntEnum
-from typing import Final, Dict, List, Tuple
+from typing import Final, Dict, Tuple, List
 
+from ..util import FQ
 from ..util.param import *
 
 
@@ -147,6 +148,9 @@ class Opcode(IntEnum):
     STATICCALL = 0xFA
     REVERT = 0xFD
     SELFDESTRUCT = 0xFF
+
+    def expr(self) -> FQ:
+        return FQ(self)
 
     def hex(self) -> str:
         return "{:02x}".format(self)

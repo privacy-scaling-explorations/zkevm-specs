@@ -7,19 +7,20 @@ from zkevm_specs.evm import (
     verify_steps,
     Tables,
     RWTableTag,
+    RWTableRow,
     RW,
     CallContextFieldTag,
     Block,
     Transaction,
 )
-from zkevm_specs.util import rand_fp
+from zkevm_specs.util import rand_fq, FQ
 
 TESTING_DATA = (False, True)
 
 
 @pytest.mark.parametrize("is_last_step", TESTING_DATA)
 def test_end_block(is_last_step: bool):
-    randomness = rand_fp()
+    randomness = rand_fq()
 
     tx = Transaction()
 
@@ -30,8 +31,8 @@ def test_end_block(is_last_step: bool):
         rw_table=set(
             chain(
                 # dummy read/write for counting
-                [(i, *7 * [0]) for i in range(22)],
-                [(22, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.TxId, 0, tx.id, 0, 0, 0)]  # fmt: skip
+                [RWTableRow(FQ(i), *9 * [FQ(0)]) for i in range(22)],
+                [RWTableRow(FQ(22), FQ(RW.Read), FQ(RWTableTag.CallContext), FQ(1), FQ(CallContextFieldTag.TxId), value=FQ(tx.id))]  # fmt: skip
                 if is_last_step else [],
             )
         ),

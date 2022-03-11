@@ -1,3 +1,4 @@
+from ...util import FQ
 from ..instruction import Instruction, Transition
 from ..table import CallContextFieldTag
 
@@ -12,7 +13,7 @@ def end_block(instruction: Instruction):
         total_tx = instruction.call_context_lookup(CallContextFieldTag.TxId)
         instruction.constrain_equal(
             total_tx,
-            max([tx_id for tx_id, *_ in instruction.tables.tx_table]),
+            FQ(max([row.tx_id.expr().n for row in instruction.tables.tx_table])),
         )
 
         # Verify rw_counter counts to identical rw amount in rw_table to ensure
@@ -20,7 +21,7 @@ def end_block(instruction: Instruction):
         total_rw = instruction.curr.rw_counter + 1  # extra 1 from the tx_id lookup
         instruction.constrain_equal(
             total_rw,
-            len(instruction.tables.rw_table),
+            FQ(len(instruction.tables.rw_table)),
         )
     else:
         # Propagate rw_counter and call_id all the way down

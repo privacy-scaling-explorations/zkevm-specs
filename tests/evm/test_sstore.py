@@ -5,22 +5,22 @@ from zkevm_specs.evm import (
     StepState,
     verify_steps,
     Tables,
-    RWTableTag,
-    RW,
     CallContextFieldTag,
     Transaction,
     Block,
     Bytecode,
+    RWDictionary,
 )
-from zkevm_specs.util.param import (
+from zkevm_specs.util import (
+    rand_fq,
+    rand_address,
+    RLC,
     COLD_SLOAD_COST,
-    WARM_STORAGE_READ_COST,
     SLOAD_GAS,
     SSTORE_SET_GAS,
     SSTORE_RESET_GAS,
     SSTORE_CLEARS_SCHEDULE,
 )
-from zkevm_specs.util import rand_fp, rand_address, RLC
 
 
 def gen_test_cases():
@@ -78,24 +78,24 @@ TESTING_DATA = gen_test_cases()
 
 
 @pytest.mark.parametrize(
-    "tx, storage_key_be_bytes, value_be_bytes, value_prev_be_bytes, original_value_be_bytes, warm, result",
+    "tx, storage_key_be_bytes, value_be_bytes, value_prev_be_bytes, original_value_be_bytes, warm, is_success",
     TESTING_DATA,
 )
 def test_sstore(
     tx: Transaction,
     storage_key_be_bytes: bytes,
     value_be_bytes: bytes,
-    value_prev_be_bytes: int,
-    original_value_be_bytes: int,
+    value_prev_be_bytes: bytes,
+    original_value_be_bytes: bytes,
     warm: bool,
-    result: bool,
+    is_success: bool,
 ):
-    randomness = rand_fp()
+    randomness = rand_fq()
 
-    storage_key = RLC(bytes(reversed(storage_key_be_bytes)), randomness)
-    value = RLC(bytes(reversed(value_be_bytes)), randomness)
-    value_prev = RLC(bytes(reversed(value_prev_be_bytes)), randomness)
-    original_value = RLC(bytes(reversed(original_value_be_bytes)), randomness)
+    storage_key = int.from_bytes(storage_key_be_bytes, "big")
+    value = int.from_bytes(value_be_bytes, "big")
+    value_prev = int.from_bytes(value_prev_be_bytes, "big")
+    value_committed = int.from_bytes(original_value_be_bytes, "big")
 
     bytecode = Bytecode().push32(storage_key_be_bytes).push32(value_be_bytes).sstore().stop()
     bytecode_hash = RLC(bytecode.hash(), randomness)
@@ -103,8 +103,8 @@ def test_sstore(
     if value_prev == value:
         expected_gas_cost = SLOAD_GAS
     else:
-        if original_value == value_prev:
-            if original_value == 0:
+        if value_committed == value_prev:
+            if value_committed == 0:
                 expected_gas_cost = SSTORE_SET_GAS
             else:
                 expected_gas_cost = SSTORE_RESET_GAS
@@ -113,20 +113,20 @@ def test_sstore(
     if not warm:
         expected_gas_cost = expected_gas_cost + COLD_SLOAD_COST
 
-    old_gas_refund = 15000
-    gas_refund = old_gas_refund
+    gas_refund_prev = 15000
+    gas_refund = gas_refund_prev
     if value_prev != value:
-        if original_value == value_prev:
-            if original_value != 0 and value == 0:
+        if value_committed == value_prev:
+            if value_committed != 0 and value == 0:
                 gas_refund = gas_refund + SSTORE_CLEARS_SCHEDULE
         else:
-            if original_value != 0:
+            if value_committed != 0:
                 if value_prev == 0:
                     gas_refund = gas_refund - SSTORE_CLEARS_SCHEDULE
                 if value == 0:
                     gas_refund = gas_refund + SSTORE_CLEARS_SCHEDULE
-            if original_value == value:
-                if original_value == 0:
+            if value_committed == value:
+                if value_committed == 0:
                     gas_refund = gas_refund + SSTORE_SET_GAS - SLOAD_GAS
                 else:
                     gas_refund = gas_refund + SSTORE_RESET_GAS - SLOAD_GAS
@@ -136,125 +136,19 @@ def test_sstore(
         tx_table=set(tx.table_assignments(randomness)),
         bytecode_table=set(bytecode.table_assignments(randomness)),
         rw_table=set(
-            [
-                (
-                    1,
-                    RW.Read,
-                    RWTableTag.CallContext,
-                    1,
-                    CallContextFieldTag.TxId,
-                    0,
-                    tx.id,
-                    0,
-                    0,
-                    0,
-                ),
-                (
-                    2,
-                    RW.Read,
-                    RWTableTag.CallContext,
-                    1,
-                    CallContextFieldTag.RwCounterEndOfReversion,
-                    0,
-                    0 if result else 14,
-                    0,
-                    0,
-                    0,
-                ),
-                (
-                    3,
-                    RW.Read,
-                    RWTableTag.CallContext,
-                    1,
-                    CallContextFieldTag.IsPersistent,
-                    0,
-                    result,
-                    0,
-                    0,
-                    0,
-                ),
-                (
-                    4,
-                    RW.Read,
-                    RWTableTag.CallContext,
-                    1,
-                    CallContextFieldTag.CalleeAddress,
-                    0,
-                    tx.callee_address,
-                    0,
-                    0,
-                    0,
-                ),
-                (5, RW.Read, RWTableTag.Stack, 1, 1022, 0, storage_key, 0, 0, 0),
-                (6, RW.Read, RWTableTag.Stack, 1, 1023, 0, value, 0, 0, 0),
-                (
-                    7,
-                    RW.Write,
-                    RWTableTag.AccountStorage,
-                    tx.callee_address,
-                    storage_key,
-                    0,
-                    value,
-                    value_prev,
-                    tx.id,
-                    original_value,
-                ),
-                (
-                    8,
-                    RW.Write,
-                    RWTableTag.TxAccessListAccountStorage,
-                    tx.id,
-                    tx.callee_address,
-                    storage_key,
-                    1,
-                    1 if warm else 0,
-                    0,
-                    0,
-                ),
-                (9, RW.Write, RWTableTag.TxRefund, tx.id, 0, 0, gas_refund, old_gas_refund, 0, 0),
-            ]
-            + (
-                []
-                if result
-                else [
-                    (
-                        12,
-                        RW.Write,
-                        RWTableTag.TxRefund,
-                        tx.id,
-                        0,
-                        0,
-                        old_gas_refund,
-                        gas_refund,
-                        0,
-                        0,
-                    ),
-                    (
-                        13,
-                        RW.Write,
-                        RWTableTag.TxAccessListAccountStorage,
-                        tx.id,
-                        tx.callee_address,
-                        storage_key,
-                        1 if warm else 0,
-                        1,
-                        0,
-                        0,
-                    ),
-                    (
-                        14,
-                        RW.Write,
-                        RWTableTag.AccountStorage,
-                        tx.callee_address,
-                        storage_key,
-                        0,
-                        value_prev,
-                        value,
-                        tx.id,
-                        original_value,
-                    ),
-                ]
-            )
+            # fmt: off
+            RWDictionary(1)
+            .call_context_read(1, CallContextFieldTag.TxId, tx.id)
+            .call_context_read(1, CallContextFieldTag.RwCounterEndOfReversion, 0 if is_success else 14)
+            .call_context_read(1, CallContextFieldTag.IsPersistent, is_success)
+            .call_context_read(1, CallContextFieldTag.CalleeAddress, tx.callee_address)
+            .stack_read(1, 1022, RLC(storage_key, randomness))
+            .stack_read(1, 1023, RLC(value, randomness))
+            .account_storage_write(tx.callee_address, RLC(storage_key, randomness), RLC(value, randomness), RLC(value_prev, randomness), tx.id, RLC(value_committed, randomness), rw_counter_of_reversion=None if is_success else 14)
+            .tx_access_list_account_storage_write(tx.id, tx.callee_address, RLC(storage_key, randomness), 1, 1 if warm else 0, rw_counter_of_reversion=None if is_success else 13)
+            .tx_refund_write(tx.id, gas_refund, gas_refund_prev, rw_counter_of_reversion=None if is_success else 12)
+            .rws
+            # fmt: on
         ),
     )
 
@@ -275,7 +169,7 @@ def test_sstore(
                 gas_left=expected_gas_cost,
             ),
             StepState(
-                execution_state=ExecutionState.STOP if result else ExecutionState.REVERT,
+                execution_state=ExecutionState.STOP if is_success else ExecutionState.REVERT,
                 rw_counter=10,
                 call_id=1,
                 is_root=True,

@@ -1,10 +1,10 @@
 from typing import NamedTuple, Tuple, List, Sequence
-from enum import IntEnum, auto
+from enum import IntEnum
 from math import log, ceil
+
 from .util import FQ, RLC, U160, U256
 from .encoding import U8, is_circuit_code
-from .evm import RW, RWTableTag
-from .evm import AccountFieldTag, CallContextFieldTag
+from .evm import RW, AccountFieldTag, CallContextFieldTag
 
 MAX_KEY_DIFF = 2**32 - 1
 MAX_MEMORY_ADDRESS = 2**32 - 1
@@ -523,7 +523,7 @@ def op2row(op: Operation, randomness: FQ) -> Row:
     key2_bytes = op.key2.to_bytes(20, "little")
     key2_limbs = tuple([FQ(key2_bytes[i] + 2**8 * key2_bytes[i + 1]) for i in range(0, 20, 2)])
     key3 = FQ(op.key3)
-    key4_rlc = RLC(op.key4, randomness.n)
+    key4_rlc = RLC(op.key4, randomness)
     key4 = key4_rlc.value
     key4_bytes = tuple([FQ(x) for x in key4_rlc.le_bytes])
     value = FQ(op.value)
@@ -532,7 +532,8 @@ def op2row(op: Operation, randomness: FQ) -> Row:
 
     # fmt: off
     return Row(rw_counter, is_write,
-            (key0, key1, key2, key3, key4), key2_limbs, key4_bytes, # keys
+            # keys
+            (key0, key1, key2, key3, key4), key2_limbs, key4_bytes, # type: ignore
             value, (aux0, aux1)) # values
     # fmt: on
 

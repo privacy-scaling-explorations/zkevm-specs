@@ -1,61 +1,56 @@
 from __future__ import annotations
-from typing import Sequence, Union
-from py_ecc.fields import bn128_FQ as FQ
+from typing import Protocol, Sequence, Type, TypeVar, Union
+from functools import reduce
+from py_ecc import bn128
 
 
-def _hash_fq(v: FQ) -> int:
-    return hash(v.n)
+class FQ(bn128.FQ):
+    def __init__(self, value: IntOrFQ) -> None:
+        if isinstance(value, FQ):
+            self.n = value.n
+        else:
+            super().__init__(value)
+
+    def __hash__(self) -> int:
+        return hash(self.n)
+
+    def expr(self) -> FQ:
+        return FQ(self)
+
+    @staticmethod
+    def linear_combine(le_bytes: Sequence[int], base: FQ) -> FQ:
+        def accumulate(acc: FQ, byte: int) -> FQ:
+            assert (
+                0 <= byte < 256
+            ), "Each byte in le_bytes for linear combination should fit in 8-bit"
+            return acc * base + FQ(byte)
+
+        return reduce(accumulate, reversed(le_bytes), FQ(0))
 
 
-FQ.__hash__ = _hash_fq
 IntOrFQ = Union[int, FQ]
 
 
-def fp_linear_combine(le_bytes: Union[bytes, Sequence[int]], factor: int) -> FQ:
-    ret = FQ.zero()
-    factor = FQ(factor)
-    for byte in reversed(le_bytes):
-        assert 0 <= byte < 256, "Each byte in le_bytes for linear combination should fit in 8-bit"
-        ret = ret * factor + byte
-    return ret
-
-
 class RLC:
-    le_bytes: bytes
     value: FQ
+    le_bytes: bytes
 
     def __init__(
-        self, int_or_bytes: Union[IntOrFQ, bytes], randomness: int, n_bytes: int = 32
+        self, value: Union[int, bytes], randomness: FQ = FQ(0), n_bytes: int = None
     ) -> None:
-        if isinstance(int_or_bytes, int):
-            assert (
-                0 <= int_or_bytes < 256**n_bytes
-            ), f"Value {int_or_bytes} too large to fit {n_bytes} bytes"
-            self.le_bytes = int_or_bytes.to_bytes(n_bytes, "little")
-        elif isinstance(int_or_bytes, FQ):
-            assert (
-                int_or_bytes.n < 256**n_bytes
-            ), f"Value {int_or_bytes} too large to fit {n_bytes} bytes"
-            self.le_bytes = int_or_bytes.n.to_bytes(n_bytes, "little")
-        elif isinstance(int_or_bytes, bytes):
-            assert (
-                len(int_or_bytes) <= n_bytes
-            ), f"Expected bytes with length less or equal than {n_bytes}"
-            self.le_bytes = int_or_bytes.ljust(n_bytes, b"\x00")
-        else:
-            raise TypeError(
-                f"Expected an int or bytes, but got object of type {type(int_or_bytes)}"
-            )
+        if isinstance(value, int):
+            value = value.to_bytes(32, "little")
 
-        self.value = fp_linear_combine(self.le_bytes, randomness)
+        if n_bytes is not None:
+            if len(value) > n_bytes:
+                raise ValueError(f"RLC expects to have {n_bytes} bytes, but got {len(value)} bytes")
+            value = value.ljust(n_bytes, b"\x00")
 
-    def __eq__(self, rhs: Union[int, FQ, RLC]):
-        if isinstance(rhs, (int, FQ)):
-            return self.value == rhs
-        if isinstance(rhs, RLC):
-            return self.value == rhs.value
-        else:
-            raise TypeError(f"Expected a RLC, but got object of type {type(rhs)}")
+        self.value = FQ.linear_combine(value, randomness)
+        self.le_bytes = value
+
+    def expr(self) -> FQ:
+        return FQ(self.value)
 
     def __hash__(self) -> int:
         return hash(self.value)
@@ -63,5 +58,16 @@ class RLC:
     def __repr__(self) -> str:
         return "RLC(%s)" % int.from_bytes(self.le_bytes, "little")
 
-    def be_bytes(self) -> bytes:
-        return bytes(reversed(self.le_bytes))
+
+class Expression(Protocol):
+    def expr(self) -> FQ:
+        ...
+
+
+ExpressionImpl = TypeVar("ExpressionImpl", bound=Expression)
+
+
+def cast_expr(expression: Expression, ty: Type[ExpressionImpl]) -> ExpressionImpl:
+    if not isinstance(expression, ty):
+        raise TypeError(f"Casting Expression to {ty}, but got {type(expression)}")
+    return expression

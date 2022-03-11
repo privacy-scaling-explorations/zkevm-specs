@@ -5,12 +5,11 @@ from zkevm_specs.evm import (
     StepState,
     verify_steps,
     Tables,
-    RWTableTag,
-    RW,
     Block,
     Bytecode,
+    RWDictionary,
 )
-from zkevm_specs.util import rand_address, rand_fp, RLC, U160
+from zkevm_specs.util import rand_address, rand_fq, RLC, U160
 
 
 TESTING_DATA = (0x030201, rand_address())
@@ -18,7 +17,7 @@ TESTING_DATA = (0x030201, rand_address())
 
 @pytest.mark.parametrize("coinbase", TESTING_DATA)
 def test_coinbase(coinbase: U160):
-    randomness = rand_fp()
+    randomness = rand_fq()
 
     block = Block(coinbase=coinbase)
 
@@ -29,11 +28,7 @@ def test_coinbase(coinbase: U160):
         block_table=set(block.table_assignments(randomness)),
         tx_table=set(),
         bytecode_table=set(bytecode.table_assignments(randomness)),
-        rw_table=set(
-            [
-                (9, RW.Write, RWTableTag.Stack, 1, 1023, 0, RLC(coinbase, randomness, 20), 0, 0, 0),
-            ]
-        ),
+        rw_table=set(RWDictionary(9).stack_write(1, 1023, RLC(coinbase, randomness)).rws),
     )
 
     verify_steps(

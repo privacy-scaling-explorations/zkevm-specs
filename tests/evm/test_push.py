@@ -5,12 +5,11 @@ from zkevm_specs.evm import (
     StepState,
     verify_steps,
     Tables,
-    RWTableTag,
-    RW,
     Block,
     Bytecode,
+    RWDictionary,
 )
-from zkevm_specs.util import rand_bytes, rand_fp, RLC
+from zkevm_specs.util import rand_bytes, rand_fq, RLC
 
 
 TESTING_DATA = tuple(
@@ -26,9 +25,9 @@ TESTING_DATA = tuple(
 
 @pytest.mark.parametrize("value_be_bytes", TESTING_DATA)
 def test_push(value_be_bytes: bytes):
-    randomness = rand_fp()
+    randomness = rand_fq()
 
-    value = RLC(bytes(reversed(value_be_bytes)), randomness)
+    value = RLC(bytes(reversed(value_be_bytes)), randomness, 32)
 
     bytecode = Bytecode().push(value_be_bytes, n_bytes=len(value_be_bytes))
     bytecode_hash = RLC(bytecode.hash(), randomness)
@@ -37,11 +36,7 @@ def test_push(value_be_bytes: bytes):
         block_table=set(Block().table_assignments(randomness)),
         tx_table=set(),
         bytecode_table=set(bytecode.table_assignments(randomness)),
-        rw_table=set(
-            [
-                (8, RW.Write, RWTableTag.Stack, 1, 1023, 0, value, 0, 0, 0),
-            ]
-        ),
+        rw_table=set(RWDictionary(8).stack_write(1, 1023, value).rws),
     )
 
     verify_steps(

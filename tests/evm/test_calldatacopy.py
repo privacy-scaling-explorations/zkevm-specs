@@ -1,5 +1,5 @@
 import pytest
-from typing import Sequence, Tuple, Mapping, Optional
+from typing import Sequence, Tuple, Mapping
 
 from zkevm_specs.evm import (
     Opcode,
@@ -15,10 +15,11 @@ from zkevm_specs.evm import (
     Block,
     Transaction,
     Bytecode,
+    RWDictionary,
 )
 from zkevm_specs.evm.execution.memory_copy import MAX_COPY_BYTES
 from zkevm_specs.util import (
-    rand_fp,
+    rand_fq,
     rand_bytes,
     GAS_COST_COPY,
     MEMORY_EXPANSION_QUAD_DENOMINATOR,
@@ -56,7 +57,7 @@ def make_copy_step(
     src_addr_end: int,
     bytes_left: int,
     from_tx: bool,
-    rw_counter: int,
+    rw_dictionary: RWDictionary,
     program_counter: int,
     stack_pointer: int,
     memory_size: int,
@@ -73,7 +74,7 @@ def make_copy_step(
     )
     step = StepState(
         execution_state=ExecutionState.CopyToMemory,
-        rw_counter=rw_counter,
+        rw_counter=rw_dictionary.rw_counter,
         call_id=1,
         is_root=from_tx,
         program_counter=program_counter,
@@ -84,42 +85,14 @@ def make_copy_step(
         aux_data=aux_data,
     )
 
-    rws = []
     num_bytes = min(MAX_COPY_BYTES, bytes_left)
     for i in range(num_bytes):
         byte = buffer_map[src_addr + i] if src_addr + i < src_addr_end else 0
         if not from_tx and src_addr + i < src_addr_end:
-            rws.append(
-                (
-                    rw_counter,
-                    RW.Read,
-                    RWTableTag.Memory,
-                    CALL_ID,
-                    src_addr + i,
-                    0,
-                    byte,
-                    0,
-                    0,
-                    0,
-                )
-            )
-            rw_counter += 1
-        rws.append(
-            (
-                rw_counter,
-                RW.Write,
-                RWTableTag.Memory,
-                CALL_ID,
-                dst_addr + i,
-                0,
-                byte,
-                0,
-                0,
-                0,
-            )
-        )
-        rw_counter += 1
-    return step, rws
+            rw_dictionary.memory_read(CALL_ID, src_addr + i, byte)
+        rw_dictionary.memory_write(CALL_ID, dst_addr + i, byte)
+
+    return step
 
 
 def make_copy_steps(
@@ -129,28 +102,26 @@ def make_copy_steps(
     dst_addr: int,
     length: int,
     from_tx: bool,
-    rw_counter: int,
+    rw_dictionary: RWDictionary,
     program_counter: int,
     stack_pointer: int,
     memory_size: int,
     gas_left: int,
     code_source: RLC,
-) -> Tuple[Sequence[StepState], Sequence[RW]]:
+) -> Sequence[StepState]:
     buffer_addr_end = buffer_addr + len(buffer)
     buffer_map = dict(zip(range(buffer_addr, buffer_addr_end), buffer))
     steps = []
-    rws = []
     bytes_left = length
     while bytes_left > 0:
-        curr_rw_counter = rws[-1][0] + 1 if rws else rw_counter
-        new_step, new_rws = make_copy_step(
+        new_step = make_copy_step(
             buffer_map,
             src_addr,
             dst_addr,
             buffer_addr_end,
             bytes_left,
             from_tx,
-            curr_rw_counter,
+            rw_dictionary,
             program_counter,
             stack_pointer,
             memory_size,
@@ -158,11 +129,10 @@ def make_copy_steps(
             code_source,
         )
         steps.append(new_step)
-        rws.extend(new_rws)
         src_addr += MAX_COPY_BYTES
         dst_addr += MAX_COPY_BYTES
         bytes_left -= MAX_COPY_BYTES
-    return steps, rws
+    return steps
 
 
 def memory_gas_cost(memory_word_size: int) -> int:
@@ -190,7 +160,7 @@ def test_calldatacopy(
     from_tx: bool,
     call_data_offset: int,
 ):
-    randomness = rand_fp()
+    randomness = rand_fq()
 
     bytecode = Bytecode().calldatacopy(memory_offset, data_offset, length)
     bytecode_hash = RLC(bytecode.hash(), randomness)
@@ -229,50 +199,27 @@ def test_calldatacopy(
             gas_left=gas,
         )
     ]
-    rws = [
-        (1, RW.Read, RWTableTag.Stack, CALL_ID, 1021, 0, memory_offset_rlc, 0, 0, 0),
-        (2, RW.Read, RWTableTag.Stack, CALL_ID, 1022, 0, data_offset_rlc, 0, 0, 0),
-        (3, RW.Read, RWTableTag.Stack, CALL_ID, 1023, 0, length_rlc, 0, 0, 0),
-        (4, RW.Read, RWTableTag.CallContext, CALL_ID, CallContextFieldTag.TxId, 0, TX_ID, 0, 0, 0),
-    ]
-    if not from_tx:
-        rws.append(
-            (
-                5,
-                RW.Read,
-                RWTableTag.CallContext,
-                CALL_ID,
-                CallContextFieldTag.CallDataLength,
-                0,
-                call_data_length,
-                0,
-                0,
-                0,
-            )
-        )
-        rws.append(
-            (
-                6,
-                RW.Read,
-                RWTableTag.CallContext,
-                CALL_ID,
-                CallContextFieldTag.CallDataOffset,
-                0,
-                call_data_offset,
-                0,
-                0,
-                0,
-            )
-        )
 
-    new_steps, new_rws = make_copy_steps(
+    rw_dictionary = (
+        RWDictionary(1)
+        .stack_read(CALL_ID, 1021, memory_offset_rlc)
+        .stack_read(CALL_ID, 1022, data_offset_rlc)
+        .stack_read(CALL_ID, 1023, length_rlc)
+        .call_context_read(CALL_ID, CallContextFieldTag.TxId, TX_ID)
+    )
+    if not from_tx:
+        rw_dictionary.call_context_read(
+            CALL_ID, CallContextFieldTag.CallDataLength, call_data_length
+        ).call_context_read(CALL_ID, CallContextFieldTag.CallDataOffset, call_data_offset)
+
+    new_steps = make_copy_steps(
         call_data,
         call_data_offset,
         call_data_offset + data_offset,
         memory_offset,
         length,
         from_tx,
-        rw_counter=rws[-1][0] + 1,
+        rw_dictionary=rw_dictionary,
         program_counter=100,
         memory_size=next_memory_word_size,
         stack_pointer=1024,
@@ -280,12 +227,11 @@ def test_calldatacopy(
         code_source=bytecode_hash,
     )
     steps.extend(new_steps)
-    rws.extend(new_rws)
 
     steps.append(
         StepState(
             execution_state=ExecutionState.STOP,
-            rw_counter=rws[-1][0] + 1,
+            rw_counter=rw_dictionary.rw_counter,
             call_id=CALL_ID,
             is_root=from_tx,
             is_create=False,
@@ -301,7 +247,7 @@ def test_calldatacopy(
         block_table=set(Block().table_assignments(randomness)),
         tx_table=set(tx.table_assignments(randomness)),
         bytecode_table=set(bytecode.table_assignments(randomness)),
-        rw_table=set(rws),
+        rw_table=set(rw_dictionary.rws),
     )
 
     verify_steps(
