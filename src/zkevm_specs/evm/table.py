@@ -232,7 +232,7 @@ class TxLogFieldTag(IntEnum):
     # The following are write-only data inside a transaction, they will be written in
     # State circuit directly.
     Address = auto()  # address of the contract that generated the event
-    Topics = auto()  # list of topics provided by the contract
+    Topic = auto()  # list of topics provided by the contract
     Data = auto()  # log data in bytes
 
 

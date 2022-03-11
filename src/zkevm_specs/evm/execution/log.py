@@ -29,7 +29,7 @@ def log(instruction: Instruction):
         if i < topic_count:
             is_topic_zeros[i] = 0
             topic = instruction.stack_pop()
-            instruction.constrain_equal(topic, instruction.tx_log_lookup(TxLogFieldTag.Topics, i))
+            instruction.constrain_equal(topic, instruction.tx_log_lookup(TxLogFieldTag.Topic, i))
 
     # TOPIC_COUNT == Non zero topic count
     assert sum(is_topic_zeros) == 4 - topic_count
@@ -63,5 +63,5 @@ def log(instruction: Instruction):
         state_write_counter=Transition.delta(1),
         dynamic_gas_cost=dynamic_gas,
         memory_size=Transition.to(next_memory_size),
-        log_index=Transition.delta(1),
+        log_id=Transition.delta(1),
     )

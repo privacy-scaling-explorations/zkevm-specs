@@ -60,7 +60,7 @@ class StepState:
         gas_left: int = 0,
         memory_size: int = 0,
         state_write_counter: int = 0,
-        log_index: int = 0,
+        log_id: int = 0,
         aux_data: Any = None,
     ) -> None:
         self.execution_state = execution_state
@@ -74,7 +74,7 @@ class StepState:
         self.gas_left = FQ(gas_left)
         self.memory_size = FQ(memory_size)
         self.state_write_counter = FQ(state_write_counter)
-        self.log_index = log_index
+        self.log_id = log_id
         self.aux_data = aux_data
 
 

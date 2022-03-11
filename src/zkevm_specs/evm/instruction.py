@@ -168,7 +168,7 @@ class Instruction:
                 "gas_left",
                 "memory_size",
                 "state_write_counter",
-                "log_index",
+                "log_id",
             ]
         )
 
@@ -248,7 +248,7 @@ class Instruction:
             gas_left=Transition.delta(-gas_cost),
             memory_size=memory_size,
             state_write_counter=state_write_counter,
-            log_index=log_index,
+            log_id=log_id,
             # Always stay same
             call_id=Transition.same(),
             is_root=Transition.same(),
@@ -391,7 +391,6 @@ class Instruction:
     def tx_log_lookup(self, field_tag: TxContextFieldTag, index: int = 0) -> Union[int, RLC]:
         # evm only write tx log
         return self.rw_lookup(RW.Write, RWTableTag.TxLog, [self.curr.log_index, index, field_tag])[-4]
-
 
     def bytecode_lookup(
         self, bytecode_hash: Expression, index: Expression, is_code: bool

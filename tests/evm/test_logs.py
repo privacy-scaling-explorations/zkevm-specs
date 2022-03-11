@@ -68,7 +68,7 @@ def make_log_copy_step(
     gas_left: int,
     code_source: RLC,
     state_write_counter: int,
-    log_index: int,
+    log_id: int,
 ) -> Tuple[StepState, Sequence[RW]]:
     aux_data = CopyToLogAuxData(
         src_addr=src_addr,
@@ -84,7 +84,7 @@ def make_log_copy_step(
         gas_left=gas_left,
         memory_size=memory_size,
         code_source=code_source,
-        log_index=log_index,
+        log_id=log_id,
         state_write_counter=state_write_counter,
         aux_data=aux_data,
     )
@@ -114,7 +114,7 @@ def make_log_copy_step(
                     rw_counter,
                     RW.Write,
                     RWTableTag.TxLog,
-                    log_index,
+                    log_id,
                     i,
                     TxLogFieldTag.Data,
                     byte,
@@ -139,7 +139,7 @@ def make_log_copy_steps(
     gas_left: int,
     code_source: RLC,
     state_write_counter: int,
-    log_index: int,
+    log_id: int,
 ) -> Tuple[Sequence[StepState], Sequence[RW]]:
     buffer_addr_end = buffer_addr + len(buffer)
     buffer_map = dict(zip(range(buffer_addr, buffer_addr_end), buffer))
@@ -160,7 +160,7 @@ def make_log_copy_steps(
             gas_left,
             code_source,
             state_write_counter,
-            log_index,
+            log_id,
         )
         steps.append(new_step)
         rws.extend(new_rws)
@@ -195,7 +195,7 @@ def test_logs(topics: list, mstart: U64, msize: U64):
             stack_pointer=1015,
             memory_size=mstart,
             gas_left=dynamic_gas,
-            log_index=0,
+            log_id=0,
             state_write_counter=0,
         )
     ]
@@ -254,7 +254,7 @@ def test_logs(topics: list, mstart: U64, msize: U64):
         gas_left=0,
         code_source=bytecode_hash,
         state_write_counter=1,
-        log_index=1,
+        log_id=1,
     )
     # append memory & log steps and rows
     steps.extend(new_steps)
@@ -273,7 +273,7 @@ def test_logs(topics: list, mstart: U64, msize: U64):
             memory_size=next_memory_size,
             gas_left=0,
             state_write_counter=1,
-            log_index=1,
+            log_id=1,
         )
     )
 
@@ -305,7 +305,7 @@ def construct_topic_rws(gc: U256, sp: int, topics: list, randomness: int):
                 RWTableTag.TxLog,
                 0,
                 i,
-                TxLogFieldTag.Topics,
+                TxLogFieldTag.Topic,
                 RLC(topics[i], randomness, 32),
                 0,
                 0,
