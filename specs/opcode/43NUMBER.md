@@ -6,7 +6,7 @@ The `NUMBER` opcode get the block number from the current block context, and the
 
 ## EVM behavior
 
-The `NUMBER` opcode loads a `number` (32 bytes of data) from the current block context, and then
+The `NUMBER` opcode loads a `number` (8 bytes of data) from the current block context, and then
 pushes it onto the stack.
 
 ## Circuit behavior

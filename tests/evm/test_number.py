@@ -9,10 +9,10 @@ from zkevm_specs.evm import (
     Bytecode,
     RWDictionary,
 )
-from zkevm_specs.util import rand_fq, RLC, U256, rand_word
+from zkevm_specs.util import rand_fq, RLC, U256, rand_range
 
 
-TESTING_DATA = (0, 1, 2**256 - 1, rand_word())
+TESTING_DATA = (0, 1, 2**63 - 1, rand_range(2**63))
 
 
 @pytest.mark.parametrize("number", TESTING_DATA)

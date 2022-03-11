@@ -1,3 +1,4 @@
+from ...util.param import N_BYTES_U64
 from ..instruction import Instruction, Transition
 from ..table import BlockContextFieldTag
 from ..opcode import Opcode
@@ -10,7 +11,7 @@ def timestamp(instruction: Instruction):
     # check block table for timestamp
     instruction.constrain_equal(
         instruction.block_context_lookup(BlockContextFieldTag.Timestamp),
-        instruction.rlc_to_fq_exact(instruction.stack_push(), 8),
+        instruction.rlc_to_fq_exact(instruction.stack_push(), N_BYTES_U64),
     )
 
     instruction.step_state_transition_in_same_context(

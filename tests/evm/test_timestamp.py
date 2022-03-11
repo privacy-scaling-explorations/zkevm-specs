@@ -11,7 +11,7 @@ from zkevm_specs.evm import (
 )
 from zkevm_specs.util import rand_range, rand_fq, RLC, U64
 
-TESTING_DATA = (0, 1, 2**64 - 1, rand_range(2**64))
+TESTING_DATA = (0, 1, 2**63 - 1, rand_range(2**63))
 
 
 @pytest.mark.parametrize("timestamp", TESTING_DATA)
