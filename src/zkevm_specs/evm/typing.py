@@ -28,7 +28,7 @@ class Block:
 
     # For other fields, we follow the size defined in yellow paper for now.
     # as described in https://eips.ethereum.org/EIPS/eip-1985,
-    # block number, timestamp is a range between 0 and 0x7fffffffffffffff
+    # block number and timestamp are inside a range between 0 and 0x7fffffffffffffff
     # (2**63 - 1, 9223372036854775807).
     number: U64
     timestamp: U64
