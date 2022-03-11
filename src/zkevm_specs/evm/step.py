@@ -1,5 +1,6 @@
 from typing import Any
 from .execution_state import ExecutionState
+from .typing import Bytecode
 from ..util import FQ, RLC
 
 
@@ -120,3 +121,25 @@ class CopyToLogAuxData:
         self.bytes_left = FQ(bytes_left)
         self.src_addr_end = FQ(src_addr_end)
         self.is_persistent = FQ(is_persistent)
+
+
+class CopyCodeToMemoryAuxData:
+    src_addr: FQ
+    dst_addr: FQ
+    bytes_left: FQ
+    src_addr_end: FQ
+    code: Bytecode
+
+    def __init__(
+        self,
+        src_addr: int,
+        dst_addr: int,
+        bytes_left: int,
+        src_addr_end: int,
+        code: Bytecode,
+    ):
+        self.src_addr = FQ(src_addr)
+        self.dst_addr = FQ(dst_addr)
+        self.bytes_left = FQ(bytes_left)
+        self.src_addr_end = FQ(src_addr_end)
+        self.code = code
