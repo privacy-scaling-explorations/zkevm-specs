@@ -611,7 +611,7 @@ class Instruction:
             value=FQ(1),
             reversion_info=reversion_info,
         )
-        return row.value.expr() - row.value_prev.expr()
+        return row.value_prev.expr()
 
     def add_account_storage_to_access_list(
         self,
@@ -628,7 +628,7 @@ class Instruction:
             value=FQ(1),
             reversion_info=reversion_info,
         )
-        return row.value.expr() - row.value_prev.expr()
+        return row.value_prev.expr()
 
     def transfer_with_gas_fee(
         self,
