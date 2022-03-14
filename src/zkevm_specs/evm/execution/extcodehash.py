@@ -21,11 +21,13 @@ def extcodehash(instruction: Instruction):
     is_empty = (
         instruction.is_zero(nonce)
         * instruction.is_zero(balance)
-        * instruction.is_equal(code_hash, instruction.rlc_encode(EMPTY_CODE_HASH))
+        * instruction.is_equal(
+            code_hash, instruction.rlc_encode(EMPTY_CODE_HASH.to_bytes(64, "little"))
+        )
     )
 
     instruction.constrain_equal(
-        instruction.select(is_empty, FQ(0), code_hash),
+        instruction.select(is_empty, FQ(0), code_hash.value),
         instruction.stack_push(),
     )
 
@@ -34,5 +36,5 @@ def extcodehash(instruction: Instruction):
         rw_counter=Transition.delta(7),
         program_counter=Transition.delta(1),
         stack_pointer=Transition.delta(0),
-        dynamic_gas_cost=is_cold * EXTRA_GAS_COST_ACCOUNT_COLD_ACCESS,
+        dynamic_gas_cost=instruction.select(is_cold, FQ(EXTRA_GAS_COST_ACCOUNT_COLD_ACCESS), FQ(0)),
     )
