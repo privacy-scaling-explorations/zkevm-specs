@@ -112,6 +112,34 @@ def call(instruction: Instruction):
     if callee_address in list(PrecompiledAddress):
         # TODO: Handle precompile
         raise NotImplementedError
+    elif is_empty_code_hash == FQ(1):
+        # Make sure call is successful
+        instruction.constrain_equal(is_success, FQ(1))
+
+        # Empty return_data
+        for (field_tag, expected_value) in [
+            (CallContextFieldTag.LastCalleeId, FQ(0)),
+            (CallContextFieldTag.LastCalleeReturnDataOffset, FQ(0)),
+            (CallContextFieldTag.LastCalleeReturnDataLength, FQ(0)),
+        ]:
+            instruction.constrain_equal(
+                instruction.call_context_lookup(field_tag, RW.Write),
+                expected_value,
+            )
+
+        instruction.constrain_step_state_transition(
+            rw_counter=Transition.delta(24),
+            program_counter=Transition.delta(1),
+            stack_pointer=Transition.delta(6),
+            gas_left=Transition.delta(-gas_cost),
+            memory_size=Transition.to(next_memory_size),
+            state_write_counter=Transition.delta(3),
+            # Always stay same
+            call_id=Transition.same(),
+            is_root=Transition.same(),
+            is_create=Transition.same(),
+            code_source=Transition.same(),
+        )
     else:
         # Save caller's call state
         for (field_tag, expected_value) in [

@@ -14,6 +14,7 @@ from ..util import (
     keccak256,
     GAS_COST_TX_CALL_DATA_PER_NON_ZERO_BYTE,
     GAS_COST_TX_CALL_DATA_PER_ZERO_BYTE,
+    EMPTY_CODE_HASH,
 )
 from .table import (
     RW,
@@ -300,6 +301,9 @@ class Account:
 
     def storage_trie_hash(self) -> U256:
         raise NotImplementedError("Trie has not been implemented")
+
+    def is_empty(self) -> bool:
+        return self.nonce == 0 and self.balance == 0 and self.code_hash() == EMPTY_CODE_HASH
 
 
 class RWDictionary:
