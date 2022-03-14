@@ -2,17 +2,17 @@ from ..instruction import Instruction, Transition
 from ..table import CallContextFieldTag, AccountFieldTag
 from ..opcode import Opcode
 from ...util.param import EXTRA_GAS_COST_ACCOUNT_COLD_ACCESS, GAS_COST_WARM_ACCESS
-from ...util import keccak256
 from ...util.hash import EMPTY_CODE_HASH
+from ...util import FQ
 
 
 def extcodehash(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
 
-    address = instruction.stack_pop()
+    address = instruction.rlc_to_fq_exact(instruction.stack_pop(), 20)
 
-    call_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
-    is_cold = instruction.add_account_to_access_list(call_id, address)
+    tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
+    is_cold = instruction.add_account_to_access_list(tx_id, address)
 
     nonce = instruction.account_read(address, AccountFieldTag.Nonce)
     balance = instruction.account_read(address, AccountFieldTag.Balance)
@@ -21,11 +21,11 @@ def extcodehash(instruction: Instruction):
     is_empty = (
         instruction.is_zero(nonce)
         * instruction.is_zero(balance)
-        * instruction.is_zero(code_hash - EMPTY_CODE_HASH)
+        * instruction.is_equal(code_hash, instruction.rlc_encode(EMPTY_CODE_HASH))
     )
 
     instruction.constrain_equal(
-        instruction.select(not instruction.is_zero(is_empty), 0, code_hash),
+        instruction.select(is_empty, FQ(0), code_hash),
         instruction.stack_push(),
     )
 

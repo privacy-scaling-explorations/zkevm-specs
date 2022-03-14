@@ -11,12 +11,13 @@ from zkevm_specs.evm import (
     Bytecode,
     CallContextFieldTag,
     AccountFieldTag,
+    RWDictionary,
 )
 from zkevm_specs.util import (
     rand_address,
     rand_range,
     rand_word,
-    rand_fp,
+    rand_fq,
     U256,
     U160,
     keccak256,
@@ -32,25 +33,32 @@ TESTING_DATA = [
     (0x30000, 0, 0, bytes(), False),  # cold empty account
     (0x30000, 1, 200, bytes([10, 40]), True),  # warm non-empty account
     (0x30000, 1, 200, bytes([10, 10]), False),  # cold non-empty account
+    (0x30000, 1, 0, bytes(), False),  # non-empty account because of nonce
     (rand_address(), rand_word(), rand_word(), rand_bytes(100), rand_range(2) == 0),
 ]
 
 
 @pytest.mark.parametrize("address, nonce, balance, code, is_warm", TESTING_DATA)
 def test_extcodehash(address: U160, nonce: U256, balance: U256, code: bytes, is_warm: bool):
-    randomness = rand_fp()
+    randomness = rand_fq()
 
     code_hash = int.from_bytes(keccak256(code), "big")
     result = 0 if (nonce == 0 and balance == 0 and code_hash == EMPTY_CODE_HASH) else code_hash
-    rw_table = {
-        (0, RW.Read, RWTableTag.Stack, 1, 1023, 0, address, 0, 0, 0),
-        (1, RW.Read, RWTableTag.CallContext, 1, CallContextFieldTag.TxId, 0, 1, 0, 0, 0),
-        (2, RW.Write, RWTableTag.TxAccessListAccount, 1, address, 0, 1, int(is_warm), 0, 0),
-        (3, RW.Read, RWTableTag.Account, address, AccountFieldTag.Nonce, 0, nonce, 0, 0, 0),
-        (4, RW.Read, RWTableTag.Account, address, AccountFieldTag.Balance, 0, balance, 0, 0, 0),
-        (5, RW.Read, RWTableTag.Account, address, AccountFieldTag.CodeHash, 0, code_hash, 0, 0, 0),
-        (6, RW.Write, RWTableTag.Stack, 1, 1023, 0, result, 0, 0, 0),
-    }
+
+    tx_id = 1
+    call_id = 1
+
+    rw_table = set(
+        RWDictionary(0)
+        .stack_read(call_id, 1023, RLC(address, randomness))
+        .call_context_read(tx_id, CallContextFieldTag.TxId, tx_id)
+        .tx_access_list_account_write(tx_id, address, True, is_warm)
+        .account_read(address, AccountFieldTag.Nonce, RLC(nonce, randomness))
+        .account_read(address, AccountFieldTag.Balance, RLC(balance, randomness))
+        .account_read(address, AccountFieldTag.CodeHash, RLC(code_hash, randomness))
+        .stack_write(call_id, 1023, RLC(result, randomness))
+        .rws
+    )
 
     bytecode = Bytecode().extcodehash()
     tables = Tables(
