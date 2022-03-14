@@ -1,4 +1,4 @@
-# MLOAD & MSTORE & MSTORE8 op code
+# MLOAD & MSTORE & MSTORE8 opcodes
 
 ## Procedure
 

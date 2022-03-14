@@ -1,4 +1,4 @@
-# BYTE op code
+# BYTE opcode
 
 ## Procedure
 

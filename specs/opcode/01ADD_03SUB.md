@@ -1,4 +1,4 @@
-# ADD and SUB op code
+# ADD and SUB opcodes
 
 ## Procedure
 

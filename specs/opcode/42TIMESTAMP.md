@@ -1,4 +1,4 @@
-# Timestamp op code
+# TIMESTAMP opcode
 
 ## Procedure
 

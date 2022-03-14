@@ -1,4 +1,4 @@
-# Selfbalance op code
+# SELFBALANCE opcode
 
 ## Procedure
 

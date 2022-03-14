@@ -1,4 +1,4 @@
-# AND, OR, XOR op code
+# AND, OR, XOR opcodes
 
 ## Procedure
 

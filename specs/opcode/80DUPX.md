@@ -1,4 +1,4 @@
-# DUPX op code
+# DUPX opcode
 
 ## Procedure
 

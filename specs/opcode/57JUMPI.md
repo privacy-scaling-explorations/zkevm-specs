@@ -1,4 +1,4 @@
-# JUMPI code
+# JUMPI opcode
 
 ## Procedure
 

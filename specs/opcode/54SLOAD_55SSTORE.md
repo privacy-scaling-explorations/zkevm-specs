@@ -1,4 +1,4 @@
-# SLOAD & SSTORE op code
+# SLOAD & SSTORE opcodes
 
 ## Variables definition
 

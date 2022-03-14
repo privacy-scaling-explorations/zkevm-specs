@@ -301,7 +301,7 @@ class Instruction:
 
         sum_bytes = sum_lo.to_bytes(16, "little") + sum_hi.to_bytes(16, "little")
 
-        return RLC(sum_bytes, self.randomness), FQ(carry_hi)
+        return self.rlc_encode(sum_bytes), FQ(carry_hi)
 
     def sub_word(self, minuend: RLC, subtrahend: RLC) -> Tuple[RLC, FQ]:
         minuend_lo, minuend_hi = self.word_to_lo_hi(minuend)
@@ -314,7 +314,7 @@ class Instruction:
 
         diff_bytes = diff_lo.n.to_bytes(16, "little") + diff_hi.n.to_bytes(16, "little")
 
-        return RLC(diff_bytes, self.randomness), FQ(borrow_hi)
+        return self.rlc_encode(diff_bytes), FQ(borrow_hi)
 
     def mul_word_by_u64(self, multiplicand: RLC, multiplier: Expression) -> Tuple[RLC, FQ]:
         multiplicand_lo, multiplicand_hi = self.word_to_lo_hi(multiplicand)
@@ -326,7 +326,7 @@ class Instruction:
 
         product_bytes = product_lo.to_bytes(16, "little") + product_hi.to_bytes(16, "little")
 
-        return RLC(product_bytes, self.randomness), FQ(quotient_hi)
+        return self.rlc_encode(product_bytes), FQ(quotient_hi)
 
     def rlc_to_fq_unchecked(self, word: RLC, n_bytes: int) -> Tuple[FQ, FQ]:
         return self.bytes_to_fq(word.le_bytes[:n_bytes]), self.is_zero(
@@ -346,6 +346,9 @@ class Instruction:
     def bytes_to_fq(self, value: bytes) -> FQ:
         assert len(value) <= MAX_N_BYTES, "Too many bytes to composite an integer in field"
         return FQ(int.from_bytes(value, "little"))
+
+    def rlc_encode(self, value: bytes) -> RLC:
+        return RLC(value, self.randomness)
 
     def range_lookup(self, value: Expression, range: int):
         self.fixed_lookup(FixedTableTag.range_table_tag(range), value)

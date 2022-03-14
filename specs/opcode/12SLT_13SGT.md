@@ -1,4 +1,4 @@
-# SLT & SGT opcode
+# SLT & SGT opcodes
 
 ## Procedure
 

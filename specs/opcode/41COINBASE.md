@@ -1,4 +1,4 @@
-# Coinbase op code
+# COINBASE op code
 
 ## Procedure
 
