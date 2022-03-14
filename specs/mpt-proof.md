@@ -162,7 +162,7 @@ To integrate `*_advices` RLC into the computation of the whole branch RLC, we
 just need to compute `mult * *_advices_RLC` and add this to the current RLC value.
 
 The layout then be simply:
-`s_rlp1, s_rlp2, s_child_rlc, c_rlp1, c_rlp2, c_child_rlc`
+`s_rlp1, s_rlp2, s_node_rlc, c_rlp1, c_rlp2, c_node_rlc`
 
 #### Key RLC in branch
 
@@ -177,25 +177,25 @@ In the example branch from the picture, `modified_node` would be 11.
 position 11, otherwise 0.
 
 Let's see a branch layout where we replace 32 columns of `s_advices` with
-one column `s_child_rlc` and 32 columns of `c_advices` with
-one column `c_child_rlc` (this simplification will most likely be implemented):
+one column `s_node_rlc` and 32 columns of `c_advices` with
+one column `c_node_rlc` (this simplification will most likely be implemented):
 
 ```
-s_rlp1_0, s_rlp2_0, s_child0_rlc, c_rlp1_0, c_rlp2_0, c_child0_rlc
-s_rlp1_1, s_rlp2_1, s_child1_rlc, c_rlp1_1, c_rlp2_1, c_child1_rlc
+s_rlp1_0, s_rlp2_0, s_node0_rlc, c_rlp1_0, c_rlp2_0, c_node0_rlc
+s_rlp1_1, s_rlp2_1, s_node1_rlc, c_rlp1_1, c_rlp2_1, c_node1_rlc
 ...
-s_rlp1_15, s_rlp2_15, s_child15_rlc, c_rlp1_15, c_rlp2_15, c_child15_rlc
+s_rlp1_15, s_rlp2_15, s_node15_rlc, c_rlp1_15, c_rlp2_15, c_node15_rlc
 ```
 
 With the three `modified_node` related columns:
 
 ```
-s_rlp1_0, s_rlp2_0, s_child0_rlc, c_rlp1_0, c_rlp2_0, c_child0_rlc, 0 (node_index), 0 (is_modified), 11 (modified_node)
-s_rlp1_1, s_rlp2_1, s_child1_rlc, c_rlp1_1, c_rlp2_1, c_child1_rlc, 1 (node_index), 0 (is_modified), 11 (modified_node)
+s_rlp1_0, s_rlp2_0, s_node0_rlc, c_rlp1_0, c_rlp2_0, c_node0_rlc, 0 (node_index), 0 (is_modified), 11 (modified_node)
+s_rlp1_1, s_rlp2_1, s_node1_rlc, c_rlp1_1, c_rlp2_1, c_node1_rlc, 1 (node_index), 0 (is_modified), 11 (modified_node)
 ...
-s_rlp1_11, s_rlp2_11, s_child11_rlc, c_rlp1_11, c_rlp2_11, c_child11_rlc, 11 (node_index), 1 (is_modified), 11 (modified_node)
+s_rlp1_11, s_rlp2_11, s_node11_rlc, c_rlp1_11, c_rlp2_11, c_node11_rlc, 11 (node_index), 1 (is_modified), 11 (modified_node)
 ...
-s_rlp1_15, s_rlp2_15, s_child15_rlc, c_rlp1_15, c_rlp2_15, c_child15_rlc, 15 (node_index), 0 (is_modified), 11 (modified_node)
+s_rlp1_15, s_rlp2_15, s_node15_rlc, c_rlp1_15, c_rlp2_15, c_node15_rlc, 15 (node_index), 0 (is_modified), 11 (modified_node)
 ```
 
 While navigating through branches, key RLC is being computed in the last branch child
@@ -308,9 +308,6 @@ using a lookup which takes as an input:
 - Random Linear Combination (RLC) of the branch
 - parent branch `s_advices/c_advices` RLC at `is_modified` position
 
-Currently, instead of `s_advices/c_advices` RLC, four columns (bytes into words)
-are used: `s_keccak/c_keccak` (to be fixed).
-
 Hash lookup looks like (for S):
 `lookup(S branch RLC, S branch length, s_advices RLC)`.
 
@@ -325,19 +322,19 @@ Let's say we have a branch where `modified_node = 1`. For clarity, let's
 denote `s_rlp1, s_rlp2, c_rlp1, c_rlp2` simply with `_`.
 
 ```
-_, _, b0_s_child0_rlc, _, _, b0_c_child0_rlc
-_, _, b0_s_child1_rlc, _, _, b0_c_child1_rlc
+_, _, b0_s_node0_rlc, _, _, b0_c_node0_rlc
+_, _, b0_s_node1_rlc, _, _, b0_c_node1_rlc
 ...
-_, _, b0_s_child15_rlc, _, _, b0_c_child15_rlc
+_, _, b0_s_node15_rlc, _, _, b0_c_node15_rlc
 ```
 
 Let's say the next element in a proof is another branch:
 
 ```
-_, _, b1_s_child0_rlc, _, _, b1_c_child0_rlc
-_, _, b1_s_child1_rlc, _, _, b1_c_child1_rlc
+_, _, b1_s_node0_rlc, _, _, b1_c_node0_rlc
+_, _, b1_s_node1_rlc, _, _, b1_c_node1_rlc
 ...
-_, _, b1_s_child15_rlc, _, _, b1_c_child15_rlc
+_, _, b1_s_node15_rlc, _, _, b1_c_node15_rlc
 ```
 
 The hash of this second branch is in the parent branch at position 1.
@@ -346,52 +343,49 @@ Let `b1_s` be the RLC of S part of this second branch and
 Then:
 
 ```
-hash(b1_s) = b0_s_child1_rlc
-hash(b1_c) = b0_c_child1_rlc
+hash(b1_s) = b0_s_node1_rlc
+hash(b1_c) = b0_c_node1_rlc
 ```
 
 Hash lookup like is needed (for S):
-`lookup(b1_s, len(b1_s), b0_s_child1_rlc)`
+`lookup(b1_s, len(b1_s), b0_s_node1_rlc)`
 
-We need a rotation to access `b0_s_child1_rlc`, but we cannot fix the rotation
+We need a rotation to access `b0_s_node1_rlc`, but we cannot fix the rotation
 as the `modified_node` can be any value between 0 and 15 - any of the following
-values can appear to be needed: ` b0_s_child0_rlc, b0_s_child1_rlc, ..., b0_s_child15_rlc`.
+values can appear to be needed: ` b0_s_node0_rlc, b0_s_node1_rlc, ..., b0_s_node15_rlc`.
 
 For this reason there are two additional columns in all 16 branch children rows
-that specify the `modified_node` RLC: `modified_node_s_rlc` and `modified_node_c_rlc`.
+that specify the `modified_node` RLC: `s_mod_node_hash_rlc` and `c_mod_node_hash_rlc`.
 
 ```
-_, _, b0_s_child0_rlc, _, _, b0_c_child0_rlc, b0_modified_node_s_rlc, b0_modified_node_c_rlc
-_, _, b0_s_child1_rlc, _, _, b0_c_child1_rlc, b0_modified_node_s_rlc, b0_modified_node_c_rlc
+_, _, b0_s_node0_rlc, _, _, b0_c_node0_rlc, b0_s_mod_node_hash_rlc, b0_c_mod_node_hash_rlc
+_, _, b0_s_node1_rlc, _, _, b0_c_node1_rlc, b0_s_mod_node_hash_rlc, b0_c_mod_node_hash_rlc
 ...
-_, _, b0_s_child15_rlc, _, _, b0_c_child15_rlc, b0_modified_node_s_rlc, b0_modified_node_c_rlc
+_, _, b0_s_node15_rlc, _, _, b0_c_node15_rlc, b0_s_mod_node_hash_rlc, b0_c_mod_node_hash_rlc
 ```
 
-Now, we can rotate back to any of the branch children rows of `b0` to
+Now, we can rotate back to any of the branch noderen rows of `b0` to
 access the RLC of the modified node.
-
-Note: currently, the implementation uses `s_keccak/c_keccak` columns
-instead of `modified_node_s_rlc` and `modified_node_c_rlc`.
 
 ##### Constraints: node hash in branch rows
 
-We need to make sure `modified_node_s_rlc` and `modified_node_c_rlc`
+We need to make sure `s_mod_node_hash_rlc` and `c_mod_node_hash_rlc`
 is the same in all branch children rows.
 
 ```
-modified_node_s_rlc_cur = modified_node_s_rlc_prev
-modified_node_c_rlc_cur = modified_node_c_rlc_prev
+s_mod_node_hash_rlc_cur = s_mod_node_hash_rlc_prev
+c_mod_node_hash_rlc_cur = c_mod_node_hash_rlc_prev
 ```
 
 ##### Constraint: RLC of branch child at modified_node
 
-At `modified_node` position, `modified_node_s_rlc` and `modified_node_c_rlc`
-need to be the RLC of `s_advices` and `c_advices` of the node that correspond
+At `modified_node` position, `s_mod_node_hash_rlc` and `c_mod_node_hash_rlc`
+need to be the RLC of `s_advices` and `c_advices` of the node that corresponds
 to the key (modified node).
 
 ```
-rlc(s_advices) = modified_node_s_rlc at position modified_node
-rlc(c_advices) = modified_node_c_rlc at position modified_node
+rlc(s_advices) = s_mod_node_hash_rlc at position modified_node
+rlc(c_advices) = c_mod_node_hash_rlc at position modified_node
 ```
 
 ##### Constraint: no change except at is_modified position
@@ -399,7 +393,7 @@ rlc(c_advices) = modified_node_c_rlc at position modified_node
 In all branch rows, except at `modified_node` position, it needs to hold:
 
 ```
-s_child_rlc = c_child_rlc
+s_node_rlc = c_node_rlc
 ```
 
 With current implementation:
@@ -483,6 +477,94 @@ For example, in the case below, the nibble is 0 (16 - 16):
 
 In this case special witnesses for nibbles are not needed.
 
+#### Constraints
+
+##### Constraint: selectors
+
+There are six possible scenarios:
+
+- extension node key contains only one nibble and `modified_node` needs to be
+  multiplied by `16` for `key RLC`
+- extension node key contains only one nibble and `modified_node` needs to be
+  multiplied by `1` for `key RLC`
+- extension node key contains even number of nibbles and `modified_node` needs to be
+  multiplied by `16` for `key RLC`
+- extension node key contains even number of nibbles and `modified_node` needs to be
+  multiplied by `1` for `key RLC`
+- extension node key contains odd number of nibbles (and more than 1) and `modified_node` needs to be multiplied by `16` for `key RLC`
+- extension node key contains odd number of nibbles (and more than 1) and `modified_node` needs to be multiplied by `1` for `key RLC`
+
+Extension node RLP encoding needs to be differently handled in different scenarios.
+For example, in the the case of only one nibble, there is only one RLP meta byte
+(key starts already in `s_rlp2`).
+
+Key RLC information is packed together with information about number of nibbles to
+reduce the expression degree.
+
+It needs to be ensured that the selectors are boolean and their sum is `0` or `1`.
+If it is `0`, there is a regular branch. If it is `1`, there is an extension node.
+See `extension_node.rs` for the constraints.
+
+Further, there are constraints in `extension_node_key.rs` that ensure the selector
+corresponds to the actual
+
+##### Constraint: extension node RLC is properly computed
+
+Extension node RLC needs to be prperly computed for both, S and C.
+This is done by taking into account each byte of the extension node.
+The RLC is computed in two steps: the first
+step computes bytes in `s_rlp1', 's_rlp2`, `s_advices` (stored in `acc_s` column),
+the second step in `c_rlp1', 'c_rlp2`, `c_advices` (stored in `acc_c` column).
+
+First step:
+
+```
+rlc_s = s_rlp1 + s_rlp2 * r + s_advices[0] * r^2 + s_advices[1] * r^3 + ... + s_advices[31] * r^33 
+```
+
+Constraint:
+
+```
+rlc_s = acc_s
+```
+
+Second step:
+
+```
+rlc = rlc_first + c_rlp1 * r_1 + c_rlp2 * r_1^2 + c_advices[0] * r_1^3 + c_advices[1] * r_1^4 + ... + c_advices[31] * r_1^34 
+```
+
+Constraint:
+
+```
+rlc = acc_c
+```
+
+Note that not all `s_advices` are always used. In the above example, there is only
+`0, 149`. The rest of `s_advices` are 0s. To ensure `s_advices` are 0 for `i > 1`,
+`key_len_lookup` function is used (see below for a more detailed description).
+
+For S:
+`lookup(S branch RLC (retrived from the last branch children row), S branch RLC length, c_advices RLC in extension row)`.
+
+For C extension node, the RLC from the first step from S extension node row is reused.
+The second step is analogous to the S row, but uses the values from C row.
+
+##### Constraint: hash of the extension node is in the parent branch
+
+It needs to be checked that the extension node RLC is `mod_node_hash_rlc`
+in the parent branch.
+
+```
+lookup(acc_c, extension node S length, s_mod_node_hash_rlc::(rot))
+lookup(acc_c, extension node C length, c_mod_node_hash_rlc::(rot-1))
+```
+
+##### Constraint: hash of the underlying branch is in the extension node c_advices
+
+For S:
+`lookup(S branch RLC (retrived from the last branch children row), S branch length, c_advices RLC in extension row)`.
+
 ### Storage leaf
 
 There are 5 rows for a storage leaf.
@@ -497,4 +579,118 @@ ______________________________________________________________________
 `227, 161, 32, 187, 41, ..., 11`
 `225, 159, 57, 202, 166, ..., 17`
 
-## Key RLC
+## 0s in s_advices after substream ends
+
+In various cases, `s_advices` are used only to certain point. Consider the example below:
+
+```
+228, 130, 0, 149, 0, ..., 0
+```
+
+In this example:
+
+```
+s_rlp1 = 228
+s_rlp2 = 130
+s_advices[0] = 0
+s_advices[1] = 149
+s_advices[2] = 0
+...
+s_advices[31] = 0
+```
+
+To prevent attacks on RLC, it needs to be checked that `s_advices[i] = 0` for `i > 1`:
+
+```
+s_advices[2] = 0
+...
+s_advices[31] = 0
+```
+
+The length of the substream is given by `s_rlp2`, it is `2 = 130 - 128` in the above example,
+let us denote it by `len = 2`.
+
+`s_advices[i]` are checked to be bytes.
+
+Note that `(len - 1 - i) * s_advices[0] < 33 * 255` ensures `s_advices[i] = 0` for `i > len - 1`.
+
+```
+(len - 1) * s_advices[0] < 33 * 255
+(len - 2) * s_advices[1] < 33 * 255
+From now on, key_len < 0:
+(len - 3) * s_advices[2] < 33 * 255 (Note that this will be true only if s_advices[2] = 0)
+(len - 4) * s_advices[3] < 33 * 255 (Note that this will be true only if s_advices[3] = 0)
+(len - 5) * s_advices[4] < 33 * 255 (Note that this will be true only if s_advices[4] = 0)
+```
+
+That is because when `len - i` goes below 0, it becomes a huge number close to field modulus.
+Furthermore, `len` is at most 33.
+If `len - i` is multiplied by `s_advices[i]` which is at most `255`, it will still be
+bigger then `-32 * 255` which is much bigger than `33 * 255`.
+
+See `key_len_lookup` in `helpers.rs` for the implementation.
+
+## RLC multiplication factor after s_advices
+
+As we have seen above,
+in various cases, `s_advices` are used only to certain point. Consider the example below:
+
+```
+228, 130, 0, 149, 0, ..., 0
+```
+
+RLC is computed in two steps in such cases.
+The first step computes bytes in `s_rlp1', 's_rlp2`, `s_advices` (stored in `acc_s` column),
+the second step computes bytes in `c_rlp1', 'c_rlp2`, `c_advices` (stored in `acc_c` column).
+
+First step:
+
+```
+rlc_first_step = s_rlp1 + s_rlp2 * r + s_advices[0] * r^2 + s_advices[1] * r^3 + ... + s_advices[31] * r^33 
+```
+
+Constraint
+
+```
+rlc_first_step = acc_s
+```
+
+Note that the RLC is computed and assigned in the `sythesize` function, the chips then
+verify whether that the computation is correct.
+
+In the next step:
+
+```
+rlc = rlc_first + c_rlp1 * r_1 + c_rlp2 * r_1^2 + c_advices[0] * r_1^3 + c_advices[1] * r_1^4 + ... + c_advices[31] * r_1^34 
+```
+
+Constraint:
+
+```
+rlc = acc_c
+```
+
+It also needs to be checked that `r_1` corresponds to `len`:
+
+```
+r_1 = r^(len+2)
+```
+
+This is checked using a lookup into a table:
+
+```
+(RMult, 0, 1)
+(RMult, 1, r)
+(RMult, 2, r^2)
+(RMult, 3, r^3)
+...
+(RMult, 65, r^65)
+```
+
+The lookup looks like:
+
+```
+lookup(RMult, len+2, r_1)
+```
+
+See `mult_diff_lookup` in `helpers.rs` for the implementation.
