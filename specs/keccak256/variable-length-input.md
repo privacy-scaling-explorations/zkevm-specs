@@ -91,8 +91,8 @@ The Padding Region is a 136-row region.
 - `input_len` Length for correct padding
 - `acc_len` How many bytes we have processed
 - `condition_80_inv` The inverse of `input_len - acc_len` or 0.
-- `condition_01_inv` The inverse of `input_len - acc_len - 1` or 0. Only effective in last row
 - `padded_byte` Mostly the same as the original `byte` but padded
+- `is_pad_zone` A flag to define the rows that `byte` should be 0
 
 #### Checks
 
@@ -106,16 +106,17 @@ We apply two different checks on the 0~134-th rows and the 135th row.
 1. For 0-th row
    1. `input_len` is copied from the Lookup Region
    2. `acc_len` is copied from the Lookup Region
+   3. `curr.is_pad_zone === 0`
 2. For all rows
-   1. If `remaining_len` in range(135), `byte === 0`????????
+   1. If `is_pad_zone` then `byte === 0`. `is_pad_zone * byte === 0`
 3. For 0~134-th rows
    1. `next.input_len === curr.input_len`
    2. `next.acc_len === curr.acc_len + 1`
    3. Inverse check for `curr.condition_80_inv`
    4. If `curr.input_len - curr.acc_len` is 0, pad `0x80`: `curr.padded_byte === curr.byte + (1 - (curr.input_len - curr.acc_len) * curr.condition_80_inv) * 0x80`
-   5. `curr.condition_01_inv` is 0
-4. For the 135th row
-   1. Same as the previous 0x80 pad, but pad 0x01 if remaining_len!=1.  `curr.padded_byte === curr.byte + (1 - (curr.input_len - curr.acc_len) * curr.condition_80_inv) * 0x80 + (curr.input_len - curr.acc_len - 1) * curr.condition_01_inv * 0x01`
-   2. Apply inverse check for `curr.condition_01_inv`.
-5. Use another RLC gadget to check `byte` can be running summed up to `input` in the lookup region
-6. `padded_byte` are copied to a word builder gadget to build padded words, which would later be copied to the `Keccak-f` permutation
+4. For 1~135th rows
+   1. Set `is_pad_zone` to 1 if we entered. `curr.is_pad_zone === prev.is_pad_zone + (1 - (curr.input_len - curr.acc_len) * curr.condition_80_inv)`
+5. For the 135th row
+   1. Same as the previous 0x80 pad, but pad 0x01 if we are in the pad zone. `curr.padded_byte === curr.byte + (1 - (curr.input_len - curr.acc_len) * curr.condition_80_inv) * 0x80 + is_pad_zone * 0x01`
+6. Use another RLC gadget to check `byte` can be running summed up to `input` in the lookup region
+7. `padded_byte` are copied to a word builder gadget to build padded words, which would later be copied to the `Keccak-f` permutation
