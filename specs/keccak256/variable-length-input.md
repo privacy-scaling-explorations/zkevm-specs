@@ -60,7 +60,7 @@ and constrain `is_end_result === 1`
 
 ### Padding Region
 
-Note that we define a new `acc_len` which increament byte by byte, where the `acc_len` in the lookup region bumps by 136 bytes.
+Note that we define a new `acc_len` which increments byte by byte, where the `acc_len` in the lookup region bumps by 136 bytes.
 
 #### Plain behavior: The padding rule
 
