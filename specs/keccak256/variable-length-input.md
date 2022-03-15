@@ -39,7 +39,7 @@ Selector:
 
 1. `hash_id` is sequential `next.id - curr.id in [0, 1]`
 2. If we are not in the last round of the circuit or last round of permutation
-   1. Checks the `input_len` is  `curr.input_len === next.input_len`
+   1. `curr.input_len === next.input_len`
    2. `next.acc_len === curr.acc_len + 136`
    3. `next.acc_len <= curr.input_len`
    4. `next.acc_input === curr.acc_input * (r**136) + RLC(input, r)`
