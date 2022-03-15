@@ -94,6 +94,20 @@ The Padding Region is a 136-row region.
 - `padded_byte` Mostly the same as the original `byte` but padded
 - `is_pad_zone` A flag to define the rows that `byte` should be 0
 
+| offset | byte | input_len | acc_len | condition_80_inv | padded_byte | is_pad_zone |
+| -----: | :--- | --------: | ------: | ---------------: | :---------- | ----------: |
+|      0 | 0xff |       250 |     136 |                  | 0xff        |           0 |
+|      1 | 0xff |       250 |     137 |                  | 0xff        |           0 |
+|      2 | 0xff |       250 |     138 |                  | 0xff        |           0 |
+|      3 | 0xff |       ... |     ... |                  | 0xff        |           0 |
+|      4 | 0xff |       250 |     249 |                1 | 0xff        |           0 |
+|      5 | 0xff |       250 |     250 |                0 | 0xff        |           0 |
+|      6 | 0x00 |       250 |     251 |               -1 | 0x80        |           1 |
+|    ... | ...  |       ... |     ... |              ... | ...         |         ... |
+|    134 | 0x00 |       250 |     270 |                  | 0x00        |           1 |
+|    135 | 0x00 |       250 |     271 |                  | 0x01        |           1 |
+
+
 #### Checks
 
 Generally we want these properties:
