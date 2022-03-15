@@ -87,10 +87,35 @@ def get_padding(acc_len) -> bytes:
 
 The Padding Region is a 136-row region.
 
-- `byte`
+- `byte` individual byte of the input in big-endian
 - `input_len` Length for correct padding
 - `acc_len` How many bytes we have processed
-- `pad_len` 
-- `pad_len_inv`
-- `pad_val`
-- `running_sum`
+- `condition_80_inv` The inverse of `input_len - acc_len` or 0.
+- `condition_01_inv` The inverse of `input_len - acc_len - 1` or 0. Only effective in last row
+- `padded_byte` Mostly the same as the original `byte` but padded
+
+#### Checks
+
+Generally we want these properties:
+
+1. `byte` after `input_len` should be 0, so that prover doesn't cheat about the input length. For exapmle, the prover specify an input length of 100 bytes, so that it shouldn't have a non-zero byte at position 120.
+2. The padding `0x80`, `0x01`, or `0x81` are placed at the correct place.
+
+We apply two different checks on the 0~134-th rows and the 135th row.
+
+1. For 0-th row
+   1. `input_len` is copied from the Lookup Region
+   2. `acc_len` is copied from the Lookup Region
+2. For all rows
+   1. If `remaining_len` in range(135), `byte === 0`????????
+3. For 0~134-th rows
+   1. `next.input_len === curr.input_len`
+   2. `next.acc_len === curr.acc_len + 1`
+   3. Inverse check for `curr.condition_80_inv`
+   4. If `curr.input_len - curr.acc_len` is 0, pad `0x80`: `curr.padded_byte === curr.byte + (1 - (curr.input_len - curr.acc_len) * curr.condition_80_inv) * 0x80`
+   5. `curr.condition_01_inv` is 0
+4. For the 135th row
+   1. Same as the previous 0x80 pad, but pad 0x01 if remaining_len!=1.  `curr.padded_byte === curr.byte + (1 - (curr.input_len - curr.acc_len) * curr.condition_80_inv) * 0x80 + (curr.input_len - curr.acc_len - 1) * curr.condition_01_inv * 0x01`
+   2. Apply inverse check for `curr.condition_01_inv`.
+5. Use another RLC gadget to check `byte` can be running summed up to `input` in the lookup region
+6. `padded_byte` are copied to a word builder gadget to build padded words, which would later be copied to the `Keccak-f` permutation
