@@ -10,8 +10,51 @@ Let's assume there are two proofs (as returned by `eth getProof`):
 The circuit checks the transition from `val1` to `val2` at `key1` that led to the change
 of trie root from `root1` to `root2` (the chaining of such proofs is yet to be added).
 
-The proof returned by `eth getProof` looks like (but there are various special cases):
+The proof returned by `eth getProof` looks like:
 
+```
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "result": {
+    "accountProof": [
+      "0xf90211a...0701bc80",
+      "0xf90211a...0d832380",
+      "0xf90211a...5fb20c80",
+      "0xf90211a...0675b80",
+      "0xf90151a0...ca08080"
+    ],
+    "balance": "0x0",
+    "codeHash": "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470",
+    "nonce": "0x0",
+    "storageHash": "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421",
+    "storageProof": [
+      {
+        "key": "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421",
+        "proof": [
+          "0xf90211a...0701bc80",
+          "0xf90211a...0d832380"
+        ],
+        "value": "0x1"
+      }
+    ]
+  }
+}
+```
+
+In the above case account proof contains five elements. The last one is account leaf,
+the first four are branches / extension nodes. The hash of account leaf is checked to
+be in the fourth element (at the proper position - depends on the account address).
+The hash of the fourth element is checked to be in the third element (at the proper position) ...
+
+The storage proof in the above case contains two elements. The second element is storage
+leaf, the first one is branch or extension node. The hash of storage leaf is checked to
+be in the first element at the proper position (depends on the key).
+
+The hash of the first storage proof element (storage root) needs to be checked
+to be in the account leaf of the last account proof element.
+
+<!--
 - State trie branch 0 that contains 16 nodes, one of them being the hash of the branch below (State trie branch 1)
 
 - State trie branch 1 that contains 16 nodes, one of them being the hash of the branch below
@@ -38,6 +81,7 @@ and no state trie part:
 - Storage trie branch 0 that contains 16 nodes, one of them being the hash of the branch below (Storage trie branch 1)
 - Storage trie branch 1 that contains 16 nodes, one of them being the hash of the branch below
 - Storage trie leaf that constains (part of) key `key1` and value `val1`
+-->
 
 We split the branch information into 16 rows (one row for each node). The proofs looks like:
 
@@ -108,6 +152,8 @@ In the codebase, the columns are named:
 - `c_rlp1`
 - `c_rlp2`
 - `c_advices` (32 columns)
+
+![branch](./img/mpt.png)
 
 ### Branch
 
@@ -505,8 +551,27 @@ It needs to be ensured that the selectors are boolean and their sum is `0` or `1
 If it is `0`, there is a regular branch. If it is `1`, there is an extension node.
 See `extension_node.rs` for the constraints.
 
-Further, there are constraints in `extension_node_key.rs` that ensure the selector
-corresponds to the actual
+Further, there are constraints that ensure the selector
+value is correct. For example, when there is only one nibble, `s_rlp1` has to be `226`.
+Also, when there is an even number of nibbles, `s_advices[0]` has to be `0`.
+
+Information about key RLC multiplication factor is doubled to reduce the expression degree.
+Thus the information appear in branch init row at the following positions:
+
+```
+pub const IS_BRANCH_C16_POS: usize = 19;
+pub const IS_BRANCH_C1_POS: usize = 20;
+pub const IS_EXT_SHORT_C16_POS: usize = 21;
+pub const IS_EXT_SHORT_C1_POS: usize = 22;
+pub const IS_EXT_LONG_EVEN_C16_POS: usize = 23;
+pub const IS_EXT_LONG_EVEN_C1_POS: usize = 24;
+pub const IS_EXT_LONG_ODD_C16_POS: usize = 25;
+pub const IS_EXT_LONG_ODD_C1_POS: usize = 26;
+```
+
+There are constraints (`extension_node.rs`) that ensure the information at positions
+`IS_BRANCH_C16_POS` and `IS_BRANCH_C1_POS` correspond to the information at positions
+where extension node selectors are given.
 
 ##### Constraint: extension node RLC is properly computed
 
@@ -567,19 +632,48 @@ For S:
 
 ### Storage leaf
 
-There are 5 rows for a storage leaf.
-2 rows for S proof, 2 rows for C proof
-(it might be optimized to have only one row for a storage leaf).
-1 row for cases when a leaf is turned into a branch or extension node.
+There are five rows for a storage leaf:
 
-`228, 159, 55, 204, 40,...`
+```
+Leaf key S
+Leaf value S
+Leaf key C
+Leaf value C
+Leaf in added branch
+```
 
-______________________________________________________________________
+Note: it might be optimized to have only one row for a storage leaf.
 
-`227, 161, 32, 187, 41, ..., 11`
-`225, 159, 57, 202, 166, ..., 17`
+For example:
 
-## 0s in s_advices after substream ends
+<!-- TestExtensionAddedOneKeyByteSel1-->
+
+```
+226,160,62,102,91,...
+30,0,0...
+225,159,58,134,125,...
+17,0,0
+225,159,54,91,73,...
+```
+
+##### Constraint: key RLC
+
+The first row contains the storage leaf S key bytes. These bytes are what remains from the
+key after key nibbles are used to navigate through branches / extension nodes.
+That means key RLC that is being partially computed in branches / extension nodes can
+be finalized here.
+
+Intermediate key RLC `key_rlc_acc_start` is retrieved from the first branch children row.
+Likewise, intermediate multiplication factor `key_mult_start` is retrieved from the same row.
+
+```
+```
+
+... `key_len_lookup`
+
+##### Constraint: leaf RLC
+
+## Zeros in s_advices after substream ends
 
 In various cases, `s_advices` are used only to certain point. Consider the example below:
 
