@@ -37,16 +37,16 @@ Selector:
 
 #### Checks
 
-1. `hash_id` is sequential `next.id - curr.id in [0, 1]`
+1. `hash_id` is sequential `next.hash_id - curr.hash_id in [0, 1]`
 2. If we are not in the last round of the circuit or last round of permutation
    1. `curr.input_len === next.input_len`
    2. `next.acc_len === curr.acc_len + 136`
    3. `next.acc_len <= curr.input_len`
    4. `next.acc_input === curr.acc_input * (r**136) + RLC(input, r)`
-3. If we are in the last round of the circuit or in last round of permutation
+3. If we are in the last round of the circuit or `is_end_result === 1`
    1. Checks the accumulation ends here `assert (curr.input_len - curr.acc_len) in range(136)`
    2. Clear the variables:  `next.acc_len === 0`, `next.acc_input === 0`
-4. `is_end_result === next.id - curr.id`
+4. `is_end_result === next.hash_id - curr.hash_id`
 
 #### Lookup
 
