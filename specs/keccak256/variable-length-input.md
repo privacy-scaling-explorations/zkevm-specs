@@ -1,6 +1,6 @@
 # Keccak256 For Variable Length Input
 
-We describe the circuit that can process input of arbitrary size.
+We describe the circuit that can process inputs of an arbitrary size.
 
 ## Plain Keccak behavior
 
