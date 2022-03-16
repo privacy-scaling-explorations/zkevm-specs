@@ -82,11 +82,11 @@ def test_check_tx_row():
     rows = txs2rows(txs, chain_id, r)
     verify(rows, chain_id, r)
 
-def test_ecdsa_verify_gadget():
+def test_ecdsa_verify_chip():
     sk = keys.PrivateKey(b'\x02' * 32)
     pk = sk.public_key
     msg_hash = b'\xae' * 32
     sig = sk.sign_msg_hash(msg_hash)
 
-    ecdsa_gadget = ECDSAVerifyGadget(sig, pk, msg_hash)
-    ecdsa_gadget.verify()
+    ecdsa_chip = ECDSAVerifyChip(sig, pk, msg_hash)
+    ecdsa_chip.verify()

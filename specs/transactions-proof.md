@@ -165,12 +165,12 @@ For this implementation, the Tx Table is extended to look like this:
 | $TxID  | GasTipCap           | 0          | $value: 0   |
 | $TxID  | GasFeeCap           | 0          | $value: 0   |
 | $TxID  | CallerAddress       | 0          | $value: raw |
+| $TxID  | TxSignHash          |            | $value: rlc |
 | $TxID  | CalleeAddress       | 0          | $value: raw |
 | $TxID  | IsCreate            | 0          | $value: raw |
 | $TxID  | Value               | 0          | $value: rlc |
 | $TxID  | CallDataLength      | 0          | $value: raw |
 | $TxID  | CallData            | $ByteIndex | $value: raw |
-| $TxID  | TxSignHash          |            | $value: rlc |
 | $TxID  | Pad                 | 0          | 0           |
 
 For the ECDSA signature verification, instead of doing lookups to the ECDSA table we'll just use an ECDSA verification gadget for each transaction.  Since each transaction uses a variable number of rows due to the variable length CallData, we'll rearrange the table so that each transaction starts at a fixed offset like this (by moving all the CallData rows at the end):

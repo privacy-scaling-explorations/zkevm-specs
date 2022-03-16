@@ -51,9 +51,11 @@ class WrongFieldInteger():
     def __init__(self, value: int) -> None:
         self.limbs = value.to_bytes(32, "little")
 
-class ECDSAVerifyGadget():
+class ECDSAVerifyChip():
     """
-    ECDSA Signature Verification Gadget
+    ECDSA Signature Verification Chip.  This represents an ECDSA signature
+    verification Chip as implemented in
+    https://github.com/appliedzkp/halo2wrong/blob/master/ecdsa/src/ecdsa.rs
     """
 
     signature: [WrongFieldInteger, WrongFieldInteger]
@@ -77,6 +79,33 @@ class ECDSAVerifyGadget():
         signature = KeyAPI.Signature(vrs=[0, sig_r, sig_s])
         public_key = KeyAPI.PublicKey(bytes(reversed(self.pub_key[0].limbs)) + bytes(reversed(self.pub_key[1].limbs)))
         assert KeyAPI().ecdsa_verify(msg_hash, signature, public_key)
+
+
+class TxSignVerifyGadget():
+    """
+    Auxiliary Gadget to verify a that a transaction signature corresponds to a
+    signing Address.
+    """
+
+    address: FQ
+    pub_key_hash: RLC
+    tx_msg_hash_rlc: FQ
+    ecdsa_chip: ECDSAVerifyChip
+
+    def __init__(self, signature: KeyAPI.Signature, pub_key: KeyAPI.PublicKey, msg_hash: bytes, randomness: FQ) -> None:
+        self.ecdsa_chip = ECDSAVerifyChip(signature, pub_key, msg_hash)
+        self.tx_msg_hash_rlc = RLC(int.from_bytes(msg_hash, "big"))
+        addr = pub_key.to_canonical_address()
+        self.address = FQ(int.from_bytes(addr, "big"))
+
+    def verify(self, randomness: FQ):
+        self.ecdsa_chip.verify()
+        assert FQ.linear_combine(self.ecdsa_chip.msg_hash.limbs, randomness) == self.tx_msg_hash_rlc
+        pub_key_bytes = bytes(reversed(self.ecdsa_chip.pub_key[0].limbs)) + \
+                bytes(reversed(self.ecdsa_chip.pub_key[1].limbs))
+        assert FQ.linear_combine(list(pub_key_hash.le_bytes[:20]), 2**8) == address
+        # TODO
+        # assert keccak_table(pub_key_bytes) == self.pub_key_hash.value
 
 class Transaction(NamedTuple):
     """
@@ -118,7 +147,7 @@ def tx2rows(index: int, tx: Transaction, chain_id: U64, randomness: FQ) -> List[
     rows.append(Row(tx_id, Tag.CallDataLength, 0, len(tx.data)))
     for byte_index, byte in enumerate(tx.data):
         rows.append(Row(tx_id, Tag.CallData, byte_index, byte))
-    rows.append(Row(tx_id, Tag.TxSignHash, 0, RLC(tx_msg_hash, randomness.n)))
+    rows.append(Row(tx_id, Tag.TxSignHash, 0, RLC(int.from_bytes(tx_msg_hash, "big"), randomness.n)))
 
     return rows
 
