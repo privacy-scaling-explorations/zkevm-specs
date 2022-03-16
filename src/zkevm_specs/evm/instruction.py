@@ -336,6 +336,45 @@ class Instruction:
     def rlc_to_fq_unchecked(self, word: RLC, n_bytes: int) -> FQ:
         return self.bytes_to_fq(word.le_bytes[:n_bytes])
 
+    def mul_add_words(self, a: RLC, b: RLC, c: RLC, d: RLC, v0: RLC, v1: RLC, allow_overflow: bool):
+        a64s = self.word_to_64s(a)
+        b64s = self.word_to_64s(b)
+        c64s = self.word_to_64s(c)
+        d64s = self.word_to_64s(d)
+        v0m = self.rlc_to_fq_exact(v0, 9)
+        v1m = self.rlc_to_fq_exact(v1, 9)
+
+        t0 = a64s[0] * b64s[0]
+        t1 = a64s[0] * b64s[1] + a64s[1] * b64s[0]
+        t2 = a64s[0] * b64s[2] + a64s[1] * b64s[1] + a64s[2] * b64s[0]
+        t3 = a64s[0] * b64s[3] + a64s[1] * b64s[2] + a64s[2] * b64s[1] + a64s[3] * b64s[0]
+        overflow = (
+            v1m
+            + a64s[1] * b64s[3]
+            + a64s[2] * b64s[2]
+            + a64s[3] * b64s[1]
+            + a64s[2] * b64s[3]
+            + a64s[3] * b64s[2]
+            + a64s[3] * b64s[3]
+        )
+
+        self.constrain_equal(
+            v0m * (2**128),
+            t0 + t1 * (2**64) + c64s[0] + c64s[1] * (2**64) - d64s[0] - d64s[1] * (2**64),
+        )
+        self.constrain_equal(
+            v1m * (2**128),
+            v0m
+            + t2
+            + t3 * (2**64)
+            + c64s[2]
+            + c64s[3] * (2**64)
+            - d64s[2]
+            - d64s[3] * (2**64),
+        )
+        if allow_overflow == False:
+            self.constrain_zero(overflow)
+
     def rlc_to_fq_exact(self, word: RLC, n_bytes: int) -> FQ:
         if any(word.le_bytes[n_bytes:]):
             raise ConstraintUnsatFailure(f"Word {word} has too many bytes to fit {n_bytes} bytes")
@@ -345,6 +384,10 @@ class Instruction:
     def word_to_lo_hi(self, word: RLC) -> Tuple[FQ, FQ]:
         assert len(word.le_bytes) == 32, "Expected word to contain 32 bytes"
         return self.bytes_to_fq(word.le_bytes[:16]), self.bytes_to_fq(word.le_bytes[16:])
+
+    def word_to_64s(self, word: RLC) -> Tuple[FQ, ...]:
+        assert len(word.le_bytes) == 32, "Expected word to contain 32 bytes"
+        return tuple(self.bytes_to_fq(word.le_bytes[8 * i : 8 * (i + 1)]) for i in range(4))
 
     def bytes_to_fq(self, value: bytes) -> FQ:
         assert len(value) <= MAX_N_BYTES, "Too many bytes to composite an integer in field"

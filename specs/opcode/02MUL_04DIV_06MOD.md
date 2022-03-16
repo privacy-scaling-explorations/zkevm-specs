@@ -2,7 +2,7 @@
 
 ## Procedure
 
-We followed the approch of [Multi-Limbs Multiplication](https://hackmd.io/HL0QhGUeQoSgIBt2el6fHA), with some notes:
+Initially we followed the approch of [Multi-Limbs Multiplication](https://hackmd.io/HL0QhGUeQoSgIBt2el6fHA), with some notes:
 
 In notation *c = a ⋅ b*, layout could be like the below table if we got 32 columns to use. In table, *a₀, ⋯, a₃₁* as well as *b* and *c* are big-endian evm words on stack through bus mapping lookup. Each limb in evm word will be range lookup check to fit 8-bit.
 
@@ -44,27 +44,59 @@ And the constraints would be:
 
 > Note 3: Ensuring v0 and v1 do not exceed the scalar field after being mutipled by 2^128 is enough. In our code v0 and v1 are constrainted by the combination of 9 bytes (each cell being constrainted by 8-bit range table) so they are constrainted to a slightly relaxed range of `[0, 2^72)`. Our approach use 3 evm words and 18 cells (totally 114 cells).
 
+Then we extend this to a MUL-ADD gadget which checks *d = a ⋅ b + c*. We only need to change the constraints into:
+
+- *v0 ⋅ 2¹²⁸ == t₀ + t₁ ⋅ 2⁶⁴ + C₀ + C₁ ⋅ 2⁶⁴ - D₀ - D₁ ⋅ 2⁶⁴*
+- *v1 ⋅ 2¹²⁸ == v0 + t₂ + t₃ ⋅ 2⁶⁴ + C₂ + C₃ ⋅ 2⁶⁴ - D₂ - D₃ ⋅ 2⁶⁴*
+- *v0 ∈ \[ 0, 2⁶⁶ \]*
+- *v1 ∈ \[ 0, 2⁶⁶ \]*
+
+If it's `MUL` opcode, we set *c = 0*.
+If it's `DIV` or `MOD` opcode, we set d as dividend, b as divisor, a as quotient and c as remainder. Also because there is no overflow during the calculation. We need to add one more constraint.
+
+- *v1 + A₁B₃ + A₂B₂ + A₃B₁ + A₂B₃ + A₃B₂ + A₃B₃ == 0*
+
+if divisor no equals to zero, we also need use a LT gadget to check *c \< b*.
+
 ### EVM behavior
 
-Pop two EVM words `a` and `b` from the stack. Compute `c = (a * b) % 2**256`, and push `c` back to the stack
+Pop two EVM words `a` and `b` from the stack. Compute
+
+- if it's `MUL` opcode, compute `c = (a * b) % 2**256`, and push `c` back to the stack
+- if it's `DIV` opcode, compute `c = a // b`(c will be set to 0 when *b = 0*), and push `c` back to the stack
+- if it's `MOD` opcode, compute `c = a mod b`(c will be set to 0 when *b = 0*), and push `c` back to the stack
 
 ### Circuit behavior
 
-The MulGadget takes argument of `a: [u8;32]`, `x: [u8;32]`, `y: [u8;32]`.
+The MulGadget takes argument of `a: [u8;32]`, `b: [u8;32]`, `c: [u8;32]`, `d: [u8;32]`, `opcode: u8`.
 
-It always computes `y = (a * x) % 2**256`, annotate stack as \[a, x, ...\] and \[y, ...\]
+It always computes `d = a * b + c`,
+
+- when it's MUL (`is_mul == True`), we annotate stack as \[a, b, ...\] and \[d, ...\], c will be set zero,
+- when it's DIV (`is_div == True`), we annotate stack as \[d, b, ...\] and \[a, ...\], c will be compute as `d - a * b`.
+- when it's MOD (`is_mod == True`), we annotate stack as \[d, b, ...\] and \[c, ...\], a will be compute as `d // b`(c will be set to 0 when *b = 0*).
 
 ## Constraints
 
-1. state transition:
+1. opcodeId checks
+   1. opId === OpcodeId(0x02) for `MUL`
+   2. opId === OpcodeId(0x04) for `DIV`
+   3. opId === OpcodeId(0x05) for `MOD`
+2. state transition:
    - gc + 3
    - stack_pointer + 1
    - pc + 1
    - gas + 5
-2. Lookups: 3 busmapping lookups
-   - `a` is at the top of the stack
-   - `b` is at the second position of the stack
-   - `c`, the result, is at the new top of the stack
+3. Lookups: 3 busmapping lookups
+   1. top of the stack :
+      - when it's MUL (`is_mul == True`), `a` is at the top of the stack
+      - when it's DIV (`is_div == True`), `d` is at the top of the stack.
+      - when it's MOD (`is_mod == True`), `d` is at the top of the stack.
+   2. `b` is at the second position of the stack
+   3. new top of the stack
+      - when it's MUL (`is_mul == True`), `d`, the result, is at the new top of the stack
+      - when it's DIV (`is_div == True`), `a`, the result, is at the new top of the stack
+      - when it's MOD (`is_mod == True`), `c`, the result, is at the new top of the stack
 
 ## Exceptions
 
