@@ -29,6 +29,7 @@ Columns:
 - `acc_len` How many length we have absorbed
 - `acc_input` Accumulatd bytes by random linear combination (in big-endian order)
 - `output` The base-2 `state[:4]` output from this round `keccak_f`
+- `output_word_[n]` 25 columns of the output in words of this round `keccak_f`
 - `is_end_result` This flag indicates the hash output is final. The purpose is for external circuit to lookup.
 
 Selector:
@@ -43,17 +44,18 @@ Selector:
    2. `next.acc_len === curr.acc_len + 136`
    3. `next.acc_len <= curr.input_len`
    4. `next.acc_input === curr.acc_input * (r**136) + RLC(input, r)`
-3. If we are in the last round of the circuit or `is_end_result === 1`
+3. `is_last_round_of_circuit or is_end_result === 1`
    1. Checks the accumulation ends here `assert (curr.input_len - curr.acc_len) in range(136)`
    2. Clear the variables:  `next.acc_len === 0`, `next.acc_input === 0`
-4. `is_end_result === next.hash_id - curr.hash_id`
+4. apply to all 25 `output_word_[n]` columns: `next.output_word_[n] === (1 - is_end_result) * curr.output_word_[n]`
+5. `is_end_result === next.hash_id - curr.hash_id`
 
 #### Lookup
 
 To lookup the Keccak256 input to the output, query the following columns:
 
 - `is_end_result`: bool
-- `input`: RLC
+- `acc_input`: RLC
 - `output`: RLC
 
 and constrain `is_end_result === 1`
