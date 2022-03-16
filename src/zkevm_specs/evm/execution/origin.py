@@ -12,7 +12,7 @@ def origin(instruction: Instruction):
 
     instruction.constrain_equal(
         instruction.tx_context_lookup(tx_id, TxContextFieldTag.CallerAddress),
-        instruction.rlc_to_fq_exact(instruction.stack_push(), N_BYTES_ACCOUNT_ADDRESS),
+        instruction.rlc_to_fq(instruction.stack_push(), N_BYTES_ACCOUNT_ADDRESS),
     )
 
     instruction.step_state_transition_in_same_context(

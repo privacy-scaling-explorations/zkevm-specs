@@ -290,6 +290,15 @@ class Instruction:
         assert rhs.expr().n < 256**n_bytes, f"rhs {rhs} exceeds the range of {n_bytes} bytes"
         return FQ(lhs.expr().n < rhs.expr().n), FQ(lhs.expr().n == rhs.expr().n)
 
+    def compare_word(self, lhs: RLC, rhs: RLC) -> Tuple[FQ, FQ]:
+        assert len(lhs.le_bytes) == 32, "Expected word to contain 32 bytes"
+        assert len(rhs.le_bytes) == 32, "Expected word to contain 32 bytes"
+        lhs_hi, lhs_lo = self.word_to_lo_hi(lhs)
+        rhs_hi, rhs_lo = self.word_to_lo_hi(lhs)
+        hi_lt, hi_eq = self.compare(lhs_hi, rhs_hi, 16)
+        lo_lt, lo_eq = self.compare(lhs_lo, rhs_lo, 16)
+        return FQ(hi_lt + hi_eq * lo_lt), FQ(hi_eq * lo_eq)
+
     def min(self, lhs: Expression, rhs: Expression, n_bytes: int) -> FQ:
         lt, _ = self.compare(lhs, rhs, n_bytes)
         return cast_expr(self.select(lt, lhs, rhs), FQ)
@@ -297,6 +306,47 @@ class Instruction:
     def max(self, lhs: Expression, rhs: Expression, n_bytes: int) -> FQ:
         lt, _ = self.compare(lhs, rhs, n_bytes)
         return cast_expr(self.select(lt, rhs, lhs), FQ)
+
+    def rlc_to_fq(self, word: RLC, n_bytes: int) -> FQ:
+        if any(word.le_bytes[n_bytes:]):
+            raise ConstraintUnsatFailure(f"Word {word} has too many bytes to fit {n_bytes} bytes")
+        return self.bytes_to_fq(word.le_bytes[:n_bytes])
+
+    def word_is_zero(self, word: RLC) -> FQ:
+        assert len(word.le_bytes) == 32, "Expected word to contain 32 bytes"
+        return self.is_zero(self.sum(word.le_bytes))
+
+    def word_to_lo_hi(self, word: RLC) -> Tuple[FQ, FQ]:
+        assert len(word.le_bytes) == 32, "Expected word to contain 32 bytes"
+        return self.bytes_to_fq(word.le_bytes[:16]), self.bytes_to_fq(word.le_bytes[16:])
+
+    def word_to_64s(self, word: RLC) -> Tuple[FQ, ...]:
+        assert len(word.le_bytes) == 32, "Expected word to contain 32 bytes"
+        return tuple(self.bytes_to_fq(word.le_bytes[8 * i : 8 * (i + 1)]) for i in range(4))
+
+    def bytes_to_fq(self, value: bytes) -> FQ:
+        assert len(value) <= MAX_N_BYTES, "Too many bytes to composite an integer in field"
+        return FQ(int.from_bytes(value, "little"))
+
+    def rlc_encode(self, value: Union[FQ, int, bytes], n_bytes: int = None) -> RLC:
+        if isinstance(value, FQ):
+            value = value.n
+        if isinstance(value, int):
+            assert n_bytes is not None
+        return RLC(value, self.randomness, n_bytes)
+
+    def range_lookup(self, value: Expression, range: int):
+        self.fixed_lookup(FixedTableTag.range_table_tag(range), value)
+
+    def byte_range_lookup(self, value: Expression):
+        self.range_lookup(value, 256)
+
+    def range_check(self, value: Expression, n_bytes: int) -> bytes:
+        assert n_bytes <= MAX_N_BYTES, "Too many bytes to composite an integer in field"
+        try:
+            return value.expr().n.to_bytes(n_bytes, "little")
+        except OverflowError:
+            raise ConstraintUnsatFailure(f"Value {value} has too many bytes to fit {n_bytes} bytes")
 
     def add_words(self, addends: Sequence[RLC]) -> Tuple[RLC, FQ]:
         addends_lo, addends_hi = list(zip(*map(self.word_to_lo_hi, addends)))
@@ -333,23 +383,24 @@ class Instruction:
 
         return self.rlc_encode(product_bytes), FQ(quotient_hi)
 
-    def rlc_to_fq_unchecked(self, word: RLC, n_bytes: int) -> FQ:
-        return self.bytes_to_fq(word.le_bytes[:n_bytes])
-
-    def mul_add_words(self, a: RLC, b: RLC, c: RLC, d: RLC, v0: RLC, v1: RLC, allow_overflow: bool):
+    def mul_add_words(self, a: RLC, b: RLC, c: RLC, d: RLC) -> FQ:
+        """
+        The function constrains a * b + c == d, where a, b, c, d are 256-bit words.
+        It returns the overflow part of a * b + c.
+        """
         a64s = self.word_to_64s(a)
         b64s = self.word_to_64s(b)
-        c64s = self.word_to_64s(c)
-        d64s = self.word_to_64s(d)
-        v0m = self.rlc_to_fq_exact(v0, 9)
-        v1m = self.rlc_to_fq_exact(v1, 9)
+        c_lo, c_hi = self.word_to_lo_hi(c)
+        d_lo, d_hi = self.word_to_lo_hi(d)
 
         t0 = a64s[0] * b64s[0]
         t1 = a64s[0] * b64s[1] + a64s[1] * b64s[0]
         t2 = a64s[0] * b64s[2] + a64s[1] * b64s[1] + a64s[2] * b64s[0]
         t3 = a64s[0] * b64s[3] + a64s[1] * b64s[2] + a64s[2] * b64s[1] + a64s[3] * b64s[0]
+        carry_lo = (t0 + (t1 * 2**64) + c_lo - d_lo) / (2**128)
+        carry_hi = (t2 + (t3 * 2**64) + c_hi + carry_lo - d_hi) / (2**128)
         overflow = (
-            v1m
+            carry_hi
             + a64s[1] * b64s[3]
             + a64s[2] * b64s[2]
             + a64s[3] * b64s[1]
@@ -358,56 +409,14 @@ class Instruction:
             + a64s[3] * b64s[3]
         )
 
-        self.constrain_equal(
-            v0m * (2**128),
-            t0 + t1 * (2**64) + c64s[0] + c64s[1] * (2**64) - d64s[0] - d64s[1] * (2**64),
-        )
-        self.constrain_equal(
-            v1m * (2**128),
-            v0m
-            + t2
-            + t3 * (2**64)
-            + c64s[2]
-            + c64s[3] * (2**64)
-            - d64s[2]
-            - d64s[3] * (2**64),
-        )
-        if allow_overflow == False:
-            self.constrain_zero(overflow)
+        # range check for carries
+        self.range_check(carry_lo, 9)
+        self.range_check(carry_hi, 9)
 
-    def rlc_to_fq_exact(self, word: RLC, n_bytes: int) -> FQ:
-        if any(word.le_bytes[n_bytes:]):
-            raise ConstraintUnsatFailure(f"Word {word} has too many bytes to fit {n_bytes} bytes")
+        self.constrain_equal(t0 + t1 * (2**64) + c_lo, d_lo + carry_lo * (2**128))
+        self.constrain_equal(t2 + t3 * (2**64) + c_hi + carry_lo, d_hi + carry_hi * (2**128))
 
-        return self.bytes_to_fq(word.le_bytes[:n_bytes])
-
-    def word_to_lo_hi(self, word: RLC) -> Tuple[FQ, FQ]:
-        assert len(word.le_bytes) == 32, "Expected word to contain 32 bytes"
-        return self.bytes_to_fq(word.le_bytes[:16]), self.bytes_to_fq(word.le_bytes[16:])
-
-    def word_to_64s(self, word: RLC) -> Tuple[FQ, ...]:
-        assert len(word.le_bytes) == 32, "Expected word to contain 32 bytes"
-        return tuple(self.bytes_to_fq(word.le_bytes[8 * i : 8 * (i + 1)]) for i in range(4))
-
-    def bytes_to_fq(self, value: bytes) -> FQ:
-        assert len(value) <= MAX_N_BYTES, "Too many bytes to composite an integer in field"
-        return FQ(int.from_bytes(value, "little"))
-
-    def rlc_encode(self, value: Union[int, bytes], n_bytes: int = 32) -> RLC:
-        return RLC(value, self.randomness, n_bytes)
-
-    def range_lookup(self, value: Expression, range: int):
-        self.fixed_lookup(FixedTableTag.range_table_tag(range), value)
-
-    def byte_range_lookup(self, value: Expression):
-        self.range_lookup(value, 256)
-
-    def range_check(self, value: Expression, n_bytes: int) -> bytes:
-        assert n_bytes <= MAX_N_BYTES, "Too many bytes to composite an integer in field"
-        try:
-            return value.expr().n.to_bytes(n_bytes, "little")
-        except OverflowError:
-            raise ConstraintUnsatFailure(f"Value {value} has too many bytes to fit {n_bytes} bytes")
+        return overflow
 
     def fixed_lookup(
         self,
@@ -721,10 +730,10 @@ class Instruction:
         return sender_balance_pair, receiver_balance_pair
 
     def memory_offset_and_length(self, offset_word: RLC, length_word: RLC) -> Tuple[FQ, FQ]:
-        length = self.rlc_to_fq_exact(length_word, N_BYTES_MEMORY_ADDRESS)
+        length = self.rlc_to_fq(length_word, N_BYTES_MEMORY_ADDRESS)
         if self.is_zero(length) == 1:
             return FQ(0), FQ(0)
-        offset = self.rlc_to_fq_exact(offset_word, N_BYTES_MEMORY_ADDRESS)
+        offset = self.rlc_to_fq(offset_word, N_BYTES_MEMORY_ADDRESS)
         return offset, length
 
     def memory_gas_cost(self, memory_size: Expression) -> FQ:

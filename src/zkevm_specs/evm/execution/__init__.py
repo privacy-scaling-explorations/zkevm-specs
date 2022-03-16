@@ -10,6 +10,7 @@ from .copy_to_log import *
 
 # Opcode's successful cases
 from .add import *
+from .mul import *
 from .block_coinbase import *
 from .block_timestamp import *
 from .block_number import *
@@ -40,6 +41,7 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.EndBlock: end_block,
     ExecutionState.CopyToMemory: copy_to_memory,
     ExecutionState.ADD: add,
+    ExecutionState.MUL: mul,
     ExecutionState.ORIGIN: origin,
     ExecutionState.CALLER: caller,
     ExecutionState.CALLVALUE: callvalue,

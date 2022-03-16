@@ -9,7 +9,7 @@ from ...util import FQ
 def extcodehash(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
 
-    address = instruction.rlc_to_fq_exact(instruction.stack_pop(), 20)
+    address = instruction.rlc_to_fq(instruction.stack_pop(), 20)
 
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
     is_warm = instruction.add_account_to_access_list(tx_id, address, instruction.reversion_info())

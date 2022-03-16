@@ -12,7 +12,7 @@ def jump(instruction: Instruction):
     dest = instruction.stack_pop()
 
     # Get `dest` raw value in max 8 bytes
-    dest_value = instruction.rlc_to_fq_exact(dest, N_BYTES_PROGRAM_COUNTER)
+    dest_value = instruction.rlc_to_fq(dest, N_BYTES_PROGRAM_COUNTER)
 
     # Verify `dest` is code within byte code table
     instruction.constrain_equal(Opcode.JUMPDEST, instruction.opcode_lookup_at(dest_value, True))

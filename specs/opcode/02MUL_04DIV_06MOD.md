@@ -81,7 +81,7 @@ It always computes `d = a * b + c`,
 1. opcodeId checks
    1. opId === OpcodeId(0x02) for `MUL`
    2. opId === OpcodeId(0x04) for `DIV`
-   3. opId === OpcodeId(0x05) for `MOD`
+   3. opId === OpcodeId(0x06) for `MOD`
 2. state transition:
    - gc + 3
    - stack_pointer + 1
@@ -105,4 +105,4 @@ It always computes `d = a * b + c`,
 
 ## Code
 
-See `src/zkevm_specs/opcode/mul.py`
+See `src/zkevm_specs/evm/execution/mul.py`
