@@ -171,6 +171,7 @@ class AccountFieldTag(IntEnum):
     Nonce = auto()
     Balance = auto()
     CodeHash = auto()
+    CodeSize = auto()
 
 
 class CallContextFieldTag(IntEnum):

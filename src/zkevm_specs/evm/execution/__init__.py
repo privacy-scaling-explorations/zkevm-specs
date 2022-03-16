@@ -20,6 +20,7 @@ from .caller import *
 from .callvalue import *
 from .calldatacopy import *
 from .calldataload import *
+from .codecopy import *
 from .gas import *
 from .iszero import *
 from .jump import *
@@ -48,6 +49,7 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.CALLDATACOPY: calldatacopy,
     ExecutionState.CALLDATALOAD: calldataload,
     ExecutionState.CALLDATASIZE: calldatasize,
+    ExecutionState.CODECOPY: codecopy,
     ExecutionState.COINBASE: coinbase,
     ExecutionState.TIMESTAMP: timestamp,
     ExecutionState.NUMBER: number,
