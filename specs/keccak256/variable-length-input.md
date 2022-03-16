@@ -58,6 +58,10 @@ To lookup the Keccak256 input to the output, query the following columns:
 
 and constrain `is_end_result === 1`
 
+#### Prover behavior
+
+If the prover uses less `Round`s than the circuit provides, the prover should add a dummy hash that has an input size to use all rest of the `Round`s.
+
 ### Padding Region
 
 Note that we define a new `acc_len` which increments byte by byte, where the `acc_len` in the lookup region bumps by 136 bytes.
@@ -106,7 +110,6 @@ The Padding Region is a 136-row region.
 |    ... | ...  |       ... |     ... |              ... | ...         |         ... |
 |    134 | 0x00 |       250 |     270 |                  | 0x00        |           1 |
 |    135 | 0x00 |       250 |     271 |                  | 0x01        |           1 |
-
 
 #### Checks
 
