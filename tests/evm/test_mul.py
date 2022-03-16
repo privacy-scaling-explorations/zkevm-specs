@@ -50,7 +50,7 @@ def test_mul_div_mod(opcode: Opcode, a: int, b: int):
         c = a * b % 2**256
     elif opcode == Opcode.DIV:
         c = 0 if b == 0 else a // b
-    else: # Opcode.MOD
+    else:  # Opcode.MOD
         c = 0 if b == 0 else a % b
 
     a = RLC(a, randomness)
@@ -106,5 +106,6 @@ def test_mul_div_mod(opcode: Opcode, a: int, b: int):
             ),
         ],
     )
+
 
 test_mul_div_mod(*TESTING_DATA[0])

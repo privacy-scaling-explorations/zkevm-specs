@@ -21,11 +21,11 @@ def mul(instruction: Instruction):
         c = instruction.rlc_encode(0, 32)
         d = push
     elif is_div == 1:
-        d = pop1 # dividend
-        b = pop2 # divisor
-        a = push # quotient
-        c = instruction.rlc_encode(d.value - b.value * a.value, 32) # remainder
-    else: # is_mod == 1
+        d = pop1  # dividend
+        b = pop2  # divisor
+        a = push  # quotient
+        c = instruction.rlc_encode(d.value - b.value * a.value, 32)  # remainder
+    else:  # is_mod == 1
         d = pop1  # dividend
         b = pop2  # divisor
         if b.value == 0:
