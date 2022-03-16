@@ -4,9 +4,9 @@ from eth_keys import keys
 from eth_utils import keccak
 import rlp
 from zkevm_specs.tx import *
-from zkevm_specs.util import rand_fp, FQ, RLC, U64
+from zkevm_specs.util import rand_fq, FQ, RLC, U64
 
-randomness = rand_fp()
+randomness = rand_fq()
 r = randomness
 
 def sign_tx(sk: keys.PrivateKey, tx: Transaction, chain_id: U64) -> Transaction:
@@ -81,3 +81,12 @@ def test_check_tx_row():
 
     rows = txs2rows(txs, chain_id, r)
     verify(rows, chain_id, r)
+
+def test_ecdsa_verify_gadget():
+    sk = keys.PrivateKey(b'\x02' * 32)
+    pk = sk.public_key
+    msg_hash = b'\xae' * 32
+    sig = sk.sign_msg_hash(msg_hash)
+
+    ecdsa_gadget = ECDSAVerifyGadget(sig, pk, msg_hash)
+    ecdsa_gadget.verify()

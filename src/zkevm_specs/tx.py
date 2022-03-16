@@ -51,7 +51,7 @@ class WrongFieldInteger():
     def __init__(self, value: int) -> None:
         self.limbs = value.to_bytes(32, "little")
 
-class ECDSAVerifyGadget(NamedTuple):
+class ECDSAVerifyGadget():
     """
     ECDSA Signature Verification Gadget
     """
@@ -60,16 +60,23 @@ class ECDSAVerifyGadget(NamedTuple):
     pub_key: [WrongFieldInteger, WrongFieldInteger]
     msg_hash: WrongFieldInteger
 
+    # This constructor mimics an assign method
     def __init__(self, signature: KeyAPI.Signature, pub_key: KeyAPI.PublicKey, msg_hash: bytes) -> None:
-        self.signature = 
-        self.pub_key =
-        self.msg_hash = 
+        self.signature = [WrongFieldInteger(signature.r), WrongFieldInteger(signature.s)]
+        pub_key_bytes = pub_key.to_bytes()
+        pub_key_bytes_x, pub_key_bytes_y = pub_key_bytes[:32], pub_key_bytes[32:]
+        pub_key_x = int.from_bytes(pub_key_bytes_x, "big")
+        pub_key_y = int.from_bytes(pub_key_bytes_y, "big")
+        self.pub_key = [WrongFieldInteger(pub_key_x), WrongFieldInteger(pub_key_y)]
+        self.msg_hash = WrongFieldInteger(int.from_bytes(msg_hash, "big"))
 
     def verify(self):
-        msg_hash = self.msg_hash.limbs
-        signature = bytes([0]) + self.signature[0].limbs + self.signature[1].limbs
-        public_key = self.pub_key[0].limbs + self.pub_key[1].limbs
-        assert KeyAPI.ecdsa_verify(msg_hash, signature, public_key)
+        msg_hash = bytes(reversed(self.msg_hash.limbs))
+        sig_r = int.from_bytes(self.signature[0].limbs, "little")
+        sig_s = int.from_bytes(self.signature[1].limbs, "little")
+        signature = KeyAPI.Signature(vrs=[0, sig_r, sig_s])
+        public_key = KeyAPI.PublicKey(bytes(reversed(self.pub_key[0].limbs)) + bytes(reversed(self.pub_key[1].limbs)))
+        assert KeyAPI().ecdsa_verify(msg_hash, signature, public_key)
 
 class Transaction(NamedTuple):
     """
