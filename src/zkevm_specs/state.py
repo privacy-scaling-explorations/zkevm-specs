@@ -528,7 +528,7 @@ def op2row(op: Operation, randomness: FQ) -> Row:
     key2_limbs = tuple([FQ(key2_bytes[i] + 2**8 * key2_bytes[i + 1]) for i in range(0, 20, 2)])
     key3 = FQ(op.key3)
     key4_rlc = RLC(op.key4, randomness)
-    key4 = key4_rlc.value
+    key4 = key4_rlc.expr()
     key4_bytes = tuple([FQ(x) for x in key4_rlc.le_bytes])
     value = FQ(op.value)
     aux0 = FQ(op.aux0)

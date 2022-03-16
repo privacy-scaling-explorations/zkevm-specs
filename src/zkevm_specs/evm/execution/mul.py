@@ -24,16 +24,16 @@ def mul(instruction: Instruction):
         d = pop1  # dividend
         b = pop2  # divisor
         a = push  # quotient
-        c = instruction.rlc_encode(d.value - b.value * a.value, 32)  # remainder
+        c = instruction.rlc_encode(d.int_value - b.int_value * a.int_value, 32)  # remainder
     else:  # is_mod == 1
         d = pop1  # dividend
         b = pop2  # divisor
-        if b.value == 0:
+        if b.int_value == 0:
             c = d
             a = instruction.rlc_encode(0, 32)
         else:
             c = push
-            a = instruction.rlc_encode((d.value - c.value) // b.value, 32)
+            a = instruction.rlc_encode((d.int_value - c.int_value) // b.int_value, 32)
 
     divisor_is_zero = instruction.word_is_zero(b)
     overflow = instruction.mul_add_words(a, b, c, d)

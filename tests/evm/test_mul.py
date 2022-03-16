@@ -106,6 +106,3 @@ def test_mul_div_mod(opcode: Opcode, a: int, b: int):
             ),
         ],
     )
-
-
-test_mul_div_mod(*TESTING_DATA[0])

@@ -25,7 +25,7 @@ def extcodehash(instruction: Instruction):
     )
 
     instruction.constrain_equal(
-        instruction.select(is_empty, FQ(0), code_hash.value),
+        instruction.select(is_empty, FQ(0), code_hash.expr()),
         instruction.stack_push(),
     )
 

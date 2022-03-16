@@ -37,7 +37,7 @@ IntOrFQ = Union[int, FQ]
 
 class RLC:
     # value in int
-    value: int
+    int_value: int
     # encoded value using random linear combination
     rlc_value: FQ
     # bytes in little-endian order
@@ -51,7 +51,7 @@ class RLC:
             raise ValueError(f"RLC expects to have {n_bytes} bytes, but got {len(value)} bytes")
         value = value.ljust(n_bytes, b"\x00")
 
-        self.value = int.from_bytes(value, "little")
+        self.int_value = int.from_bytes(value, "little")
         self.rlc_value = FQ.linear_combine(value, randomness)
         self.le_bytes = value
 
@@ -59,7 +59,7 @@ class RLC:
         return FQ(self.rlc_value)
 
     def __hash__(self) -> int:
-        return hash(self.value)
+        return hash(self.rlc_value)
 
     def __repr__(self) -> str:
         return "RLC(%s)" % int.from_bytes(self.le_bytes, "little")
