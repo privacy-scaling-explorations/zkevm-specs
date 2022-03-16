@@ -4,8 +4,8 @@ MPT circuit checks that the modification of the trie state happened correctly.
 
 Let's assume there are two proofs (as returned by `eth getProof`):
 
-- A proof that there exists value `val1` at key `key1` for the trie with root `root1`.
-- A proof that there exists value `val2` at key `key1` for the trie with root `root2`.
+- A proof that there exists value `val1` at key `key1` for address `addr` in the state trie with root `root1`.
+- A proof that there exists value `val2` at key `key1` for address `addr` in the state trie with root `root2`.
 
 The circuit checks the transition from `val1` to `val2` at `key1` that led to the change
 of trie root from `root1` to `root2` (the chaining of such proofs is yet to be added).
@@ -42,77 +42,53 @@ The proof returned by `eth getProof` looks like:
 }
 ```
 
-In the above case account proof contains five elements. The last one is account leaf,
-the first four are branches / extension nodes. The hash of account leaf is checked to
+In the above case account proof contains five elements.
+The first four are branches / extension nodes, the last one is account leaf.
+The hash of the account leaf is checked to
 be in the fourth element (at the proper position - depends on the account address).
 The hash of the fourth element is checked to be in the third element (at the proper position) ...
 
-The storage proof in the above case contains two elements. The second element is storage
-leaf, the first one is branch or extension node. The hash of storage leaf is checked to
+The storage proof in the above case contains two elements.
+The first one is branch or extension node, the second element is storage leaf.
+The hash of storage leaf is checked to
 be in the first element at the proper position (depends on the key).
 
 The hash of the first storage proof element (storage root) needs to be checked
 to be in the account leaf of the last account proof element.
 
-<!--
-- State trie branch 0 that contains 16 nodes, one of them being the hash of the branch below (State trie branch 1)
+We split the branch information into 16 rows (one row for each node). The proof looks like:
 
-- State trie branch 1 that contains 16 nodes, one of them being the hash of the branch below
+![branch](./img/proof.png)
 
-- ...
-
-- State trie branch n
-
-- State trie leaf that constains the info about account: nonce, balance, storageRoot, codeHash
-
-- Storage trie branch 0 that contains 16 nodes, one of them being the hash of the branch below (Storage trie branch 1)
-
-- Storage trie branch 1 that contains 16 nodes, one of them being the hash of the branch below
-
-- ...
-
-- Storage trie branch n
-
-- Storage trie leaf that constains (part of) key `key1` and value `val1`
-
-Let's for demonstration purposes simplify the proof above to only have two storage trie branches
-and no state trie part:
-
-- Storage trie branch 0 that contains 16 nodes, one of them being the hash of the branch below (Storage trie branch 1)
-- Storage trie branch 1 that contains 16 nodes, one of them being the hash of the branch below
-- Storage trie leaf that constains (part of) key `key1` and value `val1`
--->
-
-We split the branch information into 16 rows (one row for each node). The proofs looks like:
-
-- Branch 0 node 0
-- Branch 0 node 1
-- Branch 0 node 2 (hash of Branch 1)
-- ...
-- Branch 0 node 15
-- Branch 1 node 0
-- Branch 1 node 1 (hash of a leaf)
-- ...
-- Branch 1 node 15
-- Leaf
-
-When `key1` is hashed and converted into hexadecimal value, it is a hexadecimal string of
+When `key1` is hashed and converted into hexadecimal value - it becomes a hexadecimal string of
 length 64. The first character specifies under which position of Branch 0 is the node
 corresponding to `key1`.
 The second character specifies under which position of Branch 1 is the node
 corresponding to `key1`. The remaining characters are stored in a leaf.
-Let's say the first character is 2 and the second character is 1.
-In our case, this means the hash of a leaf is Branch 1 node 1 and hash of Branch 1 is
-Branch 0 node 2.
+
+In the above case, we have four branches / extension nodes in the account proof.
+Let's say `addr` turns into nibbles `3 b a 5 ...' That would mean the position (named `modified_node\`) of the underlying proof element is:
+
+- 3 in Branch 0
+- 11 in Branch 1
+- 10 in Branch 2
+- 5 in Branch 3
+
+In the above case, we only have one branch / extension node in the storage proof.
+Let's say `key1` turns into nibbles `7 ...' That would mean the position (named `modified_node\`) of the underlying storage leaf is:
+
+- 7 in Branch 0
 
 If we make a change at `key1` from `val1` to `val2` and obtain a proof after this change,
 the proof will be different from the first one at Leaf, Branch 1 node 1, and Branch 0 node 2,
 other proof elements stay the same.
 
 To check the transition from `root1` to `root2` caused at `key1`, MPT circuit checks that both
-proofs are the same except at the nodes that correspond to `key1` path (hexadecimal characters).
-In proof 1, the root of Branch 0 needs to be `root1`.
-In proof 2, the root of Branch 0 needs to be `root2`.
+proofs are the same except at the nodes that correspond to `key1` path
+(hexadecimal characters).
+
+In proof 1, the root of account Branch 0 needs to be `root1`.
+In proof 2, the root of account Branch 0 needs to be `root2`.
 Furthermore, it needs to be checked that the nodes differ at indexes that
 correspond to `key1` path.
 
@@ -272,7 +248,7 @@ Columns (not shown in picture or table):
 - `sel2`
 
 Whether the factor 16 is used or not is determined by `sel1/sel2` columns.
-`sel1/sel2` are boolean values and it holds `sel1 + sel2 = 0`.
+`sel1/sel2` are boolean values and it holds `sel1 + sel2 = 1`.
 The constraints for `sel1/sel2` are implemented in `BranchKeyChip`.
 
 #### Branch init row
