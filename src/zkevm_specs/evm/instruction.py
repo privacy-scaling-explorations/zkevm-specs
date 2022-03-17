@@ -333,10 +333,8 @@ class Instruction:
 
         return self.rlc_encode(product_bytes), FQ(quotient_hi)
 
-    def rlc_to_fq_unchecked(self, word: RLC, n_bytes: int) -> Tuple[FQ, FQ]:
-        return self.bytes_to_fq(word.le_bytes[:n_bytes]), self.is_zero(
-            self.sum(word.le_bytes[n_bytes:])
-        )
+    def rlc_to_fq_unchecked(self, word: RLC, n_bytes: int) -> FQ:
+        return self.bytes_to_fq(word.le_bytes[:n_bytes])
 
     def rlc_to_fq_exact(self, word: RLC, n_bytes: int) -> FQ:
         if any(word.le_bytes[n_bytes:]):

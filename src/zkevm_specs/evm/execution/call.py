@@ -43,8 +43,9 @@ def call(instruction: Instruction):
     instruction.constrain_bool(is_success)
 
     # Recomposition of random linear combination to integer
-    callee_address, _ = instruction.rlc_to_fq_unchecked(callee_address_rlc, N_BYTES_ACCOUNT_ADDRESS)
-    gas, gas_is_u64 = instruction.rlc_to_fq_unchecked(gas_rlc, N_BYTES_GAS)
+    callee_address = instruction.rlc_to_fq_unchecked(callee_address_rlc, N_BYTES_ACCOUNT_ADDRESS)
+    gas = instruction.rlc_to_fq_unchecked(gas_rlc, N_BYTES_GAS)
+    gas_is_u64 = instruction.is_zero(instruction.sum(gas_rlc.le_bytes[N_BYTES_GAS:]))
     cd_offset, cd_length = instruction.memory_offset_and_length(cd_offset_rlc, cd_length_rlc)
     rd_offset, rd_length = instruction.memory_offset_and_length(rd_offset_rlc, rd_length_rlc)
 
