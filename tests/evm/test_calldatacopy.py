@@ -17,11 +17,11 @@ from zkevm_specs.evm import (
     Bytecode,
     RWDictionary,
 )
-from zkevm_specs.evm.execution.memory_copy import MAX_COPY_BYTES
 from zkevm_specs.util import (
     rand_fq,
     rand_bytes,
     GAS_COST_COPY,
+    MAX_N_BYTES_COPY_TO_MEMORY,
     MEMORY_EXPANSION_QUAD_DENOMINATOR,
     MEMORY_EXPANSION_LINEAR_COEFF,
 )
@@ -85,7 +85,7 @@ def make_copy_step(
         aux_data=aux_data,
     )
 
-    num_bytes = min(MAX_COPY_BYTES, bytes_left)
+    num_bytes = min(MAX_N_BYTES_COPY_TO_MEMORY, bytes_left)
     for i in range(num_bytes):
         byte = buffer_map[src_addr + i] if src_addr + i < src_addr_end else 0
         if not from_tx and src_addr + i < src_addr_end:
@@ -129,9 +129,9 @@ def make_copy_steps(
             code_source,
         )
         steps.append(new_step)
-        src_addr += MAX_COPY_BYTES
-        dst_addr += MAX_COPY_BYTES
-        bytes_left -= MAX_COPY_BYTES
+        src_addr += MAX_N_BYTES_COPY_TO_MEMORY
+        dst_addr += MAX_N_BYTES_COPY_TO_MEMORY
+        bytes_left -= MAX_N_BYTES_COPY_TO_MEMORY
     return steps
 
 

@@ -1,7 +1,7 @@
 import itertools
 from typing import Iterator
 
-from ...util import FQ, N_BYTES_MEMORY_SIZE, RLC
+from ...util import FQ, MAX_N_BYTES_COPY_CODE_TO_MEMORY, N_BYTES_MEMORY_SIZE, RLC
 from ..execution_state import ExecutionState
 from ..instruction import Instruction, Transition
 from ..step import CopyCodeToMemoryAuxData
@@ -9,19 +9,16 @@ from ..table import RW
 from ..util import BufferReaderGadget
 
 
-MAX_COPY_BYTES = 54
-
-
 def copy_code_to_memory(instruction: Instruction):
     aux = instruction.curr.aux_data
     assert isinstance(aux, CopyCodeToMemoryAuxData)
 
     buffer_reader = BufferReaderGadget(
-        instruction, MAX_COPY_BYTES, aux.src_addr, aux.src_addr_end, aux.bytes_left
+        instruction, MAX_N_BYTES_COPY_CODE_TO_MEMORY, aux.src_addr, aux.src_addr_end, aux.bytes_left
     )
 
     is_codes = [c.is_code.expr() for c in aux.code.table_assignments(instruction.randomness)]
-    for idx in range(MAX_COPY_BYTES):
+    for idx in range(MAX_N_BYTES_COPY_CODE_TO_MEMORY):
         if buffer_reader.read_flag(idx) == 1:
             is_code = True if is_codes[aux.src_addr.n + idx] == FQ(1) else False
             byte = instruction.bytecode_lookup(
@@ -31,7 +28,7 @@ def copy_code_to_memory(instruction: Instruction):
             )
             buffer_reader.constrain_byte(idx, byte)
 
-    for idx in range(MAX_COPY_BYTES):
+    for idx in range(MAX_N_BYTES_COPY_CODE_TO_MEMORY):
         if buffer_reader.has_data(idx) == 1:
             byte = instruction.memory_lookup(RW.Write, aux.dst_addr + idx)
             buffer_reader.constrain_byte(idx, byte)

@@ -1,10 +1,9 @@
-from ...util import N_BYTES_MEMORY_SIZE, FQ, Expression
+from ...util import MAX_N_BYTES_COPY_TO_MEMORY, N_BYTES_MEMORY_SIZE, FQ, Expression
 from ..execution_state import ExecutionState
 from ..instruction import Instruction, Transition
 from ..step import CopyToMemoryAuxData
 from ..table import RW
 from ..util import BufferReaderGadget
-from ...util import MAX_COPY_BYTES
 
 
 def copy_to_memory(instruction: Instruction):
@@ -12,10 +11,10 @@ def copy_to_memory(instruction: Instruction):
     assert isinstance(aux, CopyToMemoryAuxData)
 
     buffer_reader = BufferReaderGadget(
-        instruction, MAX_COPY_BYTES, aux.src_addr, aux.src_addr_end, aux.bytes_left
+        instruction, MAX_N_BYTES_COPY_TO_MEMORY, aux.src_addr, aux.src_addr_end, aux.bytes_left
     )
 
-    for i in range(MAX_COPY_BYTES):
+    for i in range(MAX_N_BYTES_COPY_TO_MEMORY):
         if buffer_reader.read_flag(i) == 0:
             byte: Expression = FQ(0)
         elif aux.from_tx == 1:
