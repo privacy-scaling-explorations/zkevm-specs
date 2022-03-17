@@ -350,8 +350,8 @@ class Instruction:
         assert len(value) <= MAX_N_BYTES, "Too many bytes to composite an integer in field"
         return FQ(int.from_bytes(value, "little"))
 
-    def rlc_encode(self, value: bytes) -> RLC:
-        return RLC(value, self.randomness)
+    def rlc_encode(self, value: Union[int, bytes], n_bytes: int = 32) -> RLC:
+        return RLC(value, self.randomness, n_bytes)
 
     def range_lookup(self, value: Expression, range: int):
         self.fixed_lookup(FixedTableTag.range_table_tag(range), value)

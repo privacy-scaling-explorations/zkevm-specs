@@ -68,7 +68,7 @@ The `callee_gas_left` for new context by rule in EIP150 is calculated like this:
 
 ```
 gas_available := curr.gas_left - gas_cost
-callee_gas_left := max(gas_available - floor(gas_available / 64), gas)
+callee_gas_left := min(gas_available - floor(gas_available / 64), gas)
 ```
 
 After switching call context, it does:

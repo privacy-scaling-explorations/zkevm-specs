@@ -1,6 +1,5 @@
 from ...util import (
     FQ,
-    RLC,
     N_BYTES_ACCOUNT_ADDRESS,
     N_BYTES_GAS,
     EMPTY_CODE_HASH,
@@ -87,12 +86,14 @@ def call(instruction: Instruction):
     # Verify gas cost
     callee_nonce = instruction.account_read(callee_address, AccountFieldTag.Nonce)
     callee_code_hash = instruction.account_read(callee_address, AccountFieldTag.CodeHash)
-    is_zero_nonce = instruction.is_zero(callee_nonce)
-    is_zero_balance = instruction.is_zero(callee_balance_prev)
     is_empty_code_hash = instruction.is_equal(
-        callee_code_hash, RLC(EMPTY_CODE_HASH, instruction.randomness)
+        callee_code_hash, instruction.rlc_encode(EMPTY_CODE_HASH)
     )
-    is_account_empty = is_zero_nonce * is_zero_balance * is_empty_code_hash
+    is_account_empty = (
+        instruction.is_zero(callee_nonce)
+        * instruction.is_zero(callee_balance_prev)
+        * is_empty_code_hash
+    )
     gas_cost = (
         GAS_COST_WARM_ACCESS
         + (1 - is_warm_access) * EXTRA_GAS_COST_ACCOUNT_COLD_ACCESS
@@ -106,9 +107,11 @@ def call(instruction: Instruction):
     gas_available = instruction.curr.gas_left - gas_cost
     one_64th_gas, _ = instruction.constant_divmod(gas_available, FQ(64), N_BYTES_GAS)
     all_but_one_64th_gas = gas_available - one_64th_gas
-    callee_gas_left = all_but_one_64th_gas
-    if gas_is_u64:
-        callee_gas_left = instruction.min(callee_gas_left, gas, N_BYTES_GAS)
+    callee_gas_left = instruction.select(
+        gas_is_u64,
+        instruction.min(all_but_one_64th_gas, gas, N_BYTES_GAS),
+        all_but_one_64th_gas,
+    )
 
     if callee_address in list(PrecompiledAddress):
         # TODO: Handle precompile
