@@ -71,7 +71,7 @@ def call(instruction: Instruction):
         # state_write_counter here is added by 1 due to adding callee to access list
         instruction.constrain_equal(
             callee_reversion_info.rw_counter_end_of_reversion,
-            reversion_info.rw_counter_end_of_reversion - reversion_info.state_write_counter,
+            reversion_info.rw_counter_of_reversion(),
         )
 
     # Check not is_static if call has value

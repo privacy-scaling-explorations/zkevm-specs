@@ -82,10 +82,10 @@ class ReversionInfo:
         self.is_persistent = is_persistent.expr()
         self.state_write_counter = state_write_counter.expr()
 
-    def rw_counter(self) -> FQ:
-        rw_counter = self.rw_counter_end_of_reversion - self.state_write_counter
+    def rw_counter_of_reversion(self) -> FQ:
+        rw_counter_of_reversion = self.rw_counter_end_of_reversion - self.state_write_counter
         self.state_write_counter += 1
-        return rw_counter
+        return rw_counter_of_reversion
 
 
 class Instruction:
@@ -466,9 +466,9 @@ class Instruction:
 
         row = self.rw_lookup(RW.Write, tag, key1, key2, key3, value, value_prev, aux0, aux1)
 
-        if reversion_info is not None and reversion_info.is_persistent == 0:
+        if reversion_info is not None and reversion_info.is_persistent == FQ(0):
             self.tables.rw_lookup(
-                rw_counter=reversion_info.rw_counter(),
+                rw_counter=reversion_info.rw_counter_of_reversion(),
                 rw=FQ(RW.Write),
                 tag=FQ(tag),
                 key1=row.key1,
@@ -491,10 +491,13 @@ class Instruction:
         return self.rw_lookup(rw, RWTableTag.CallContext, call_id, FQ(field_tag)).value
 
     def reversion_info(self, call_id: Expression = None) -> ReversionInfo:
-        rw_counter_end_of_reversion = self.call_context_lookup(
-            CallContextFieldTag.RwCounterEndOfReversion, call_id=call_id
-        )
-        is_persistent = self.call_context_lookup(CallContextFieldTag.IsPersistent, call_id=call_id)
+        [rw_counter_end_of_reversion, is_persistent] = [
+            self.call_context_lookup(tag, call_id=call_id)
+            for tag in [
+                CallContextFieldTag.RwCounterEndOfReversion,
+                CallContextFieldTag.IsPersistent,
+            ]
+        ]
         return ReversionInfo(
             rw_counter_end_of_reversion,
             is_persistent,
