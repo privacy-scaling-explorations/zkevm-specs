@@ -133,9 +133,8 @@ We apply two different checks on the 0~134-th rows and the 135th row.
    2. `next.acc_len === curr.acc_len + 1`
    3. Inverse check for `curr.condition_80_inv`
    4. If `curr.input_len - curr.acc_len` is 0, pad `0x80`: `curr.padded_byte === curr.byte + (1 - (curr.input_len - curr.acc_len) * curr.condition_80_inv) * 0x80`
-4. For 1~135th rows
-   1. Set `is_pad_zone` to 1 if we entered. `curr.is_pad_zone === prev.is_pad_zone + (1 - (curr.input_len - curr.acc_len) * curr.condition_80_inv)`
-5. For the 135th row
+   5. Set `is_pad_zone` to 1 if we entered. `next.is_pad_zone === curr.is_pad_zone + (1 - (next.input_len - next.acc_len) * next.condition_80_inv)`
+4. For the 135th row
    1. Same as the previous 0x80 pad, but pad 0x01 if we are in the pad zone. `curr.padded_byte === curr.byte + (1 - (curr.input_len - curr.acc_len) * curr.condition_80_inv) * 0x80 + is_pad_zone * 0x01`
-6. Use another RLC gadget to check `byte` can be running summed up to `input` in the lookup region
-7. `padded_byte` are copied to a word builder gadget to build padded words, which would later be copied to the `Keccak-f` permutation
+5. Use another RLC gadget to check `byte` can be running summed up to `input` in the lookup region
+6. `padded_byte` are copied to a word builder gadget to build padded words, which would later be copied to the `Keccak-f` permutation
