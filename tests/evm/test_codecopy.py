@@ -10,6 +10,7 @@ from zkevm_specs.evm import (
     ExecutionState,
     Opcode,
     RW,
+    RWDictionary,
     RWTableTag,
     StepState,
     Tables,
@@ -21,7 +22,7 @@ from zkevm_specs.util import (
     MEMORY_EXPANSION_LINEAR_COEFF,
     MEMORY_EXPANSION_QUAD_DENOMINATOR,
     rand_address,
-    rand_fp,
+    rand_fq,
     RLC,
     U64,
 )
@@ -64,11 +65,11 @@ def make_copy_code_step(
     dst_addr: int,
     src_addr_end: int,
     bytes_left: int,
+    rw_dictionary: RWDictionary,
     program_counter: int,
     stack_pointer: int,
     memory_size: int,
-    rw_counter: int,
-) -> Tuple[StepState, Sequence[RW]]:
+) -> StepState:
     aux_data = CopyCodeToMemoryAuxData(
         src_addr=src_addr,
         dst_addr=dst_addr,
@@ -78,7 +79,7 @@ def make_copy_code_step(
     )
     step = StepState(
         execution_state=ExecutionState.CopyCodeToMemory,
-        rw_counter=rw_counter,
+        rw_counter=rw_dictionary.rw_counter,
         call_id=CALL_ID,
         is_root=True,
         program_counter=program_counter,
@@ -88,26 +89,12 @@ def make_copy_code_step(
         code_source=code_source,
         aux_data=aux_data,
     )
-    rws = []
+
     num_bytes = min(MAX_COPY_BYTES, bytes_left)
     for i in range(num_bytes):
         byte = buffer_map[src_addr + i] if src_addr + i < src_addr_end else 0
-        rws.append(
-            (
-                rw_counter,
-                RW.Write,
-                RWTableTag.Memory,
-                CALL_ID,
-                dst_addr + i,
-                0,
-                byte,
-                0,
-                0,
-                0,
-            )
-        )
-        rw_counter += 1
-    return step, rws
+        rw_dictionary.memory_write(CALL_ID, dst_addr + i, byte)
+    return step
 
 
 def make_copy_code_steps(
@@ -116,18 +103,16 @@ def make_copy_code_steps(
     src_addr: int,
     dst_addr: int,
     length: int,
+    rw_dictionary: RWDictionary,
     program_counter: int,
     stack_pointer: int,
     memory_size: int,
-    rw_counter: int,
-) -> Tuple[Sequence[StepState], Sequence[RW]]:
+) -> Sequence[StepState]:
     buffer_map = dict(zip(range(src_addr, len(code.code)), code.code))
     steps = []
-    rws = []
     bytes_left = length
     while bytes_left > 0:
-        curr_rw_counter = rws[-1][0] + 1 if rws else rw_counter
-        new_step, new_rws = make_copy_code_step(
+        new_step = make_copy_code_step(
             code,
             code_source,
             buffer_map,
@@ -135,22 +120,21 @@ def make_copy_code_steps(
             dst_addr,
             len(code.code),
             bytes_left,
+            rw_dictionary,
             program_counter,
             stack_pointer,
             memory_size,
-            curr_rw_counter,
         )
         steps.append(new_step)
-        rws.extend(new_rws)
         src_addr += MAX_COPY_BYTES
         dst_addr += MAX_COPY_BYTES
         bytes_left -= MAX_COPY_BYTES
-    return steps, rws
+    return steps
 
 
 @pytest.mark.parametrize("src_addr, dst_addr, length", TESTING_DATA)
 def test_codecopy(src_addr: U64, dst_addr: U64, length: U64):
-    randomness = rand_fp()
+    randomness = rand_fq()
     callee_addr = rand_address()
 
     length_rlc = RLC(length, randomness)
@@ -169,55 +153,25 @@ def test_codecopy(src_addr: U64, dst_addr: U64, length: U64):
     total_gas_cost = gas_cost_codecopy + (3 * gas_cost_push32)
 
     code_hash = code.hash()
-    rws = [
-        (1, RW.Write, RWTableTag.Stack, CALL_ID, 1023, 0, length_rlc, 0, 0, 0),
-        (2, RW.Write, RWTableTag.Stack, CALL_ID, 1022, 0, src_addr_rlc, 0, 0, 0),
-        (3, RW.Write, RWTableTag.Stack, CALL_ID, 1021, 0, dst_addr_rlc, 0, 0, 0),
-        (4, RW.Read, RWTableTag.Stack, CALL_ID, 1021, 0, dst_addr_rlc, 0, 0, 0),
-        (5, RW.Read, RWTableTag.Stack, CALL_ID, 1022, 0, src_addr_rlc, 0, 0, 0),
-        (6, RW.Read, RWTableTag.Stack, CALL_ID, 1023, 0, length_rlc, 0, 0, 0),
-        (
-            7,
-            RW.Read,
-            RWTableTag.CallContext,
-            CALL_ID,
-            CallContextFieldTag.CalleeAddress,
-            0,
-            callee_addr,
-            0,
-            0,
-            0,
-        ),
-        (
-            8,
-            RW.Read,
-            RWTableTag.Account,
-            callee_addr,
-            AccountFieldTag.CodeSize,
-            0,
-            len(code.code),
-            0,
-            0,
-            0,
-        ),
-        (
-            9,
-            RW.Read,
-            RWTableTag.Account,
-            callee_addr,
-            AccountFieldTag.CodeHash,
-            0,
-            code_hash,
-            0,
-            0,
-            0,
-        ),
-    ]
+
+    rw_dictionary = (
+        RWDictionary(1)
+        .stack_write(CALL_ID, 1023, length_rlc)
+        .stack_write(CALL_ID, 1022, src_addr_rlc)
+        .stack_write(CALL_ID, 1021, dst_addr_rlc)
+        .stack_read(CALL_ID, 1021, dst_addr_rlc)
+        .stack_read(CALL_ID, 1022, src_addr_rlc)
+        .stack_read(CALL_ID, 1023, length_rlc)
+        .call_context_read(CALL_ID, CallContextFieldTag.CalleeAddress, callee_addr)
+        .account_read(callee_addr, AccountFieldTag.CodeSize, RLC(len(code.code), randomness))
+        .account_read(callee_addr, AccountFieldTag.CodeHash, RLC(code_hash, randomness))
+    )
+
     steps = [
         StepState(
             execution_state=ExecutionState.PUSH,
             rw_counter=1,
-            call_id=1,
+            call_id=CALL_ID,
             is_root=True,
             code_source=code_source,
             program_counter=0,
@@ -227,7 +181,7 @@ def test_codecopy(src_addr: U64, dst_addr: U64, length: U64):
         StepState(
             execution_state=ExecutionState.PUSH,
             rw_counter=2,
-            call_id=1,
+            call_id=CALL_ID,
             is_root=True,
             code_source=code_source,
             program_counter=33,
@@ -237,7 +191,7 @@ def test_codecopy(src_addr: U64, dst_addr: U64, length: U64):
         StepState(
             execution_state=ExecutionState.PUSH,
             rw_counter=3,
-            call_id=1,
+            call_id=CALL_ID,
             is_root=True,
             code_source=code_source,
             program_counter=66,
@@ -247,7 +201,7 @@ def test_codecopy(src_addr: U64, dst_addr: U64, length: U64):
         StepState(
             execution_state=ExecutionState.CODECOPY,
             rw_counter=4,
-            call_id=1,
+            call_id=CALL_ID,
             is_root=True,
             code_source=code_source,
             program_counter=99,
@@ -256,25 +210,24 @@ def test_codecopy(src_addr: U64, dst_addr: U64, length: U64):
         ),
     ]
 
-    steps_internal, rws_internal = make_copy_code_steps(
+    steps_internal = make_copy_code_steps(
         code,
         code_source,
         src_addr,
         dst_addr,
         length,
+        rw_dictionary=rw_dictionary,
         program_counter=100,
         memory_size=next_memory_word_size,
         stack_pointer=1024,
-        rw_counter=10,
     )
     steps.extend(steps_internal)
-    rws.extend(rws_internal)
 
     steps.append(
         StepState(
             execution_state=ExecutionState.STOP,
-            rw_counter=rws_internal[-1][0] + 1,
-            call_id=1,
+            rw_counter=rw_dictionary.rw_counter,
+            call_id=CALL_ID,
             is_root=True,
             code_source=code_source,
             program_counter=33,
@@ -287,7 +240,7 @@ def test_codecopy(src_addr: U64, dst_addr: U64, length: U64):
         block_table=set(),
         tx_table=set(),
         bytecode_table=set(code.table_assignments(randomness)),
-        rw_table=set(rws),
+        rw_table=set(rw_dictionary.rws),
     )
 
     verify_steps(
@@ -299,7 +252,7 @@ def test_codecopy(src_addr: U64, dst_addr: U64, length: U64):
 
 @pytest.mark.parametrize("src_addr, dst_addr, length", TESTING_DATA)
 def test_copy_code_to_memory(src_addr: U64, dst_addr: U64, length: U64):
-    randomness = rand_fp()
+    randomness = rand_fq()
 
     code = (
         Bytecode()
@@ -318,27 +271,29 @@ def test_copy_code_to_memory(src_addr: U64, dst_addr: U64, length: U64):
     dummy_code = Bytecode().stop()
     code_source = RLC(dummy_code.hash(), randomness)
 
+    rw_dictionary = RWDictionary(1)
+
     next_memory_word_size = to_word_size(dst_addr + length)
-    steps, rws = make_copy_code_steps(
+    steps = make_copy_code_steps(
         code,
         code_source,
         src_addr,
         dst_addr,
         length,
-        program_counter=100,
+        rw_dictionary=rw_dictionary,
+        program_counter=0,
         memory_size=next_memory_word_size,
         stack_pointer=1024,
-        rw_counter=1,
     )
     steps.append(
         StepState(
             execution_state=ExecutionState.STOP,
-            rw_counter=rws[-1][0] + 1,
+            rw_counter=rw_dictionary.rw_counter,
             call_id=CALL_ID,
             is_root=True,
             is_create=False,
             code_source=code_source,
-            program_counter=100,
+            program_counter=0,
             stack_pointer=1024,
             memory_size=next_memory_word_size,
             gas_left=0,
@@ -351,7 +306,7 @@ def test_copy_code_to_memory(src_addr: U64, dst_addr: U64, length: U64):
         bytecode_table=set(code.table_assignments(randomness)).union(
             dummy_code.table_assignments(randomness)
         ),
-        rw_table=set(rws),
+        rw_table=set(rw_dictionary.rws),
     )
 
     verify_steps(

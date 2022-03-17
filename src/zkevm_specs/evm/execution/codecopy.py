@@ -8,14 +8,14 @@ from ..table import RW, RWTableTag, CallContextFieldTag, AccountFieldTag
 def codecopy(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
 
-    memory_offset, code_offset, size = (
+    memory_offset_word, code_offset_word, size_word = (
         instruction.stack_pop(),
         instruction.stack_pop(),
         instruction.stack_pop(),
     )
 
-    memory_offset, size = instruction.memory_offset_and_length(memory_offset, size)
-    code_offset = instruction.rlc_to_fq_exact(code_offset, N_BYTES_MEMORY_ADDRESS)
+    memory_offset, size = instruction.memory_offset_and_length(memory_offset_word, size_word)
+    code_offset = instruction.rlc_to_fq_exact(code_offset_word, N_BYTES_MEMORY_ADDRESS)
 
     account = instruction.call_context_lookup(CallContextFieldTag.CalleeAddress)
     code_size = instruction.account_read(account, AccountFieldTag.CodeSize)
@@ -27,6 +27,7 @@ def codecopy(instruction: Instruction):
     gas_cost = instruction.memory_copier_gas_cost(size, memory_expansion_gas_cost)
 
     if not instruction.is_zero(size):
+        assert instruction.next is not None
         instruction.constrain_equal(
             instruction.next.execution_state, ExecutionState.CopyCodeToMemory
         )
@@ -34,9 +35,11 @@ def codecopy(instruction: Instruction):
         assert isinstance(next_aux, CopyCodeToMemoryAuxData)
         instruction.constrain_equal(next_aux.src_addr, code_offset)
         instruction.constrain_equal(next_aux.dst_addr, memory_offset)
-        instruction.constrain_equal(next_aux.src_addr_end, code_size)
+        instruction.constrain_equal(next_aux.src_addr_end, instruction.rlc_to_fq_exact(code_size))
         instruction.constrain_equal(next_aux.bytes_left, size)
-        instruction.constrain_equal(FQ(next_aux.code.hash()), code_hash)
+        instruction.constrain_equal(
+            FQ(next_aux.code.hash()), instruction.rlc_to_fq_exact(code_hash)
+        )
 
     instruction.step_state_transition_in_same_context(
         opcode,

@@ -63,7 +63,7 @@ def make_copy_step(
     memory_size: int,
     gas_left: int,
     code_source: RLC,
-) -> Tuple[StepState, Sequence[RW]]:
+) -> StepState:
     aux_data = CopyToMemoryAuxData(
         src_addr=src_addr,
         dst_addr=dst_addr,
