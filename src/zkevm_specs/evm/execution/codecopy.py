@@ -35,10 +35,12 @@ def codecopy(instruction: Instruction):
         assert isinstance(next_aux, CopyCodeToMemoryAuxData)
         instruction.constrain_equal(next_aux.src_addr, code_offset)
         instruction.constrain_equal(next_aux.dst_addr, memory_offset)
-        instruction.constrain_equal(next_aux.src_addr_end, instruction.rlc_to_fq_exact(code_size))
+        instruction.constrain_equal(
+            next_aux.src_addr_end, instruction.rlc_to_fq_exact(code_size, n_bytes=1)
+        )
         instruction.constrain_equal(next_aux.bytes_left, size)
         instruction.constrain_equal(
-            FQ(next_aux.code.hash()), instruction.rlc_to_fq_exact(code_hash)
+            FQ(next_aux.code.hash()), instruction.rlc_to_fq_exact(code_hash, n_bytes=32)
         )
 
     instruction.step_state_transition_in_same_context(
