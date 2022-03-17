@@ -18,22 +18,44 @@ def sign_tx(sk: keys.PrivateKey, tx: Transaction, chain_id: U64) -> Transaction:
     sig_s = sig.s
     return Transaction(tx.nonce, tx.gas_price, tx.gas, tx.to, tx.value, tx.data, sig_v, sig_r, sig_s)
 
-def verify(txs_or_rows: Union[List[Transaction], List[Row]], chain_id: U64, randomness: FQ, success: bool = True):
-    rows = txs_or_rows
-    if isinstance(txs_or_rows[0], Transaction):
-        rows = txs2rows(txs_or_rows, chain_id, randomness)
+def verify(
+        txs_or_witness: Union[List[Transaction], Witness],
+        MAX_TXS: int,
+        MAX_CALLDATA_BYTES: int,
+        chain_id: U64,
+        randomness: FQ,
+        success: bool = True):
+    witness = txs_or_witness
+    if isinstance(txs_or_witness, Witness):
+        pass
+    else:
+        witness = txs2witness(txs_or_witness, chain_id, MAX_TXS, MAX_CALLDATA_BYTES, randomness)
+    assert len(witness.rows) == MAX_TXS * Tag.TxSignHash + MAX_CALLDATA_BYTES
+    assert len(witness.sign_verifications) == MAX_TXS
     ok = True
-    for (idx, row) in enumerate(rows):
-        row_prev = rows[(idx - 1) % len(rows)]
-        try:
-            check_tx_row(row, row_prev, chain_id, randomness)
-        except AssertionError as e:
-            if success:
-                traceback.print_exc()
-            print(f"row[{(idx-1) % len(rows)}]: {row_prev}")
-            print(f"row[{idx}]: {row}")
-            ok = False
-            break
+    verify_circuit(
+            witness.rows,
+            witness.sign_verifications,
+            witness.keccak_table,
+            MAX_TXS,
+            MAX_CALLDATA_BYTES,
+            chain_id,
+            randomness
+    )
+    # try:
+    #     verify_circuit(
+    #             witness.rows,
+    #             witness.sign_verifications,
+    #             witness.keccak_table,
+    #             MAX_TXS,
+    #             MAX_CALLDATA_BYTES,
+    #             chain_id,
+    #             randomness
+    #     )
+    # except AssertionError as e:
+    #     if success:
+    #         traceback.print_exc()
+    #     ok = False
     assert ok == success
 
 
@@ -55,7 +77,8 @@ def test_tx2rows():
     tx = Transaction(nonce, gas_price, gas, to, value, data, 0, 0, 0)
     tx = sign_tx(sk, tx, chain_id)
     # print(f'tx: {tx}')
-    rows = tx2rows(0, tx, chain_id, r)
+    keccak_table = KeccakTable()
+    rows, sign_verification = tx2witness(0, tx, chain_id, r, keccak_table)
     # print('rows:')
     for row in rows:
         print(row)
@@ -63,10 +86,14 @@ def test_tx2rows():
             assert addr == row.value.n.to_bytes(20, "big")
 
 def test_check_tx_row():
+    MAX_TXS = 20
+    MAX_CALLDATA_BYTES = 300
+    NUM_TXS = 1
     chain_id = 1337
-    sks = [keys.PrivateKey(bytes([byte+1]) * 32) for byte in range(16)]
+    sks = [keys.PrivateKey(bytes([byte+1]) * 32) for byte in range(NUM_TXS)]
 
     txs: List[Transaction] = []
+    keccak_table = KeccakTable()
     for i, sk in enumerate(sks):
         nonce = 300 + i
         gas_price = 1000 + i * 2
@@ -78,9 +105,11 @@ def test_check_tx_row():
         tx = Transaction(nonce, gas_price, gas, to, value, data, 0, 0, 0)
         tx = sign_tx(sk, tx, chain_id)
         txs.append(tx)
+    print(f'addr: {sks[0].public_key.to_canonical_address().hex()}')
+    print(f'tx: {tx}')
 
-    rows = txs2rows(txs, chain_id, r)
-    verify(rows, chain_id, r)
+    witness = txs2witness(txs, chain_id, MAX_TXS, MAX_CALLDATA_BYTES, r)
+    verify(witness, MAX_TXS, MAX_CALLDATA_BYTES, chain_id, r)
 
 def test_ecdsa_verify_chip():
     sk = keys.PrivateKey(b'\x02' * 32)
@@ -88,5 +117,5 @@ def test_ecdsa_verify_chip():
     msg_hash = b'\xae' * 32
     sig = sk.sign_msg_hash(msg_hash)
 
-    ecdsa_chip = ECDSAVerifyChip(sig, pk, msg_hash)
-    ecdsa_chip.verify()
+    ecdsa_chip = ECDSAVerifyChip.assign(sig, pk, msg_hash)
+    ecdsa_chip.verify(is_enabled=FQ(1), assert_msg="ecdsa verification failed")
