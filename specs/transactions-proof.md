@@ -5,7 +5,6 @@ patricia trie identified by the root `transactionsRoot` contains all the
 transactions (and no more), and makes the transactions data easily accessible
 to the EVM proof via the transactions table.
 
-
 ## Transaction encoding
 
 Different types of transaction encoding exists.  On the first iteration of the zkEVM we will only support Legacy transactions with EIP-155.  We plan to add support for Non-Legacy (EIP-2718) transactions later.
@@ -41,9 +40,7 @@ Hashed data to sign: TODO
 
 Using the following public inputs: `chain_id`, `transactionsRoot`.
 
-For every transaction defined as the parameters `(nonce, gas_price, gas,
-to, value, data, sig_v, sig_r, sig_s)` and using as public inputs `(nonce,
-gas_price, gas, to, value, data, from)`, the circuit verifies the following:
+For every transaction defined as the parameters `(nonce, gas_price, gas, to, value, data, sig_v, sig_r, sig_s)` and using as public inputs `(nonce, gas_price, gas, to, value, data, from)`, the circuit verifies the following:
 
 1. `txSignData: bytes = rlp([nonce, gas_price, gas, to, value, data, chain_id, 0, 0])`
 2. `txSignHash: word = keccak(txSignData)`
@@ -65,6 +62,7 @@ gas_price, gas, to, value, data, from)`, the circuit verifies the following:
 From this information the circuit builds the TxTable:
 
 Where:
+
 - Gas = gas
 - GasTipCap = 0
 - GasFeeCap = 0
@@ -72,7 +70,7 @@ Where:
 - CalleeAddress = to
 - IsCreate = `1 if to is None else 0`
 - CallDataLength = len(data)
-- CallData[$ByteIndex] = data[$ByteIndex]
+- CallData\[$ByteIndex\] = data\[$ByteIndex\]
 
 | 0 TxID | 1 Tag               | 2 Index    | 3 value     |
 | ---    | ---                 | ---        | ---         |
@@ -90,6 +88,7 @@ Where:
 | $TxID  | CallData            | $ByteIndex | $value: raw |
 
 There are some constraints on the shape of the table like:
+
 - For every Tx, each tag must appear exactly once, except for `CallData` which can be repeated but only with sequential `ByteIndex` starting at 0.
 - `TxID` must start at 1 and increase sequentially for each transaction
 - When `Tag` is `CallData`, value must be between 0 and 255
@@ -113,6 +112,7 @@ corresponding to the transactions has the root value `transactionsRoot`.
 > transaction, we reach a Trie with root value `transactionsRoot`.
 
 Each MPT update uses the following parameters:
+
 - Key = `rlp(tx_index)`
 - Value = `rlp([nonce, gas_price, gas, to, value, data, sig_v, r, s])`
 - ValuePrev = `0`
@@ -123,6 +123,7 @@ yet defined.
 NOTE: The MPT proof used for the Transaction Trie doesn't need deletion support.
 
 `go-ethereum` reference:
+
 - [Transaction Trie Root calculation](https://github.com/ethereum/go-ethereum/blob/70da74e73a182620a09bb0cfbff173e6d65d0518/core/types/hashing.go#L86)
 - [Transaction RLP encoding](https://github.com/ethereum/go-ethereum/blob/70da74e73a182620a09bb0cfbff173e6d65d0518/core/types/transaction.go#L405)
 
@@ -131,6 +132,7 @@ NOTE: The MPT proof used for the Transaction Trie doesn't need deletion support.
 For the first implementation of the transaction circuit we will apply
 some shortcut as a simplification.  For each transaction, the following values
 will be provided as valid public inputs (and won't be verified in the circuit):
+
 - `txSignHash` (this implies that the circuit doesn't need to calculate `txSignData`).
 
 In particular, for the zkRollup, we will calculate the `txSignData` and
@@ -196,7 +198,7 @@ This structure is repeated `MAX_TXS` times.  When the number of transactions is
 less than `MAX_TXS`, the rows corresponding to unused transactions will use the
 `Pad` tag.
 
-Then the table continues: for each transaction: 
+Then the table continues: for each transaction:
 
 | 0 TxID | 1 Tag               | 2 Index    | 3 value     |
 | ---    | ---                 | ---        | ---         |
