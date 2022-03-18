@@ -10,6 +10,9 @@ randomness = rand_fq()
 r = randomness
 
 def sign_tx(sk: keys.PrivateKey, tx: Transaction, chain_id: U64) -> Transaction:
+    """
+    Return a copy of the transaction signed by sk
+    """
     tx_msg = rlp.encode([tx.nonce, tx.gas_price, tx.gas, tx.to, tx.value, tx.data, chain_id, 0, 0])
     tx_msg_hash = keccak(tx_msg)
     sig = sk.sign_msg_hash(tx_msg_hash)
@@ -25,6 +28,11 @@ def verify(
         chain_id: U64,
         randomness: FQ,
         success: bool = True):
+    """
+    Verify the circuit with the assigned witness (or the witness calculated
+    from the transactions).  If `success` is False, expect the verification to
+    fail.
+    """
     witness = txs_or_witness
     if isinstance(txs_or_witness, Witness):
         pass
@@ -33,37 +41,36 @@ def verify(
     assert len(witness.rows) == MAX_TXS * Tag.TxSignHash + MAX_CALLDATA_BYTES
     assert len(witness.sign_verifications) == MAX_TXS
     ok = True
-    verify_circuit(
-            witness.rows,
-            witness.sign_verifications,
-            witness.keccak_table,
-            MAX_TXS,
-            MAX_CALLDATA_BYTES,
-            chain_id,
-            randomness
-    )
-    # try:
-    #     verify_circuit(
-    #             witness.rows,
-    #             witness.sign_verifications,
-    #             witness.keccak_table,
-    #             MAX_TXS,
-    #             MAX_CALLDATA_BYTES,
-    #             chain_id,
-    #             randomness
-    #     )
-    # except AssertionError as e:
-    #     if success:
-    #         traceback.print_exc()
-    #     ok = False
+    if success:
+        verify_circuit(
+                witness.rows,
+                witness.sign_verifications,
+                witness.keccak_table,
+                MAX_TXS,
+                MAX_CALLDATA_BYTES,
+                chain_id,
+                randomness
+        )
+    else:
+        try:
+            verify_circuit(
+                    witness.rows,
+                    witness.sign_verifications,
+                    witness.keccak_table,
+                    MAX_TXS,
+                    MAX_CALLDATA_BYTES,
+                    chain_id,
+                    randomness
+            )
+        except AssertionError as e:
+            ok = False
     assert ok == success
 
 
-def test_tx2rows():
+def test_tx2witness():
     sk = keys.PrivateKey(b'\x01' * 32)
     pk = sk.public_key
     addr = pk.to_canonical_address()
-    # print(f'addr: 0x{addr.hex()}')
 
     chain_id = 23
 
@@ -76,19 +83,17 @@ def test_tx2rows():
 
     tx = Transaction(nonce, gas_price, gas, to, value, data, 0, 0, 0)
     tx = sign_tx(sk, tx, chain_id)
-    # print(f'tx: {tx}')
     keccak_table = KeccakTable()
     rows, sign_verification = tx2witness(0, tx, chain_id, r, keccak_table)
-    # print('rows:')
     for row in rows:
         print(row)
         if row.tag == Tag.CallerAddress:
             assert addr == row.value.n.to_bytes(20, "big")
 
-def test_check_tx_row():
+def test_verify():
     MAX_TXS = 20
     MAX_CALLDATA_BYTES = 300
-    NUM_TXS = 1
+    NUM_TXS = 16
     chain_id = 1337
     sks = [keys.PrivateKey(bytes([byte+1]) * 32) for byte in range(NUM_TXS)]
 
@@ -105,8 +110,6 @@ def test_check_tx_row():
         tx = Transaction(nonce, gas_price, gas, to, value, data, 0, 0, 0)
         tx = sign_tx(sk, tx, chain_id)
         txs.append(tx)
-    print(f'addr: {sks[0].public_key.to_canonical_address().hex()}')
-    print(f'tx: {tx}')
 
     witness = txs2witness(txs, chain_id, MAX_TXS, MAX_CALLDATA_BYTES, r)
     verify(witness, MAX_TXS, MAX_CALLDATA_BYTES, chain_id, r)

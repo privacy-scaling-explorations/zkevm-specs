@@ -49,9 +49,15 @@ class KeccakTable():
         self.table.add((FQ(1), RLC(input, randomness).value, FQ(len(input)), RLC(output, randomness).value))
 
     def lookup(self, is_enabled: FQ, input_rlc: FQ, input_len: FQ, output_rlc: FQ, assert_msg: str):
-        assert (is_enabled, input_rlc, input_len, output_rlc) in self.table, assert_msg
+        assert (is_enabled, input_rlc, input_len, output_rlc) in self.table, \
+            f'{assert_msg}: {(is_enabled, input_rlc, input_len, output_rlc)} '+ \
+            'not found in the lookup table'
 
 class WrongFieldInteger():
+    """
+    Wrong Field arithmetic Integer, representing the implementation at
+    https://github.com/appliedzkp/halo2wrong/blob/master/integer/src/integer.rs
+    """
     limbs: bytes # Little-Endian bytes
 
     def __init__(self, value: int) -> None:
@@ -108,9 +114,12 @@ class ECDSAVerifyChip():
         sig_r = int.from_bytes(self.signature[0].limbs, "little")
         sig_s = int.from_bytes(self.signature[1].limbs, "little")
         signature = KeyAPI.Signature(vrs=[0, sig_r, sig_s])
-        public_key = KeyAPI.PublicKey(bytes(reversed(self.pub_key[0].limbs)) + bytes(reversed(self.pub_key[1].limbs)))
+        public_key = KeyAPI.PublicKey(
+            bytes(reversed(self.pub_key[0].limbs)) + bytes(reversed(self.pub_key[1].limbs))
+        )
         if is_enabled == 1:
-            assert KeyAPI().ecdsa_verify(msg_hash, signature, public_key), assert_msg
+            assert KeyAPI().ecdsa_verify(msg_hash, signature, public_key), \
+                f'{assert_msg}: ecdsa_verify failed'
 
 
 class SignVerifyGadget():
@@ -148,19 +157,24 @@ class SignVerifyGadget():
     def verify(self, keccak_table: KeccakTable, randomness: FQ, assert_msg: str):
         is_enabled = FQ(1 - (self.msg_hash_rlc == 0)) # 1 - is_zero(self.msg_hash_rlc)
 
-        # Verify that the first 20 bytes of the pub_key_hash equal the address
-        assert FQ.linear_combine(list(reversed(self.pub_key_hash.le_bytes[-20:])), FQ(2**8)) == self.address, assert_msg
+        # 0. Verify that the first 20 bytes of the pub_key_hash equal the address
+        addr_expr = FQ.linear_combine(list(reversed(self.pub_key_hash.le_bytes[-20:])), FQ(2**8))
+        assert addr_expr == self.address, \
+            f'{assert_msg}: {hex(addr_expr.n)} != {hex(self.addr_expr.n)}'
 
-        # Verify that keccak(pub_key_bytes) = pub_key_hash by keccak table
+        # 1. Verify that keccak(pub_key_bytes) = pub_key_hash by keccak table
         # lookup, where pub_key_bytes is built from the pub_key in the
         # ecdsa_chip
         pub_key_bytes = bytes(reversed(self.ecdsa_chip.pub_key[0].limbs)) + \
                 bytes(reversed(self.ecdsa_chip.pub_key[1].limbs))
-        keccak_table.lookup(is_enabled, RLC(pub_key_bytes, randomness).value, FQ(64) * is_enabled, self.pub_key_hash.value, assert_msg)
+        keccak_table.lookup(is_enabled, RLC(pub_key_bytes, randomness).value, FQ(64) * is_enabled,
+                self.pub_key_hash.value, assert_msg)
 
-        # Verify that the signed message in the ecdsa_chip with RLC encoding
+        # 2. Verify that the signed message in the ecdsa_chip with RLC encoding
         # corresponds to msg_hash_rlc
-        assert FQ.linear_combine(self.ecdsa_chip.msg_hash.limbs, randomness) == self.msg_hash_rlc, assert_msg
+        msg_hash_rlc_expr = FQ.linear_combine(self.ecdsa_chip.msg_hash.limbs, randomness)
+        assert msg_hash_rlc_expr == self.msg_hash_rlc, \
+            f'{assert_msg}: {hex(msg_hash_rlc_expr.n)} != {hex(self.msg_hash_rlc.n)}'
 
         # Verify the ECDSA signature
         self.ecdsa_chip.verify(is_enabled, assert_msg)
@@ -174,16 +188,23 @@ def verify_circuit(
         MAX_CALLDATA_BYTES: int,
         chain_id: U64,
         randomness: FQ) -> None:
+    """
+    Entry level circuit verification function
+    """
 
     for tx_index in range(MAX_TXS):
         assert_msg = f"Constraints failed for tx_index = {tx_index}"
-        tx_row_index = tx_index * (Tag.TxSignHash-1)
-        caller_addr_index = tx_row_index + Tag.CalleeAddress - 1
+        tx_row_index = tx_index * Tag.TxSignHash
+        caller_addr_index = tx_row_index + Tag.CallerAddress - 1
         tx_sign_hash_index = tx_row_index + Tag.TxSignHash - 1
 
-        # Copy constraints using fixed offsets between the tx rows and the SignVerifyGadget
-        assert rows[caller_addr_index].value == sign_verifications[tx_index].address, assert_msg
-        assert rows[tx_sign_hash_index].value == sign_verifications[tx_index].msg_hash_rlc, assert_msg
+        # 0. Copy constraints using fixed offsets between the tx rows and the SignVerifyGadget
+        assert rows[caller_addr_index].value == sign_verifications[tx_index].address, \
+            f'{assert_msg}: {hex(rows[caller_addr_index].value.n)} != ' + \
+            f'{hex(sign_verifications[tx_index].address.n)}'
+        assert rows[tx_sign_hash_index].value == sign_verifications[tx_index].msg_hash_rlc, \
+            f'{assert_msg}: {hex(rows[tx_sign_hash_index].value.n)} != ' + \
+            f'{hex(sign_verifications[tx_index].msg_hash_rlc)}'
 
         # SignVerifyGadget constraint verification.  Padding txs rows contain
         # 0 in all values.  The SignVerifyGadget skips the verification when
@@ -215,6 +236,11 @@ def tx2witness(
         randomness: FQ,
         keccak_table: KeccakTable
     ) -> Tuple[List[Row], SignVerifyGadget]:
+    """
+    Generate the witness data for a single transaction: generate the tx table
+    rows, insert the pub_key_bytes entry in the keccak_table and assign the
+    SignVerifyGadget.
+    """
 
     tx_msg = rlp.encode([tx.nonce, tx.gas_price, tx.gas, tx.to, tx.value, tx.data, chain_id, 0, 0])
     tx_msg_hash = keccak(tx_msg)
@@ -254,6 +280,9 @@ class Witness(NamedTuple):
     sign_verifications: List[SignVerifyGadget]
 
 def txs2witness(txs: List[Transaction], chain_id: U64, MAX_TXS: int, MAX_CALLDATA_BYTES: int, randomness: FQ) -> Witness:
+    """
+    Generate the complete witness of the transactions for a fixed size circuit.
+    """
     assert len(txs) <= MAX_TXS
 
     keccak_table = KeccakTable()
