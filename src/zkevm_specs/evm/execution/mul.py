@@ -6,6 +6,11 @@ from ...util import FQ
 def mul(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
 
+    # The opcode value for MUL, DIV and MOD is 2, 4, 6. When the opcode is MUL,
+    # (Opcode.DIV - opcode) * (Opcode.MOD - opcode) is 8. To make `is_mul` be
+    # either 0 or 1, we need to divide the product by 8, which is equivalent to
+    # multiply it by inversion of 8. Similarly, we also need to multiply the
+    # inversion of 4 and 8 for `is_div` and `is_mod` respectively.
     is_mul = (Opcode.DIV - opcode) * (Opcode.MOD - opcode) * FQ(8).inv()
     is_div = (opcode - Opcode.MUL) * (Opcode.MOD - opcode) * FQ(4).inv()
     is_mod = (opcode - Opcode.MUL) * (opcode - Opcode.DIV) * FQ(8).inv()
