@@ -2,8 +2,8 @@ from .encoding import U8, is_circuit_code
 from typing import NamedTuple, Tuple, List, Sequence, Set
 from .util import FQ, RLC, U160, U256, U64
 from enum import IntEnum, auto
-from eth_keys import KeyAPI
-import rlp
+from eth_keys import KeyAPI # type: ignore
+import rlp # type: ignore
 from eth_utils import keccak
 
 class Tag(IntEnum):
@@ -26,7 +26,7 @@ class Tag(IntEnum):
     CallData = 12
     Pad = 13
 
-class Row(NamedTuple):
+class Row():
     """
     Tx circuit row
     """
@@ -35,6 +35,13 @@ class Row(NamedTuple):
     tag: FQ
     index: FQ
     value: FQ
+
+    def __init__(self, tx_id: FQ, tag: FQ, index: FQ, value: FQ):
+        self.tx_id = tx_id
+        self.tag = tag
+        self.index = index
+        self.value = value
+
 
 class KeccakTable():
     # The columns are: (is_enabled, input_rlc, input_len, output_rlc)

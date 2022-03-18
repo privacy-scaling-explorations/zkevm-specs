@@ -176,9 +176,7 @@ def test_bad_addr_copy():
     witness, chain_id, MAX_TXS, MAX_CALLDATA_BYTES = gen_valid_witness()
     rows = witness.rows
     row_addr_offset = 0 * Tag.TxSignHash + Tag.CallerAddress - 1
-    row_addr = rows[row_addr_offset]
-    row_addr = Row(row_addr.tx_id, row_addr.tag, row_addr.index, FQ(1213))
-    rows[row_addr_offset] = row_addr
+    rows[row_addr_offset].value = FQ(1213)
     witness = Witness(rows, witness.keccak_table, witness.sign_verifications)
     verify(witness, MAX_TXS, MAX_CALLDATA_BYTES, chain_id, r, success=False)
 
@@ -186,8 +184,6 @@ def test_bad_sign_hash_copy():
     witness, chain_id, MAX_TXS, MAX_CALLDATA_BYTES = gen_valid_witness()
     rows = witness.rows
     row_hash_offset = 0 * Tag.TxSignHash + Tag.TxSignHash - 1
-    row_hash = rows[row_hash_offset]
-    row_hash = Row(row_hash.tx_id, row_hash.tag, row_hash.index, FQ(2324))
-    rows[row_hash_offset] = row_hash
+    rows[row_hash_offset].value = FQ(2324)
     witness = Witness(rows, witness.keccak_table, witness.sign_verifications)
     verify(witness, MAX_TXS, MAX_CALLDATA_BYTES, chain_id, r, success=False)
