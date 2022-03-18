@@ -207,6 +207,10 @@ These rows are repeated `MAX_CALLDATA_BYTES` times.  When the total numer of
 bytes from all transactions' call data is less than `MAX_CALLDATA_BYTES`, the
 rows corresponding to unused transactions will use the `Pad` tag.
 
+Organizing the table this way allows having the values of `CallerAddress` and
+`TxSignHash` for each transaction at a fixed offset.  This makes it possible to
+add copy constraints of these values to cells into another region that performs
+the signature verification and hash lookup.
 
 ## Code
 
