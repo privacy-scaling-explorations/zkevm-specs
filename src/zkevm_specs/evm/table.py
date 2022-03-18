@@ -129,6 +129,15 @@ class TxContextFieldTag(IntEnum):
     CallData = auto()
 
 
+class BytecodeFieldTag(IntEnum):
+    """
+    Tag for BytecodeTable lookup.
+    """
+
+    Length = 1
+    Byte = 2
+
+
 class RW(IntEnum):
     Read = 0
     Write = 1
@@ -294,9 +303,10 @@ class TxTableRow(TableRow):
 @dataclass(frozen=True)
 class BytecodeTableRow(TableRow):
     bytecode_hash: Expression
+    field_tag: Expression
     index: Expression
-    byte: Expression
     is_code: Expression
+    value: Expression
 
 
 @dataclass(frozen=True)
@@ -378,10 +388,19 @@ class Tables:
     ) -> BytecodeTableRow:
         query = {
             "bytecode_hash": bytecode_hash,
+            "field_tag": FQ(BytecodeFieldTag.Byte),
             "index": index,
             "is_code": is_code,
         }
         return _lookup(BytecodeTableRow, self.bytecode_table, query)
+
+    def bytecode_length(self, bytecode_hash: Expression) -> Expression:
+        query = {
+            "bytecode_hash": bytecode_hash,
+            "field_tag": FQ(BytecodeFieldTag.Length),
+        }
+        row = _lookup(BytecodeTableRow, self.bytecode_table, query)
+        return row.value
 
     def rw_lookup(
         self,
