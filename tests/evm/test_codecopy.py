@@ -163,9 +163,10 @@ def test_codecopy(src_addr: U64, dst_addr: U64, length: U64):
         .stack_read(CALL_ID, 1022, src_addr_rlc)
         .stack_read(CALL_ID, 1023, length_rlc)
         .call_context_read(CALL_ID, CallContextFieldTag.CalleeAddress, callee_addr)
-        .account_read(callee_addr, AccountFieldTag.CodeSize, RLC(len(code.code), randomness))
         .account_read(callee_addr, AccountFieldTag.CodeHash, RLC(code_hash, randomness))
     )
+    # rw counter before memory writes
+    rw_counter_interim = rw_dictionary.rw_counter
 
     steps = [
         StepState(
@@ -222,6 +223,10 @@ def test_codecopy(src_addr: U64, dst_addr: U64, length: U64):
         stack_pointer=1024,
     )
     steps.extend(steps_internal)
+
+    # rw counter post memory writes
+    rw_counter_final = rw_dictionary.rw_counter
+    assert rw_counter_final - rw_counter_interim == length
 
     steps.append(
         StepState(

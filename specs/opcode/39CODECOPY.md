@@ -20,7 +20,7 @@ The gadget then transits to the internal state of `CopyCodeToMemory`.
 
 1. opId = 0x39
 2. State Transitions:
-   - rw_counter -> rw_counter + 6 (3 stack reads, 1 call context read, 2 account reads)
+   - rw_counter -> rw_counter + 5 (3 stack reads, 1 call context read `CalleeAddress`, 1 account read `CodeHash`)
    - stack_pointer -> stack_pointer + 3
    - pc -> pc + 1
    - gas -> 3 + dynamic_cost (memory expansion and copier cost when `size > 0`)
@@ -32,8 +32,8 @@ The gadget then transits to the internal state of `CopyCodeToMemory`.
    - `code_offset` is at the second position of the stack
    - `size` is at the third position of the stack
    - `callee_address` is in the call context for the current call
-   - `code_size` is in the account context for the `callee_address`
    - `code_hash` is in the account context for the `callee_address`
+   - `code_size` from the bytecode table
 
 ## Exceptions
 

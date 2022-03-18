@@ -20,7 +20,8 @@ def copy_code_to_memory(instruction: Instruction):
     is_codes = [c.is_code.expr() for c in aux.code.table_assignments(instruction.randomness)]
     for idx in range(MAX_N_BYTES_COPY_CODE_TO_MEMORY):
         if buffer_reader.read_flag(idx) == 1:
-            is_code = True if is_codes[aux.src_addr.n + idx] == FQ(1) else False
+            # the first row is allocated for tag Length.
+            is_code = True if is_codes[aux.src_addr.n + idx + 1] == FQ(1) else False
             byte = instruction.bytecode_lookup(
                 RLC(aux.code.hash(), instruction.randomness),
                 aux.src_addr + idx,
