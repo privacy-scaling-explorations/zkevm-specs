@@ -36,6 +36,12 @@ Selector:
 
 - `is_last_round_of_circuit` Last round of the whole circuit (not hash), to avoid `next` wrap around.
 
+| hash_id | input_len | input | acc_len | acc_input | output | is_end_result | output_word_0 | output_word_1 | output_word_2 | output_word\_... |
+| ------: | --------: | ----- | ------: | --------- | ------ | ------------: | ------------- | ------------- | ------------- | ---------------- |
+|       0 |       150 |       |       0 |           |        |             0 |               |               |               |                  |
+|       0 |       150 |       |     136 |           |        |             1 |               |               |               |                  |
+|       1 |        20 |       |       0 |           |        |             1 |               |               |               |                  |
+
 #### Checks
 
 1. `hash_id` is sequential `next.hash_id - curr.hash_id in [0, 1]`
