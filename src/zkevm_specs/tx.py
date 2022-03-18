@@ -160,7 +160,7 @@ class SignVerifyGadget():
         # 0. Verify that the first 20 bytes of the pub_key_hash equal the address
         addr_expr = FQ.linear_combine(list(reversed(self.pub_key_hash.le_bytes[-20:])), FQ(2**8))
         assert addr_expr == self.address, \
-            f'{assert_msg}: {hex(addr_expr.n)} != {hex(self.addr_expr.n)}'
+            f'{assert_msg}: {hex(addr_expr.n)} != {hex(self.address.n)}'
 
         # 1. Verify that keccak(pub_key_bytes) = pub_key_hash by keccak table
         # lookup, where pub_key_bytes is built from the pub_key in the
@@ -196,20 +196,20 @@ def verify_circuit(
         assert_msg = f"Constraints failed for tx_index = {tx_index}"
         tx_row_index = tx_index * Tag.TxSignHash
         caller_addr_index = tx_row_index + Tag.CallerAddress - 1
-        tx_sign_hash_index = tx_row_index + Tag.TxSignHash - 1
-
-        # 0. Copy constraints using fixed offsets between the tx rows and the SignVerifyGadget
-        assert rows[caller_addr_index].value == sign_verifications[tx_index].address, \
-            f'{assert_msg}: {hex(rows[caller_addr_index].value.n)} != ' + \
-            f'{hex(sign_verifications[tx_index].address.n)}'
-        assert rows[tx_sign_hash_index].value == sign_verifications[tx_index].msg_hash_rlc, \
-            f'{assert_msg}: {hex(rows[tx_sign_hash_index].value.n)} != ' + \
-            f'{hex(sign_verifications[tx_index].msg_hash_rlc)}'
+        tx_msg_hash_index = tx_row_index + Tag.TxSignHash - 1
 
         # SignVerifyGadget constraint verification.  Padding txs rows contain
         # 0 in all values.  The SignVerifyGadget skips the verification when
         # the msg_hash_rlc == 0.
         sign_verifications[tx_index].verify(keccak_table, randomness, assert_msg)
+
+        # 0. Copy constraints using fixed offsets between the tx rows and the SignVerifyGadget
+        assert rows[caller_addr_index].value == sign_verifications[tx_index].address, \
+            f'{assert_msg}: {hex(rows[caller_addr_index].value.n)} != ' + \
+            f'{hex(sign_verifications[tx_index].address.n)}'
+        assert rows[tx_msg_hash_index].value == sign_verifications[tx_index].msg_hash_rlc, \
+            f'{assert_msg}: {hex(rows[tx_msg_hash_index].value.n)} != ' + \
+            f'{hex(sign_verifications[tx_index].msg_hash_rlc.n)}'
 
     # Remaining rows contain CallData.  Those rows don't have any circuit constraint.
 
