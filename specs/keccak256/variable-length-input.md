@@ -23,6 +23,7 @@ The `curr: Round` and `next: Round` represent the current and the next row.
 
 Columns:
 
+- `is_enabled` A flag allows the lookup consumer to disable the lookup check.
 - `hash_id` Sequential number for grouping different hash
 - `input_len` Length for correct padding
 - `input` 136 bytes to be absorbed in this round
@@ -36,25 +37,29 @@ Selector:
 
 - `is_last_round_of_circuit` Last round of the whole circuit (not hash), to avoid `next` wrap around.
 
-| hash_id | input_len | input | acc_len | acc_input | output | is_end_result | output_word_0 | output_word_1 | output_word_2 | output_word\_... |
-| ------: | --------: | ----- | ------: | --------- | ------ | ------------: | ------------- | ------------- | ------------- | ---------------- |
-|       0 |       150 |       |       0 |           |        |             0 |               |               |               |                  |
-|       0 |       150 |       |     136 |           |        |             1 |               |               |               |                  |
-|       1 |        20 |       |       0 |           |        |             1 |               |               |               |                  |
+| is_enabled | hash_id | input_len | input | acc_len | acc_input | output | is_end_result | output_word_0 | output_word_1 | output_word_2 | output_word\_... |
+| ---------: | ------: | --------: | ----: | ------: | --------: | -----: | ------------: | ------------: | ------------: | ------------: | --------------: |
+|          0 |       0 |         0 |     0 |       0 |         0 |      0 |             0 |             0 |             0 |             0 |               0 |
+|          1 |       0 |       150 |       |       0 |           |        |             0 |               |               |               |                 |
+|          1 |       0 |       150 |       |     136 |           |        |             1 |               |               |               |                 |
+|          1 |       1 |        20 |       |       0 |           |        |             1 |               |               |               |                 |
 
 #### Checks
 
-1. `hash_id` is sequential `next.hash_id - curr.hash_id in [0, 1]`
-2. If we are not in the last round of the circuit or last round of permutation
-   1. `curr.input_len === next.input_len`
-   2. `next.acc_len === curr.acc_len + 136`
-   3. `next.acc_len <= curr.input_len`
-   4. `next.acc_input === curr.acc_input * (r**136) + RLC(input, r)`
-3. `is_last_round_of_circuit or is_end_result === 1`
-   1. Checks the accumulation ends here `assert (curr.input_len - curr.acc_len) in range(136)`
-   2. Clear the variables:  `next.acc_len === 0`, `next.acc_input === 0`
-4. apply to all 25 `output_word_[n]` columns: `next.output_word_[n] === (1 - is_end_result) * curr.output_word_[n]`
-5. `is_end_result === next.hash_id - curr.hash_id`
+1. At offset 0, constrant all columns to 0
+2. For offset 1 to the rest, perform following checks:
+   1. `is_enabled === 1`
+   2. `hash_id` is sequential `next.hash_id - curr.hash_id in [0, 1]`
+   3. If we are not in the last round of the circuit or last round of permutation
+      1. `curr.input_len === next.input_len`
+      2. `next.acc_len === curr.acc_len + 136`
+      3. `next.acc_len <= curr.input_len`
+      4. `next.acc_input === curr.acc_input * (r**136) + RLC(input, r)`
+   4. `is_last_round_of_circuit or is_end_result === 1`
+      1. Checks the accumulation ends here `assert (curr.input_len - curr.acc_len) in range(136)`
+      2. Clear the variables:  `next.acc_len === 0`, `next.acc_input === 0`
+   5. apply to all 25 `output_word_[n]` columns: `next.output_word_[n] === (1 - is_end_result) * curr.output_word_[n]`
+   6. `is_end_result === next.hash_id - curr.hash_id`
 
 #### Lookup
 
