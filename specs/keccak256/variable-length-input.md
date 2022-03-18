@@ -105,19 +105,20 @@ The Padding Region is a 136-row region.
 - `condition_80_inv` The inverse of `input_len - acc_len` or 0.
 - `padded_byte` Mostly the same as the original `byte` but padded
 - `is_pad_zone` A flag to define the rows that `byte` should be 0
+- `byte_RLC` This accumulate `byte` into RLC
 
-| offset | byte | input_len | acc_len | condition_80_inv | padded_byte | is_pad_zone |
-| -----: | :--- | --------: | ------: | ---------------: | :---------- | ----------: |
-|      0 | 0xff |       250 |     136 |                  | 0xff        |           0 |
-|      1 | 0xff |       250 |     137 |                  | 0xff        |           0 |
-|      2 | 0xff |       250 |     138 |                  | 0xff        |           0 |
-|      3 | 0xff |       ... |     ... |                  | 0xff        |           0 |
-|      4 | 0xff |       250 |     249 |                1 | 0xff        |           0 |
-|      5 | 0xff |       250 |     250 |                0 | 0xff        |           0 |
-|      6 | 0x00 |       250 |     251 |               -1 | 0x80        |           1 |
-|    ... | ...  |       ... |     ... |              ... | ...         |         ... |
-|    134 | 0x00 |       250 |     270 |                  | 0x00        |           1 |
-|    135 | 0x00 |       250 |     271 |                  | 0x01        |           1 |
+| offset | byte | input_len | acc_len | condition_80_inv | padded_byte | is_pad_zone | byte_RLC |
+| -----: | :--- | --------: | ------: | ---------------: | :---------- | ----------: | -------- |
+|      0 | 0xff |       250 |     136 |                  | 0xff        |           0 |          |
+|      1 | 0xff |       250 |     137 |                  | 0xff        |           0 |          |
+|      2 | 0xff |       250 |     138 |                  | 0xff        |           0 |          |
+|      3 | 0xff |       ... |     ... |                  | 0xff        |           0 |          |
+|      4 | 0xff |       250 |     249 |                1 | 0xff        |           0 |          |
+|      5 | 0xff |       250 |     250 |                0 | 0xff        |           0 |          |
+|      6 | 0x00 |       250 |     251 |               -1 | 0x80        |           1 |          |
+|    ... | ...  |       ... |     ... |              ... | ...         |         ... |          |
+|    134 | 0x00 |       250 |     270 |                  | 0x00        |           1 |          |
+|    135 | 0x00 |       250 |     271 |                  | 0x01        |           1 |          |
 
 #### Checks
 
@@ -142,5 +143,5 @@ We apply two different checks on the 0~134-th rows and the 135th row.
    5. Set `is_pad_zone` to 1 if we entered. `next.is_pad_zone === curr.is_pad_zone + (1 - (next.input_len - next.acc_len) * next.condition_80_inv)`
 4. For the 135th row
    1. Same as the previous 0x80 pad, but pad 0x01 if we are in the pad zone. `curr.padded_byte === curr.byte + (1 - (curr.input_len - curr.acc_len) * curr.condition_80_inv) * 0x80 + is_pad_zone * 0x01`
-5. Use another RLC gadget to check `byte` can be running summed up to `input` in the lookup region
+5. Use `byte_RLC` to running sum `byte`. The sum should be equal to `input` in the lookup region
 6. `padded_byte` are copied to a word builder gadget to build padded words, which would later be copied to the `Keccak-f` permutation
