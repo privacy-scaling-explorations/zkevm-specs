@@ -9,6 +9,7 @@ from zkevm_specs.util import rand_fq, FQ, RLC, U64
 randomness = rand_fq()
 r = randomness
 
+
 def sign_tx(sk: keys.PrivateKey, tx: Transaction, chain_id: U64) -> Transaction:
     """
     Return a copy of the transaction signed by sk
@@ -19,15 +20,19 @@ def sign_tx(sk: keys.PrivateKey, tx: Transaction, chain_id: U64) -> Transaction:
     sig_v = sig.v + chain_id * 2 + 35
     sig_r = sig.r
     sig_s = sig.s
-    return Transaction(tx.nonce, tx.gas_price, tx.gas, tx.to, tx.value, tx.data, sig_v, sig_r, sig_s)
+    return Transaction(
+        tx.nonce, tx.gas_price, tx.gas, tx.to, tx.value, tx.data, sig_v, sig_r, sig_s
+    )
+
 
 def verify(
-        txs_or_witness: Union[List[Transaction], Witness],
-        MAX_TXS: int,
-        MAX_CALLDATA_BYTES: int,
-        chain_id: U64,
-        randomness: FQ,
-        success: bool = True):
+    txs_or_witness: Union[List[Transaction], Witness],
+    MAX_TXS: int,
+    MAX_CALLDATA_BYTES: int,
+    chain_id: U64,
+    randomness: FQ,
+    success: bool = True,
+):
     """
     Verify the circuit with the assigned witness (or the witness calculated
     from the transactions).  If `success` is False, expect the verification to
@@ -43,24 +48,24 @@ def verify(
     ok = True
     if success:
         verify_circuit(
+            witness.rows,
+            witness.sign_verifications,
+            witness.keccak_table,
+            MAX_TXS,
+            MAX_CALLDATA_BYTES,
+            chain_id,
+            randomness,
+        )
+    else:
+        try:
+            verify_circuit(
                 witness.rows,
                 witness.sign_verifications,
                 witness.keccak_table,
                 MAX_TXS,
                 MAX_CALLDATA_BYTES,
                 chain_id,
-                randomness
-        )
-    else:
-        try:
-            verify_circuit(
-                    witness.rows,
-                    witness.sign_verifications,
-                    witness.keccak_table,
-                    MAX_TXS,
-                    MAX_CALLDATA_BYTES,
-                    chain_id,
-                    randomness
+                randomness,
             )
         except AssertionError as e:
             ok = False
@@ -68,16 +73,17 @@ def verify(
 
 
 def test_ecdsa_verify_chip():
-    sk = keys.PrivateKey(b'\x02' * 32)
+    sk = keys.PrivateKey(b"\x02" * 32)
     pk = sk.public_key
-    msg_hash = b'\xae' * 32
+    msg_hash = b"\xae" * 32
     sig = sk.sign_msg_hash(msg_hash)
 
     ecdsa_chip = ECDSAVerifyChip.assign(sig, pk, msg_hash)
     ecdsa_chip.verify(is_enabled=FQ(1), assert_msg="ecdsa verification failed")
 
+
 def test_tx2witness():
-    sk = keys.PrivateKey(b'\x01' * 32)
+    sk = keys.PrivateKey(b"\x01" * 32)
     pk = sk.public_key
     addr = pk.to_canonical_address()
 
@@ -99,6 +105,7 @@ def test_tx2witness():
         if row.tag == Tag.CallerAddress:
             assert addr == row.value.n.to_bytes(20, "big")
 
+
 def gen_tx(i: int, sk: keys.PrivateKey, to: int, chain_id) -> Transaction:
     nonce = 300 + i
     gas_price = 1000 + i * 2
@@ -110,22 +117,24 @@ def gen_tx(i: int, sk: keys.PrivateKey, to: int, chain_id) -> Transaction:
     tx = sign_tx(sk, tx, chain_id)
     return tx
 
+
 def test_verify():
     MAX_TXS = 20
     MAX_CALLDATA_BYTES = 300
     NUM_TXS = 16
     chain_id = 1337
-    sks = [keys.PrivateKey(bytes([byte+1]) * 32) for byte in range(NUM_TXS)]
+    sks = [keys.PrivateKey(bytes([byte + 1]) * 32) for byte in range(NUM_TXS)]
 
     txs: List[Transaction] = []
     keccak_table = KeccakTable()
     for i, sk in enumerate(sks):
-        to = int.from_bytes(sks[(i+1) % len(sks)].public_key.to_canonical_address(), "big")
+        to = int.from_bytes(sks[(i + 1) % len(sks)].public_key.to_canonical_address(), "big")
         tx = gen_tx(i, sk, to, chain_id)
         txs.append(tx)
 
     witness = txs2witness(txs, chain_id, MAX_TXS, MAX_CALLDATA_BYTES, r)
     verify(witness, MAX_TXS, MAX_CALLDATA_BYTES, chain_id, r)
+
 
 def gen_valid_witness() -> Tuple[Witness, U64, int, int]:
     MAX_TXS = 5
@@ -133,23 +142,25 @@ def gen_valid_witness() -> Tuple[Witness, U64, int, int]:
     NUM_TXS = 3
     chain_id = 1337
 
-    sks = [keys.PrivateKey(bytes([byte+1]) * 32) for byte in range(NUM_TXS)]
+    sks = [keys.PrivateKey(bytes([byte + 1]) * 32) for byte in range(NUM_TXS)]
 
     txs: List[Transaction] = []
     keccak_table = KeccakTable()
     for i, sk in enumerate(sks):
-        to = int.from_bytes(sks[(i+1) % len(sks)].public_key.to_canonical_address(), "big")
+        to = int.from_bytes(sks[(i + 1) % len(sks)].public_key.to_canonical_address(), "big")
         tx = gen_tx(i, sk, to, chain_id)
         txs.append(tx)
 
     witness = txs2witness(txs, chain_id, MAX_TXS, MAX_CALLDATA_BYTES, r)
     return witness, chain_id, MAX_TXS, MAX_CALLDATA_BYTES
 
+
 def test_bad_keccak():
     witness, chain_id, MAX_TXS, MAX_CALLDATA_BYTES = gen_valid_witness()
     # Set empty keccak lookup table
     witness = Witness(witness.rows, KeccakTable(), witness.sign_verifications)
     verify(witness, MAX_TXS, MAX_CALLDATA_BYTES, chain_id, r, success=False)
+
 
 def test_bad_signature():
     witness, chain_id, MAX_TXS, MAX_CALLDATA_BYTES = gen_valid_witness()
@@ -158,12 +169,14 @@ def test_bad_signature():
     witness = Witness(witness.rows, witness.keccak_table, sign_verifications)
     verify(witness, MAX_TXS, MAX_CALLDATA_BYTES, chain_id, r, success=False)
 
+
 def test_bad_address():
     witness, chain_id, MAX_TXS, MAX_CALLDATA_BYTES = gen_valid_witness()
     sign_verifications = witness.sign_verifications
     sign_verifications[0].address = FQ(1234)
     witness = Witness(witness.rows, witness.keccak_table, sign_verifications)
     verify(witness, MAX_TXS, MAX_CALLDATA_BYTES, chain_id, r, success=False)
+
 
 def test_bad_msg_hash():
     witness, chain_id, MAX_TXS, MAX_CALLDATA_BYTES = gen_valid_witness()
@@ -172,6 +185,7 @@ def test_bad_msg_hash():
     witness = Witness(witness.rows, witness.keccak_table, sign_verifications)
     verify(witness, MAX_TXS, MAX_CALLDATA_BYTES, chain_id, r, success=False)
 
+
 def test_bad_addr_copy():
     witness, chain_id, MAX_TXS, MAX_CALLDATA_BYTES = gen_valid_witness()
     rows = witness.rows
@@ -179,6 +193,7 @@ def test_bad_addr_copy():
     rows[row_addr_offset].value = FQ(1213)
     witness = Witness(rows, witness.keccak_table, witness.sign_verifications)
     verify(witness, MAX_TXS, MAX_CALLDATA_BYTES, chain_id, r, success=False)
+
 
 def test_bad_sign_hash_copy():
     witness, chain_id, MAX_TXS, MAX_CALLDATA_BYTES = gen_valid_witness()
