@@ -58,7 +58,9 @@ to be in the account leaf of the last account proof element.
 
 We split the branch information into 16 rows (one row for each node). The proof looks like:
 
-![branch](./img/proof.png)
+<p align="center">
+  <img src="./img/proof.png?raw=true" width="50%">
+</p>
 
 When `key1` is hashed and converted into hexadecimal value - it becomes a hexadecimal string of
 length 64. The first character specifies under which position of Branch 0 is the node
@@ -67,7 +69,7 @@ The second character specifies under which position of Branch 1 is the node
 corresponding to `key1`. The remaining characters are stored in a leaf.
 
 In the above case, we have four branches / extension nodes in the account proof.
-Let's say `addr` turns into nibbles `3 b a 5 ...' That would mean the position (named `modified_node\`) of the underlying proof element is:
+Let's say `addr` turns into nibbles `3 b a 5 ...` That would mean the position (named `modified_node`) of the underlying proof element is:
 
 - 3 in Branch 0
 - 11 in Branch 1
@@ -75,35 +77,30 @@ Let's say `addr` turns into nibbles `3 b a 5 ...' That would mean the position (
 - 5 in Branch 3
 
 In the above case, we only have one branch / extension node in the storage proof.
-Let's say `key1` turns into nibbles `7 ...' That would mean the position (named `modified_node\`) of the underlying storage leaf is:
+Let's say `key1` turns into nibbles `7 ...` That would mean the position (named `modified_node`) of the underlying storage leaf is:
 
 - 7 in Branch 0
 
 If we make a change at `key1` from `val1` to `val2` and obtain a proof after this change,
-the proof will be different from the first one at Leaf, Branch 1 node 1, and Branch 0 node 2,
-other proof elements stay the same.
+the proof will be different from the first only at `modified_node` positions.
 
 To check the transition from `root1` to `root2` caused at `key1`, MPT circuit checks that both
 proofs are the same except at the nodes that correspond to `key1` path
-(hexadecimal characters).
+(hexadecimal characters presenting `modified_node`).
 
 In proof 1, the root of account Branch 0 needs to be `root1`.
 In proof 2, the root of account Branch 0 needs to be `root2`.
-Furthermore, it needs to be checked that the nodes differ at indexes that
+Also, it needs to be checked that the nodes differ only at indexes that
 correspond to `key1` path.
 
 To implement the constraints above, the two proofs are put in parallel in MPT rows.
 Each branch row contains information of branch node from proof 1 and as well as from proof 2:
 
-- Branch 0 node 0 before change || Branch 0 node 0 after change
-- Branch 0 node 1 before change || Branch 0 node 1 after change
-- ...
-- Branch 0 node 15 before change || Branch 0 node 15 after change
-- Branch 1 node 0 before change || Branch 1 node 0 after change
-- ...
-- Branch 1 node 15 before change || Branch 1 node 15 after change
-- Leaf (before change)
-- Leaf (after change)
+<p align="center">
+  <img src="./img/mpt.png?raw=true" width="75%">
+</p>
+
+Proof 1 is on the left side, proof 2 is on the right side.
 
 ## Circuit Layout
 
@@ -128,8 +125,6 @@ In the codebase, the columns are named:
 - `c_rlp1`
 - `c_rlp2`
 - `c_advices` (32 columns)
-
-![branch](./img/mpt.png)
 
 ### Branch
 
