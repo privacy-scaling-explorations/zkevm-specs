@@ -403,7 +403,9 @@ class Instruction:
         ).value
 
     def bytecode_length(self, bytecode_hash: Expression) -> Expression:
-        return self.tables.bytecode_lookup(bytecode_hash, FQ(BytecodeFieldTag.Length), FQ(0), FQ(0))
+        return self.tables.bytecode_lookup(
+            bytecode_hash, FQ(BytecodeFieldTag.Length), FQ(0), FQ(0)
+        ).value
 
     def tx_gas_price(self, tx_id: Expression) -> RLC:
         return cast_expr(self.tx_context_lookup(tx_id, TxContextFieldTag.GasPrice), RLC)
