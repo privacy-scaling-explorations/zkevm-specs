@@ -384,23 +384,19 @@ class Tables:
         return _lookup(TxTableRow, self.tx_table, query)
 
     def bytecode_lookup(
-        self, bytecode_hash: Expression, index: Expression, is_code: Expression
+        self,
+        bytecode_hash: Expression,
+        field_tag: Expression,
+        index: Expression,
+        is_code: Expression,
     ) -> BytecodeTableRow:
         query = {
             "bytecode_hash": bytecode_hash,
-            "field_tag": FQ(BytecodeFieldTag.Byte),
+            "field_tag": field_tag,
             "index": index,
             "is_code": is_code,
         }
         return _lookup(BytecodeTableRow, self.bytecode_table, query)
-
-    def bytecode_length(self, bytecode_hash: Expression) -> Expression:
-        query = {
-            "bytecode_hash": bytecode_hash,
-            "field_tag": FQ(BytecodeFieldTag.Length),
-        }
-        row = _lookup(BytecodeTableRow, self.bytecode_table, query)
-        return row.value
 
     def rw_lookup(
         self,

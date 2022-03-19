@@ -257,15 +257,15 @@ class Bytecode:
                 return self
 
             def __next__(self):
-                if len(self.code) == 0 or self.idx > len(self.code):
-                    raise StopIteration
-
                 # return the length of the bytecode in the first row
                 if self.idx == 0:
                     self.idx += 1
                     return BytecodeTableRow(
                         self.hash, FQ(BytecodeFieldTag.Length), FQ(0), FQ(0), FQ(len(self.code))
                     )
+
+                if self.idx > len(self.code):
+                    raise StopIteration
 
                 # the other rows represent each byte in the bytecode
                 idx = self.idx - 1

@@ -73,10 +73,10 @@ MEMORY_EXPANSION_LINEAR_COEFF = 3
 
 # Maximum number of bytes copied during one single iteration of CopyToMemory, i.e. the internal state used by the
 # CALLDATACOPY gadget
-MAX_N_BYTES_COPY_TO_MEMORY = 74
+MAX_N_BYTES_COPY_TO_MEMORY = 32
 # Maximum number of bytes copied during one single iteration of CopyCodeToMemory, i.e. the internal state used by
 # the CODECOPY gadget
-MAX_N_BYTES_COPY_CODE_TO_MEMORY = 54
+MAX_N_BYTES_COPY_CODE_TO_MEMORY = 32
 
 COLD_SLOAD_COST = 2100
 WARM_STORAGE_READ_COST = 100
