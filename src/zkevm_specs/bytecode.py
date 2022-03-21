@@ -74,8 +74,6 @@ def check_bytecode_row(
                 # the next row should be a tag Length or padding
                 assert (next_row.tag == BytecodeFieldTag.Length) or (next_row.tag == 0)
             else:
-                # bytecode hash should not be EMPTY_HASH
-                assert row.hash != RLC(EMPTY_HASH, FQ(r)).expr()
                 # the next row should be tag Byte
                 assert next_row.tag == BytecodeFieldTag.Byte
         # or is the start of padding rows
