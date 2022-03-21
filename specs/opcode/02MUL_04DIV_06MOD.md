@@ -45,10 +45,10 @@ $$
 
 , and the constraints are:
 
-- $ t_0 + t_1 \cdot 2^{64} + C_{lo} == D_{lo} + carry_{lo} \cdot 2^{128} $
-- $ t_2 + t_3 \cdot 2^{64} + C_{hi} + carry_{lo} == D_{hi} + carry_{hi} \cdot 2^{128} $ *v1 ⋅ 2¹²⁸ == v0 + t₂ + t₃ ⋅ 2⁶⁴ - C₂ - C₃ ⋅ 2⁶⁴*
-- $ carry_{lo} \in [0, 2^{66}) $
-- $ carry_{hi} \in [0, 2^{66}) $
+- $t_0 + t_1 \cdot 2^{64} + C_{lo} == D_{lo} + carry_{lo} \cdot 2^{128}$
+- $t_2 + t_3 \cdot 2^{64} + C_{hi} + carry_{lo} == D_{hi} + carry_{hi} \cdot 2^{128}$
+- $carry_{lo} \in [0, 2^{66})$
+- $carry_{hi} \in [0, 2^{66})$
 
 Note that the $carry_{lo}, carry_{hi}$ should be in the range of $[0, 2^{66})$.
 To make it easy to check the range, we relax the range to $[0, 2^{72})$ and use
@@ -72,8 +72,8 @@ The opcode circuit also adds extra constraints for different opcodes:
 
 - if the opcode is `MUL`, constrain `c == 0`.
 - if the opcode is not `MUL`,
-    - use a `LtWordGadget` to constrain `c < b` when `b != 0`
-    - constrain `overflow == 0`
+  - use a `LtWordGadget` to constrain `c < b` when `b != 0`
+  - constrain `overflow == 0`
 
 ## Constraints
 
@@ -87,12 +87,12 @@ The opcode circuit also adds extra constraints for different opcodes:
    - pc + 1
    - gas + 5
 3. Lookups: 3 busmapping lookups
-   1. top of the stack :
+   - top of the stack :
       - when it's `MUL`, `a` is at the top of the stack
       - when it's `DIV`, `d` is at the top of the stack.
       - when it's `MOD`, `d` is at the top of the stack.
-   2. `b` is at the second position of the stack
-   3. new top of the stack
+   - `b` is at the second position of the stack
+   - new top of the stack
       - when it's `MUL`, `d` is at the new top of the stack
       - when it's `DIV`, `a` is at the new top of the stack when `b != 0`, otherwise 0
       - when it's `MOD`, `c` is at the new top of the stack when `b != 0`, otherwise 0
