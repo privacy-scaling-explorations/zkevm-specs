@@ -128,7 +128,7 @@ class CopyCodeToMemoryAuxData:
     dst_addr: FQ
     bytes_left: FQ
     src_addr_end: FQ
-    code_hash: RLC
+    code_source: RLC
 
     def __init__(
         self,
@@ -136,10 +136,10 @@ class CopyCodeToMemoryAuxData:
         dst_addr: int,
         bytes_left: int,
         src_addr_end: int,
-        code_hash: RLC,
+        code_source: RLC,
     ):
         self.src_addr = FQ(src_addr)
         self.dst_addr = FQ(dst_addr)
         self.bytes_left = FQ(bytes_left)
         self.src_addr_end = FQ(src_addr_end)
-        self.code_hash = code_hash
+        self.code_source = code_source

@@ -393,9 +393,8 @@ class Tables:
             "bytecode_hash": bytecode_hash,
             "field_tag": field_tag,
             "index": index,
+            "is_code": is_code,
         }
-        if is_code is not None:
-            query["is_code"] = is_code
         return _lookup(BytecodeTableRow, self.bytecode_table, query)
 
     def rw_lookup(

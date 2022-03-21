@@ -77,7 +77,7 @@ def make_copy_code_step(
         dst_addr=dst_addr,
         src_addr_end=src_addr_end,
         bytes_left=bytes_left,
-        code_hash=RLC(code.hash(), randomness),
+        code_source=RLC(code.hash(), randomness),
     )
     step = StepState(
         execution_state=ExecutionState.CopyCodeToMemory,
@@ -139,7 +139,6 @@ def make_copy_code_steps(
 @pytest.mark.parametrize("src_addr, dst_addr, length", TESTING_DATA)
 def test_codecopy(src_addr: U64, dst_addr: U64, length: U64):
     randomness = rand_fq()
-    callee_addr = rand_address()
 
     length_rlc = RLC(length, randomness)
     src_addr_rlc = RLC(src_addr, randomness)
@@ -156,8 +155,6 @@ def test_codecopy(src_addr: U64, dst_addr: U64, length: U64):
     )
     total_gas_cost = gas_cost_codecopy + (3 * gas_cost_push32)
 
-    code_hash = code.hash()
-
     rw_dictionary = (
         RWDictionary(1)
         .stack_write(CALL_ID, 1023, length_rlc)
@@ -166,8 +163,6 @@ def test_codecopy(src_addr: U64, dst_addr: U64, length: U64):
         .stack_read(CALL_ID, 1021, dst_addr_rlc)
         .stack_read(CALL_ID, 1022, src_addr_rlc)
         .stack_read(CALL_ID, 1023, length_rlc)
-        .call_context_read(CALL_ID, CallContextFieldTag.CalleeAddress, callee_addr)
-        .account_read(callee_addr, AccountFieldTag.CodeHash, RLC(code_hash, randomness))
     )
     # rw counter before memory writes
     rw_counter_interim = rw_dictionary.rw_counter
