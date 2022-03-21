@@ -91,7 +91,6 @@ There are some constraints on the shape of the table like:
 - For every Tx, each tag must appear exactly once, except for `CallData` which can be repeated but only with sequential `ByteIndex` starting at 0.
 - `TxID` must start at 1 and increase sequentially for each transaction
 - When `Tag` is `CallData`, value must be between 0 and 255
-- A `Start` `Tag` is used as padding at the initial rows, and it must use `TxID = 0`
 
 Since the transaction table is built from public inputs, the verifier (the L1
 smart contract in the zkRollup for example) needs to validate that all rows of
