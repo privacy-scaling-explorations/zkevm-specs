@@ -55,7 +55,6 @@ def verify(
             witness.keccak_table,
             MAX_TXS,
             MAX_CALLDATA_BYTES,
-            chain_id,
             randomness,
         )
     else:
@@ -66,7 +65,6 @@ def verify(
                 witness.keccak_table,
                 MAX_TXS,
                 MAX_CALLDATA_BYTES,
-                chain_id,
                 randomness,
             )
         except AssertionError as e:

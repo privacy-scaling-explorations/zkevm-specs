@@ -217,7 +217,6 @@ def verify_circuit(
     keccak_table: KeccakTable,
     MAX_TXS: int,
     MAX_CALLDATA_BYTES: int,
-    chain_id: U64,
     randomness: FQ,
 ) -> None:
     """
