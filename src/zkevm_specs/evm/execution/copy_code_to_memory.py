@@ -17,15 +17,11 @@ def copy_code_to_memory(instruction: Instruction):
         instruction, MAX_N_BYTES_COPY_CODE_TO_MEMORY, aux.src_addr, aux.src_addr_end, aux.bytes_left
     )
 
-    is_codes = [c.is_code.expr() for c in aux.code.table_assignments(instruction.randomness)]
     for idx in range(MAX_N_BYTES_COPY_CODE_TO_MEMORY):
         if buffer_reader.read_flag(idx) == 1:
-            # the first row is allocated for tag Length.
-            is_code = True if is_codes[aux.src_addr.n + idx + 1] == FQ(1) else False
             byte = instruction.bytecode_lookup(
-                RLC(aux.code.hash(), instruction.randomness),
+                aux.code_hash,
                 aux.src_addr + idx,
-                is_code,
             )
             buffer_reader.constrain_byte(idx, byte)
 
@@ -51,8 +47,16 @@ def copy_code_to_memory(instruction: Instruction):
         instruction.constrain_equal(next_aux.dst_addr, aux.dst_addr + copied_bytes)
         instruction.constrain_equal(next_aux.bytes_left + copied_bytes, aux.bytes_left)
         instruction.constrain_equal(next_aux.src_addr_end, aux.src_addr_end)
-        instruction.constrain_equal(FQ(next_aux.code.hash()), FQ(aux.code.hash()))
+        instruction.constrain_equal(next_aux.code_hash, aux.code_hash)
 
     instruction.constrain_step_state_transition(
         rw_counter=Transition.delta(instruction.rw_counter_offset),
+        call_id=Transition.same(),
+        is_root=Transition.same(),
+        is_create=Transition.same(),
+        code_source=Transition.same(),
+        program_counter=Transition.same(),
+        stack_pointer=Transition.same(),
+        memory_size=Transition.same(),
+        state_write_counter=Transition.same(),
     )

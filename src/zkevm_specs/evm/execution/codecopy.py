@@ -19,6 +19,8 @@ def codecopy(instruction: Instruction):
 
     account = instruction.call_context_lookup(CallContextFieldTag.CalleeAddress)
     code_hash = instruction.account_read(account, AccountFieldTag.CodeHash)
+    instruction.constrain_equal(code_hash, instruction.curr.code_source)
+
     code_size = instruction.bytecode_length(code_hash)
 
     next_memory_size, memory_expansion_gas_cost = instruction.memory_expansion_dynamic_length(
@@ -26,7 +28,7 @@ def codecopy(instruction: Instruction):
     )
     gas_cost = instruction.memory_copier_gas_cost(size, memory_expansion_gas_cost)
 
-    if not instruction.is_zero(size):
+    if instruction.is_zero(size) == FQ(0):
         assert instruction.next is not None
         instruction.constrain_equal(
             instruction.next.execution_state, ExecutionState.CopyCodeToMemory
@@ -37,9 +39,7 @@ def codecopy(instruction: Instruction):
         instruction.constrain_equal(next_aux.dst_addr, memory_offset)
         instruction.constrain_equal(next_aux.src_addr_end, code_size)
         instruction.constrain_equal(next_aux.bytes_left, size)
-        instruction.constrain_equal(
-            FQ(next_aux.code.hash()), instruction.rlc_to_fq_exact(code_hash, n_bytes=32)
-        )
+        instruction.constrain_equal(next_aux.code_hash, code_hash)
 
     instruction.step_state_transition_in_same_context(
         opcode,

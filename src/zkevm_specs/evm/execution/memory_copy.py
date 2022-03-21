@@ -46,4 +46,12 @@ def copy_to_memory(instruction: Instruction):
 
     instruction.constrain_step_state_transition(
         rw_counter=Transition.delta(instruction.rw_counter_offset),
+        call_id=Transition.same(),
+        is_root=Transition.same(),
+        is_create=Transition.same(),
+        code_source=Transition.same(),
+        program_counter=Transition.same(),
+        stack_pointer=Transition.same(),
+        memory_size=Transition.same(),
+        state_write_counter=Transition.same(),
     )

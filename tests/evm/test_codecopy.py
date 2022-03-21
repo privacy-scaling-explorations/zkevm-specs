@@ -18,13 +18,14 @@ from zkevm_specs.evm import (
 )
 from zkevm_specs.util import (
     GAS_COST_COPY,
+    FQ,
     MAX_N_BYTES_COPY_CODE_TO_MEMORY,
     MEMORY_EXPANSION_LINEAR_COEFF,
     MEMORY_EXPANSION_QUAD_DENOMINATOR,
-    rand_address,
-    rand_fq,
     RLC,
     U64,
+    rand_address,
+    rand_fq,
 )
 
 
@@ -69,13 +70,14 @@ def make_copy_code_step(
     program_counter: int,
     stack_pointer: int,
     memory_size: int,
+    randomness: FQ,
 ) -> StepState:
     aux_data = CopyCodeToMemoryAuxData(
         src_addr=src_addr,
         dst_addr=dst_addr,
         src_addr_end=src_addr_end,
         bytes_left=bytes_left,
-        code=code,
+        code_hash=RLC(code.hash(), randomness),
     )
     step = StepState(
         execution_state=ExecutionState.CopyCodeToMemory,
@@ -107,6 +109,7 @@ def make_copy_code_steps(
     program_counter: int,
     stack_pointer: int,
     memory_size: int,
+    randomness: FQ,
 ) -> Sequence[StepState]:
     buffer_map = dict(zip(range(src_addr, len(code.code)), code.code))
     steps = []
@@ -124,6 +127,7 @@ def make_copy_code_steps(
             program_counter,
             stack_pointer,
             memory_size,
+            randomness,
         )
         steps.append(new_step)
         src_addr += MAX_N_BYTES_COPY_CODE_TO_MEMORY
@@ -219,8 +223,9 @@ def test_codecopy(src_addr: U64, dst_addr: U64, length: U64):
         length,
         rw_dictionary=rw_dictionary,
         program_counter=100,
-        memory_size=next_memory_word_size,
         stack_pointer=1024,
+        memory_size=next_memory_word_size,
+        randomness=randomness,
     )
     steps.extend(steps_internal)
 
@@ -235,8 +240,9 @@ def test_codecopy(src_addr: U64, dst_addr: U64, length: U64):
             call_id=CALL_ID,
             is_root=True,
             code_source=code_source,
-            program_counter=33,
+            program_counter=100,
             stack_pointer=1024,
+            memory_size=next_memory_word_size,
             gas_left=0,
         )
     )
@@ -289,6 +295,7 @@ def test_copy_code_to_memory(src_addr: U64, dst_addr: U64, length: U64):
         program_counter=0,
         memory_size=next_memory_word_size,
         stack_pointer=1024,
+        randomness=randomness,
     )
     steps.append(
         StepState(

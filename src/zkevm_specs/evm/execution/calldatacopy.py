@@ -33,7 +33,7 @@ def calldatacopy(instruction: Instruction):
     gas_cost = instruction.memory_copier_gas_cost(length, memory_expansion_gas_cost)
 
     # When length != 0, constrain the state in the next execution state CopyToMemory
-    if not instruction.is_zero(length):
+    if instruction.is_zero(length) == FQ(0):
         assert instruction.next is not None
         instruction.constrain_equal(instruction.next.execution_state, ExecutionState.CopyToMemory)
         next_aux = instruction.next.aux_data

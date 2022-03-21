@@ -180,7 +180,6 @@ class AccountFieldTag(IntEnum):
     Nonce = auto()
     Balance = auto()
     CodeHash = auto()
-    CodeSize = auto()
 
 
 class CallContextFieldTag(IntEnum):
@@ -388,14 +387,15 @@ class Tables:
         bytecode_hash: Expression,
         field_tag: Expression,
         index: Expression,
-        is_code: Expression,
+        is_code: Expression = None,
     ) -> BytecodeTableRow:
         query = {
             "bytecode_hash": bytecode_hash,
             "field_tag": field_tag,
             "index": index,
-            "is_code": is_code,
         }
+        if is_code is not None:
+            query["is_code"] = is_code
         return _lookup(BytecodeTableRow, self.bytecode_table, query)
 
     def rw_lookup(
