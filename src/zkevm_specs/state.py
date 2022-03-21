@@ -20,7 +20,7 @@ MAX_KEY3 = MAX_MEMORY_ADDRESS  # Maximum value for Memory Address
 KEY0_BITS = ceil(log(MAX_KEY0 + 1, 2))  # 4
 KEY1_BITS = ceil(log(MAX_KEY1 + 1, 2))  # 16
 KEY2_BITS = ceil(log(MAX_KEY2 + 1, 2))  # 160
-KEY3_BITS = ceil(log(MAX_KEY3 + 1, 2))  # 40
+KEY3_BITS = ceil(log(MAX_KEY3 + 1, 2))  # 32
 
 
 class Tag(IntEnum):
