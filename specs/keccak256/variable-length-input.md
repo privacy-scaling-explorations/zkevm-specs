@@ -65,12 +65,13 @@ Selector:
 
 To lookup the Keccak256 input to the output, query the following columns:
 
+- `is_enabled`: bool.
 - `is_end_result`: bool
 - `input_len`: FQ. This is required because input \[0, 0, 0\] and \[0, 0\] have the same RLC value but different keccak hash outputs.
 - `acc_input`: RLC
 - `output`: RLC
 
-and constrain `is_end_result === 1`
+When the lookup is needed, constrain `is_enabled === 1` and `is_end_result === 1`.
 
 #### Prover behavior
 
