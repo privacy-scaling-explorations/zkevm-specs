@@ -44,7 +44,7 @@ For every transaction defined as the parameters `(nonce, gas_price, gas, to, val
 1. `txSignData: bytes = rlp([nonce, gas_price, gas, to, value, data, chain_id, 0, 0])`
 2. `txSignHash: word = keccak(txSignData)`
 3. `sig_parity: {0, 1} = sig_v - 35 - chain_id / 2`
-4. `ecRecover(txSignHash, sig_parity, sig_r, sig_s) = pubKey` or equivalently `verify(txSignHash, sig_r, sig_s, pubKey) = true`
+4. `ecdsa_recover(txSignHash, sig_parity, sig_r, sig_s) = pubKey` or equivalently `verify(txSignHash, sig_r, sig_s, pubKey) = true`
 5. `fromAddress = keccak(pubKey)[-20:]`
 
 - The rlp encoding of transaction parameters (step 1) will be done using a
