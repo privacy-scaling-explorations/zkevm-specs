@@ -23,7 +23,7 @@ TESTING_DATA = (
 
 
 @pytest.mark.parametrize("opcode, a, b, c", TESTING_DATA)
-def test_add(opcode: Opcode, a: int, b: int, c: Optional[int]):
+def test_add_sub(opcode: Opcode, a: int, b: int, c: Optional[int]):
     randomness = rand_fq()
 
     c = (

@@ -1,80 +1,79 @@
-# MUL opcode
+# MUL, DIV, and MOD opcodes
 
 ## Procedure
 
-Initially we followed the approch of [Multi-Limbs Multiplication](https://hackmd.io/HL0QhGUeQoSgIBt2el6fHA), with some notes:
-
-In notation *c = a ⋅ b*, layout could be like the below table if we got 32 columns to use. In table, *a₀, ⋯, a₃₁* as well as *b* and *c* are big-endian evm words on stack through bus mapping lookup. Each limb in evm word will be range lookup check to fit 8-bit.
-
-| 0  |  1 |  2 | 3  |  4 |  5 | ⋯  | 8  | ⋯ | 29 | 30 | 31 |
-|----|----|----|----|----|----|----|----|----|----|----|----|
-|*a₀*|*a₁*|*a₂*|*a₃*|*a₄*|*a₅*| ⋯  |*a₈*| ⋯ |*a₂₉*|*a₃₀*|*a₃₁*|
-|*b₀*|*b₁*|*b₂*|*b₃*|*b₄*|*b₅*| ⋯  |*a₈*| ⋯ |*b₂₉*|*b₃₀*|*b₃₁*|
-|*c₀*|*c₁*|*c₂*|*c₃*|*c₄*|*c₅*| ⋯  |*a₈*| ⋯ |*c₂₉*|*c₃₀*|*c₃₁*|
-|*v0₀*|*v0₁*|*v0₂*|*v0₃*|*v0₄*|*v0₅*| ⋯  |*v0₈*|  | | | |
-|*v1₀*|*v1₁*|*v1₂*|*v1₃*|*v1₄*|*v1₅*| ⋯  |*v1₈*|  | | | |
-
-Linear combinations of *A, B and C* form 4 - 64 bit limbs for *a, b and c* respectively and no need to be stored as witness:
-
-|                    |                     |                    |
-|--------------------|---------------------|--------------------|
-|*A₀ = Σ₀⁷aᵢ ⋅ 256ⁱ* | *B₀ = Σ₀⁷bᵢ ⋅ 256ⁱ* | *C₀ = Σ₀⁷cᵢ ⋅ 256ⁱ* |
-|*A₁ = Σ₀⁷aᵢ₊₈ ⋅ 256ⁱ*|*B₁ = Σ₀⁷bᵢ₊₈ ⋅ 256ⁱ*|*C₁ = Σ₀⁷cᵢ₊₈ ⋅ 256ⁱ*|
-|*A₂ = Σ₀⁷aᵢ₊₁₆ ⋅ 256ⁱ*|*B₂ = Σ₀⁷bᵢ₊₁₆ ⋅ 256ⁱ*|*C₂ = Σ₀⁷cᵢ₊₁₆ ⋅ 256ⁱ*|
-|*A₃ = Σ₀⁷aᵢ₊₂₄ ⋅ 256ⁱ*|*B₃ = Σ₀⁷bᵢ₊₂₄ ⋅ 256ⁱ*|*C₃ = Σ₀⁷cᵢ₊₂₄ ⋅ 256ⁱ*|
-
-> Note 1: we can in additional combine *A₀, A₁, B₀ ⋯* to *t₀, t₁ ⋯* for they are still some polynomial with rather low degree, and not need to store them as witness:
-
-*t₀ = A₀B₀*
-
-*t₁ = A₀B₁ + A₁B₀*
-
-*t₂ = A₀B₂ + A₁B₁ + A₂B₀*
-
-*t₃ = A₀B₃ + A₁B₂ + A₂B₁ + A₃B₀*
-
-And the constraints would be:
-
-- *v0 ⋅ 2¹²⁸ == t₀ + t₁ ⋅ 2⁶⁴ - C₀ - C₁ ⋅ 2⁶⁴*
-- *v1 ⋅ 2¹²⁸ == v0 + t₂ + t₃ ⋅ 2⁶⁴ - C₂ - C₃ ⋅ 2⁶⁴*
-- *v0 ∈ \[ 0, 2⁶⁶ \]*
-- *v1 ∈ \[ 0, 2⁶⁶ \]*
-
-> Note 2: we consider there should be a trivial mistake in the original link which claimed the range of v0 and v1 is `[0, 2^64]` (they should be in the range of `[0, 2^66]`).
-
-> Note 3: Ensuring v0 and v1 do not exceed the scalar field after being mutipled by 2^128 is enough. In our code v0 and v1 are constrainted by the combination of 9 bytes (each cell being constrainted by 8-bit range table) so they are constrainted to a slightly relaxed range of `[0, 2^72)`. Our approach use 3 evm words and 18 cells (totally 114 cells).
-
-Then we extend this to a MUL-ADD gadget which checks *d = a ⋅ b + c*. We only need to change the constraints into:
-
-- *v0 ⋅ 2¹²⁸ == t₀ + t₁ ⋅ 2⁶⁴ + C₀ + C₁ ⋅ 2⁶⁴ - D₀ - D₁ ⋅ 2⁶⁴*
-- *v1 ⋅ 2¹²⁸ == v0 + t₂ + t₃ ⋅ 2⁶⁴ + C₂ + C₃ ⋅ 2⁶⁴ - D₂ - D₃ ⋅ 2⁶⁴*
-- *v0 ∈ \[ 0, 2⁶⁶ \]*
-- *v1 ∈ \[ 0, 2⁶⁶ \]*
-
-If it's `MUL` opcode, we set *c = 0*.
-If it's `DIV` or `MOD` opcode, we set d as dividend, b as divisor, a as quotient and c as remainder. Also because there is no overflow during the calculation. We need to add one more constraint.
-
-- *v1 + A₁B₃ + A₂B₂ + A₃B₁ + A₂B₃ + A₃B₂ + A₃B₃ == 0*
-
-if divisor no equals to zero, we also need use a LT gadget to check *c \< b*.
-
 ### EVM behavior
 
-Pop two EVM words `a` and `b` from the stack. Compute
+Pop two EVM words `a` and `b` from the stack, and push `c` to the stack, where `c` is computed as
 
-- if it's `MUL` opcode, compute `c = (a * b) % 2**256`, and push `c` back to the stack
-- if it's `DIV` opcode, compute `c = a // b`(c will be set to 0 when *b = 0*), and push `c` back to the stack
-- if it's `MOD` opcode, compute `c = a mod b`(c will be set to 0 when *b = 0*), and push `c` back to the stack
+- for opcode `MUL`, compute `c = (a * b) % 2^256`
+- for opcode `DIV`, compute `c = a // b` when `b != 0` otherwise `c = 0`
+- for opcode `MOD`, compute `c = a mod b` when `b != 0` otherwise `c = 0`
 
 ### Circuit behavior
 
-The MulGadget takes argument of `a: [u8;32]`, `b: [u8;32]`, `c: [u8;32]`, `d: [u8;32]`, `opcode: u8`.
+To prove the `MUL/DIV/MOD` opcode, we first construct a `MulAddWordsGadget` that proves `a * b + c = d (mod 2^256)` where `a, b, c, d` are all 256-bit words.
+As usual, we use 32 cells to represent each word shown as the table below, where
+each cell holds a 8-bit value.
 
-It always computes `d = a * b + c`,
+| 0  |  1 |  2 | 3  |  $\dots$  | 8  | $\dots$ |  31 |
+|:---:|:---:|:---:|:---:|:--:|:--:|:--:|:--:|
+|$a_0$|$a_1$|$a_2$|$a_3$| $\dots$ |$a_8$| $\dots$ |$a_{31}$|
+|$b_0$|$b_1$|$b_2$|$b_3$| $\dots$ |$b_8$| $\dots$ |$b_{31}$|
+|$c_0$|$c_1$|$c_2$|$c_3$| $\dots$ |$c_8$| $\dots$ |$c_{31}$|
+|$d_0$|$d_1$|$d_2$|$d_3$| $\dots$ |$d_8$| $\dots$ |$d_{31}$|
 
-- when it's MUL (`is_mul == True`), we annotate stack as \[a, b, ...\] and \[d, ...\], c will be set zero,
-- when it's DIV (`is_div == True`), we annotate stack as \[d, b, ...\] and \[a, ...\], c will be compute as `d - a * b`.
-- when it's MOD (`is_mod == True`), we annotate stack as \[d, b, ...\] and \[c, ...\], a will be compute as `d // b`(c will be set to 0 when *b = 0*).
+We then combine $a$ and $b$ into four 64-bit limbs, denoted by $A_i, B_i$ ($i \in \{0, 1, 2, 3\}$), and split $c$ and $d$ into two 128-bit limbs, denoted by $C_{lo}, C_{hi}$ and $D_{lo}, D_{hi}$.
+
+|      A limbs       |    B limbs          |    C limbs         |  D limbs   |
+|--------------------|---------------------|--------------------|------------|
+|$A_0 = \sum_0^7 {a_i \cdot 256^i}$ | $B_0 = \sum_0^7 {b_i \cdot 256^i}$ | $C_{lo} = \sum_0^{15} {c_i \cdot 256^i}$ | $D_{lo} = \sum_0^{15} {d_i \cdot 256^i}$ |
+|$A_1 = \sum_0^7 {a_{i+8} \cdot 256^i}$ | $B_1 = \sum_0^7 {b_{i+8} \cdot 256^i}$ | $C_{hi} = \sum_0^{15} {c_{i+16} \cdot 256^i}$ | $D_{hi} = \sum_0^{15} {d_{i+16} \cdot 256^i}$ |
+|$A_2 = \sum_0^7 {a_{i+16} \cdot 256^i}$ | $B_2 = \sum_0^7 {b_{i+16} \cdot 256^i}$ | | |
+|$A_3 = \sum_0^7 {a_{i+24} \cdot 256^i}$ | $B_3 = \sum_0^7 {b_{i+24} \cdot 256^i}$ | | |
+
+The gadget computes four intermediate values as follows:
+
+$$
+\begin{align*}
+t_0 &= A_0B_0 \\
+t_1 &= A_0B_1 + A_1B_0 \\
+t_2 &= A_0B_2 + A_1B_1 + A_2B_0\\
+t_3 &= A_0B_3 + A_1B_2 + A_2B_1 + A_3B_0
+\end{align*}
+$$
+
+, and the constraints are:
+
+- $ t_0 + t_1 \cdot 2^{64} + C_{lo} == D_{lo} + carry_{lo} \cdot 2^{128} $
+- $ t_2 + t_3 \cdot 2^{64} + C_{hi} + carry_{lo} == D_{hi} + carry_{hi} \cdot 2^{128} $ *v1 ⋅ 2¹²⁸ == v0 + t₂ + t₃ ⋅ 2⁶⁴ - C₂ - C₃ ⋅ 2⁶⁴*
+- $ carry_{lo} \in [0, 2^{66}) $
+- $ carry_{hi} \in [0, 2^{66}) $
+
+Note that the $carry_{lo}, carry_{hi}$ should be in the range of $[0, 2^{66})$.
+To make it easy to check the range, we relax the range to $[0, 2^{72})$ and use
+9 byte cells to check the range of $carry_{lo}$ and $carry_{hi}$.
+In addition, the `MulAddWordsGadget` returns an `overflow` expression that sums
+up all parts that are over 256-bit value in `a * b + c`.
+
+$$
+overflow = carry_{hi} + A_1B_3 + A_2B_2 + A_3B_1 + A_2B_3 + A_3B_2 + A_3B_3
+$$
+
+Now back to the opcode circuit for `MUL`, `DIV`, and `MOD`, we first construct
+the `MulAddWordsGadget` with four EVM words `a, b, c, d`.
+Based on different opcode cases, we constrain the stack pops and pushes as follows
+
+- for `MUL`, two stack pops are `a` and `b`, and the stack push is `d`
+- for `DIV`, two stack pops are `d` and `b`, and the stack push is `a` if `b != 0`; otherwise 0.
+- for `MOD`, two stack pops are `d` and `b`, and the stack push is `c` if `b != 0`; otherwise 0.
+
+The opcode circuit also adds extra constraints for different opcodes:
+
+- if the opcode is `MUL`, constrain `c == 0`.
+- if the opcode is not `MUL`,
+    - use a `LtWordGadget` to constrain `c < b` when `b != 0`
+    - constrain `overflow == 0`
 
 ## Constraints
 
@@ -89,14 +88,14 @@ It always computes `d = a * b + c`,
    - gas + 5
 3. Lookups: 3 busmapping lookups
    1. top of the stack :
-      - when it's MUL (`is_mul == True`), `a` is at the top of the stack
-      - when it's DIV (`is_div == True`), `d` is at the top of the stack.
-      - when it's MOD (`is_mod == True`), `d` is at the top of the stack.
+      - when it's `MUL`, `a` is at the top of the stack
+      - when it's `DIV`, `d` is at the top of the stack.
+      - when it's `MOD`, `d` is at the top of the stack.
    2. `b` is at the second position of the stack
    3. new top of the stack
-      - when it's MUL (`is_mul == True`), `d`, the result, is at the new top of the stack
-      - when it's DIV (`is_div == True`), `a`, the result, is at the new top of the stack
-      - when it's MOD (`is_mod == True`), `c`, the result, is at the new top of the stack
+      - when it's `MUL`, `d` is at the new top of the stack
+      - when it's `DIV`, `a` is at the new top of the stack when `b != 0`, otherwise 0
+      - when it's `MOD`, `c` is at the new top of the stack when `b != 0`, otherwise 0
 
 ## Exceptions
 
@@ -105,4 +104,4 @@ It always computes `d = a * b + c`,
 
 ## Code
 
-See `src/zkevm_specs/evm/execution/mul.py`
+See `src/zkevm_specs/evm/execution/mul_div_mod.py`

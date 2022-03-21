@@ -40,4 +40,4 @@ It always computes `y = (a + x) % 2**256`,
 
 ## Code
 
-See `src/zkevm_specs/opcode/add.py`
+See `src/zkevm_specs/opcode/add_sub.py`

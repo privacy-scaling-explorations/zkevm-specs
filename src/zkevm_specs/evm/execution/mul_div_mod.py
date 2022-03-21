@@ -3,7 +3,7 @@ from ..opcode import Opcode
 from ...util import FQ
 
 
-def mul(instruction: Instruction):
+def mul_div_mod(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
 
     # The opcode value for MUL, DIV and MOD is 2, 4, 6. When the opcode is MUL,
