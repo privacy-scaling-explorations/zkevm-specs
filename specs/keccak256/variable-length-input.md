@@ -66,6 +66,7 @@ Selector:
 To lookup the Keccak256 input to the output, query the following columns:
 
 - `is_end_result`: bool
+- `input_len`: FQ. This is required because input \[0, 0, 0\] and \[0, 0\] have the same RLC value but different keccak hash outputs.
 - `acc_input`: RLC
 - `output`: RLC
 
