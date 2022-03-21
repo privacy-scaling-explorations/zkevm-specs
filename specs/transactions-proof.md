@@ -23,8 +23,7 @@ After EIP-155:
 
 Hashed data to sign: `(nonce, gasprice, gas, to, value, data, chain_id, 0, 0)` with `sig_v = {0,1} + CHAIN_ID * 2 + 35`
 
-Where `{0,1}` is the parity of the `y` value of the curve point for which `r`
-is the x-value in the secp256k1 signing process.
+Where `{0,1}` is the parity of the `y` value of the curve point corresponding to the public key in the secp256k1 signing process.
 
 ### Non-Legacy (EIP-2718) type:
 

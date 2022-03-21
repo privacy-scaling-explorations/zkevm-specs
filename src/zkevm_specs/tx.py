@@ -210,11 +210,15 @@ class SignVerifyGadget:
         self.ecdsa_chip.verify(is_enabled, assert_msg)
 
 
+class Witness(NamedTuple):
+    rows: List[Row]  # Transaction table rows
+    keccak_table: KeccakTable
+    sign_verifications: List[SignVerifyGadget]
+
+
 @is_circuit_code
 def verify_circuit(
-    rows: List[Row],
-    sign_verifications: List[SignVerifyGadget],
-    keccak_table: KeccakTable,
+    witness: Witness,
     MAX_TXS: int,
     MAX_CALLDATA_BYTES: int,
     randomness: FQ,
@@ -223,6 +227,9 @@ def verify_circuit(
     Entry level circuit verification function
     """
 
+    rows = witness.rows
+    sign_verifications = witness.sign_verifications
+    keccak_table = witness.keccak_table
     for tx_index in range(MAX_TXS):
         assert_msg = f"Constraints failed for tx_index = {tx_index}"
         tx_row_index = tx_index * Tag.TxSignHash
@@ -306,12 +313,6 @@ def tx2witness(
         rows.append(Row(tx_id, FQ(Tag.CallData), FQ(byte_index), FQ(byte)))
 
     return (rows, sign_verification)
-
-
-class Witness(NamedTuple):
-    rows: List[Row]  # Transaction table rows
-    keccak_table: KeccakTable
-    sign_verifications: List[SignVerifyGadget]
 
 
 def txs2witness(

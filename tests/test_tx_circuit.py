@@ -50,9 +50,7 @@ def verify(
     ok = True
     if success:
         verify_circuit(
-            witness.rows,
-            witness.sign_verifications,
-            witness.keccak_table,
+            witness,
             MAX_TXS,
             MAX_CALLDATA_BYTES,
             randomness,
@@ -60,9 +58,7 @@ def verify(
     else:
         try:
             verify_circuit(
-                witness.rows,
-                witness.sign_verifications,
-                witness.keccak_table,
+                witness,
                 MAX_TXS,
                 MAX_CALLDATA_BYTES,
                 randomness,
