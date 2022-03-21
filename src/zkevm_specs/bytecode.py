@@ -46,8 +46,8 @@ def check_bytecode_row(
         if prev_row.tag == BytecodeFieldTag.Length:
             # index starts from 0
             assert row.index == 0
-            # hash length should be the previous row's value
-            assert row.hash_length == prev_row.value
+            # is_code := 1, since this is the first byte of the bytecode
+            assert row.is_code == 1
         else:
             # index is 1 more than previous row's index
             assert row.index == prev_row.index + 1
@@ -65,17 +65,19 @@ def check_bytecode_row(
         # Start
         # the row following an `is_final` previous row is either tagged Length
         if row.tag == BytecodeFieldTag.Length:
+            # value matches hash length
+            assert row.value == row.hash_length
             # if bytecode length is zero
             if row.value == 0:
                 # bytecode hash should be EMPTY_HASH
-                row.hash == EMPTY_HASH
-                # the next row should also be a tag Length
-                next_row.tag == BytecodeFieldTag.Length
+                assert row.hash == RLC(EMPTY_HASH, FQ(r)).expr()
+                # the next row should be a tag Length or padding
+                assert (next_row.tag == BytecodeFieldTag.Length) or (next_row.tag == 0)
             else:
                 # bytecode hash should not be EMPTY_HASH
-                row.hash != EMPTY_HASH
+                assert row.hash != RLC(EMPTY_HASH, FQ(r)).expr()
                 # the next row should be tag Byte
-                next_row.tag == BytecodeFieldTag.Byte
+                assert next_row.tag == BytecodeFieldTag.Byte
         # or is the start of padding rows
         else:
             assert row.padding == 1
