@@ -14,9 +14,11 @@ def sign_tx(sk: keys.PrivateKey, tx: Transaction, chain_id: U64) -> Transaction:
     """
     Return a copy of the transaction signed by sk
     """
-    tx_msg = rlp.encode([tx.nonce, tx.gas_price, tx.gas, tx.to, tx.value, tx.data, chain_id, 0, 0])
-    tx_msg_hash = keccak(tx_msg)
-    sig = sk.sign_msg_hash(tx_msg_hash)
+    tx_sign_data = rlp.encode(
+        [tx.nonce, tx.gas_price, tx.gas, tx.to, tx.value, tx.data, chain_id, 0, 0]
+    )
+    tx_sign_hash = keccak(tx_sign_data)
+    sig = sk.sign_msg_hash(tx_sign_hash)
     sig_v = sig.v + chain_id * 2 + 35
     sig_r = sig.r
     sig_s = sig.s

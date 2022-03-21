@@ -228,7 +228,7 @@ def verify_circuit(
         assert_msg = f"Constraints failed for tx_index = {tx_index}"
         tx_row_index = tx_index * Tag.TxSignHash
         caller_addr_index = tx_row_index + Tag.CallerAddress - 1
-        tx_msg_hash_index = tx_row_index + Tag.TxSignHash - 1
+        tx_sign_hash_index = tx_row_index + Tag.TxSignHash - 1
 
         # SignVerifyGadget constraint verification.  Padding txs rows contain
         # 0 in all values.  The SignVerifyGadget skips the verification when
@@ -240,8 +240,8 @@ def verify_circuit(
             f"{assert_msg}: {hex(rows[caller_addr_index].value.n)} != "
             + f"{hex(sign_verifications[tx_index].address.n)}"
         )
-        assert rows[tx_msg_hash_index].value == sign_verifications[tx_index].msg_hash_rlc, (
-            f"{assert_msg}: {hex(rows[tx_msg_hash_index].value.n)} != "
+        assert rows[tx_sign_hash_index].value == sign_verifications[tx_index].msg_hash_rlc, (
+            f"{assert_msg}: {hex(rows[tx_sign_hash_index].value.n)} != "
             + f"{hex(sign_verifications[tx_index].msg_hash_rlc.n)}"
         )
 
@@ -273,19 +273,21 @@ def tx2witness(
     SignVerifyGadget.
     """
 
-    tx_msg = rlp.encode([tx.nonce, tx.gas_price, tx.gas, tx.to, tx.value, tx.data, chain_id, 0, 0])
-    tx_msg_hash = keccak(tx_msg)
+    tx_sign_data = rlp.encode(
+        [tx.nonce, tx.gas_price, tx.gas, tx.to, tx.value, tx.data, chain_id, 0, 0]
+    )
+    tx_sign_hash = keccak(tx_sign_data)
 
     sig_parity = tx.sig_v - 35 - chain_id * 2
     sig = KeyAPI.Signature(vrs=(sig_parity, tx.sig_r, tx.sig_s))
 
-    pk = sig.recover_public_key_from_msg_hash(tx_msg_hash)
+    pk = sig.recover_public_key_from_msg_hash(tx_sign_hash)
     pk_bytes = pk.to_bytes()
     keccak_table.add(pk_bytes, randomness)
     pk_hash = keccak(pk.to_bytes())
     addr = pk_hash[-20:]
 
-    sign_verification = SignVerifyGadget.assign(sig, pk, tx_msg_hash, randomness)
+    sign_verification = SignVerifyGadget.assign(sig, pk, tx_sign_hash, randomness)
 
     tx_id = FQ(index + 1)
     rows: List[Row] = []
@@ -299,8 +301,8 @@ def tx2witness(
     rows.append(Row(tx_id, FQ(Tag.IsCreate), FQ(0), FQ(1) if tx.to == FQ(0) else FQ(0)))
     rows.append(Row(tx_id, FQ(Tag.Value), FQ(0), RLC(tx.value, randomness).value))
     rows.append(Row(tx_id, FQ(Tag.CallDataLength), FQ(0), FQ(len(tx.data))))
-    tx_msg_hash_rlc = RLC(int.from_bytes(tx_msg_hash, "big"), randomness).value
-    rows.append(Row(tx_id, FQ(Tag.TxSignHash), FQ(0), tx_msg_hash_rlc))
+    tx_sign_hash_rlc = RLC(int.from_bytes(tx_sign_hash, "big"), randomness).value
+    rows.append(Row(tx_id, FQ(Tag.TxSignHash), FQ(0), tx_sign_hash_rlc))
     for byte_index, byte in enumerate(tx.data):
         rows.append(Row(tx_id, FQ(Tag.CallData), FQ(byte_index), FQ(byte)))
 
