@@ -97,7 +97,6 @@ def test_tx2witness():
     keccak_table = KeccakTable()
     rows, sign_verification = tx2witness(0, tx, chain_id, r, keccak_table)
     for row in rows:
-        print(row)
         if row.tag == Tag.CallerAddress:
             assert addr == row.value.n.to_bytes(20, "big")
 
