@@ -7,12 +7,16 @@ from .encoding import U8, is_circuit_code
 from .evm import RW, AccountFieldTag, CallContextFieldTag
 
 MAX_KEY_DIFF = 2**32 - 1
+# The gas cost for memory operations is quadratic in the maximum memory address
+# touched. From equation 326 in the yellow paper, for C_mem(a), the maximum
+# memory address touched cannot exceed or equal 2^32 until the gas limit is
+# over 3.6e16.
 MAX_MEMORY_ADDRESS = 2**32 - 1
 MAX_STACK_PTR = 1023
 MAX_KEY0 = 10  # Number of Tag variants
 MAX_KEY1 = 2**16 - 1  # Maximum number of calls in a block
 MAX_KEY2 = 2**160 - 1  # Ethereum Address size
-MAX_KEY3 = 2**40 - 1  # Maximum value for Memory Address
+MAX_KEY3 = MAX_MEMORY_ADDRESS  # Maximum value for Memory Address
 KEY0_BITS = ceil(log(MAX_KEY0 + 1, 2))  # 4
 KEY1_BITS = ceil(log(MAX_KEY1 + 1, 2))  # 16
 KEY2_BITS = ceil(log(MAX_KEY2 + 1, 2))  # 160
