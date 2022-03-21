@@ -212,6 +212,20 @@ Organizing the table this way allows having the values of `CallerAddress` and
 add copy constraints of these values to cells into another region that performs
 the signature verification and hash lookup.
 
+### Summary of changes
+
+- Skip verification of correct construction of the transaction trie (no MPT table lookups)
+- Skip verification of RLC of transaction to obtain the message to sign
+- Skip verification of hash of RLC of transaction to obtain the hash of the message to sign
+- Add TxSignHash Tag to the tx table (set from public input calculated in L1 smart contract)
+- Instead of verifying ECDSA signatures by doing lookups to an ECDSA table, use ECDSA chip directly.
+  - This requires rearangement of the tx table so that for each transaction we
+    can find its CallerAddress Value and TxSignHash value at fixed offset to do
+    a copy constraint to a signature verification gadget.  For this we move the
+    CallData tags of all transactions to the end of the table, and we define
+    padding at the middle (between the fixed offset region and dynamic offset
+    region) and at the end.
+
 ## Code
 
 Please refer to `src/zkevm-specs/tx.py`.
