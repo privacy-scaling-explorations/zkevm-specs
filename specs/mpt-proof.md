@@ -59,14 +59,55 @@ to be in the account leaf of the last account proof element.
 We split the branch information into 16 rows (one row for each node). The proof looks like:
 
 <p align="center">
-  <img src="./img/proof.png?raw=true" width="50%">
+  <img src="./img/proof.png?raw=true" width="35%">
 </p>
 
-When `key1` is hashed and converted into hexadecimal value - it becomes a hexadecimal string of
-length 64. The first character specifies under which position of Branch 0 is the node
+A key is hashed and converted into hexadecimal value - it becomes a hexadecimal string of
+length 64.
+Let's say we have a leaf:
+
+```
+key = [10,6,3,5,7,0,1,2,12,1,10,3,10,14,0,10,1,7,13,3,0,4,12,9,9,2,0,3,1,0,3,8,2,13,9,6,8,14,11,12,12,4,11,1,7,7,1,15,4,1,12,6,11,3,0,4,2,0,5,11,5,7,0,16]
+val = [2]
+```
+
+In a proof, key is put in the
+[compact form](https://github.com/ethereum/go-ethereum/blob/master/trie/hasher.go#L110)
+It becomes:
+
+```
+[58,99,87,1,44,26,58,224,161,125,48,76,153,32,49,3,130,217,104,235,204,75,23,113,244,28,107,48,66,5,181,112]
+```
+
+Then the leaf is
+[RLP encoded](https://github.com/ethereum/go-ethereum/blob/master/trie/hasher.go#L157)
+It becomes:
+
+```
+[226,160,58,99,87,1,44,26,58,224,161,125,48,76,153,32,49,3,130,217,104,235,204,75,23,113,244,28,107,48,66,5,181,112,2]
+```
+
+Note that the RLP contains the key and the value (the last byte). In such a format, a storage
+leaf appears in the MPT proof.
+
+The leaf RLP is hashed and it appears in the parent branch as:
+
+```
+[32,34,39,131,73,65,47,37,211,142,206,231,172,16,11,203,33,107,30,7,213,226,2,174,55,216,4,117,220,10,186,68]
+```
+
+Key nibbles specify the positions in branches / extension nodes.
+The first nibble specifies under which position of Branch 0 is the node
 corresponding to `key1`.
-The second character specifies under which position of Branch 1 is the node
-corresponding to `key1`. The remaining characters are stored in a leaf.
+The second nibble specifies under which position of Branch 1 is the node
+corresponding to `key1`. The remaining nibbles are stored in a storage leaf
+(in a compact form).
+
+In account proof, address is analogous to key in storage proof.
+
+<p align="center">
+  <img src="./img/address_key.png?raw=true" width="70%">
+</p>
 
 In the above case, we have four branches / extension nodes in the account proof.
 Let's say `addr` turns into nibbles `3 b a 5 ...` That would mean the position (named `modified_node`) of the underlying proof element is:
@@ -77,9 +118,9 @@ Let's say `addr` turns into nibbles `3 b a 5 ...` That would mean the position (
 - 5 in Branch 3
 
 In the above case, we only have one branch / extension node in the storage proof.
-Let's say `key1` turns into nibbles `7 ...` That would mean the position (named `modified_node`) of the underlying storage leaf is:
+Let's say `key1` turns into nibbles `a ...` That would mean the position (named `modified_node`) of the underlying storage leaf is:
 
-- 7 in Branch 0
+- 10 in Branch 0
 
 If we make a change at `key1` from `val1` to `val2` and obtain a proof after this change,
 the proof will be different from the first only at `modified_node` positions.
@@ -601,6 +642,24 @@ lookup(acc_c, extension node C length, c_mod_node_hash_rlc::(rot-1))
 For S:
 `lookup(S branch RLC (retrived from the last branch children row), S branch length, c_advices RLC in extension row)`.
 
+### Account leaf
+
+There are five rows for an account leaf:
+
+```
+Key S
+Nonce balance S
+Nonce balance C
+Storage codehash S
+Storage codehash C
+```
+
+There is only one key row, because the key is always the same for the two parallel proofs.
+
+<p align="center">
+  <img src="./img/address_rlc.png?raw=true" width="60%">
+</p>
+
 ### Storage leaf
 
 There are five rows for a storage leaf:
@@ -613,12 +672,14 @@ Leaf value C
 Leaf in added branch
 ```
 
-Note: it might be optimized to have only one row for a storage leaf.
-
-For example:
+Note that leaf key S and leaf key C are not always the same - for example
+when a value is added to the key which was empty, the leaf key C will be
+shorter.
 
 <!-- TestExtensionAddedOneKeyByteSel1-->
 
+<!--
+For example:
 ```
 226,160,62,102,91,...
 30,0,0...
@@ -626,8 +687,17 @@ For example:
 17,0,0
 225,159,54,91,73,...
 ```
+-->
+
+<p align="center">
+  <img src="./img/storage_leaf.png?raw=true" width="60%">
+</p>
 
 ##### Constraint: key RLC
+
+<p align="center">
+  <img src="./img/key_rlc.png?raw=true" width="60%">
+</p>
 
 The first row contains the storage leaf S key bytes. These bytes are what remains from the
 key after key nibbles are used to navigate through branches / extension nodes.
