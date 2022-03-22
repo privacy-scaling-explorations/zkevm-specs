@@ -342,8 +342,8 @@ class Tables:
         self,
         tag: Expression,
         value0: Expression,
-        value1: Expression = None,
-        value2: Expression = None,
+        value1: Expression = FQ(0),
+        value2: Expression = FQ(0),
     ) -> FixedTableRow:
         query = {
             "tag": tag,
@@ -351,7 +351,10 @@ class Tables:
             "value1": value1,
             "value2": value2,
         }
-        return _lookup(FixedTableRow, self.fixed_table, query)
+        row = FixedTableRow(tag, value0, value1, value2)
+        if row not in self.fixed_table:
+            raise LookupUnsatFailure(FixedTableRow.__name__, query)
+        return row
 
     def block_lookup(
         self, field_tag: Expression, block_number: Expression = FQ(0)
