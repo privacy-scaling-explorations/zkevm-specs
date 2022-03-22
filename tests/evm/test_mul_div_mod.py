@@ -12,9 +12,10 @@ from zkevm_specs.evm import (
     Bytecode,
 )
 from zkevm_specs.util import rand_fq, rand_word, RLC
+from common import generate_nasty_tests
 
 
-TESTING_DATA = (
+TESTING_DATA = [
     (Opcode.MUL, 0x030201, 0x060504),
     (
         Opcode.MUL,
@@ -30,16 +31,16 @@ TESTING_DATA = (
     (Opcode.DIV, 0xABC, 0xFFFFFF),
     (Opcode.DIV, 0xFFFFFF, 0xFFFFFFF),
     (Opcode.DIV, 0xABC, 0),
-    (Opcode.DIV, 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF, 0),
     (Opcode.MOD, 0xFFFFFF, 0xABC),
     (Opcode.MOD, 0xABC, 0xFFFFFF),
     (Opcode.MOD, 0xFFFFFF, 0xFFFFFFF),
     (Opcode.MOD, 0xABC, 0),
-    (Opcode.MOD, 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF, 0),
     (Opcode.MUL, rand_word(), rand_word()),
     (Opcode.DIV, rand_word(), rand_word()),
     (Opcode.MOD, rand_word(), rand_word()),
-)
+]
+
+generate_nasty_tests(TESTING_DATA, (Opcode.MUL, Opcode.DIV, Opcode.MOD))
 
 
 @pytest.mark.parametrize("opcode, a, b", TESTING_DATA)

@@ -12,25 +12,24 @@ from zkevm_specs.evm import (
     RWDictionary,
 )
 from zkevm_specs.util import rand_fq, rand_word, RLC
+from common import NASTY_AB_VALUES
 
 
-TESTING_DATA = (
-    (Opcode.ADD, 0x030201, 0x060504, 0x090705),
-    (Opcode.SUB, 0x090705, 0x060504, 0x030201),
-    (Opcode.ADD, rand_word(), rand_word(), None),
-    (Opcode.SUB, rand_word(), rand_word(), None),
-)
+TESTING_DATA = [
+    (Opcode.ADD, 0x030201, 0x060504),
+    (Opcode.SUB, 0x090705, 0x060504),
+    (Opcode.ADD, rand_word(), rand_word()),
+    (Opcode.SUB, rand_word(), rand_word()),
+]
+
+generate_nasty_tests(TESTING_DATA, (Opcode.ADD, Opcode.SUB))
 
 
-@pytest.mark.parametrize("opcode, a, b, c", TESTING_DATA)
-def test_add_sub(opcode: Opcode, a: int, b: int, c: Optional[int]):
+@pytest.mark.parametrize("opcode, a, b", TESTING_DATA)
+def test_add_sub(opcode: Opcode, a: int, b: int):
     randomness = rand_fq()
 
-    c = (
-        RLC(c, randomness)
-        if c is not None
-        else RLC((a + b if opcode == Opcode.ADD else a - b) % 2**256, randomness)
-    )
+    c = RLC((a + b if opcode == Opcode.ADD else a - b) % 2**256, randomness)
     a = RLC(a, randomness)
     b = RLC(b, randomness)
 
