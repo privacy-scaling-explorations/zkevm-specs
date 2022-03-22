@@ -83,13 +83,16 @@ def begin_tx(instruction: Instruction):
             (CallContextFieldTag.LastCalleeId, FQ(0)),
             (CallContextFieldTag.LastCalleeReturnDataOffset, FQ(0)),
             (CallContextFieldTag.LastCalleeReturnDataLength, FQ(0)),
+            (CallContextFieldTag.IsRoot, FQ(True)),
+            (CallContextFieldTag.IsCreate, FQ(False)),
+            (CallContextFieldTag.CodeSource, code_hash),
         ]:
             instruction.constrain_equal(
                 instruction.call_context_lookup(tag, call_id=call_id), value
             )
 
         instruction.step_state_transition_to_new_context(
-            rw_counter=Transition.delta(19),
+            rw_counter=Transition.delta(22),
             call_id=Transition.to(call_id),
             is_root=Transition.to(True),
             is_create=Transition.to(False),

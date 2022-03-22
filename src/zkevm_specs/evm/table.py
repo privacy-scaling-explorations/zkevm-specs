@@ -199,6 +199,9 @@ class CallContextFieldTag(IntEnum):
     IsSuccess = auto()  # to peek result in the future
     IsPersistent = auto()  # to know if current call is within reverted call or not
     IsStatic = auto()  # to know if state modification is within static call or not
+    IsRoot = auto()
+    IsCreate = auto()
+    CodeSource = auto()
 
     # The following are read-only data inside a call like previous section for
     # opcode RETURNDATASIZE and RETURNDATACOPY, except they will be updated when
@@ -213,9 +216,6 @@ class CallContextFieldTag(IntEnum):
     # Note that stack and memory could also be included here, but since they
     # need extra constraints on their data format, so we separate them to be
     # different kinds of RWTableTag.
-    IsRoot = auto()
-    IsCreate = auto()
-    CodeSource = auto()
     ProgramCounter = auto()
     StackPointer = auto()
     GasLeft = auto()

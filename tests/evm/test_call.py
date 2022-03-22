@@ -231,9 +231,6 @@ def test_call(
         .call_context_write(1, CallContextFieldTag.LastCalleeReturnDataLength, 0) 
     else:
         rw_dictionary \
-        .call_context_write(1, CallContextFieldTag.IsRoot, True) \
-        .call_context_write(1, CallContextFieldTag.IsCreate, False) \
-        .call_context_write(1, CallContextFieldTag.CodeSource, caller_bytecode_hash) \
         .call_context_write(1, CallContextFieldTag.ProgramCounter, 232) \
         .call_context_write(1, CallContextFieldTag.StackPointer, 1023) \
         .call_context_write(1, CallContextFieldTag.GasLeft, expected.caller_gas_left) \
@@ -253,7 +250,10 @@ def test_call(
         .call_context_read(24, CallContextFieldTag.IsStatic, caller_ctx.is_static) \
         .call_context_read(24, CallContextFieldTag.LastCalleeId, 0) \
         .call_context_read(24, CallContextFieldTag.LastCalleeReturnDataOffset, 0) \
-        .call_context_read(24, CallContextFieldTag.LastCalleeReturnDataLength, 0)
+        .call_context_read(24, CallContextFieldTag.LastCalleeReturnDataLength, 0) \
+        .call_context_read(24, CallContextFieldTag.IsRoot, False) \
+        .call_context_read(24, CallContextFieldTag.IsCreate, False) \
+        .call_context_read(24, CallContextFieldTag.CodeSource, callee_bytecode_hash)
     # fmt: on
 
     tables = Tables(

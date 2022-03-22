@@ -147,9 +147,6 @@ def call(instruction: Instruction):
     else:
         # Save caller's call state
         for (field_tag, expected_value) in [
-            (CallContextFieldTag.IsRoot, FQ(instruction.curr.is_root)),
-            (CallContextFieldTag.IsCreate, FQ(instruction.curr.is_create)),
-            (CallContextFieldTag.CodeSource, instruction.curr.code_source.expr()),
             (CallContextFieldTag.ProgramCounter, instruction.curr.program_counter + 1),
             (CallContextFieldTag.StackPointer, instruction.curr.stack_pointer + 6),
             (CallContextFieldTag.GasLeft, instruction.curr.gas_left - gas_cost - callee_gas_left),
@@ -179,6 +176,9 @@ def call(instruction: Instruction):
             (CallContextFieldTag.LastCalleeId, FQ(0)),
             (CallContextFieldTag.LastCalleeReturnDataOffset, FQ(0)),
             (CallContextFieldTag.LastCalleeReturnDataLength, FQ(0)),
+            (CallContextFieldTag.IsRoot, FQ(False)),
+            (CallContextFieldTag.IsCreate, FQ(False)),
+            (CallContextFieldTag.CodeSource, callee_code_hash.expr()),
         ]:
             instruction.constrain_equal(
                 instruction.call_context_lookup(field_tag, call_id=callee_call_id),
