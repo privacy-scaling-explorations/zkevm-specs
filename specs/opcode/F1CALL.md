@@ -52,14 +52,13 @@ The `gas_cost` is calculated like this:
 
 ```
 GAS_COST_WARM_ACCESS := 100
-EXTRA_GAS_COST_ACCOUNT_COLD_ACCESS := 2500
+GAS_COST_ACCOUNT_COLD_ACCESS := 2600
 GAS_COST_CALL_EMPTY_ACCOUNT := 25000
 GAS_COST_CALL_WITH_VALUE := 9000
 gas_cost = (
     GAS_COST_WARM_ACCESS
-    + is_cold_access * EXTRA_GAS_COST_ACCOUNT_COLD_ACCESS
-    + is_account_empty * GAS_COST_CALL_EMPTY_ACCOUNT
-    + has_value * GAS_COST_CALL_WITH_VALUE
+    + GAS_COST_WARM_ACCESS if is_warm_access else GAS_COST_ACCOUNT_COLD_ACCESS
+    + has_value * (GAS_COST_CALL_WITH_VALUE + is_account_empty * GAS_COST_CALL_EMPTY_ACCOUNT)
     + memory_expansion_gas_cost
 )
 ```

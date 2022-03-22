@@ -4,8 +4,8 @@ from ...util import (
     N_BYTES_GAS,
     EMPTY_CODE_HASH,
     GAS_COST_WARM_ACCESS,
-    EXTRA_GAS_COST_ACCOUNT_COLD_ACCESS,
-    GAS_COST_CALL_EMPTY_ACCOUNT,
+    GAS_COST_ACCOUNT_COLD_ACCESS,
+    GAS_COST_NEW_ACCOUNT,
     GAS_COST_CALL_WITH_VALUE,
     GAS_STIPEND_CALL_WITH_VALUE,
 )
@@ -95,10 +95,10 @@ def call(instruction: Instruction):
         * is_empty_code_hash
     )
     gas_cost = (
-        GAS_COST_WARM_ACCESS
-        + (1 - is_warm_access) * EXTRA_GAS_COST_ACCOUNT_COLD_ACCESS
-        + is_account_empty * GAS_COST_CALL_EMPTY_ACCOUNT
-        + has_value * GAS_COST_CALL_WITH_VALUE
+        instruction.select(
+            is_warm_access, FQ(GAS_COST_WARM_ACCESS), FQ(GAS_COST_ACCOUNT_COLD_ACCESS)
+        )
+        + has_value * (GAS_COST_CALL_WITH_VALUE + is_account_empty * GAS_COST_NEW_ACCOUNT)
         + memory_expansion_gas_cost
     )
 
@@ -135,7 +135,7 @@ def call(instruction: Instruction):
             rw_counter=Transition.delta(24),
             program_counter=Transition.delta(1),
             stack_pointer=Transition.delta(6),
-            gas_left=Transition.delta(-gas_cost),
+            gas_left=Transition.delta(has_value * GAS_STIPEND_CALL_WITH_VALUE - gas_cost),
             memory_size=Transition.to(next_memory_size),
             state_write_counter=Transition.delta(3),
             # Always stay same

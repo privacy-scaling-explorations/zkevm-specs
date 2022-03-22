@@ -190,7 +190,7 @@ class Instruction:
                 if isinstance(transition.value, int):
                     transition.value = FQ(transition.value)
                 assert next.expr() == curr.expr() + transition.value.expr(), ConstraintUnsatFailure(
-                    f"State {key} should transit to {curr} + {transition.value}, but got {next}"
+                    f"State {key} should transit to {curr} + {transition.value} ({curr + transition.value}), but got {next}"
                 )
             elif transition.kind == TransitionKind.To:
                 if isinstance(transition.value, int):
@@ -370,8 +370,8 @@ class Instruction:
         self,
         tag: FixedTableTag,
         value0: Expression,
-        value1: Expression = None,
-        value2: Expression = None,
+        value1: Expression = FQ(0),
+        value2: Expression = FQ(0),
     ) -> FixedTableRow:
         return self.tables.fixed_lookup(FQ(tag), value0, value1, value2)
 
