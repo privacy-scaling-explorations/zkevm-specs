@@ -2,11 +2,16 @@ from ...util.param import N_BYTES_ACCOUNT_ADDRESS, N_BYTES_U64
 from ..instruction import Instruction, Transition
 from ..table import BlockContextFieldTag
 from ..opcode import Opcode
+from ...util import FQ
 
 
 def blockctx(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
-    instruction.constrain_equal(opcode, instruction.curr.execution_state.responsible_opcode()[0])
+
+    res_op = instruction.curr.execution_state.responsible_opcode()[0]
+    if isinstance(res_op, int):
+        res_op_int = int(res_op)
+    instruction.constrain_equal(opcode, FQ(res_op_int))
 
     # get block context op element
     if opcode == Opcode.COINBASE:
