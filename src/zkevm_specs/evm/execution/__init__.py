@@ -9,15 +9,12 @@ from .memory_copy import *
 
 # Opcode's successful cases
 from .add import *
-from .block_coinbase import *
-from .block_timestamp import *
-from .block_number import *
+from .block_ctx import *
 from .calldatasize import *
 from .caller import *
 from .callvalue import *
 from .calldatacopy import *
 from .calldataload import *
-from .gas import *
 from .jump import *
 from .jumpi import *
 from .origin import *
@@ -42,9 +39,12 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.CALLDATACOPY: calldatacopy,
     ExecutionState.CALLDATALOAD: calldataload,
     ExecutionState.CALLDATASIZE: calldatasize,
-    ExecutionState.COINBASE: coinbase,
-    ExecutionState.TIMESTAMP: timestamp,
-    ExecutionState.NUMBER: number,
+    ExecutionState.COINBASE: blockctx,
+    ExecutionState.TIMESTAMP: blockctx,
+    ExecutionState.NUMBER: blockctx,
+    ExecutionState.GASLIMIT: blockctx,
+    ExecutionState.DIFFICULTY: blockctx,
+    ExecutionState.BASEFEE: blockctx,
     ExecutionState.JUMP: jump,
     ExecutionState.JUMPI: jumpi,
     ExecutionState.PUSH: push,
