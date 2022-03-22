@@ -12,7 +12,7 @@ from zkevm_specs.evm import (
     RWDictionary,
 )
 from zkevm_specs.util import rand_fq, rand_word, RLC
-from common import NASTY_AB_VALUES
+from common import generate_nasty_tests
 
 
 TESTING_DATA = [
