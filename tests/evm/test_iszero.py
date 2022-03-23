@@ -15,31 +15,28 @@ from zkevm_specs.util import rand_fq, rand_word, RLC
 
 
 TESTING_DATA = (
-    (Opcode.ISZERO, 0x0, 0x1),
-    (Opcode.ISZERO, 0x060504, 0x0),
+    (0x0),
+    (0x060504),
 )
 
 
-@pytest.mark.parametrize("opcode, value, is_zero", TESTING_DATA)
-def test_iszero(opcode: Opcode, value: int, is_zero: int):
+@pytest.mark.parametrize("value", TESTING_DATA)
+def test_iszero(value: int):
     randomness = rand_fq()
 
-    value = RLC(value, randomness)
-    is_zero = RLC(is_zero, randomness)
+    result = 0x1 if value == 0x0 else 0x0
 
-    bytecode = Bytecode().iszero(value)
+    value = RLC(value, randomness)
+    result = RLC(result, randomness)
+
+    bytecode = Bytecode().iszero(value).stop()
     bytecode_hash = RLC(bytecode.hash(), randomness)
 
     tables = Tables(
         block_table=set(Block().table_assignments(randomness)),
         tx_table=set(),
         bytecode_table=set(bytecode.table_assignments(randomness)),
-        rw_table=set(
-            RWDictionary(9)
-            .stack_read(1, 1023, value)
-            .stack_write(1, 1023, is_zero)
-            .rws
-        ),
+        rw_table=set(RWDictionary(9).stack_read(1, 1023, value).stack_write(1, 1023, result).rws),
     )
 
     verify_steps(
