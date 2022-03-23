@@ -95,6 +95,7 @@ def test_end_tx(tx: Transaction, gas_left: int, refund: int, is_last_tx: bool):
             StepState(
                 execution_state=ExecutionState.EndBlock if is_last_tx else ExecutionState.BeginTx,
                 rw_counter=22 - is_last_tx,
+                call_id=1 if is_last_tx else 0,
             ),
         ],
     )

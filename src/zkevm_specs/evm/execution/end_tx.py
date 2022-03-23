@@ -47,5 +47,7 @@ def end_tx(instruction: Instruction):
 
     # When to end of block
     if instruction.next.execution_state == ExecutionState.EndBlock:
-        # Do step state transition for rw_counter
-        instruction.constrain_step_state_transition(rw_counter=Transition.delta(4))
+        # Do step state transition for rw_counter and call_id
+        instruction.constrain_step_state_transition(
+            rw_counter=Transition.delta(4), call_id=Transition.same()
+        )
