@@ -45,6 +45,10 @@ class Row:
         self.value = value
 
 
+# TODO: Review if the keccak table layout used here matches the final keccak
+# lookup table layout in the spec.
+# - Keccak input spec PR https://github.com/appliedzkp/zkevm-specs/pull/147
+# - Tracking issue https://github.com/appliedzkp/zkevm-specs/issues/158
 class KeccakTable:
     # The columns are: (is_enabled, input_rlc, input_len, output_rlc)
     table: Set[Tuple[FQ, FQ, FQ, FQ]]
