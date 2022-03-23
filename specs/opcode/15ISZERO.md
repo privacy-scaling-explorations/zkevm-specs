@@ -14,13 +14,12 @@ If `value` is zero, we annotate stack as \[1, ...\]. Otherwise annotate stack as
 
 ## Constraints
 
-1. opId = OpcodeId(0x15)
-2. state transition:
+1. state transition:
    - gc + 2 (1 stack read + 1 stack write)
    - stack_pointer + 0 (one pop and one push)
    - pc + 1
    - gas + 3
-3. Lookups: 2 busmapping lookups
+2. Lookups: 2 busmapping lookups
    - `value` is at the top of the stack
    - `result`, is at the new top of the stack
 
