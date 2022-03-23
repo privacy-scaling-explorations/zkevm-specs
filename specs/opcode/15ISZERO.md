@@ -28,7 +28,8 @@ We annotate stack as \[value, ...\] and \[result, ...\].
 
 ## Exceptions
 
-1. stack underflow: `1023 <= stack_pointer <= 1023`
+1. stack underflow:
+   - the stack is empty: `1024 == stack_pointer`
 2. out of gas: remaining gas is not enough
 
 ## Code
