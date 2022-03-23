@@ -1,4 +1,4 @@
-from typing import Sequence
+from typing import List
 
 from ..util import FQ
 from .execution import EXECUTION_STATE_IMPL
@@ -8,16 +8,20 @@ from .step import StepState
 from .table import Tables
 
 
+DUMMY_STEP_STATE = StepState(ExecutionState.EndBlock, rw_counter=-1)
+
+
 def verify_steps(
     randomness: FQ,
     tables: Tables,
-    steps: Sequence[StepState],
+    steps: List[StepState],
     begin_with_first_step: bool = False,
     end_with_last_step: bool = False,
 ):
-    for idx in range(len(steps) - 1 + end_with_last_step):
-        curr, next = steps[idx], None if len(steps) == idx + 1 else steps[idx + 1]
+    if end_with_last_step:
+        steps.append(DUMMY_STEP_STATE)
 
+    for idx, (curr, next) in enumerate(zip(steps, steps[1:])):
         verify_step(
             Instruction(
                 randomness=randomness,
@@ -25,7 +29,7 @@ def verify_steps(
                 curr=curr,
                 next=next,
                 is_first_step=begin_with_first_step and idx == 0,
-                is_last_step=end_with_last_step and next is None,
+                is_last_step=end_with_last_step and idx == len(steps) - 2,
             )
         )
 
@@ -34,12 +38,12 @@ def verify_step(instruction: Instruction):
     if instruction.is_first_step:
         instruction.constrain_equal(instruction.curr.execution_state, ExecutionState.BeginTx)
 
-    if instruction.curr.execution_state in EXECUTION_STATE_IMPL:
-        EXECUTION_STATE_IMPL[instruction.curr.execution_state](instruction)
-    else:
-        raise NotImplementedError
-
     if instruction.is_last_step:
         instruction.constrain_equal(instruction.curr.execution_state, ExecutionState.EndBlock)
     else:
         instruction.constrain_execution_state_transition()
+
+    if instruction.curr.execution_state in EXECUTION_STATE_IMPL:
+        EXECUTION_STATE_IMPL[instruction.curr.execution_state](instruction)
+    else:
+        raise NotImplementedError

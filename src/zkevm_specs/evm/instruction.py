@@ -93,7 +93,7 @@ class Instruction:
     randomness: FQ
     tables: Tables
     curr: StepState
-    next: Optional[StepState]
+    next: StepState
 
     # meta information
     is_first_step: bool
@@ -110,7 +110,7 @@ class Instruction:
         randomness: FQ,
         tables: Tables,
         curr: StepState,
-        next: Optional[StepState],
+        next: StepState,
         is_first_step: bool,
         is_last_step: bool,
     ) -> None:

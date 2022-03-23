@@ -33,8 +33,6 @@ def end_tx(instruction: Instruction):
     coinbase = instruction.block_context_lookup(BlockContextFieldTag.Coinbase)
     instruction.add_balance(coinbase, [reward])
 
-    assert instruction.next is not None
-
     # When to next transaction
     if instruction.next.execution_state == ExecutionState.BeginTx:
         # Check next tx_id is increased by 1

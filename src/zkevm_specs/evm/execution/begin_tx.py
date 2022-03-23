@@ -101,8 +101,6 @@ def begin_tx(instruction: Instruction):
             state_write_counter=Transition.to(2),
         )
 
-        assert instruction.next is not None
-
         # Constrain either:
         # - is_empty_code and is_to_end_tx
         # - (not is_empty_code) and (not is_to_end_tx)
