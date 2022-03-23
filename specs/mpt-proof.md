@@ -59,7 +59,7 @@ to be in the account leaf of the last account proof element.
 We split the branch information into 16 rows (one row for each node). The proof looks like:
 
 <p align="center">
-  <img src="./img/proof.png?raw=true" width="35%">
+  <img src="./img/proof.png?raw=true" width="25%">
 </p>
 
 A key is hashed and converted into hexadecimal value - it becomes a hexadecimal string of
@@ -106,21 +106,21 @@ corresponding to `key1`. The remaining nibbles are stored in a storage leaf
 In account proof, address is analogous to key in storage proof.
 
 <p align="center">
-  <img src="./img/address_key.png?raw=true" width="70%">
+  <img src="./img/address_key.png?raw=true" width="50%">
 </p>
 
-In the above case, we have four branches / extension nodes in the account proof.
-Let's say `addr` turns into nibbles `3 b a 5 ...` That would mean the position (named `modified_node`) of the underlying proof element is:
+In the above case, we have three branches / extension nodes in the account proof.
+Let's say `addr` turns into nibbles `3 b a ...` That would mean the position (named `modified_node`) of the underlying proof element is:
 
 - 3 in Branch 0
 - 11 in Branch 1
 - 10 in Branch 2
-- 5 in Branch 3
 
-In the above case, we only have one branch / extension node in the storage proof.
-Let's say `key1` turns into nibbles `a ...` That would mean the position (named `modified_node`) of the underlying storage leaf is:
+For the storage part, we have two branches / extension nodes.
+Let's say `key1` turns into nibbles `a 2 ...` That would mean the position (named `modified_node`) of the underlying storage leaf is:
 
 - 10 in Branch 0
+- 2 in Branch 1
 
 If we make a change at `key1` from `val1` to `val2` and obtain a proof after this change,
 the proof will be different from the first only at `modified_node` positions.
@@ -175,16 +175,17 @@ Branch comprises 19 rows:
 - 16 node rows
 - 2 extension node rows
 
-| Row title           | Row example                                                       |
-| --------------------- | ------------------------------------------------------------------ |
-| Branch init            | `0, 1, 0, 1, 249, 2, 17, 249, 2, 17, 13`                                     |
-| Node 0              | `0, 160, 215, 178, 43, ..., 0, 160, 215, 178,...`                                      |
-| Node 1              | `0, 160, 195, 189, 38, ..., 0, 160, 195, 19, 38,...`                                      |
-| Node 2 (empty)              | `0, 0, 128, 0, 0, ..., 0, 0, 128, 0, 0,...`                                      |
-| ...              | ...                                      |
-| Node 15              | `0, 160, 22, 99, 129, ..., 0, 160, 22, 99, 129,...`                                      |
-| Extension row S              | `228, 130, 0, 149, 0,..., 0, 160, 57, 70,...`                                      |
-| Extension row C              | `0, 0, 5, 0, ...,0, 160, 57, 70,... 0`                                      |
+Branch:
+
+<p align="center">
+  <img src="./img/branch_diagram.png?raw=true" width="50%">
+</p>
+
+Extension node:
+
+<p align="center">
+  <img src="./img/extension_node.png?raw=true" width="50%">
+</p>
 
 ![branch](./img/branch.png)
 
@@ -209,6 +210,18 @@ We need `s_advices/c_advices` for two things:
 - to check whether `s_advices/c_advices` (at `is_modified` position)
   present the hash of the next element in a proof
 
+Branch in parent:
+
+<p align="center">
+  <img src="./img/branch_in_parent.png?raw=true" width="50%">
+</p>
+
+Extension node in parent:
+
+<p align="center">
+  <img src="./img/extension_in_parent.png?raw=true" width="50%">
+</p>
+
 Hash lookup looks like (for example for branch S):
 
 ```
@@ -221,60 +234,6 @@ just need to compute `mult * *_advices_RLC` and add this to the current RLC valu
 
 The layout then be simply:
 `s_rlp1, s_rlp2, s_node_rlc, c_rlp1, c_rlp2, c_node_rlc`
-
-#### Key RLC in branch
-
-There are further columns (not shown in picture or table):
-
-- `node_index`
-- `is_modified`
-- `modified_node`
-
-In the example branch from the picture, `modified_node` would be 11.
-`node_index` is simply an index running from 0 to 15. `modified_node` is 1 at
-position 11, otherwise 0.
-
-Let's see a branch layout where we replace 32 columns of `s_advices` with
-one column `s_node_rlc` and 32 columns of `c_advices` with
-one column `c_node_rlc` (this simplification will most likely be implemented):
-
-```
-s_rlp1_0, s_rlp2_0, s_node0_rlc, c_rlp1_0, c_rlp2_0, c_node0_rlc
-s_rlp1_1, s_rlp2_1, s_node1_rlc, c_rlp1_1, c_rlp2_1, c_node1_rlc
-...
-s_rlp1_15, s_rlp2_15, s_node15_rlc, c_rlp1_15, c_rlp2_15, c_node15_rlc
-```
-
-With the three `modified_node` related columns:
-
-```
-s_rlp1_0, s_rlp2_0, s_node0_rlc, c_rlp1_0, c_rlp2_0, c_node0_rlc, 0 (node_index), 0 (is_modified), 11 (modified_node)
-s_rlp1_1, s_rlp2_1, s_node1_rlc, c_rlp1_1, c_rlp2_1, c_node1_rlc, 1 (node_index), 0 (is_modified), 11 (modified_node)
-...
-s_rlp1_11, s_rlp2_11, s_node11_rlc, c_rlp1_11, c_rlp2_11, c_node11_rlc, 11 (node_index), 1 (is_modified), 11 (modified_node)
-...
-s_rlp1_15, s_rlp2_15, s_node15_rlc, c_rlp1_15, c_rlp2_15, c_node15_rlc, 15 (node_index), 0 (is_modified), 11 (modified_node)
-```
-
-While navigating through branches, key RLC is being computed in the last branch child
-row. Let us say there are six branches with the following `modified_node` values:
-3, 11, 15, 14, 2, 1.
-
-These values present the first six nibbles of the key (after it is hashed).
-That means the first three bytes of the key are: `3 * 16 + 11`, `15 * 16 + 14`,
-`2 * 16 + 1`.
-
-To compute (partial) key RLC, we need to compute:
-
-```
-(3 * 16 + 11) + (15 * 16 + 14) * r + (2 * 16 + 1) * r^2
-```
-
-Once we reach the leaf node, we take the rest of the nibbles there and compute
-the full key RLC. This value needs to correspond to `key1` RLC.
-
-In the last branch child row, we compute `11 * 16 * key_rlc_mult`
-or `11 * key_rlc_mult` and add this value to the value in `key_rlc` row.
 
 Columns (not shown in picture or table):
 
