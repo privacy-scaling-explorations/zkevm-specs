@@ -243,6 +243,20 @@ class TxLogFieldTag(IntEnum):
     Address = auto()  # address of the contract that generated the event
     Topic = auto()  # list of topics provided by the contract
     Data = auto()  # log data in bytes
+    Topic_Length = auto()  # topic number
+    Data_length = auto()  # how many bytes read from memory
+
+
+class TxReceiptFieldTag(IntEnum):
+    """
+    Tag for RWTable lookup with tag TxReceipt, which is used to index specific
+    field of TxReceipt.
+    """
+
+    # The following are write-only data inside a transaction, they will be written in
+    # State circuit directly.
+    PostStateOrStatus = auto()  # address of the contract that generated the event
+    CumulativeGasUsed = auto()  # list of topics provided by the contract
 
 
 class WrongQueryKey(Exception):

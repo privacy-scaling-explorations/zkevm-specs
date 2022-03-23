@@ -4,7 +4,7 @@ from math import log, ceil
 
 from .util import FQ, RLC, U160, U256
 from .encoding import U8, is_circuit_code
-from .evm import RW, AccountFieldTag, CallContextFieldTag
+from .evm import RW, AccountFieldTag, CallContextFieldTag, TxLogFieldTag, TxReceiptFieldTag
 
 MAX_MEMORY_ADDRESS = 2**32 - 1
 MAX_KEY_DIFF = 2**32 - 1
@@ -37,6 +37,8 @@ class Tag(IntEnum):
     TxAccessListAccount = 8
     TxAccessListAccountStorage = 9
     AccountDestructed = 10
+    TxLog = 11
+    TxReceipt = 12
 
 
 class Row(NamedTuple):
@@ -261,6 +263,69 @@ def check_account_destructed(row: Row, row_prev: Row):
     assert row.keys[4] == 0
 
     # TODO: Missing constraints
+
+
+@is_circuit_code
+def check_tx_log(row: Row, row_prev: Row):
+    get_tx_id = row.keys[0]
+    get_pre_tx_id = row_prev.keys[0]
+    get_log_id = row.keys[1]
+    pre_field_tag = row_prev.keys[3]
+    field_tag = row.keys[3]
+    index = row.keys[2]
+    pre_index = row_prev.keys[2]
+    # 0. Unused keys are 0
+    assert row.keys[3] == 0
+    assert row.keys[4] == 0
+
+    # is_write is always true
+    assert row.is_write == 0
+    # reset log_id when tx_id increases
+    if get_tx_id != get_pre_tx_id:
+        assert get_tx_id == get_pre_tx_id + 1
+        assert get_log_id == 0
+    else:
+        # increase log_id when tag changes to Address, make sure tag can only increase(Non-Decreasing),
+        # when log_index stays same,
+        if pre_field_tag == U256(TxLogFieldTag.Address):
+            assert field_tag > pre_field_tag
+        # make sure if tag Data appear, data_index can only increase by one when tag stays same.
+        if pre_field_tag == field_tag and field_tag == U256(TxLogFieldTag.Data):
+            assert index == pre_index + 1
+        # make sure if tag Topic appear, topic_index in range [0,4),can only increase by one when tag stays same.
+        if field_tag == U256(TxLogFieldTag.Topic):
+            assert_in_range(index, 0, 4)
+        if pre_field_tag == field_tag and field_tag == U256(TxLogFieldTag.Topic):
+            assert index == pre_index + 1
+
+        # both log_index topic_index data_index are non negative, all starts with zero
+    assert index >= 0 and get_log_id >= 0
+
+    # make sure if log set is not empty within receipt/tx, tx must be successful status because failed execution will revert the log data,
+    # in other words, logs section must be empty list for failed tx
+
+
+@is_circuit_code
+def check_tx_receipt(row: Row, row_prev: Row):
+    get_tx_id = row.keys[0]
+    get_pre_tx_id = row_prev.keys[0]
+    field_tag = row.keys[1]
+    # 0. Unused keys are 0
+    assert row.keys[2] == 0
+    assert row.keys[3] == 0
+    assert row.keys[4] == 0
+
+    # value for tag `PostStateOrStatus` is bool (0 or 1) according to EIP#658
+    if field_tag == U256(TxReceiptFieldTag.PostStateOrStatus):
+        assert row.value == 0 or row.value == 1
+
+    # when tx id changes, must be increasing by one , the CumulativeGasUsed must be increasing as well
+    if get_tx_id != get_pre_tx_id:
+        assert get_tx_id == get_pre_tx_id + 1
+        if field_tag == U256(TxReceiptFieldTag.CumulativeGasUsed):
+            assert row.value > row_prev.value
+
+    # TODO: tx id starts with 1
 
 
 @is_circuit_code
@@ -518,6 +583,34 @@ class AccountDestructedOp(Operation):
         # fmt: on
 
 
+class TxLogOp(Operation):
+    """
+    TxLog Operation
+    """
+
+    def __new__(
+        self, rw_counter: int, rw: RW, log_id: int, index: int, field_tag: TxLogFieldTag, value: FQ
+    ):
+        # fmt: off
+        return super().__new__(self, rw_counter, rw,
+                U256(Tag.TxLog), U256(log_id), U256(index), U256(field_tag), U256(0), # keys
+                value, FQ(0), FQ(0)) # values
+        # fmt: on
+
+
+class TxReceiptOp(Operation):
+    """
+    TxReceipt Operation
+    """
+
+    def __new__(self, rw_counter: int, rw: RW, tx_id: int, field_tag: TxReceiptFieldTag, value: FQ):
+        # fmt: off
+        return super().__new__(self, rw_counter, rw,
+                U256(Tag.TxReceipt), U256(tx_id), U256(field_tag), U256(0), U256(0), # keys
+                value, FQ(0), FQ(0)) # values
+        # fmt: on
+
+
 def op2row(op: Operation, randomness: FQ) -> Row:
     rw_counter = FQ(op.rw_counter)
     is_write = FQ(0) if op.rw == RW.Read else FQ(1)
@@ -534,12 +627,7 @@ def op2row(op: Operation, randomness: FQ) -> Row:
     aux0 = FQ(op.aux0)
     aux1 = FQ(op.aux1)
 
-    # fmt: off
-    return Row(rw_counter, is_write,
-            # keys
-            (key0, key1, key2, key3, key4), key2_limbs, key4_bytes, # type: ignore
-            value, (aux0, aux1)) # values
-    # fmt: on
+
 
 
 # def rw_table_tag2tag(tag: RWTableTag) -> FQ:
