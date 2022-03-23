@@ -36,7 +36,7 @@ def test_iszero(opcode: Opcode, value: int, is_zero: int):
         bytecode_table=set(bytecode.table_assignments(randomness)),
         rw_table=set(
             RWDictionary(9)
-            .stack_read(1, 1022, value)
+            .stack_read(1, 1023, value)
             .stack_write(1, 1023, is_zero)
             .rws
         ),
@@ -54,7 +54,7 @@ def test_iszero(opcode: Opcode, value: int, is_zero: int):
                 is_create=False,
                 code_source=bytecode_hash,
                 program_counter=66,
-                stack_pointer=1022,
+                stack_pointer=1023,
                 gas_left=3,
             ),
             StepState(
@@ -65,7 +65,7 @@ def test_iszero(opcode: Opcode, value: int, is_zero: int):
                 is_create=False,
                 code_source=bytecode_hash,
                 program_counter=67,
-                stack_pointer=1022,
+                stack_pointer=1023,
                 gas_left=0,
             ),
         ],
