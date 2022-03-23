@@ -76,7 +76,7 @@ def begin_tx(instruction: Instruction):
             # Do step state transition
             instruction.constrain_equal(instruction.next.execution_state, ExecutionState.EndTx)
             instruction.constrain_step_state_transition(
-                rw_counter=Transition.delta(9),
+                rw_counter=Transition.delta(9), call_id=Transition.to(call_id)
             )
         else:
 
