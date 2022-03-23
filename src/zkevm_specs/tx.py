@@ -56,7 +56,12 @@ class KeccakTable:
     def add(self, input: bytes, randomness: FQ):
         output = keccak(input)
         self.table.add(
-            (FQ(1), RLC(input, randomness).value, FQ(len(input)), RLC(output, randomness).value)
+            (
+                FQ(1),
+                RLC(bytes(reversed(input)), randomness).value,
+                FQ(len(input)),
+                RLC(output, randomness).value,
+            )
         )
 
     def lookup(self, is_enabled: FQ, input_rlc: FQ, input_len: FQ, output_rlc: FQ, assert_msg: str):
@@ -193,7 +198,7 @@ class SignVerifyGadget:
         )
         keccak_table.lookup(
             is_enabled,
-            RLC(pub_key_bytes, randomness).value,
+            RLC(bytes(reversed(pub_key_bytes)), randomness).value,
             FQ(64) * is_enabled,
             self.pub_key_hash.value,
             assert_msg,

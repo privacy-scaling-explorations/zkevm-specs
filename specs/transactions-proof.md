@@ -51,8 +51,8 @@ For every transaction defined as the parameters `(nonce, gas_price, gas, to, val
   custom rlp encoding gadget, isolated from the rlp encoding used by the MPT
   circuit.
 - The signature message keccak hash verification (step 2) will be done in the
-  keccak circuit; the tx circuit will do a variable number of lookups
-  (depending on the size of `txSignData`) to the keccak table.
+  keccak circuit; the tx circuit will do a single lookup (with the rlp encoded
+  transaction accumulated into a single value using RLC) to the keccak table.
 - The public key recovery from the message and signature (step 3) will be done
   in the ECDSA circuit; the tx circuit will do a lookup to the ECDSA table.
 - The public key keccak hash verification (step 5) will be done in the keccak
