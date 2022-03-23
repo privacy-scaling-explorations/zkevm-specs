@@ -18,6 +18,7 @@ from .callvalue import *
 from .calldatacopy import *
 from .calldataload import *
 from .gas import *
+from .iszero import *
 from .jump import *
 from .jumpi import *
 from .origin import *
@@ -55,4 +56,5 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.SELFBALANCE: selfbalance,
     ExecutionState.GASPRICE: gasprice,
     ExecutionState.EXTCODEHASH: extcodehash,
+    ExecutionState.ISZERO: iszero,
 }
