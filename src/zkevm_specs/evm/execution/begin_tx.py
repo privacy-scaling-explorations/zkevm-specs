@@ -65,47 +65,52 @@ def begin_tx(instruction: Instruction):
         raise NotImplementedError
     else:
         code_hash = instruction.account_read(tx_callee_address, AccountFieldTag.CodeHash)
-
-        # Setup next call's context
-        # Note that:
-        # - CallerId, ReturnDataOffset, ReturnDataLength
-        #   should never be used in root call, so unnecessary to be checked
-        # - TxId is checked from previous step or constraint to 1 if is_first_step
-        # - IsSuccess, IsPersistent will be verified in the end of tx
-        for (tag, value) in [
-            (CallContextFieldTag.Depth, FQ(1)),
-            (CallContextFieldTag.CallerAddress, tx_caller_address),
-            (CallContextFieldTag.CalleeAddress, tx_callee_address),
-            (CallContextFieldTag.CallDataOffset, FQ(0)),
-            (CallContextFieldTag.CallDataLength, tx_call_data_length),
-            (CallContextFieldTag.Value, tx_value),
-            (CallContextFieldTag.IsStatic, FQ(False)),
-            (CallContextFieldTag.LastCalleeId, FQ(0)),
-            (CallContextFieldTag.LastCalleeReturnDataOffset, FQ(0)),
-            (CallContextFieldTag.LastCalleeReturnDataLength, FQ(0)),
-            (CallContextFieldTag.IsRoot, FQ(True)),
-            (CallContextFieldTag.IsCreate, FQ(False)),
-            (CallContextFieldTag.CodeSource, code_hash),
-        ]:
-            instruction.constrain_equal(
-                instruction.call_context_lookup(tag, call_id=call_id), value
-            )
-
-        instruction.step_state_transition_to_new_context(
-            rw_counter=Transition.delta(22),
-            call_id=Transition.to(call_id),
-            is_root=Transition.to(True),
-            is_create=Transition.to(False),
-            code_source=Transition.to(code_hash),
-            gas_left=Transition.to(gas_left),
-            state_write_counter=Transition.to(2),
-        )
-
-        # Constrain either:
-        # - is_empty_code and is_to_end_tx
-        # - (not is_empty_code) and (not is_to_end_tx)
-        is_empty_code = instruction.is_equal(
+        is_empty_code_hash = instruction.is_equal(
             code_hash, RLC(EMPTY_CODE_HASH, instruction.randomness)
         )
-        is_to_end_tx = instruction.is_equal(instruction.next.execution_state, ExecutionState.EndTx)
-        instruction.constrain_equal(is_empty_code + is_to_end_tx, 2 * is_empty_code * is_to_end_tx)
+
+        if is_empty_code_hash == FQ(1):
+            # Make sure tx is persistent
+            instruction.constrain_equal(reversion_info.is_persistent, FQ(1))
+
+            # Do step state transition
+            instruction.constrain_equal(instruction.next.execution_state, ExecutionState.EndTx)
+            instruction.constrain_step_state_transition(
+                rw_counter=Transition.delta(9),
+            )
+        else:
+
+            # Setup next call's context
+            # Note that:
+            # - CallerId, ReturnDataOffset, ReturnDataLength
+            #   should never be used in root call, so unnecessary to be checked
+            # - TxId is checked from previous step or constraint to 1 if is_first_step
+            # - IsSuccess, IsPersistent will be verified in the end of tx
+            for (tag, value) in [
+                (CallContextFieldTag.Depth, FQ(1)),
+                (CallContextFieldTag.CallerAddress, tx_caller_address),
+                (CallContextFieldTag.CalleeAddress, tx_callee_address),
+                (CallContextFieldTag.CallDataOffset, FQ(0)),
+                (CallContextFieldTag.CallDataLength, tx_call_data_length),
+                (CallContextFieldTag.Value, tx_value),
+                (CallContextFieldTag.IsStatic, FQ(False)),
+                (CallContextFieldTag.LastCalleeId, FQ(0)),
+                (CallContextFieldTag.LastCalleeReturnDataOffset, FQ(0)),
+                (CallContextFieldTag.LastCalleeReturnDataLength, FQ(0)),
+                (CallContextFieldTag.IsRoot, FQ(True)),
+                (CallContextFieldTag.IsCreate, FQ(False)),
+                (CallContextFieldTag.CodeSource, code_hash),
+            ]:
+                instruction.constrain_equal(
+                    instruction.call_context_lookup(tag, call_id=call_id), value
+                )
+
+            instruction.step_state_transition_to_new_context(
+                rw_counter=Transition.delta(22),
+                call_id=Transition.to(call_id),
+                is_root=Transition.to(True),
+                is_create=Transition.to(False),
+                code_source=Transition.to(code_hash),
+                gas_left=Transition.to(gas_left),
+                state_write_counter=Transition.to(2),
+            )
