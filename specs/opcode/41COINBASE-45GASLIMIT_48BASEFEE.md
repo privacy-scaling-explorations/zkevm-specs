@@ -6,7 +6,7 @@ The block context opcodes get the corresponding op data from current block conte
 
 ## EVM behavior
 
-The opcode loads an corresponding op n bytes of data from block context.
+The opcode loads the corresponding op n bytes of data from block context.
 then push it to the stack.
 
 n bytes length and RLC encoding:

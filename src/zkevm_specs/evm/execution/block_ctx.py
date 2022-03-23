@@ -8,11 +8,6 @@ from ...util import FQ
 def blockctx(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
 
-    res_op = instruction.curr.execution_state.responsible_opcode()[0]
-    if isinstance(res_op, int):
-        res_op_int = int(res_op)
-    instruction.constrain_equal(opcode, FQ(res_op_int))
-
     # get block context op element
     if opcode == Opcode.COINBASE:
         op = BlockContextFieldTag.Coinbase
