@@ -15,21 +15,21 @@ from zkevm_specs.util import rand_fq, rand_word, RLC
 
 
 TESTING_DATA = (
-    (0x0),
-    (0x060504),
+    bytes([0]),
+    bytes([7]),
 )
 
 
-@pytest.mark.parametrize("value", TESTING_DATA)
-def test_iszero(value: int):
+@pytest.mark.parametrize("value_be_bytes", TESTING_DATA)
+def test_iszero(value_be_bytes: bytes):
     randomness = rand_fq()
 
+    value = int.from_bytes(value_be_bytes, "big")
     result = 0x1 if value == 0x0 else 0x0
-
     value = RLC(value, randomness)
     result = RLC(result, randomness)
 
-    bytecode = Bytecode().iszero(value).stop()
+    bytecode = Bytecode().push1(value_be_bytes).iszero().stop()
     bytecode_hash = RLC(bytecode.hash(), randomness)
 
     tables = Tables(
@@ -50,7 +50,7 @@ def test_iszero(value: int):
                 is_root=True,
                 is_create=False,
                 code_source=bytecode_hash,
-                program_counter=66,
+                program_counter=2,
                 stack_pointer=1023,
                 gas_left=3,
             ),
@@ -61,7 +61,7 @@ def test_iszero(value: int):
                 is_root=True,
                 is_create=False,
                 code_source=bytecode_hash,
-                program_counter=67,
+                program_counter=3,
                 stack_pointer=1023,
                 gas_left=0,
             ),
