@@ -1,0 +1,36 @@
+# ISZERO opcodes
+
+## Procedure
+
+### EVM behavior
+
+Pop an EVM word `value` from the stack. If it is zero, push `1` back to the stask. Otherwise push `0` to stack.
+
+### Circuit behavior
+
+The IsZeroGadget takes argument of `value: [u8;32]` and `result: [u8;32]`.
+
+If `value` is zero, it validates `result === 1`. Otherwise it validates `result === 0`.
+
+We annotate stack as \[value, ...\] and \[result, ...\].
+
+## Constraints
+
+1. opId = OpcodeId(0x15)
+2. state transition:
+   - gc + 2 (1 stack read + 1 stack write)
+   - stack_pointer + 0 (one pop and one push)
+   - pc + 1
+   - gas + 3
+3. Lookups: 2 busmapping lookups
+   - `value` is at the top of the stack
+   - `result`, is at the new top of the stack
+
+## Exceptions
+
+1. stack underflow: `1023 <= stack_pointer <= 1023`
+2. out of gas: remaining gas is not enough
+
+## Code
+
+See `src/zkevm_specs/opcode/iszero.py`
