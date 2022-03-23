@@ -8,11 +8,9 @@ Pop an EVM word `value` from the stack. If it is zero, push `1` back to the stas
 
 ### Circuit behavior
 
-The IsZeroGadget takes argument of `value: [u8;32]` and `result: [u8;32]`.
+The IsZeroGadget takes an argument `value: [u8;32]`.
 
-If `value` is zero, it validates `result === 1`. Otherwise it validates `result === 0`.
-
-We annotate stack as \[value, ...\] and \[result, ...\].
+If `value` is zero, we annotate stack as \[1, ...\]. Otherwise annotate stack as \[0, ...\].
 
 ## Constraints
 
