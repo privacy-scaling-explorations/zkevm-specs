@@ -22,62 +22,72 @@ We define these state tags
 ```mermaid
 stateDiagram-v2
     direction LR
-    [*] --> Init
-    Init --> Absorb
-    Init --> Finalize
+    [*] --> Absorb
     Absorb --> Absorb
     Absorb --> Finalize
-    Finalize --> Init
+    Finalize --> Absorb
     Finalize --> [*]
 ```
 
 #### State transition
 
-- [*] --> Init first row must be init.
-- After the init, it could be Absorb or Finalize
-- After the Finalize, the next must be Init or EndOfTheCircuit
 
-
-
-We leave an empty row at the top of the table for usage that disables the lookup
+We leave an empty row at the top of the table for usage that disables the lookup. Use a separate selector `q_start` for this row.
 
 This region splits the input to multiple parts, each part corresponds to their `Keccak-f` permutation round.
 This is also a lookup table for the other circuits to lookup the Keccak256 input to the output.
 
-Define:
-
-We use `Round` for the cells of the following columns in a row, it represents the information in a `keccak_f` round.
-
-The `curr: Round` and `next: Round` represent the current and the next row.
-
 Columns:
 
-- `state_tag` either 0=None, 1=Init, 2=Absorb, 3=Finalize
+- `state_tag` either 0=Start/End, 1=Absorb, 2=Finalize
 - `input_len` Length for correct padding
 - `input` 136 bytes to be absorbed in this round
 - `acc_len` How many length we have absorbed
 - `acc_input` Accumulatd bytes by random linear combination (in big-endian order)
 - `output` The base-2 `state[:4]` output from this round `keccak_f`
-- `output_word_[n]` 25 columns of the output in words of this round `keccak_f`
 
-| state_tag | input_len | input | acc_len | acc_input | output |
-| ---------:| ---------:| -----:| -------:| ---------:| ------:|
-|         0 |         0 |     0 |       0 |         0 |      0 |
-|      Init |        20 |       |     136 |           |        |
-|  Finalize |        20 |       |     136 |           |        |
-|      Init |       150 |       |     136 |           |        |
-|    Absorb |       150 |       |     272 |           |        |
-|  Finalize |       150 |       |     272 |           |        |
-|      Init |         0 |       |     136 |           |        |
-|  Finalize |         0 |       |     136 |           |        |
-|      Init |       136 |       |     136 |           |        |
-|    Absorb |       136 |       |     272 |           |        |
-|  Finalize |       136 |       |     272 |           |        |
-|         0 |           |       |         |           |        |
+| state_tag | input_len | input | perm_count | acc_input | output |
+| --------: | --------: | ----: | ---------: | --------: | -----: |
+|         0 |         0 |     0 |          0 |         0 |      0 |
+|    Absorb |        20 |       |          0 |         0 |        |
+|  Finalize |        20 |       |          1 |           |        |
+|    Absorb |       150 |       |          0 |           |        |
+|    Absorb |       150 |       |          1 |           |        |
+|  Finalize |       150 |       |          2 |           |        |
+|    Absorb |         0 |       |          0 |         0 |        |
+|  Finalize |         0 |       |          1 |           |        |
+|    Absorb |       136 |       |          0 |         0 |        |
+|    Absorb |       136 |     0 |          1 |           |        |
+|  Finalize |       136 |       |          2 |           |        |
+|         0 |           |       |          0 |         0 |        |
 
 #### Checks
 
-TODO
+We branch the constraints to apply by state_tag
+
+- `q_start`
+  - State transition
+    - next.state_tag === Absorb
+- Absorb
+  - if input_len === 136 * (perm_count + 1) absorb a full block of 0x80...0x01
+    - next.input === 0 (since the input is the unpadded input)
+    - next.state_tag === Absorb
+  - Next row validity
+    - next.acc_input === curr.acc_input * r**136
+    - next.perm_count === next.perm_count + 1
+  - State transition
+    - next.state_tag in (Absorb, Finalize)
+- Finalize
+    - This is a valid place to finalize
+        - (curr.perm_count * 136 - input_len) in 0~136
+    - Next row validity
+        - next.perm_count === 0
+        - next.acc_input === 0
+    - State transition
+      - next.state_tag in (Absorb, 0)
+- 0
+    - next.state_tag === 0 (The first row is also satisfied!)
+
 
 #### Lookup
 
