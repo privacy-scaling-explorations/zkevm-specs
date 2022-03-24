@@ -60,14 +60,9 @@ class ExecutionState(IntEnum):
     RETURNDATACOPY = auto()
     EXTCODEHASH = auto()
     BLOCKHASH = auto()
-    COINBASE = auto()
-    TIMESTAMP = auto()
-    NUMBER = auto()
-    DIFFICULTY = auto()
-    GASLIMIT = auto()
+    BlockCtx = auto()
     CHAINID = auto()
     SELFBALANCE = auto()
-    BASEFEE = auto()
     POP = auto()
     MEMORY = auto()  # MLOAD, MSTORE, MSTORE8
     SLOAD = auto()
@@ -235,22 +230,19 @@ class ExecutionState(IntEnum):
             return [Opcode.EXTCODEHASH]
         elif self == ExecutionState.BLOCKHASH:
             return [Opcode.BLOCKHASH]
-        elif self == ExecutionState.COINBASE:
-            return [Opcode.COINBASE]
-        elif self == ExecutionState.TIMESTAMP:
-            return [Opcode.TIMESTAMP]
-        elif self == ExecutionState.NUMBER:
-            return [Opcode.NUMBER]
-        elif self == ExecutionState.DIFFICULTY:
-            return [Opcode.DIFFICULTY]
-        elif self == ExecutionState.GASLIMIT:
-            return [Opcode.GASLIMIT]
+        elif self == ExecutionState.BlockCtx:
+            return [
+                Opcode.COINBASE,
+                Opcode.TIMESTAMP,
+                Opcode.NUMBER,
+                Opcode.DIFFICULTY,
+                Opcode.GASLIMIT,
+                Opcode.BASEFEE,
+            ]
         elif self == ExecutionState.CHAINID:
             return [Opcode.CHAINID]
         elif self == ExecutionState.SELFBALANCE:
             return [Opcode.SELFBALANCE]
-        elif self == ExecutionState.BASEFEE:
-            return [Opcode.BASEFEE]
         elif self == ExecutionState.POP:
             return [Opcode.POP]
         elif self == ExecutionState.MEMORY:

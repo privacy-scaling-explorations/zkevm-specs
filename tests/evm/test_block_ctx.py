@@ -25,7 +25,6 @@ def test_coinbase(coinbase: U160):
     verify_block_ctx(
         block,
         bytecode,
-        ExecutionState.COINBASE,
         coinbase,
     )
 
@@ -42,7 +41,6 @@ def test_timestamp(timestamp: U64):
     verify_block_ctx(
         block,
         bytecode,
-        ExecutionState.TIMESTAMP,
         timestamp,
     )
 
@@ -56,7 +54,6 @@ def test_number(number: U64):
     verify_block_ctx(
         block,
         bytecode,
-        ExecutionState.NUMBER,
         number,
     )
 
@@ -70,7 +67,6 @@ def test_gaslimit(gaslimit: U64):
     verify_block_ctx(
         block,
         bytecode,
-        ExecutionState.GASLIMIT,
         gaslimit,
     )
 
@@ -87,7 +83,6 @@ def test_difficulty(difficulty: U256):
     verify_block_ctx(
         block,
         bytecode,
-        ExecutionState.DIFFICULTY,
         difficulty,
     )
 
@@ -101,7 +96,6 @@ def test_basefee(basefee: U256):
     verify_block_ctx(
         block,
         bytecode,
-        ExecutionState.BASEFEE,
         basefee,
     )
 
@@ -109,7 +103,6 @@ def test_basefee(basefee: U256):
 def verify_block_ctx(
     block: Block,
     bytecode: Bytecode,
-    execstate: ExecutionState,
     op: Union[U64, U160, U256],
 ):
     randomness = rand_fq()
@@ -128,7 +121,7 @@ def verify_block_ctx(
         tables=tables,
         steps=[
             StepState(
-                execution_state=execstate,
+                execution_state=ExecutionState.BlockCtx,
                 rw_counter=9,
                 call_id=1,
                 is_root=True,
