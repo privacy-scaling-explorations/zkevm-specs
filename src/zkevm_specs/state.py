@@ -7,10 +7,6 @@ from .encoding import U8, is_circuit_code
 from .evm import RW, AccountFieldTag, CallContextFieldTag
 
 MAX_KEY_DIFF = 2**32 - 1
-# The gas cost for memory operations is quadratic in the maximum memory address
-# touched. From equation 326 in the yellow paper, for C_mem(a), the maximum
-# memory address touched cannot exceed or equal 2^32 until the gas limit is
-# over 3.6e16.
 MAX_STACK_PTR = 1023
 MAX_KEY0 = 10  # Number of Tag variants
 MAX_KEY1 = 2**16 - 1  # Maximum number of calls in a block
@@ -397,7 +393,12 @@ class MemoryOp(Operation):
     Memory Operation
     """
 
-    def __new__(self, rw_counter: int, rw: RW, call_id: int, mem_addr: int, value: U8):
+    # The yellow paper allows memory addresses to have up to 256 bits, but the
+    # gas cost for memory operations is quadratic in the maximum memory address
+    # touched. From equation 326 in the yellow paper, for C_mem(a), the maximum
+    # memory address touched will fit in to 32 bits until the gas limit is over
+    # 3.6e16.
+    def __new__(self, rw_counter: int, rw: RW, call_id: int, mem_addr: U160, value: U8):
         # fmt: off
         return super().__new__(self, rw_counter, rw,
                 U256(Tag.Memory), U256(call_id), U256(mem_addr), U256(0), U256(0), # keys
