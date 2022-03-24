@@ -65,6 +65,23 @@ def test_state_ok():
 
         AccountDestructedOp(rw_counter=20, rw=RW.Read, addr=0x12345678, value=FQ(1)),
         AccountDestructedOp(rw_counter=21, rw=RW.Read, addr=0x12345678, value=FQ(1)),
+        TxLogOp(rw_counter=22, rw=RW.Write, tx_id=1, log_id=0, index=0, field_tag=TxLogFieldTag.Address, value=FQ(124)),
+        TxLogOp(rw_counter=23, rw=RW.Write, tx_id=1, log_id=0, index=0, field_tag=TxLogFieldTag.Topic, value=FQ(10)),
+        TxLogOp(rw_counter=24, rw=RW.Write, tx_id=1, log_id=0, index=1, field_tag=TxLogFieldTag.Topic, value=FQ(5)),
+        TxLogOp(rw_counter=25, rw=RW.Write, tx_id=1, log_id=0, index=2, field_tag=TxLogFieldTag.Topic, value=FQ(200)),
+        TxLogOp(rw_counter=26, rw=RW.Write, tx_id=1, log_id=0, index=3, field_tag=TxLogFieldTag.Topic, value=FQ(278)),
+        #TxLogOp(rw_counter=27, rw=RW.Write, tx_id=1, log_id=0, index=0, field_tag=TxLogFieldTag.Data, value=FQ(10)),
+        # TxLogOp(rw_counter=28, rw=RW.Write, tx_id=1, log_id=0, index=1, field_tag=TxLogFieldTag.Data, value=FQ(255)),
+        # TxLogOp(rw_counter=29, rw=RW.Write, tx_id=1, log_id=1, index=0, field_tag=TxLogFieldTag.Address, value=FQ(255)),
+        # TxLogOp(rw_counter=30, rw=RW.Write, tx_id=1, log_id=1, index=0, field_tag=TxLogFieldTag.Data, value=FQ(88)),
+        # TxLogOp(rw_counter=31, rw=RW.Write, tx_id=2, log_id=0, index=0, field_tag=TxLogFieldTag.Address, value=FQ(210)),
+        # TxLogOp(rw_counter=32, rw=RW.Write, tx_id=2, log_id=0, index=0, field_tag=TxLogFieldTag.Data, value=FQ(255)),
+        # TxLogOp(rw_counter=33, rw=RW.Write, tx_id=2, log_id=0, index=0, field_tag=TxLogFieldTag.Topic, value=FQ(10))
+
+        TxReceiptOp(rw_counter=27, rw=RW.Read, tx_id=1, field_tag=TxReceiptFieldTag.PostStateOrStatus, value=FQ(1)),
+        TxReceiptOp(rw_counter=28, rw=RW.Read, tx_id=1, field_tag=TxReceiptFieldTag.CumulativeGasUsed, value=FQ(200)),
+        TxReceiptOp(rw_counter=29, rw=RW.Read, tx_id=2, field_tag=TxReceiptFieldTag.PostStateOrStatus, value=FQ(1)),
+        TxReceiptOp(rw_counter=30, rw=RW.Read, tx_id=2, field_tag=TxReceiptFieldTag.CumulativeGasUsed, value=FQ(500)),
     ]
     # fmt: on
     verify(ops, randomness)
