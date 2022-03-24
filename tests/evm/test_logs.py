@@ -93,7 +93,7 @@ def make_log_copy_step(
         gas_left=gas_left,
         memory_size=memory_size,
         code_source=code_source,
-        log_id=log_id,
+        log_id=is_persistent,
         state_write_counter=state_write_counter,
         aux_data=aux_data,
     )
@@ -290,7 +290,7 @@ def test_logs(topics: list, mstart: U64, msize: U64, is_persistent: bool):
             memory_size=next_memory_size,
             gas_left=0,
             state_write_counter=1,
-            log_id=1,
+            log_id=is_persistent,
         )
     )
     tables = Tables(

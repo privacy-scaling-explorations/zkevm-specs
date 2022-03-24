@@ -72,5 +72,5 @@ def log(instruction: Instruction):
         state_write_counter=Transition.delta(1),
         dynamic_gas_cost=dynamic_gas,
         memory_size=Transition.to(next_memory_size),
-        log_id=Transition.delta(1),
+        log_id=Transition.delta(is_persistent),
     )
