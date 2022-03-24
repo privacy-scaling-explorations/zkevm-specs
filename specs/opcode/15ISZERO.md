@@ -2,15 +2,7 @@
 
 ## Procedure
 
-### EVM behavior
-
-Pop an EVM word `value` from the stack. If it is zero, push `1` back to the stask. Otherwise push `0` to stack.
-
-### Circuit behavior
-
-The IsZeroGadget takes an argument `value: [u8;32]`.
-
-If `value` is zero, we annotate stack as \[1, ...\]. Otherwise annotate stack as \[0, ...\].
+Pop an EVM word `value` from the stack. If it is zero, push `1` back to the stack. Otherwise push `0` to stack.
 
 ## Constraints
 
