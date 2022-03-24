@@ -267,13 +267,14 @@ def check_account_destructed(row: Row, row_prev: Row):
 
 @is_circuit_code
 def check_tx_log(row: Row, row_prev: Row):
+    # tx_id | log_id | field_tag | index | value
     tx_id = row.keys[1]
     pre_tx_id = row_prev.keys[1]
     log_id = row.keys[2]
-    pre_field_tag = row_prev.keys[4]
-    field_tag = row.keys[4]
-    index = row.keys[3]
-    pre_index = row_prev.keys[3]
+    pre_field_tag = row_prev.keys[3]
+    field_tag = row.keys[3]
+    index = row.keys[4]
+    pre_index = row_prev.keys[4]
 
     # is_write is always true
     assert row.is_write == 1
@@ -290,7 +291,7 @@ def check_tx_log(row: Row, row_prev: Row):
             # make sure if tag Data appear, data_index can only increase by one when tag stays same.
             # make sure if tag Topic appear, topic_index in range [0,4),can only increase by one when tag stays same.
             if field_tag == U256(TxLogFieldTag.Topic):
-                assert_in_range(index, 0, 4)
+                assert_in_range(index, 0, 3)
             if field_tag not in [U256(TxLogFieldTag.Topic), U256(TxLogFieldTag.Data)]:
                 assert index == 0
             elif pre_field_tag == field_tag:
@@ -312,19 +313,18 @@ def check_tx_receipt(row: Row, row_prev: Row):
     assert row.keys[3] == 0
     assert row.keys[4] == 0
 
-    # if not all_keys_eq(row, row_prev):
-    #     assert row.is_write == 1 and row.rw_counter == 0
     # value for tag `PostStateOrStatus` is bool (0 or 1) according to EIP#658
     if field_tag == U256(TxReceiptFieldTag.PostStateOrStatus):
         assert row.value in [0, 1]
 
     # when tx id changes, must be increasing by one , the CumulativeGasUsed must be increasing as well
-    if tx_id != pre_tx_id and row.tag() != row_prev.tag():
+    if tx_id != pre_tx_id and row.tag() == row_prev.tag():
         assert tx_id == pre_tx_id + 1
         if field_tag == U256(TxReceiptFieldTag.CumulativeGasUsed):
             assert row.value.n > row_prev.value.n
 
-    # TODO: tx id starts with 1
+    # tx id starts with 1
+    assert tx_id.n >= 1
 
 
 @is_circuit_code
@@ -597,13 +597,13 @@ class TxLogOp(Operation):
         rw: RW,
         tx_id: int,
         log_id: int,
-        index: int,
         field_tag: TxLogFieldTag,
+        index: int,
         value: FQ,
     ):
         # fmt: off
         return super().__new__(self, rw_counter, rw,
-                U256(Tag.TxLog),U256(tx_id), U256(log_id), U256(index), U256(field_tag), # keys
+                U256(Tag.TxLog),U256(tx_id), U256(log_id), U256(field_tag), U256(index), # keys
                 value, FQ(0), FQ(0)) # values
         # fmt: on
 
