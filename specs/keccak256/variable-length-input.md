@@ -8,6 +8,17 @@ Keccak256 uses a simple iterating sponge construction to handle a variable lengt
 
 No matter what input is, the padding must be applied. The padding is a multi-rate padding, it pads single bit 1 followed by minimum number of bits 0 followed by a single bit 1, such that the result is 136 bytes.
 
+## Circuit behavior
+
+### Gadget: Keccak Output Lookup
+
+Each row other than the first is corresponding to a `Keccak-f` permutation round.
+
+We define these state tags
+- Init: When a new hash job is initiated
+- Absorb: Absorbs non-zero inputs in this permutation
+- Finalize: The hash ends here. The output is ready for the consumer to use.
+
 ```mermaid
 stateDiagram-v2
     direction LR
@@ -20,9 +31,15 @@ stateDiagram-v2
     Finalize --> [*]
 ```
 
-## Circuit behavior
+#### State transition
 
-### Lookup Region
+- [*] --> Init first row must be init.
+- After the init, it could be Absorb or Finalize
+- After the Finalize, the next must be Init or EndOfTheCircuit
+
+
+
+We leave an empty row at the top of the table for usage that disables the lookup
 
 This region splits the input to multiple parts, each part corresponds to their `Keccak-f` permutation round.
 This is also a lookup table for the other circuits to lookup the Keccak256 input to the output.
@@ -35,61 +52,49 @@ The `curr: Round` and `next: Round` represent the current and the next row.
 
 Columns:
 
-- `is_enabled` A flag allows the lookup consumer to disable the lookup check.
-- `hash_id` Sequential number for grouping different hash
+- `state_tag` either 0=None, 1=Init, 2=Absorb, 3=Finalize
 - `input_len` Length for correct padding
 - `input` 136 bytes to be absorbed in this round
 - `acc_len` How many length we have absorbed
 - `acc_input` Accumulatd bytes by random linear combination (in big-endian order)
 - `output` The base-2 `state[:4]` output from this round `keccak_f`
 - `output_word_[n]` 25 columns of the output in words of this round `keccak_f`
-- `is_end_result` This flag indicates the hash output is final. The purpose is for external circuit to lookup.
 
-Selector:
-
-- `is_last_round_of_circuit` Last round of the whole circuit (not hash), to avoid `next` wrap around.
-
-| is_enabled | hash_id | input_len | input | acc_len | acc_input | output | is_end_result | output_word_0 | output_word_1 | output_word_2 | output_word\_... |
-| ---------: | ------: | --------: | ----: | ------: | --------: | -----: | ------------: | ------------: | ------------: | ------------: | ---------------: |
-|          0 |       0 |         0 |     0 |       0 |         0 |      0 |             0 |             0 |             0 |             0 |                0 |
-|          1 |       0 |       150 |       |       0 |           |        |             0 |               |               |               |                  |
-|          1 |       0 |       150 |       |     136 |           |        |             1 |               |               |               |                  |
-|          1 |       1 |        20 |       |       0 |           |        |             1 |               |               |               |                  |
+| state_tag | input_len | input | acc_len | acc_input | output |
+| ---------:| ---------:| -----:| -------:| ---------:| ------:|
+|         0 |         0 |     0 |       0 |         0 |      0 |
+|      Init |        20 |       |     136 |           |        |
+|  Finalize |        20 |       |     136 |           |        |
+|      Init |       150 |       |     136 |           |        |
+|    Absorb |       150 |       |     272 |           |        |
+|  Finalize |       150 |       |     272 |           |        |
+|      Init |         0 |       |     136 |           |        |
+|  Finalize |         0 |       |     136 |           |        |
+|      Init |       136 |       |     136 |           |        |
+|    Absorb |       136 |       |     272 |           |        |
+|  Finalize |       136 |       |     272 |           |        |
+|         0 |           |       |         |           |        |
 
 #### Checks
 
-1. At offset 0, constrant all columns to 0
-2. For offset 1 to the rest, perform following checks:
-   1. `is_enabled === 1`
-   2. `hash_id` is sequential `next.hash_id - curr.hash_id in [0, 1]`
-   3. If we are not in the last round of the circuit or last round of permutation
-      1. `curr.input_len === next.input_len`
-      2. `next.acc_len === curr.acc_len + 136`
-      3. `next.acc_len <= curr.input_len`
-      4. `next.acc_input === curr.acc_input * (r**136) + RLC(input, r)`
-   4. `is_last_round_of_circuit or is_end_result === 1`
-      1. Checks the accumulation ends here `assert (curr.input_len - curr.acc_len) in range(136)`
-      2. Clear the variables:  `next.acc_len === 0`, `next.acc_input === 0`
-   5. apply to all 25 `output_word_[n]` columns: `next.output_word_[n] === (1 - is_end_result) * curr.output_word_[n]`
-   6. `is_end_result === next.hash_id - curr.hash_id`
+TODO
 
 #### Lookup
 
 To lookup the Keccak256 input to the output, query the following columns:
 
-- `is_enabled`: bool.
-- `is_end_result`: bool
+- `state_tag`
 - `input_len`: FQ. This is required because input \[0, 0, 0\] and \[0, 0\] have the same RLC value but different keccak hash outputs.
 - `acc_input`: RLC
 - `output`: RLC
 
-When the lookup is needed, constrain `is_enabled === 1` and `is_end_result === 1`.
+When the lookup is needed, constrain `state_tag === 3 (Finalize)`.
 
 #### Prover behavior
 
 If the prover uses less `Round`s than the circuit provides, the prover should add a dummy hash that has an input size to use all rest of the `Round`s.
 
-### Padding Region
+### Gadget: Padding Validator
 
 Note that we define a new `acc_len` which increments byte by byte, where the `acc_len` in the lookup region bumps by 136 bytes.
 
