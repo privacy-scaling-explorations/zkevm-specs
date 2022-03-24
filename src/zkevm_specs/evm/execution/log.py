@@ -15,12 +15,17 @@ def log(instruction: Instruction):
     mstart = instruction.rlc_to_fq_exact(instruction.stack_pop(), 8)
     msize = instruction.rlc_to_fq_exact(instruction.stack_pop(), 8)
 
+    # check not static call
+    instruction.constrain_equal(0, instruction.call_context_lookup(CallContextFieldTag.IsStatic))
+
     # check contract_address in CallContext & TxLog
     # use call context's  callee address as contract address
     contract_address = instruction.call_context_lookup(CallContextFieldTag.CalleeAddress)
-    instruction.constrain_equal(contract_address, instruction.tx_log_lookup(TxLogFieldTag.Address))
-    # check not static call
-    instruction.constrain_equal(0, instruction.call_context_lookup(CallContextFieldTag.IsStatic))
+    is_persistent = instruction.call_context_lookup(CallContextFieldTag.IsPersistent)
+    if not instruction.is_zero(is_persistent):
+        instruction.constrain_equal(
+            contract_address, instruction.tx_log_lookup(TxLogFieldTag.Address)
+        )
 
     # constrain topics in stack & logs
     is_topic_zeros = [1] * 4
@@ -29,7 +34,10 @@ def log(instruction: Instruction):
         if i < topic_count:
             is_topic_zeros[i] = 0
             topic = instruction.stack_pop()
-            instruction.constrain_equal(topic, instruction.tx_log_lookup(TxLogFieldTag.Topic, i))
+            if not instruction.is_zero(is_persistent):
+                instruction.constrain_equal(
+                    topic, instruction.tx_log_lookup(TxLogFieldTag.Topic, i)
+                )
 
     # TOPIC_COUNT == Non zero topic count
     assert sum(is_topic_zeros) == 4 - topic_count
@@ -46,6 +54,7 @@ def log(instruction: Instruction):
         instruction.constrain_equal(next_aux.src_addr, mstart)
         instruction.constrain_equal(next_aux.src_addr_end, mstart + msize)
         instruction.constrain_equal(next_aux.bytes_left, msize)
+        instruction.constrain_equal(next_aux.is_persistent, is_persistent)
 
     # omit block number constraint even it is set within op code explicitly, because by default the circuit only handle
     # current block, otherwise, block context lookup is required.

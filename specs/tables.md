@@ -49,10 +49,12 @@ Type sizes:
 - **value, valuePrev**: variable size, depending on Key 0 (Tag) and Key 3 where appropiate.
 - **Key2** is reserved for Ethereum Address key type
 - **Key4** is reserved for RLC encoded key type
-- **logID**, 8 bytes
+- **logID**, 8 bytes, it is unique per tx/receipt.
 - **topic**, field size, RLC encoded (Random Linear Combination)
 - **TxLog -> data**, 1 byte
 - **index**, 8 byte, indicates order in tx log data or topics
+
+NOTE: TxLog is currently Work In Progress and will be updated to include $txID in each row.
 
 | 0 *rwc*  | 1 *isWrite* | 2 *Key0 (Tag)*             | 3 *Key1* | 4 *Key2* | 5 *Key3*                   | 6 *Key4*    | 7 *Value0* | 8 *Value1* | 9 *Aux0* | 10 *Aux1*       |
 | -------- | ----------- | -------------------------- | -------- | -------- | -------------------------- | ----------- | ---------  | ---------- | -------- | --------------- |

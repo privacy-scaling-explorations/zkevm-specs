@@ -37,7 +37,12 @@ denote `LOGN` where `N` in `[0,4]` meaning topic count.
 
 2. State transition:
 
-   - gc + 5( 2 stack reads + 2 callcontext reads + 1 txlog read) + 2 * `N` + 2 * `mSize`:
+   - gc :  
+   when  is_persistent = false, 
+    gc + ( 2 + `N`  stack reads + 3 callcontext reads +  `mSize` memory reads)   
+   when  is_persistent = true, 
+    gc + ( 2 + `N`  stack reads + 3 callcontext reads +  `mSize` memory reads) + (`N`  + `mSize`) log lookups:
+   
    - stack_pointer + 2 + `N`
    - pc + 1
    - state_write_counter + 1:

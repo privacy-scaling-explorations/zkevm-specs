@@ -107,13 +107,16 @@ class CopyToLogAuxData:
     src_addr: FQ
     bytes_left: FQ
     src_addr_end: FQ
+    is_persistent: FQ
 
     def __init__(
         self,
         src_addr: int,
         bytes_left: int,
         src_addr_end: int,
+        is_persistent: int,
     ):
         self.src_addr = FQ(src_addr)
         self.bytes_left = FQ(bytes_left)
         self.src_addr_end = FQ(src_addr_end)
+        self.is_persistent = FQ(is_persistent)

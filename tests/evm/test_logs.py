@@ -1,6 +1,5 @@
 import pytest
 from typing import Sequence, Tuple, Mapping, Optional
-
 from zkevm_specs.evm import (
     Opcode,
     ExecutionState,
@@ -28,12 +27,9 @@ from zkevm_specs.util import (
     memory_expansion,
     MEMORY_EXPANSION_QUAD_DENOMINATOR,
 )
-
-
 CALL_ID = 1
 TX_ID = 2
 CALLEE_ADDRESS = rand_address()
-
 bytecodes = [
     Bytecode().log0(),
     Bytecode().log1(),
@@ -41,18 +37,29 @@ bytecodes = [
     Bytecode().log3(),
     Bytecode().log4(),
 ]
-
 TESTING_DATA = (
+    # is_persistent = true cases
     # zero topic(log0)
-    ([], 10, 2),
+    ([], 10, 2, 1),
     # one topic(log1)
-    ([0x030201], 20, 3),
+    ([0x030201], 20, 3,1),
     # two topics(log2)
-    ([0x030201, 0x0F0E0D], 100, 20),
+    ([0x030201, 0x0F0E0D], 100, 20, 1),
     # three topics(log3)
-    ([0x030201, 0x0F0E0D, 0x0D8F01], 180, 50),
+    ([0x030201, 0x0F0E0D, 0x0D8F01], 180, 50, 1),
     # four topics(log4)
-    ([0x030201, 0x0F0E0D, 0x0D8F01, 0x0AA213], 421, 15),
+    ([0x030201, 0x0F0E0D, 0x0D8F01, 0x0AA213], 421, 15, 1),
+    #  is_persistent = false cases
+    # zero topic(log0)
+    ([], 10, 2, 0),
+    # one topic(log1)
+    ([0x030201], 20, 3, 0),
+    # two topics(log2)
+    ([0x030201, 0x0F0E0D], 100, 20, 0),
+    # three topics(log3)
+    ([0x030201, 0x0F0E0D, 0x0D8F01], 180, 50, 0),
+    # four topics(log4)
+    ([0x030201, 0x0F0E0D, 0x0D8F01, 0x0AA213], 421, 15, 0),
 )
 
 
@@ -69,11 +76,13 @@ def make_log_copy_step(
     code_source: RLC,
     state_write_counter: int,
     log_id: int,
+    is_persistent: bool,
 ) -> Tuple[StepState, Sequence[RW]]:
     aux_data = CopyToLogAuxData(
         src_addr=src_addr,
         src_addr_end=src_addr_end,
         bytes_left=bytes_left,
+        is_persistent=is_persistent,
     )
     step = StepState(
         execution_state=ExecutionState.CopyToLog,
@@ -88,7 +97,6 @@ def make_log_copy_step(
         state_write_counter=state_write_counter,
         aux_data=aux_data,
     )
-
     rws = []
     num_bytes = min(MAX_COPY_BYTES, bytes_left)
     for i in range(num_bytes):
@@ -109,24 +117,23 @@ def make_log_copy_step(
                 )
             )
             rw_counter += 1
-            rws.append(
-                (
-                    rw_counter,
-                    RW.Write,
-                    RWTableTag.TxLog,
-                    log_id,
-                    i,
-                    TxLogFieldTag.Data,
-                    byte,
-                    0,
-                    0,
-                    0,
+            if is_persistent:
+                rws.append(
+                    (
+                        rw_counter,
+                        RW.Write,
+                        RWTableTag.TxLog,
+                        log_id,
+                        i,
+                        TxLogFieldTag.Data,
+                        byte,
+                        0,
+                        0,
+                        0,
+                    )
                 )
-            )
-        rw_counter += 1
+                rw_counter += 1
     return step, rws
-
-
 def make_log_copy_steps(
     buffer: bytes,
     buffer_addr: int,
@@ -140,6 +147,7 @@ def make_log_copy_steps(
     code_source: RLC,
     state_write_counter: int,
     log_id: int,
+    is_persistent:bool,
 ) -> Tuple[Sequence[StepState], Sequence[RW]]:
     buffer_addr_end = buffer_addr + len(buffer)
     buffer_map = dict(zip(range(buffer_addr, buffer_addr_end), buffer))
@@ -161,28 +169,23 @@ def make_log_copy_steps(
             code_source,
             state_write_counter,
             log_id,
+            is_persistent,
         )
         steps.append(new_step)
         rws.extend(new_rws)
         src_addr += MAX_COPY_BYTES
         bytes_left -= MAX_COPY_BYTES
     return steps, rws
-
-
-@pytest.mark.parametrize("topics, mstart, msize", TESTING_DATA)
-def test_logs(topics: list, mstart: U64, msize: U64):
+@pytest.mark.parametrize("topics, mstart, msize, is_persistent", TESTING_DATA)
+def test_logs(topics: list, mstart: U64, msize: U64, is_persistent: bool):
     randomness = rand_fp()
     data = rand_bytes(msize)
-
     topic_count = len(topics)
     next_memory_size, memory_expansion_cost = memory_expansion(mstart, msize)
     dynamic_gas = GAS_COST_LOG * topic_count + 8 * msize + memory_expansion_cost
-
     bytecode = bytecodes[topic_count]
     bytecode_hash = RLC(bytecode.hash(), randomness)
-
     tx = Transaction(id=TX_ID, gas=dynamic_gas)
-
     steps = [
         StepState(
             execution_state=ExecutionState.LOG,
@@ -199,11 +202,24 @@ def test_logs(topics: list, mstart: U64, msize: U64):
             state_write_counter=0,
         )
     ]
+
     rws = [
         (1, RW.Read, RWTableTag.Stack, 1, 1015, 0, RLC(mstart, randomness, 8), 0, 0, 0),
         (2, RW.Read, RWTableTag.Stack, 1, 1016, 0, RLC(msize, randomness, 8), 0, 0, 0),
         (
             3,
+            RW.Read,
+            RWTableTag.CallContext,
+            1,
+            CallContextFieldTag.IsStatic,
+            0,
+            0,
+            0,
+            0,
+            0,
+        ),
+        (
+            4,
             RW.Read,
             RWTableTag.CallContext,
             1,
@@ -215,7 +231,21 @@ def test_logs(topics: list, mstart: U64, msize: U64):
             0,
         ),
         (
-            4,
+            5,
+            RW.Read,
+            RWTableTag.CallContext,
+            1,
+            CallContextFieldTag.IsPersistent,
+            0,
+            is_persistent,
+            0,
+            0,
+            0,
+        ), ]
+
+    if is_persistent:
+        rws.append((
+            6,
             RW.Write,
             RWTableTag.TxLog,
             0,
@@ -225,23 +255,10 @@ def test_logs(topics: list, mstart: U64, msize: U64):
             0,
             0,
             0,
-        ),
-        (
-            5,
-            RW.Read,
-            RWTableTag.CallContext,
-            1,
-            CallContextFieldTag.IsStatic,
-            0,
-            0,
-            0,
-            0,
-            0,
-        ),
-    ]
+        ))
 
     # append topic rows
-    rws.extend(construct_topic_rws(6, 1017, topics, randomness))
+    rws.extend(construct_topic_rws(6 + is_persistent, 1017, topics, is_persistent, randomness))
     new_steps, new_rws = make_log_copy_steps(
         data,
         mstart,
@@ -255,11 +272,11 @@ def test_logs(topics: list, mstart: U64, msize: U64):
         code_source=bytecode_hash,
         state_write_counter=1,
         log_id=1,
+        is_persistent=is_persistent,
     )
     # append memory & log steps and rows
     steps.extend(new_steps)
     rws.extend(new_rws)
-
     steps.append(
         StepState(
             execution_state=ExecutionState.STOP,
@@ -276,14 +293,12 @@ def test_logs(topics: list, mstart: U64, msize: U64):
             log_id=1,
         )
     )
-
     tables = Tables(
         block_table=set(Block().table_assignments(randomness)),
         tx_table=set(tx.table_assignments(randomness)),
         bytecode_table=set(bytecode.table_assignments(randomness)),
         rw_table=set(rws),
     )
-
     verify_steps(
         randomness=randomness,
         tables=tables,
@@ -292,26 +307,27 @@ def test_logs(topics: list, mstart: U64, msize: U64):
 
 
 # helper to construct topics rows of RW table
-def construct_topic_rws(gc: U256, sp: int, topics: list, randomness: int):
+def construct_topic_rws(rw_counter: U256, sp: int, topics: list, is_persistent: bool, randomness: int, ):
     rows = []
     for i in range(len(topics)):
         rows.append(
-            (gc, RW.Read, RWTableTag.Stack, 1, sp, 0, RLC(topics[i], randomness, 32), 0, 0, 0)
+            (rw_counter, RW.Read, RWTableTag.Stack, 1, sp, 0, RLC(topics[i], randomness, 32), 0, 0, 0)
         )
-        rows.append(
-            (
-                gc + 1,
-                RW.Write,
-                RWTableTag.TxLog,
-                0,
-                i,
-                TxLogFieldTag.Topic,
-                RLC(topics[i], randomness, 32),
-                0,
-                0,
-                0,
+        if is_persistent:
+            rows.append(
+                (
+                    rw_counter + 1,
+                    RW.Write,
+                    RWTableTag.TxLog,
+                    0,
+                    i,
+                    TxLogFieldTag.Topic,
+                    RLC(topics[i], randomness, 32),
+                    0,
+                    0,
+                    0,
+                )
             )
-        )
         sp += 1
-        gc += 2
+        rw_counter += 2 if is_persistent else 1
     return rows

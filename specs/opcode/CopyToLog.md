@@ -30,7 +30,7 @@ Define two auxiliary variables:
 2. Lookups:
    - from memory:
      - `nbytes_read` lookups from rw table (memory read)
-   - to txlog:
+   - to txlog when is_persistent is true:
      - `nbytes_written` lookups from rw table (TxLog write)
 
 ## Exceptions

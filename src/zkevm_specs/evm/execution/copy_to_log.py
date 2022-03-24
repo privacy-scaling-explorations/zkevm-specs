@@ -2,7 +2,7 @@ from ...util import FQ, N_BYTES_MEMORY_SIZE
 from ..execution_state import ExecutionState
 from ..instruction import Instruction, Transition
 from ..step import CopyToLogAuxData
-from ..table import RW, TxLogFieldTag
+from ..table import RW, TxLogFieldTag, CallContextFieldTag
 from ..util import BufferReaderGadget
 from ...util import MAX_COPY_BYTES
 
@@ -17,13 +17,15 @@ def copy_to_log(instruction: Instruction):
 
     data = []
     rw_counter_delta = 0
+
     for i in range(MAX_COPY_BYTES):
         if not buffer_reader.read_flag(i):
             byte = FQ.zero()
         else:
             byte = instruction.memory_lookup(RW.Read, aux.src_addr + i)
         buffer_reader.constrain_byte(i, byte)
-        if buffer_reader.has_data(i):
+        # when is_persistent = false, only do memory_lookup, no tx_log_lookup
+        if buffer_reader.has_data(i) and not instruction.is_zero(aux.is_persistent):
             instruction.constrain_equal(byte, instruction.tx_log_lookup(TxLogFieldTag.Data, i))
 
     copied_bytes = buffer_reader.num_bytes()
