@@ -11,16 +11,15 @@ MAX_KEY_DIFF = 2**32 - 1
 # touched. From equation 326 in the yellow paper, for C_mem(a), the maximum
 # memory address touched cannot exceed or equal 2^32 until the gas limit is
 # over 3.6e16.
-MAX_MEMORY_ADDRESS = 2**32 - 1
 MAX_STACK_PTR = 1023
 MAX_KEY0 = 10  # Number of Tag variants
 MAX_KEY1 = 2**16 - 1  # Maximum number of calls in a block
 MAX_KEY2 = 2**160 - 1  # Ethereum Address size
-MAX_KEY3 = MAX_MEMORY_ADDRESS  # Maximum value for Memory Address
+MAX_KEY3 = 24  # Max(# of CallContextFieldTag, # of AccountFieldTag) - 1
 KEY0_BITS = ceil(log(MAX_KEY0 + 1, 2))  # 4
 KEY1_BITS = ceil(log(MAX_KEY1 + 1, 2))  # 16
 KEY2_BITS = ceil(log(MAX_KEY2 + 1, 2))  # 160
-KEY3_BITS = ceil(log(MAX_KEY3 + 1, 2))  # 32
+KEY3_BITS = ceil(log(MAX_KEY3 + 1, 2))  # 6
 
 
 class Tag(IntEnum):
@@ -114,10 +113,9 @@ def check_start(row: Row, row_prev: Row):
 @is_circuit_code
 def check_memory(row: Row, row_prev: Row):
     get_call_id = lambda row: row.keys[1]
-    get_mem_addr = lambda row: row.keys[3]
 
     # 0. Unused keys are 0
-    assert row.keys[2] == 0
+    assert row.keys[3] == 0
     assert row.keys[4] == 0
 
     # 1. First access for a set of all keys
@@ -127,21 +125,17 @@ def check_memory(row: Row, row_prev: Row):
     if not all_keys_eq(row, row_prev) and row.is_write == 0:
         assert row.value == 0
 
-    # 2. mem_addr in range
-    mem_addr = get_mem_addr(row)
-    assert_in_range(mem_addr, 0, MAX_MEMORY_ADDRESS)
-
-    # 3. value is a byte
+    # 2. value is a byte
     assert_in_range(row.value, 0, 2**8 - 1)
 
 
 @is_circuit_code
 def check_stack(row: Row, row_prev: Row):
     get_call_id = lambda row: row.keys[1]
-    get_stack_ptr = lambda row: row.keys[3]
+    get_stack_ptr = lambda row: row.keys[2]
 
     # 0. Unused keys are 0
-    assert row.keys[2] == 0
+    assert row.keys[3] == 0
     assert row.keys[4] == 0
 
     # 1. First access for a set of all keys
@@ -406,7 +400,7 @@ class MemoryOp(Operation):
     def __new__(self, rw_counter: int, rw: RW, call_id: int, mem_addr: int, value: U8):
         # fmt: off
         return super().__new__(self, rw_counter, rw,
-                U256(Tag.Memory), U256(call_id), U256(0), U256(mem_addr), U256(0), # keys
+                U256(Tag.Memory), U256(call_id), U256(mem_addr), U256(0), U256(0), # keys
                 FQ(value), FQ(0), FQ(0)) # values
         # fmt: on
 
@@ -419,7 +413,7 @@ class StackOp(Operation):
     def __new__(self, rw_counter: int, rw: RW, call_id: int, stack_ptr: int, value: FQ):
         # fmt: off
         return super().__new__(self, rw_counter, rw,
-                U256(Tag.Stack), U256(call_id), U256(0), U256(stack_ptr), U256(0), # keys
+                U256(Tag.Stack), U256(call_id), U256(stack_ptr), U256(0), U256(0), # keys
                 value, FQ(0), FQ(0)) # values
         # fmt: on
 
