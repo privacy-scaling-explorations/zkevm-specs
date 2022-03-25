@@ -41,7 +41,7 @@ denote `LOGN` where `N` in `[0,4]` meaning topic count.
    when  is_persistent = false, 
     gc + ( 2 + `N`  stack reads + 3 callcontext reads +  `mSize` memory reads)   
    when  is_persistent = true, 
-    gc + ( 2 + `N`  stack reads + 3 callcontext reads +  `mSize` memory reads) + (`N`  + `mSize`) log lookups:
+    gc + ( 2 + `N`  stack reads + 3 callcontext reads +  `mSize` memory reads) + (`N` + 1  + `mSize`) log lookups:
    
    - stack_pointer + 2 + `N`
    - pc + 1

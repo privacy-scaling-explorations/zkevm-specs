@@ -28,7 +28,7 @@ class FixedTableTag(IntEnum):
     ResponsibleOpcode = auto()  # execution_state, opcode, aux
 
     def table_assignments(self) -> List[FixedTableRow]:
-         if self == FixedTableTag.Range5:
+        if self == FixedTableTag.Range5:
             return [FixedTableRow(FQ(self), FQ(i), FQ(0), FQ(0)) for i in range(5)]
         if self == FixedTableTag.Range16:
             return [FixedTableRow(FQ(self), FQ(i), FQ(0), FQ(0)) for i in range(16)]

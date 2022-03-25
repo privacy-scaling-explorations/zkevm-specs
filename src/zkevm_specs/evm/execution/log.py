@@ -3,7 +3,7 @@ from ..table import CallContextFieldTag, TxLogFieldTag, TxContextFieldTag
 from ..opcode import Opcode
 from ..execution_state import ExecutionState
 from ...util.param import GAS_COST_LOG
-from ...util import FQ
+from ...util import FQ, cast_expr
 
 
 def log(instruction: Instruction):
@@ -16,13 +16,16 @@ def log(instruction: Instruction):
     msize = instruction.rlc_to_fq_exact(instruction.stack_pop(), 8)
 
     # check not static call
-    instruction.constrain_equal(0, instruction.call_context_lookup(CallContextFieldTag.IsStatic))
+    instruction.constrain_equal(
+        FQ(0), instruction.call_context_lookup(CallContextFieldTag.IsStatic)
+    )
 
     # check contract_address in CallContext & TxLog
     # use call context's  callee address as contract address
+
     contract_address = instruction.call_context_lookup(CallContextFieldTag.CalleeAddress)
     is_persistent = instruction.call_context_lookup(CallContextFieldTag.IsPersistent)
-    if not instruction.is_zero(is_persistent):
+    if is_persistent:
         instruction.constrain_equal(
             contract_address, instruction.tx_log_lookup(TxLogFieldTag.Address)
         )
@@ -34,10 +37,8 @@ def log(instruction: Instruction):
         if i < topic_count:
             is_topic_zeros[i] = 0
             topic = instruction.stack_pop()
-            if not instruction.is_zero(is_persistent):
-                instruction.constrain_equal(
-                    topic, instruction.tx_log_lookup(TxLogFieldTag.Topic, i)
-                )
+            if is_persistent:
+                instruction.constrain_equal(topic.expr(), instruction.tx_log_lookup(TxLogFieldTag.Topic, i).expr())
 
     # TOPIC_COUNT == Non zero topic count
     assert sum(is_topic_zeros) == 4 - topic_count
@@ -49,6 +50,7 @@ def log(instruction: Instruction):
     # check memory copy, should do in next step here
     # When length != 0, constrain the state in the next execution state CopyToLog
     if not instruction.is_zero(msize):
+        assert instruction.next is not None
         instruction.constrain_equal(instruction.next.execution_state, ExecutionState.CopyToLog)
         next_aux = instruction.next.aux_data
         instruction.constrain_equal(next_aux.src_addr, mstart)
@@ -72,5 +74,5 @@ def log(instruction: Instruction):
         state_write_counter=Transition.delta(1),
         dynamic_gas_cost=dynamic_gas,
         memory_size=Transition.to(next_memory_size),
-        log_id=Transition.delta(is_persistent),
+        log_id=Transition.delta(cast_expr(is_persistent, int)),
     )

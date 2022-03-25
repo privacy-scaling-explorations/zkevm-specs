@@ -74,7 +74,7 @@ class StepState:
         self.gas_left = FQ(gas_left)
         self.memory_size = FQ(memory_size)
         self.state_write_counter = FQ(state_write_counter)
-        self.log_id = log_id
+        self.log_id = FQ(log_id)
         self.aux_data = aux_data
 
 

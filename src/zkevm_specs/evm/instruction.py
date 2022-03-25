@@ -234,7 +234,7 @@ class Instruction:
         memory_size: Transition = Transition.same(),
         state_write_counter: Transition = Transition.same(),
         dynamic_gas_cost: IntOrFQ = 0,
-        log_index: Transition = Transition.same(),
+        log_id: Transition = Transition.same(),
     ):
         self.responsible_opcode_lookup(opcode)
 
@@ -388,9 +388,13 @@ class Instruction:
     def tx_calldata_lookup(self, tx_id: Expression, call_data_index: Expression) -> Expression:
         return self.tables.tx_lookup(tx_id, FQ(TxContextFieldTag.CallData), call_data_index).value
 
-    def tx_log_lookup(self, field_tag: TxContextFieldTag, index: int = 0) -> Union[int, RLC]:
+    # look up tx log fields (Data, Address, Topic),
+    def tx_log_lookup(self, field_tag: TxLogFieldTag, index: int = 0) -> Expression:
         # evm only write tx log
-        return self.rw_lookup(RW.Write, RWTableTag.TxLog, [self.curr.log_index, index, field_tag])[-4]
+        value = self.rw_lookup(
+            RW.Write, RWTableTag.TxLog, key1=self.curr.log_id, key2=FQ(index), key3=FQ(field_tag)
+        ).value
+        return value
 
     def bytecode_lookup(
         self, bytecode_hash: Expression, index: Expression, is_code: bool
@@ -513,7 +517,9 @@ class Instruction:
     def memory_write(self, memory_address: Expression, call_id: Expression = None) -> FQ:
         return self.memory_lookup(RW.Write, memory_address, call_id)
 
-    def memory_read(self, memory_address: int, call_id: Optional[int] = None) -> int:
+    def memory_read(
+        self, memory_address: Expression, call_id: Optional[Expression] = None
+    ) -> Expression:
         return self.memory_lookup(RW.Read, memory_address, call_id)
 
     def memory_lookup(self, rw: RW, memory_address: Expression, call_id: Expression = None) -> FQ:
