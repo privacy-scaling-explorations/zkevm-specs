@@ -138,12 +138,12 @@ To implement the constraints above, the two proofs are put in parallel in MPT ro
 Each branch row contains information of branch node from proof 1 and as well as from proof 2:
 
 <p align="center">
-  <img src="./img/mpt.png?raw=true" width="75%">
+  <img src="./img/mpt.png?raw=true" width="65%">
 </p>
 
 Proof 1 is on the left side, proof 2 is on the right side.
 
-## Circuit Layout
+## Branch / extension node layout
 
 The two parallel proofs are called S proof and C proof in the MPT circuit layout.
 
@@ -175,7 +175,7 @@ Branch comprises 19 rows:
 - 16 node rows
 - 2 extension node rows
 
-Branch:
+Branch (the two extension node rows are empty):
 
 <p align="center">
   <img src="./img/branch_diagram.png?raw=true" width="50%">
@@ -187,16 +187,68 @@ Extension node:
   <img src="./img/extension_node.png?raw=true" width="50%">
 </p>
 
-![branch](./img/branch.png)
+Boolean selectors `is_branch_init`, `is_branch_child`, `is_last_branch_child`,
+`is_modified` to trigger the constraints only when necessary.
+Two examples:
+
+- checking that branch RLC is computed properly is done in the last branch row (`is_last_branch_child`)
+- S and C children are checked to be the same in all rows except at `is_modified`
+
+There are two other columns that make sure the branch rows apply to the prescribed layout:
+`node_index` and `modified_node`.
+
+`node_index` is checked to be running monotonously from 0 to 15.
+This way it is ensured that branch layout really has 16 branch children rows.
+
+`modified_node` specifies the index at which the storage modification in this branch occured.
+`modified_node` is checked to be the same in all branch children rows - having this value
+available in all rows simplifies the constraints for checking that `is_modified` is true
+only when `node_index - modified_node = 0`. Having `modified_node` available only in one row,
+it would be difficult to write a constraint for `node_index - modified_node = 0` for all
+16 rows.
+
+`is_last_branch_child` is checked to be in the row with `node_index` = 15.
+`is_branch_child` is checked to follow either `is_branch_init` or `is_branch_child`.
+After `is_branch_init` it is checked to be `is_branch_child = 1`.
+After `is_branch_init` it is checked to be `node_index = 0`.
+When `is_branch_child` changes, it is checked to be `node_index = 15` in the previous row.
+
+When `node_index != 15`, it is checked `is_last_branch_child = 0`.
+When `node_index = 15`, it is checked `is_last_branch_child = 1`.
+
+All these constraints are given in `branch.rs`.
+Constraints to ensure the proper order of rows (after what row `is_branch_init` can appear,
+for example) are given in `selectors.rs`.
+
+<p align="center">
+  <img src="./img/branch.png?raw=true" width="75%">
+</p>
 
 The picture presents a branch which has 14 empty nodes and 2 non-empty nodes.
 The last two rows are all zeros because this is a regular branch,
 not an extension node.
 
-Non-empty nodes are at positions 3 and 11. Position 11 corresponds to the key (that
-means the key nibble that determines the position of a node in this branch is 11).
+Each branch node row starts with 34 S proof columns and 34 C proof columns.
+For non-empty rows, `rlp1` is always 160, because this denotes the length of the
+substream which is 32 (= 160 - 128). The substream (in `advices`) in this case is hash of a
+node.
 
-`s_advices/c_advices` present the hash of a branch child/node.
+When there is an empty node, the column looks like:
+
+```
+0, 0, 128, 0, ..., 0
+```
+
+Empty node in a RLP stream is denoted only by one byte - value 128.
+MPT circuit uses padding with 0s to simplify the comparison
+between S and C branch. This way, the branch nodes are aligned horizontally
+for both proofs.
+
+Non-empty nodes are at positions 3 and 11. Position 11 corresponds to the key (that
+means the key nibble that determines the position of a node in this branch is 11) and
+is stored in `modified_node` column.
+
+`s_advices/c_advices` present the hash of a branch child.
 
 One can observe that in position 3: `s_advices = c_advices`,
 while in position 11: `s_advices != c_advices`.
@@ -206,7 +258,7 @@ the nibble 11 corresponds to `key1`.
 
 We need `s_advices/c_advices` for two things:
 
-- to compute the overall branch RLC (to be able to check the hash of a branch)
+- to compute the overall branch RLC (to be able to check the hash of a branch to be in a parent)
 - to check whether `s_advices/c_advices` (at `is_modified` position)
   present the hash of the next element in a proof
 
@@ -222,222 +274,151 @@ Extension node in parent:
   <img src="./img/extension_in_parent.png?raw=true" width="50%">
 </p>
 
-Hash lookup looks like (for example for branch S):
+The constraint for an element to be in a parent is implemented using lookups, for example:
 
 ```
-lookup(S branch RLC, S branch length, s_advices RLC at the is_modified position in parent branch)
+lookup(branch RLC, branch length, hash RLC at is_modified in parent)
 ```
 
-TODO: instead of 32 columns for `*_advices`, use only the RLC of `*_advices`.
+TODO: instead of 32 columns for `*_advices`, we could use only the RLC of `*_advices`.
 To integrate `*_advices` RLC into the computation of the whole branch RLC, we
-just need to compute `mult * *_advices_RLC` and add this to the current RLC value.
+would just need to compute `mult * *_advices_RLC` and add this to the current RLC value.
 
-The layout then be simply:
-`s_rlp1, s_rlp2, s_node_rlc, c_rlp1, c_rlp2, c_node_rlc`
+To simplify the lookups, the hash of the modified node in branch S is stored in
+`s_mod_node_hash_rlc` column. Similarly, for branch C in `c_mod_node_hash_rlc`.
+It is checked that this value is the same in all 16 branch children rows.
 
-Columns (not shown in picture or table):
+<p align="center">
+  <img src="./img/mod_node_hash_rlc.png?raw=true" width="50%">
+</p>
 
-- `key_rlc_mult`
-- `key_rlc`
-- `sel1`
-- `sel2`
+Having the same value in all rows makes it easier to check that the value correspond
+to the hash at `modified_node` position (otherwise it would be difficult to determine
+the rotation in the row where the hash rlc would be stored because the `modified_node`
+is not fixed).
 
-Whether the factor 16 is used or not is determined by `sel1/sel2` columns.
-`sel1/sel2` are boolean values and it holds `sel1 + sel2 = 1`.
-The constraints for `sel1/sel2` are implemented in `BranchKeyChip`.
+The lookup for a branch is in `branch_hash_in_parent`. The lookup for an extension
+node is in `extension_node.rs`.
 
-#### Branch init row
+### Computing branch RLC
 
-The first two columns specify whether S branch has two or three RLP meta bytes
-(these bytes specify the length of the stream):
+The intermediate branch RLC is computed in each row, the final one is given in
+`is_last_branch_child` row.
+
+The constraints for RLC in branch init row are in `branch_rlc_init.rs`.
+
+Note that the branch init contains the RLC bytes only in (some) of the first 10 columns.
+The columns after this stores branch / extension node selectors.
+
+The RLP of a branch can appear in two slightly different versions:
+
+- At the beginning there appear two RLP meta bytes
+- At the beginning there appear three RLP meta bytes
+
+A branch with two RLP meta bytes looks like:
+
+```
+248, 81,... 
+```
+
+In this case, there are 81 bytes from position two onward in the branch RLP stream.
+The RLC in this case should be `248 + 81r`.
+
+A branch with three RLP meta bytes looks like:
+`249, 1, 81,... `
+This means there are 1 * 256 + 81 bytes from position three onward.
+The RLC in this case should be `249 + 1r + 81r^2`.
+
+The first two columns in init branch specify whether S branch has two or three RLP meta bytes:
 
 - `1, 0` means two RLP meta bytes
 - `0, 1` means three RLP meta bytes
 
-For example, a branch with two RLP meta bytes starts like:
-`248, 81, 128, 128,... `
-This means there are 81 bytes from position two onward in the branch RLP stream.
+Branch init RLP bytes:
 
-To check whether the length of the stream correspond to the length specified
-with the RLP meta bytes, we use column 0. In each row we subtract the number
-of bytes in a row. In the last row we checked whether the value is 0.
-
-Note that branch node row can either have 33 bytes or 1 byte. 1 byte occurs
-when the node is empty, in this case only the value 128 appears, which is stored
-in column 2.
-
-For example, a branch with three RLP meta bytes starts like:
-`249, 1, 81, 128, 16, ... `
-This means there are 1 * 256 + 81 bytes from position three onward.
-
-Summary:
-
-- cols 0 and 1: whether branch S has 2 or 3 RLP meta data bytes
 - cols 2 and 3: whether branch C has 2 or 3 RLP meta data bytes
 - cols 4 and 5: the actual branch S RLP meta data bytes
 - col 6: the actual branch S RLP meta data byte (if there are 3 RLP meta data bytes in branch S)
 - cols 7 and 8: branch C RLP meta data bytes
 - col 9: the actual branch C RLP meta data byte (if there are 3 RLP meta data bytes in branch C)
 
-TODO: selectors
+The intermediate RLC values are stored in `acc_s` and `acc_c` columns for S and C branch
+respectively.
 
-#### Branch node rows
+<p align="center">
+  <img src="./img/branch_rlc_init.png?raw=true" width="60%">
+</p>
 
-Each branch node row starts with 34 S proof columns and 34 C proof columns.
-
-Example 34 S columns:
-
-`0, 160, 215, 178, 43, ..., 23`
-
-The first columns of S and C proof (`s_rlp1` and `c_rlp1`) in branch node rows are
-used to check the RLP stream length.
-
-The second columns (`s_rlp2` and `c_rlp2`) are for RLP encoding of the length
-of the substream.
-For non-empty rows, it is always 160, because this denotes the length of the
-substream which is 32 (= 160 - 128). The substream in this case is hash of a
-node.
-
-When there is an empty node, the column looks like:
-`0, 0, 128, 0, ..., 0`.
-
-Empty node in a RLP stream is denoted only by one byte - value 128.
-MPT circuit uses padding with 0s to simplify the comparison
-between S and C branch. This way, the branch nodes are aligned horizontally
-for both proofs.
-
-For example, when a value is stored at a key that
-hasn't been used yet, we will get an empty node in S branch and non-empty node
-in C branch. We need to compare whether this change corresponds to the
-key (key determines the index of the node in branch where change occurs).
-
-#### Constraints
-
-##### Constraint: hash of the branch is in the parent branch
-
-`is_modified` selector denotes the position in branch which corresponds to the key
-(the branch child where the change occurs).
-
-The whole branch needs to be hashed and the result needs to be checked
-to be in the parent branch. This is checked in `BranchHashInParentChip`
-using a lookup which takes as an input:
-
-- Random Linear Combination (RLC) of the branch
-- parent branch `s_advices/c_advices` RLC at `is_modified` position
-
-Hash lookup looks like (for S):
-`lookup(S branch RLC, S branch length, s_advices RLC)`.
-
-To simplify the constraints, the modified node RLC is stored in each
-branch node. This is to enable rotations back to access the RLC of the modified node.
-Thus, for example, when checking the branch hash to be in a parent branch,
-we can rotate back to the last row in the parent branch and use the value from this
-row for the lookup.
-
-Let's see an example.
-Let's say we have a branch where `modified_node = 1`. For clarity, let's
-denote `s_rlp1, s_rlp2, c_rlp1, c_rlp2` simply with `_`.
+Two additional columns are needed: `acc_mult_s` and `acc_mult_c`.
+These two columns are used to know with what multiplier should the next row begin with:
 
 ```
-_, _, b0_s_node0_rlc, _, _, b0_c_node0_rlc
-_, _, b0_s_node1_rlc, _, _, b0_c_node1_rlc
-...
-_, _, b0_s_node15_rlc, _, _, b0_c_node15_rlc
+acc_s = acc_s_prev + s_rlp2 * acc_mult_s + s_advices[0] * acc_mult_s * r + s_advices[1] * acc_mult_s * r^2
 ```
 
-Let's say the next element in a proof is another branch:
+<p align="center">
+  <img src="./img/branch_rlc.png?raw=true" width="60%">
+</p>
+
+Constraints for `acc_s, acc_c, acc_mult_s, acc_mult_c`
+being computed properly are in `branch_rlc.rs`.
+
+There are two types of branch child: empty and non-empty. An empty child only contains
+128 in `advices[0]` column, a non-empty child contains 160 in `rlp1` and then the child's
+hash is given in 32 `advices` columns.
+The constraints for `acc_s, acc_c, acc_mult_s, acc_mult_c` are thus simple because
+there is in both cases a fixed number of columns used. For example, the constraint
+for `acc_mult_s` for non-empty child would be:
 
 ```
-_, _, b1_s_node0_rlc, _, _, b1_c_node0_rlc
-_, _, b1_s_node1_rlc, _, _, b1_c_node1_rlc
-...
-_, _, b1_s_node15_rlc, _, _, b1_c_node15_rlc
+acc_mult_s = acc_mult_s_prev * r^33
 ```
 
-The hash of this second branch is in the parent branch at position 1.
-Let `b1_s` be the RLC of S part of this second branch and
-`b1_c` be the RLC of C part of this second branch.
-Then:
+It is different in leaf rows where the number of columns used is not fixed as we will
+see below.
 
-```
-hash(b1_s) = b0_s_node1_rlc
-hash(b1_c) = b0_c_node1_rlc
-```
+In `is_last_branch_child` row, `acc_s` and `acc_c` contain the RLC of branch S and branch C
+respectively.
 
-Hash lookup like is needed (for S):
-`lookup(b1_s, len(b1_s), b0_s_node1_rlc)`
+### Branch length correspond to the RLP meta bytes
 
-We need a rotation to access `b0_s_node1_rlc`, but we cannot fix the rotation
-as the `modified_node` can be any value between 0 and 15 - any of the following
-values can appear to be needed: ` b0_s_node0_rlc, b0_s_node1_rlc, ..., b0_s_node15_rlc`.
+To check whether the length of the stream correspond to the length specified
+with the RLP meta bytes, we use column 0. In each row we subtract the number
+of bytes in a row. In the last row we checked whether the value is 1 (1 because
+RLP length includes also ValueNode which occupies 1 byte).
 
-For this reason there are two additional columns in all 16 branch children rows
-that specify the `modified_node` RLC: `s_mod_node_hash_rlc` and `c_mod_node_hash_rlc`.
+<p align="center">
+  <img src="./img/branch_length.png?raw=true" width="60%">
+</p>
 
-```
-_, _, b0_s_node0_rlc, _, _, b0_c_node0_rlc, b0_s_mod_node_hash_rlc, b0_c_mod_node_hash_rlc
-_, _, b0_s_node1_rlc, _, _, b0_c_node1_rlc, b0_s_mod_node_hash_rlc, b0_c_mod_node_hash_rlc
-...
-_, _, b0_s_node15_rlc, _, _, b0_c_node15_rlc, b0_s_mod_node_hash_rlc, b0_c_mod_node_hash_rlc
-```
+Note that branch node row can have either have 33 bytes or 1 byte. So, in each row,
+the value in column 0 decreases by 33 or 1. These constraints are implemented in `branch.rs`.
 
-Now, we can rotate back to any of the branch noderen rows of `b0` to
-access the RLC of the modified node.
+### Address and key RLC in branch nodes
 
-##### Constraints: node hash in branch rows
+`modified_node` in the branch corresponds to one of the nibbles of key/address.
+To check whether the proper key/address is used, key/address RLC is computed and
+finally checked in the leaf row.
+In each branch, an intermediate key/address RLC is checked to be computed properly.
 
-We need to make sure `s_mod_node_hash_rlc` and `c_mod_node_hash_rlc`
-is the same in all branch children rows.
+<p align="center">
+  <img src="./img/address_key_branch_rlc.png?raw=true" width="60%">
+</p>
 
-```
-s_mod_node_hash_rlc_cur = s_mod_node_hash_rlc_prev
-c_mod_node_hash_rlc_cur = c_mod_node_hash_rlc_prev
-```
+Two consecutive branches represent one byte of key/address. We need to know whether
+the branch `modified_node` is the first or the second nibble of the key/address byte.
+This information is given in branch init in two `s_advices` columns
+`s_advices[IS_BRANCH_C16_POS - LAYOUT_OFFSET]` and
+`s_advices[IS_BRANCH_C1_POS - LAYOUT_OFFSET]`.
 
-##### Constraint: RLC of branch child at modified_node
-
-At `modified_node` position, `s_mod_node_hash_rlc` and `c_mod_node_hash_rlc`
-need to be the RLC of `s_advices` and `c_advices` of the node that corresponds
-to the key (modified node).
-
-```
-rlc(s_advices) = s_mod_node_hash_rlc at position modified_node
-rlc(c_advices) = c_mod_node_hash_rlc at position modified_node
-```
-
-##### Constraint: no change except at is_modified position
-
-In all branch rows, except at `modified_node` position, it needs to hold:
-
-```
-s_node_rlc = c_node_rlc
-```
-
-With current implementation:
-
-```
-s_advices = c_advices
-```
-
-##### Constraint: is_modifed = 1 at modified_node, otherwise is_modified = 0
-
-At `modified_node` position, it needs to hold:
-
-```
-is_modified = 1
-```
-
-At other positions:
-
-```
-is_modified = 0
-```
-
-##### Constraint: node_index increases by 1
-
-```
-node_index_cur = node_index_prev + 1
-```
+If it is the first nibble, `modified_node` is multiplied by 16, otherwise by 1.
+Constraints for
+`s_advices[IS_BRANCH_C16_POS - LAYOUT_OFFSET]` and
+`s_advices[IS_BRANCH_C1_POS - LAYOUT_OFFSET]`
+are implemented in `branch_key.rs`.
+For example, the two values need to be boolean, need to alternate (this alternating
+gets more complicated when there is an extension node instead of a branch as it will be
+discussed below), and the sum of the two needs to be 1.
 
 ### Extension node rows
 
