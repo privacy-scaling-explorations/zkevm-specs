@@ -116,7 +116,7 @@ def test_extcodehash(
             ),
             StepState(
                 execution_state=ExecutionState.STOP if is_persistent else ExecutionState.REVERT,
-                rw_counter=7,
+                rw_counter=9,
                 call_id=1,
                 is_root=True,
                 is_create=False,

@@ -33,7 +33,7 @@ def extcodehash(instruction: Instruction):
 
     instruction.step_state_transition_in_same_context(
         opcode,
-        rw_counter=Transition.delta(7),
+        rw_counter=Transition.delta(9),
         program_counter=Transition.delta(1),
         stack_pointer=Transition.delta(0),
         dynamic_gas_cost=instruction.select(is_warm, FQ(0), FQ(EXTRA_GAS_COST_ACCOUNT_COLD_ACCESS)),
