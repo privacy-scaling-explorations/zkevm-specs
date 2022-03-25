@@ -12,7 +12,7 @@ def extcodehash(instruction: Instruction):
     address = instruction.rlc_to_fq_exact(instruction.stack_pop(), 20)
 
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
-    is_warm = instruction.add_account_to_access_list(tx_id, address)
+    is_warm = instruction.add_account_to_access_list(tx_id, address, instruction.reversion_info())
 
     nonce = instruction.account_read(address, AccountFieldTag.Nonce)
     balance = instruction.account_read(address, AccountFieldTag.Balance)

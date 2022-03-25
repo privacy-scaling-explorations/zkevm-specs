@@ -11,16 +11,17 @@ the stack instead.
 
 1. opId = 0x3f
 2. State transition:
-   - gc + 7 (1 stack read, 1 stack write, 1 call context read, 3 account reads,
+   - gc + 9 (1 stack read, 1 stack write, 3 call context reads, 3 account reads,
      1 transaction access list write)
    - stack_pointer + 0 (one pop and one push)
    - pc + 1
    - gas:
      - the accessed `address` is warm: WARM_STORAGE_READ_COST
      - the accessed `address` is cold: COLD_ACCOUNT_ACCESS_COST
-3. Lookups: 7
+3. Lookups: 9
    - `address` is popped from the stack
-   - tx id of call context is `tx_id`
+   - 3 from call context for `tx_id`, `rw_counter_end_of_reversion`, and
+     `is_persistent`.
    - `address` is added to the transaction access list if not already present
    - nonce of account is `nonce`
    - balance of account is `balance`
