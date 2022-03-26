@@ -38,7 +38,9 @@ def log(instruction: Instruction):
             is_topic_zeros[i] = 0
             topic = instruction.stack_pop()
             if is_persistent:
-                instruction.constrain_equal(topic.expr(), instruction.tx_log_lookup(TxLogFieldTag.Topic, i).expr())
+                instruction.constrain_equal(
+                    topic.expr(), instruction.tx_log_lookup(TxLogFieldTag.Topic, i).expr()
+                )
 
     # TOPIC_COUNT == Non zero topic count
     assert sum(is_topic_zeros) == 4 - topic_count
@@ -66,6 +68,7 @@ def log(instruction: Instruction):
     )
     dynamic_gas = GAS_COST_LOG * (opcode - Opcode.LOG0) + 8 * msize + memory_expansion_gas
 
+    assert isinstance(is_persistent, int)
     instruction.step_state_transition_in_same_context(
         opcode,
         rw_counter=Transition.delta(instruction.rw_counter_offset),
@@ -74,5 +77,5 @@ def log(instruction: Instruction):
         state_write_counter=Transition.delta(1),
         dynamic_gas_cost=dynamic_gas,
         memory_size=Transition.to(next_memory_size),
-        log_id=Transition.delta(cast_expr(is_persistent, int)),
+        log_id=Transition.delta(is_persistent),
     )
