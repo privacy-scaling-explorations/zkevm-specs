@@ -69,7 +69,7 @@ def test_extcodehash(
     state_write_counter = 0
 
     rw_table = set(
-        RWDictionary(0)
+        RWDictionary(1)
         .stack_read(call_id, 1023, RLC(address, randomness))
         .call_context_read(tx_id, CallContextFieldTag.TxId, tx_id)
         .call_context_read(
@@ -105,7 +105,7 @@ def test_extcodehash(
         steps=[
             StepState(
                 execution_state=ExecutionState.EXTCODEHASH,
-                rw_counter=0,
+                rw_counter=1,
                 call_id=1,
                 is_root=True,
                 is_create=False,
@@ -116,7 +116,7 @@ def test_extcodehash(
             ),
             StepState(
                 execution_state=ExecutionState.STOP if is_persistent else ExecutionState.REVERT,
-                rw_counter=9,
+                rw_counter=10,
                 call_id=1,
                 is_root=True,
                 is_create=False,
