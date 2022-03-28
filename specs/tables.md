@@ -45,9 +45,16 @@ Type sizes:
 > - **memoryAddress**: 40 bytes
 > - **Memory -> value, valuePrev**: 1 byte
 > - **storageKey**: field size, RLC encoded (Random Linear Combination)
-> - **value, valuePrev**: variable size, depending on Key 0 (Tag) and Key 3 where appropiate.
-> - **Key2** is reserved for Ethereum Address key type
-> - **Key4** is reserved for RLC encoded key type
+
+- **value, valuePrev**: variable size, depending on Key 0 (Tag) and Key 3 where appropiate.
+- **Key2** is reserved for Ethereum Address key type
+- **Key4** is reserved for RLC encoded key type
+- **logID**, 8 bytes, it is unique per tx/receipt.
+- **topic**, field size, RLC encoded (Random Linear Combination)
+- **TxLog -> data**, 1 byte
+- **index**, 8 byte, indicates order in tx log data or topics
+
+NOTE: TxLog is currently Work In Progress and will be updated to include $txID in each row.
 
 | 0 *rwc*  | 1 *isWrite* | 2 *Key0 (Tag)*             | 3 *Key1* | 4 *Key2* | 5 *Key3*                   | 6 *Key4*    | 7 *Value0* | 8 *Value1* | 9 *Aux0* | 10 *Aux1*       |
 | -------- | ----------- | -------------------------- | -------- | -------- | -------------------------- | ----------- | ---------  | ---------- | -------- | --------------- |
@@ -96,6 +103,10 @@ Type sizes:
 | $counter | $isWrite    | Stack                      | $callID  |          | $stackPointer              |             | $value     | 0          | 0        | 0               |
 | $counter | $isWrite    | Memory                     | $callID  |          | $memoryAddress             |             | $value     | 0          | 0        | 0               |
 | $counter | $isWrite    | AccountStorage             |          | $address |                            | $storageKey | $value     | $valuePrev | $txID    | $CommittedValue |
+|          |             |                            |          |          |                            |             |            |            |          |                 |
+| $counter | true        | TxLog                     |$logID | 0        |  Address                  |             | $value     | 0          | 0        | 0               |
+| $counter | true        | TxLog                     |$logID | $topicIndex   |  Topic                   |             | $value     | 0          | 0        | 0               |
+| $counter | true        | TxLog                     |$logID | $byteIndex   |  Data                     |             | $value     | 0          | 0        | 0               |
 
 ## `bytecode_table`
 

@@ -44,6 +44,7 @@ def calldatacopy(instruction: Instruction):
         )
         instruction.constrain_equal(next_aux.from_tx, FQ(instruction.curr.is_root))
         instruction.constrain_equal(next_aux.tx_id, tx_id)
+        instruction.constrain_equal(next_aux.bytes_left, length)
 
     instruction.step_state_transition_in_same_context(
         opcode,

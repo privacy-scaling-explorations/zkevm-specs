@@ -2,7 +2,7 @@
 
 ## Circuit behaviour
 
-`CopyToMemory` is an internal execution state and doesn't correspond to a EVM opcode. It can copy
+`CopyToMemory` is an internal execution state and doesn't correspond to an EVM opcode. It can copy
 data from either tx or memory to memory. This gadget needs to loop itself if it hasn't finished
 the copy.
 

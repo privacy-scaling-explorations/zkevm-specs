@@ -40,7 +40,11 @@ class StepState:
     memory_size: FQ
     state_write_counter: FQ
 
-    # Auxiliary witness data needed by gadgets
+    # log index of current tx/receipt, this field maybe moved if we find them
+    # not often used.
+    log_id: FQ
+
+    # Auxilary witness data needed by gadgets
     aux_data: Any
 
     def __init__(
@@ -56,6 +60,7 @@ class StepState:
         gas_left: int = 0,
         memory_size: int = 0,
         state_write_counter: int = 0,
+        log_id: int = 0,
         aux_data: Any = None,
     ) -> None:
         self.execution_state = execution_state
@@ -69,6 +74,7 @@ class StepState:
         self.gas_left = FQ(gas_left)
         self.memory_size = FQ(memory_size)
         self.state_write_counter = FQ(state_write_counter)
+        self.log_id = FQ(log_id)
         self.aux_data = aux_data
 
 
@@ -95,3 +101,22 @@ class CopyToMemoryAuxData:
         self.src_addr_end = FQ(src_addr_end)
         self.from_tx = FQ(from_tx)
         self.tx_id = FQ(tx_id)
+
+
+class CopyToLogAuxData:
+    src_addr: FQ
+    bytes_left: FQ
+    src_addr_end: FQ
+    is_persistent: FQ
+
+    def __init__(
+        self,
+        src_addr: int,
+        bytes_left: int,
+        src_addr_end: int,
+        is_persistent: int,
+    ):
+        self.src_addr = FQ(src_addr)
+        self.bytes_left = FQ(bytes_left)
+        self.src_addr_end = FQ(src_addr_end)
+        self.is_persistent = FQ(is_persistent)

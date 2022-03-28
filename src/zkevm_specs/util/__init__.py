@@ -6,6 +6,7 @@ from .arithmetic import *
 from .hash import *
 from .param import *
 from .typing import *
+from .testing import memory_expansion, memory_word_size
 
 
 def rand_range(stop: Union[int, float] = 2**256) -> int:
