@@ -31,6 +31,7 @@ from .table import (
     TxContextFieldTag,
     RW,
     RWTableTag,
+    TxLogFieldTag,
 )
 
 
@@ -101,6 +102,7 @@ class Instruction:
     rw_counter_offset: int = 0
     program_counter_offset: int = 0
     stack_pointer_offset: int = 0
+    log_index_offset: int = 0
 
     def __init__(
         self,
@@ -166,6 +168,7 @@ class Instruction:
                 "gas_left",
                 "memory_size",
                 "state_write_counter",
+                "log_id",
             ]
         )
 
@@ -231,6 +234,7 @@ class Instruction:
         memory_size: Transition = Transition.same(),
         state_write_counter: Transition = Transition.same(),
         dynamic_gas_cost: IntOrFQ = 0,
+        log_id: Transition = Transition.same(),
     ):
         self.responsible_opcode_lookup(opcode)
 
@@ -244,6 +248,7 @@ class Instruction:
             gas_left=Transition.delta(-gas_cost),
             memory_size=memory_size,
             state_write_counter=state_write_counter,
+            log_id=log_id,
             # Always stay same
             call_id=Transition.same(),
             is_root=Transition.same(),
@@ -383,6 +388,14 @@ class Instruction:
     def tx_calldata_lookup(self, tx_id: Expression, call_data_index: Expression) -> Expression:
         return self.tables.tx_lookup(tx_id, FQ(TxContextFieldTag.CallData), call_data_index).value
 
+    # look up tx log fields (Data, Address, Topic),
+    def tx_log_lookup(self, field_tag: TxLogFieldTag, index: int = 0) -> Expression:
+        # evm only write tx log
+        value = self.rw_lookup(
+            RW.Write, RWTableTag.TxLog, key1=self.curr.log_id, key2=FQ(index), key3=FQ(field_tag)
+        ).value
+        return value
+
     def bytecode_lookup(
         self, bytecode_hash: Expression, index: Expression, is_code: bool
     ) -> Expression:
@@ -503,6 +516,11 @@ class Instruction:
 
     def memory_write(self, memory_address: Expression, call_id: Expression = None) -> FQ:
         return self.memory_lookup(RW.Write, memory_address, call_id)
+
+    def memory_read(
+        self, memory_address: Expression, call_id: Optional[Expression] = None
+    ) -> Expression:
+        return self.memory_lookup(RW.Read, memory_address, call_id)
 
     def memory_lookup(self, rw: RW, memory_address: Expression, call_id: Expression = None) -> FQ:
         if call_id is None:
