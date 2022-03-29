@@ -1,6 +1,6 @@
 # Bytecode Proof
 
-The bytecode proof helps the EVM proof by making the bytecode (identified by its code hash) easily accessible. Each byte in the bytecode is made accessible with its position in the bytecode. It is also annotated with a flag indicating if the byte is an opcode or is simply data for a previous PUSH instruction.
+The bytecode proof helps the EVM proof by making the bytecode (identified by its code hash) easily accessible. Each byte in the bytecode is made accessible with its position in the bytecode. It is also annotated with a flag indicating if the byte is an opcode or simply data for a previous PUSH instruction.
 
 ## Circuit Layout
 
@@ -24,8 +24,9 @@ The bytecode proof helps the EVM proof by making the bytecode (identified by its
 
 ## Push table
 
-The push lookup table is used to find how many bytes an opcode pushes which we need to know to detect which byte is code and which byte is not.
-Because we do this lookup for each byte this table is also indirectly used to range check the byte inputs.
+The push lookup table is used to find how many bytes an opcode pushes, which we need to know to detect which byte is code and which byte is not.
+
+Because we do this lookup for each byte, this table is also indirectly used to range check the byte inputs.
 
 | Byte                                    | Num bytes pushed  |
 | --------------------------------------- | ----------------- |
