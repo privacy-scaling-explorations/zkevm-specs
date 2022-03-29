@@ -38,17 +38,17 @@ Proved by the state circuit.
 
 Type sizes:
 
-> - **txID**: 24 bytes
-> - **address**: 160 bytes
-> - **callID**: 25 bytes
-> - **stackPointer**: 10 bytes
-> - **memoryAddress**: 40 bytes
+> - **txID**: 32 bits
+> - **address**: 160 bits
+> - **callID**: 32 bits
+> - **stackPointer**: 10 bits
+> - **memoryAddress**: 32 bits
 > - **Memory -> value, valuePrev**: 1 byte
 > - **storageKey**: field size, RLC encoded (Random Linear Combination)
 
-- **value, valuePrev**: variable size, depending on Key 0 (Tag) and Key 3 where appropiate.
-- **Key2** is reserved for Ethereum Address key type
-- **Key4** is reserved for RLC encoded key type
+- **value, valuePrev**: variable size, depending on Key 0 (Tag) and Key 3 where appropriate.
+- **Key2** is reserved for stack, memory, and account addresses.
+- **Key4** is reserved for RLC encoded values
 - **logID**, 8 bytes, it is unique per tx/receipt.
 - **topic**, field size, RLC encoded (Random Linear Combination)
 - **TxLog -> data**, 1 byte
@@ -100,13 +100,13 @@ NOTE: TxLog is currently Work In Progress and will be updated to include $txID i
 | $counter | $isWrite    | CallContext                | $callID  |          | MemorySize                 |             | $value     | 0          | 0        | 0               |
 | $counter | $isWrite    | CallContext                | $callID  |          | StateWriteCounter          |             | $value     | 0          | 0        | 0               |
 |          |             |                            |          |          |                            |             |            |            |          |                 |
-| $counter | $isWrite    | Stack                      | $callID  |          | $stackPointer              |             | $value     | 0          | 0        | 0               |
-| $counter | $isWrite    | Memory                     | $callID  |          | $memoryAddress             |             | $value     | 0          | 0        | 0               |
-| $counter | $isWrite    | AccountStorage             |          | $address |                            | $storageKey | $value     | $valuePrev | $txID    | $CommittedValue |
-|          |             |                            |          |          |                            |             |            |            |          |                 |
-| $counter | true        | TxLog                     |$logID | 0        |  Address                  |             | $value     | 0          | 0        | 0               |
-| $counter | true        | TxLog                     |$logID | $topicIndex   |  Topic                   |             | $value     | 0          | 0        | 0               |
-| $counter | true        | TxLog                     |$logID | $byteIndex   |  Data                     |             | $value     | 0          | 0        | 0               |
+| $counter | $isWrite    | Stack                      | $callID  | $stackPointer  |                      |             | $value     | 0          | 0        | 0               |
+| $counter | $isWrite    | Memory                     | $callID  | $memoryAddress |                      |             | $value     | 0          | 0        | 0               |
+| $counter | $isWrite    | AccountStorage             |          | $address       |                      | $storageKey | $value     | $valuePrev | $txID    | $CommittedValue |
+|          |             |                            |          |             |                         |             |            |            |          |                 |
+| $counter | true        | TxLog                      | $logID   | 0           |  Address                |             | $value     | 0          | 0        | 0               |
+| $counter | true        | TxLog                      | $logID   | $topicIndex |  Topic                       |             | $value     | 0          | 0        | 0               |
+| $counter | true        | TxLog                      | $logID   | $byteIndex  |  Data                   |             | $value     | 0          | 0        | 0               |
 
 ## `bytecode_table`
 
