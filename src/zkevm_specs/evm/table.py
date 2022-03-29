@@ -199,6 +199,9 @@ class CallContextFieldTag(IntEnum):
     IsSuccess = auto()  # to peek result in the future
     IsPersistent = auto()  # to know if current call is within reverted call or not
     IsStatic = auto()  # to know if state modification is within static call or not
+    IsRoot = auto()
+    IsCreate = auto()
+    CodeSource = auto()
 
     # The following are read-only data inside a call like previous section for
     # opcode RETURNDATASIZE and RETURNDATACOPY, except they will be updated when
@@ -213,9 +216,6 @@ class CallContextFieldTag(IntEnum):
     # Note that stack and memory could also be included here, but since they
     # need extra constraints on their data format, so we separate them to be
     # different kinds of RWTableTag.
-    IsRoot = auto()
-    IsCreate = auto()
-    CodeSource = auto()
     ProgramCounter = auto()
     StackPointer = auto()
     GasLeft = auto()
@@ -342,8 +342,8 @@ class Tables:
         self,
         tag: Expression,
         value0: Expression,
-        value1: Expression = None,
-        value2: Expression = None,
+        value1: Expression = FQ(0),
+        value2: Expression = FQ(0),
     ) -> FixedTableRow:
         query = {
             "tag": tag,
@@ -351,7 +351,10 @@ class Tables:
             "value1": value1,
             "value2": value2,
         }
-        return _lookup(FixedTableRow, self.fixed_table, query)
+        row = FixedTableRow(tag, value0, value1, value2)
+        if row not in self.fixed_table:
+            raise LookupUnsatFailure(FixedTableRow.__name__, query)
+        return row
 
     def block_lookup(
         self, field_tag: Expression, block_number: Expression = FQ(0)

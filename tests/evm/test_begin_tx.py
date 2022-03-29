@@ -130,6 +130,9 @@ def test_begin_tx(tx: Transaction, callee: Account, is_success: bool):
             .call_context_read(1, CallContextFieldTag.LastCalleeId, 0)
             .call_context_read(1, CallContextFieldTag.LastCalleeReturnDataOffset, 0)
             .call_context_read(1, CallContextFieldTag.LastCalleeReturnDataLength, 0)
+            .call_context_read(1, CallContextFieldTag.IsRoot, True)
+            .call_context_read(1, CallContextFieldTag.IsCreate, False)
+            .call_context_read(1, CallContextFieldTag.CodeSource, bytecode_hash)
             .rws,
             # fmt: on
         ),
@@ -147,7 +150,7 @@ def test_begin_tx(tx: Transaction, callee: Account, is_success: bool):
                 execution_state=ExecutionState.EndTx
                 if callee.code_hash() == EMPTY_CODE_HASH
                 else ExecutionState.PUSH,
-                rw_counter=20,
+                rw_counter=23,
                 call_id=1,
                 is_root=True,
                 is_create=False,

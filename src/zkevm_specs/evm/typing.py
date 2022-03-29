@@ -14,6 +14,7 @@ from ..util import (
     keccak256,
     GAS_COST_TX_CALL_DATA_PER_NON_ZERO_BYTE,
     GAS_COST_TX_CALL_DATA_PER_ZERO_BYTE,
+    EMPTY_CODE_HASH,
 )
 from .table import (
     RW,
@@ -301,6 +302,9 @@ class Account:
     def storage_trie_hash(self) -> U256:
         raise NotImplementedError("Trie has not been implemented")
 
+    def is_empty(self) -> bool:
+        return self.nonce == 0 and self.balance == 0 and self.code_hash() == EMPTY_CODE_HASH
+
 
 class RWDictionary:
     rw_counter: int
@@ -339,6 +343,15 @@ class RWDictionary:
             value = FQ(value)
         return self._append(
             RW.Read, RWTableTag.CallContext, key1=FQ(call_id), key2=FQ(field_tag), value=value
+        )
+
+    def call_context_write(
+        self, call_id: IntOrFQ, field_tag: CallContextFieldTag, value: Union[int, FQ, RLC]
+    ) -> RWDictionary:
+        if isinstance(value, int):
+            value = FQ(value)
+        return self._append(
+            RW.Write, RWTableTag.CallContext, key1=FQ(call_id), key2=FQ(field_tag), value=value
         )
 
     def tx_refund_read(self, tx_id: IntOrFQ, refund: IntOrFQ) -> RWDictionary:

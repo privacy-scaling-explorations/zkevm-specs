@@ -21,9 +21,7 @@ def extcodehash(instruction: Instruction):
     is_empty = (
         instruction.is_zero(nonce)
         * instruction.is_zero(balance)
-        * instruction.is_equal(
-            code_hash, instruction.rlc_encode(EMPTY_CODE_HASH.to_bytes(64, "little"))
-        )
+        * instruction.is_equal(code_hash, instruction.rlc_encode(EMPTY_CODE_HASH))
     )
 
     instruction.constrain_equal(
