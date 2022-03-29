@@ -180,13 +180,18 @@ def test_start_bad():
     verify(rows, randomness, success=False)
 
 
-def first_memory_op(rw_counter=1, rw=RW.Write, call_id=1, mem_addr=2**140 - 1, value=3):
+def first_memory_op(rw_counter=1, rw=RW.Write, call_id=1, mem_addr=2**32 - 1, value=3):
     return MemoryOp(rw_counter, rw, call_id, mem_addr, value)
 
 
 def test_first_memory_op_ok():
     ops = [StartOp(), first_memory_op()]
     verify(ops, randomness, success=True)
+
+
+def test_memory_bad_address():
+    ops = [StartOp(), first_memory_op(mem_addr=2**32)]
+    verify(ops, randomness, success=False)
 
 
 def test_memory_bad_first_access():

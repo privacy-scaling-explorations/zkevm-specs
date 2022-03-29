@@ -42,10 +42,10 @@ Type sizes:
 > - **address**: 160 bits
 > - **callID**: 32 bits
 > - **stackPointer**: 10 bits
-> - **memoryAddress**: 160 bits
+> - **memoryAddress**: 32 bits
 > - **Memory -> value, valuePrev**: 1 byte
 > - **storageKey**: field size, RLC encoded (Random Linear Combination)
-> - **value, valuePrev**: variable size, depending on Key 0 (Tag) and Key 3 (field tag) where appropiate.
+> - **value, valuePrev**: variable size, depending on Key 0 (Tag) and Key 3 (field tag) where appropriate.
 > - **Key2** is reserved for stack, memory, and account addresses.
 > - **Key4** is reserved for RLC encoded key type
 

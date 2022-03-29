@@ -6,6 +6,7 @@ from .util import FQ, RLC, U160, U256
 from .encoding import U8, is_circuit_code
 from .evm import RW, AccountFieldTag, CallContextFieldTag
 
+MAX_MEMORY_ADDRESS = 2**32 - 1
 MAX_KEY_DIFF = 2**32 - 1
 MAX_STACK_PTR = 1023
 MAX_KEY0 = 10  # Number of Tag variants
@@ -109,6 +110,7 @@ def check_start(row: Row, row_prev: Row):
 @is_circuit_code
 def check_memory(row: Row, row_prev: Row):
     get_call_id = lambda row: row.keys[1]
+    get_memory_address = lambda row: row.keys[2]
 
     # 0. Unused keys are 0
     assert row.keys[3] == 0
@@ -121,7 +123,10 @@ def check_memory(row: Row, row_prev: Row):
     if not all_keys_eq(row, row_prev) and row.is_write == 0:
         assert row.value == 0
 
-    # 2. value is a byte
+    # 2. mem_addr in range
+    assert_in_range(get_memory_address(row), 0, MAX_MEMORY_ADDRESS)
+
+    # 3. value is a byte
     assert_in_range(row.value, 0, 2**8 - 1)
 
 
