@@ -35,16 +35,13 @@ class RLC:
     value: FQ
     le_bytes: bytes
 
-    def __init__(
-        self, value: Union[int, bytes], randomness: FQ = FQ(0), n_bytes: int = None
-    ) -> None:
+    def __init__(self, value: Union[int, bytes], randomness: FQ = FQ(0), n_bytes: int = 32) -> None:
         if isinstance(value, int):
-            value = value.to_bytes(32, "little")
+            value = value.to_bytes(n_bytes, "little")
 
-        if n_bytes is not None:
-            if len(value) > n_bytes:
-                raise ValueError(f"RLC expects to have {n_bytes} bytes, but got {len(value)} bytes")
-            value = value.ljust(n_bytes, b"\x00")
+        if len(value) > n_bytes:
+            raise ValueError(f"RLC expects to have {n_bytes} bytes, but got {len(value)} bytes")
+        value = value.ljust(n_bytes, b"\x00")
 
         self.value = FQ.linear_combine(value, randomness)
         self.le_bytes = value

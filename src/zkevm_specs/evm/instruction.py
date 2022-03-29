@@ -82,10 +82,10 @@ class ReversionInfo:
         self.is_persistent = is_persistent.expr()
         self.state_write_counter = state_write_counter.expr()
 
-    def rw_counter(self) -> FQ:
-        rw_counter = self.rw_counter_end_of_reversion - self.state_write_counter
+    def rw_counter_of_reversion(self) -> FQ:
+        rw_counter_of_reversion = self.rw_counter_end_of_reversion - self.state_write_counter
         self.state_write_counter += 1
-        return rw_counter
+        return rw_counter_of_reversion
 
 
 class Instruction:
@@ -190,7 +190,7 @@ class Instruction:
                 if isinstance(transition.value, int):
                     transition.value = FQ(transition.value)
                 assert next.expr() == curr.expr() + transition.value.expr(), ConstraintUnsatFailure(
-                    f"State {key} should transit to {curr} + {transition.value}, but got {next}"
+                    f"State {key} should transit to {curr} + {transition.value} ({curr + transition.value}), but got {next}"
                 )
             elif transition.kind == TransitionKind.To:
                 if isinstance(transition.value, int):
@@ -333,10 +333,8 @@ class Instruction:
 
         return self.rlc_encode(product_bytes), FQ(quotient_hi)
 
-    def rlc_to_fq_unchecked(self, word: RLC, n_bytes: int) -> Tuple[FQ, FQ]:
-        return self.bytes_to_fq(word.le_bytes[:n_bytes]), self.is_zero(
-            self.sum(word.le_bytes[n_bytes:])
-        )
+    def rlc_to_fq_unchecked(self, word: RLC, n_bytes: int) -> FQ:
+        return self.bytes_to_fq(word.le_bytes[:n_bytes])
 
     def rlc_to_fq_exact(self, word: RLC, n_bytes: int) -> FQ:
         if any(word.le_bytes[n_bytes:]):
@@ -352,8 +350,8 @@ class Instruction:
         assert len(value) <= MAX_N_BYTES, "Too many bytes to composite an integer in field"
         return FQ(int.from_bytes(value, "little"))
 
-    def rlc_encode(self, value: bytes) -> RLC:
-        return RLC(value, self.randomness)
+    def rlc_encode(self, value: Union[int, bytes], n_bytes: int = 32) -> RLC:
+        return RLC(value, self.randomness, n_bytes)
 
     def range_lookup(self, value: Expression, range: int):
         self.fixed_lookup(FixedTableTag.range_table_tag(range), value)
@@ -372,8 +370,8 @@ class Instruction:
         self,
         tag: FixedTableTag,
         value0: Expression,
-        value1: Expression = None,
-        value2: Expression = None,
+        value1: Expression = FQ(0),
+        value2: Expression = FQ(0),
     ) -> FixedTableRow:
         return self.tables.fixed_lookup(FQ(tag), value0, value1, value2)
 
@@ -466,9 +464,9 @@ class Instruction:
 
         row = self.rw_lookup(RW.Write, tag, key1, key2, key3, value, value_prev, aux0, aux1)
 
-        if reversion_info is not None and reversion_info.is_persistent == 0:
+        if reversion_info is not None and reversion_info.is_persistent == FQ(0):
             self.tables.rw_lookup(
-                rw_counter=reversion_info.rw_counter(),
+                rw_counter=reversion_info.rw_counter_of_reversion(),
                 rw=FQ(RW.Write),
                 tag=FQ(tag),
                 key1=row.key1,
@@ -491,12 +489,17 @@ class Instruction:
         return self.rw_lookup(rw, RWTableTag.CallContext, call_id, FQ(field_tag)).value
 
     def reversion_info(self, call_id: Expression = None) -> ReversionInfo:
-        rw_counter_end_of_reversion = self.call_context_lookup(
-            CallContextFieldTag.RwCounterEndOfReversion, call_id=call_id
-        )
-        is_persistent = self.call_context_lookup(CallContextFieldTag.IsPersistent, call_id=call_id)
+        [rw_counter_end_of_reversion, is_persistent] = [
+            self.call_context_lookup(tag, call_id=call_id)
+            for tag in [
+                CallContextFieldTag.RwCounterEndOfReversion,
+                CallContextFieldTag.IsPersistent,
+            ]
+        ]
         return ReversionInfo(
-            rw_counter_end_of_reversion, is_persistent, self.curr.state_write_counter
+            rw_counter_end_of_reversion,
+            is_persistent,
+            self.curr.state_write_counter if call_id is None else FQ(0),
         )
 
     def stack_pop(self) -> RLC:

@@ -53,14 +53,14 @@ GAS_COST_TX_CALL_DATA_PER_NON_ZERO_BYTE = 16
 GAS_COST_TX_CALL_DATA_PER_ZERO_BYTE = 4
 # Gas cost of accessing account or storage slot, EIP 2929
 GAS_COST_WARM_ACCESS = 100
-# Extra gas cost of not-yet-accessed account
-EXTRA_GAS_COST_ACCOUNT_COLD_ACCESS = 2500
-# Extra gas cost of not-yet-accessed storage slot
-EXTRA_GAS_COST_STORAGE_SLOT_COLD_ACCESS = 2000
+# Gas cost of accessing not-yet-accessed account
+GAS_COST_ACCOUNT_COLD_ACCESS = 2600
+# Extra gas cost of accessing not-yet-accessed account
+EXTRA_GAS_COST_ACCOUNT_COLD_ACCESS = GAS_COST_ACCOUNT_COLD_ACCESS - GAS_COST_WARM_ACCESS
 # Gas cost of calling with non-zero value
 GAS_COST_CALL_WITH_VALUE = 9000
-# Gas cost of calling empty account
-GAS_COST_CALL_EMPTY_ACCOUNT = 25000
+# Gas cost of turning empty account into non-empty account
+GAS_COST_NEW_ACCOUNT = 25000
 # Gas stipend given if call with non-zero value
 GAS_STIPEND_CALL_WITH_VALUE = 2300
 

@@ -13,6 +13,7 @@ from .add import *
 from .block_coinbase import *
 from .block_timestamp import *
 from .block_number import *
+from .call import *
 from .calldatasize import *
 from .caller import *
 from .callvalue import *
@@ -59,4 +60,5 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.EXTCODEHASH: extcodehash,
     ExecutionState.CopyToLog: copy_to_log,
     ExecutionState.LOG: log,
+    ExecutionState.CALL: call,
 }
