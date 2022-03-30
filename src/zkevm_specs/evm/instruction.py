@@ -530,6 +530,7 @@ class Instruction:
         key1: Expression = None,
         key2: Expression = None,
         key3: Expression = None,
+        key4: Expression = None,
         value: Expression = None,
         value_prev: Expression = None,
         aux0: Expression = None,
@@ -538,7 +539,7 @@ class Instruction:
     ) -> RWTableRow:
         assert tag.write_with_reversion()
 
-        row = self.rw_lookup(RW.Write, tag, key1, key2, key3, value, value_prev, aux0, aux1)
+        row = self.rw_lookup(RW.Write, tag, key1, key2, key3, key4, value, value_prev, aux0, aux1)
 
         if reversion_info is not None and reversion_info.is_persistent == FQ(0):
             self.tables.rw_lookup(
@@ -548,6 +549,7 @@ class Instruction:
                 key1=row.key1,
                 key2=row.key2,
                 key3=row.key3,
+                key4=row.key4,
                 # Swap value and value_prev
                 value=row.value_prev,
                 value_prev=row.value,
