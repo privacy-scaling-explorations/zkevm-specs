@@ -1,6 +1,5 @@
 from ..instruction import Instruction, Transition
 from ..opcode import Opcode
-from ...util import FQ
 
 
 def iszero(instruction: Instruction):
@@ -9,7 +8,7 @@ def iszero(instruction: Instruction):
     value = instruction.stack_pop()
 
     instruction.constrain_equal(
-        instruction.is_zero(FQ(sum(value.le_bytes))),
+        instruction.is_zero(value),
         instruction.stack_push(),
     )
 
