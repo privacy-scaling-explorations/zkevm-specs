@@ -331,7 +331,9 @@ class Instruction:
     def rlc_encode(self, value: Union[FQ, int, bytes], n_bytes: int = None) -> RLC:
         if isinstance(value, FQ):
             value = value.n
-        if isinstance(value, int):
+        if isinstance(value, bytes):
+            n_bytes = len(value) if n_bytes is None else n_bytes
+        else:
             assert n_bytes is not None
         return RLC(value, self.randomness, n_bytes)
 
