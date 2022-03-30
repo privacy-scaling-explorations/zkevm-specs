@@ -162,6 +162,7 @@ class RWTableTag(IntEnum):
     Stack = auto()
     Memory = auto()
     TxLog = auto()
+    TxReceipt = auto()
 
     # For state writes which affect future execution before reversion, we need
     # to write them with reversion when the write might fail.
@@ -243,8 +244,8 @@ class TxLogFieldTag(IntEnum):
     Address = auto()  # address of the contract that generated the event
     Topic = auto()  # list of topics provided by the contract
     Data = auto()  # log data in bytes
-    Topic_Length = auto()  # topic number
-    Data_length = auto()  # how many bytes read from memory
+    Topic_Length = auto()  # topic number, For RLP encoding
+    Data_length = auto()  # how many bytes read from memory, For RLP encoding
 
 
 class TxReceiptFieldTag(IntEnum):
@@ -330,6 +331,7 @@ class RWTableRow(TableRow):
     key1: Expression = field(default=FQ(0))
     key2: Expression = field(default=FQ(0))
     key3: Expression = field(default=FQ(0))
+    key4: Expression = field(default=FQ(0))
     value: Expression = field(default=FQ(0))
     value_prev: Expression = field(default=FQ(0))
     aux0: Expression = field(default=FQ(0))
@@ -419,6 +421,7 @@ class Tables:
         key1: Expression = None,
         key2: Expression = None,
         key3: Expression = None,
+        key4: Expression = None,
         value: Expression = None,
         value_prev: Expression = None,
         aux0: Expression = None,
@@ -431,6 +434,7 @@ class Tables:
             "key1": key1,
             "key2": key2,
             "key3": key3,
+            "key4": key4,
             "value": value,
             "value_prev": value_prev,
             "aux0": aux0,

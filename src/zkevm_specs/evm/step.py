@@ -109,6 +109,7 @@ class CopyToLogAuxData:
     bytes_left: FQ
     src_addr_end: FQ
     is_persistent: FQ
+    tx_id: FQ
 
     def __init__(
         self,
@@ -116,6 +117,7 @@ class CopyToLogAuxData:
         bytes_left: int,
         src_addr_end: int,
         is_persistent: int,
+        tx_id: int,
     ):
         self.src_addr = FQ(src_addr)
         self.bytes_left = FQ(bytes_left)

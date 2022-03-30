@@ -15,6 +15,8 @@ def log(instruction: Instruction):
     mstart = instruction.rlc_to_fq(instruction.stack_pop(), 8)
     msize = instruction.rlc_to_fq(instruction.stack_pop(), 8)
 
+    # read tx id
+    tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
     # check not static call
     instruction.constrain_equal(
         FQ(0), instruction.call_context_lookup(CallContextFieldTag.IsStatic)
@@ -25,9 +27,10 @@ def log(instruction: Instruction):
 
     contract_address = instruction.call_context_lookup(CallContextFieldTag.CalleeAddress)
     is_persistent = instruction.call_context_lookup(CallContextFieldTag.IsPersistent)
-    if is_persistent:
+    if instruction.is_zero(is_persistent) == 0:
         instruction.constrain_equal(
-            contract_address, instruction.tx_log_lookup(TxLogFieldTag.Address)
+            contract_address,
+            instruction.tx_log_lookup(tx_id=tx_id, field_tag=TxLogFieldTag.Address),
         )
 
     # constrain topics in stack & logs
@@ -37,9 +40,12 @@ def log(instruction: Instruction):
         if i < topic_count:
             is_topic_zeros[i] = 0
             topic = instruction.stack_pop()
-            if is_persistent:
+            if instruction.is_zero(is_persistent) == 0:
                 instruction.constrain_equal(
-                    topic.expr(), instruction.tx_log_lookup(TxLogFieldTag.Topic, i).expr()
+                    topic.expr(),
+                    instruction.tx_log_lookup(
+                        tx_id=tx_id, field_tag=TxLogFieldTag.Topic, index=i
+                    ).expr(),
                 )
 
     # TOPIC_COUNT == Non zero topic count
@@ -68,7 +74,7 @@ def log(instruction: Instruction):
     )
     dynamic_gas = GAS_COST_LOG * (opcode - Opcode.LOG0) + 8 * msize + memory_expansion_gas
 
-    assert isinstance(is_persistent, int)
+    assert isinstance(is_persistent, FQ)
     instruction.step_state_transition_in_same_context(
         opcode,
         rw_counter=Transition.delta(instruction.rw_counter_offset),

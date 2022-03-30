@@ -447,10 +447,17 @@ class Instruction:
         return self.tables.tx_lookup(tx_id, FQ(TxContextFieldTag.CallData), call_data_index).value
 
     # look up tx log fields (Data, Address, Topic),
-    def tx_log_lookup(self, field_tag: TxLogFieldTag, index: int = 0) -> Expression:
+    def tx_log_lookup(
+        self, tx_id: Expression, field_tag: TxLogFieldTag, index: int = 0
+    ) -> Expression:
         # evm only write tx log
         value = self.rw_lookup(
-            RW.Write, RWTableTag.TxLog, key1=self.curr.log_id, key2=FQ(index), key3=FQ(field_tag)
+            RW.Write,
+            RWTableTag.TxLog,
+            key1=tx_id,
+            key2=self.curr.log_id,
+            key3=FQ(field_tag),
+            key4=FQ(index),
         ).value
         return value
 
@@ -492,6 +499,7 @@ class Instruction:
         key1: Expression = None,
         key2: Expression = None,
         key3: Expression = None,
+        key4: Expression = None,
         value: Expression = None,
         value_prev: Expression = None,
         aux0: Expression = None,
@@ -509,6 +517,7 @@ class Instruction:
             key1,
             key2,
             key3,
+            key4,
             value,
             value_prev,
             aux0,
