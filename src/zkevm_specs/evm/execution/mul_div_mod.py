@@ -58,7 +58,7 @@ def mul_div_mod(instruction: Instruction):
 
     # constrain remainder < divisor when divisor != 0 for DIV and MOD
     lt, _ = instruction.compare_word(c, b)
-    instruction.constrain_zero((1 - is_mul) * (1 - divisor_is_zero) * lt)
+    instruction.constrain_zero((1 - is_mul) * (1 - divisor_is_zero) * (1 - lt))
 
     # constrain overflow == 0 for DIV and MOD
     instruction.constrain_zero((1 - is_mul) * overflow)

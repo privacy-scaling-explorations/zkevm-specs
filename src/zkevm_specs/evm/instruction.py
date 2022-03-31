@@ -298,8 +298,8 @@ class Instruction:
         """
         assert len(lhs.le_bytes) == 32, "Expected word to contain 32 bytes"
         assert len(rhs.le_bytes) == 32, "Expected word to contain 32 bytes"
-        lhs_hi, lhs_lo = self.word_to_lo_hi(lhs)
-        rhs_hi, rhs_lo = self.word_to_lo_hi(rhs)
+        lhs_lo, lhs_hi = self.word_to_lo_hi(lhs)
+        rhs_lo, rhs_hi = self.word_to_lo_hi(rhs)
         hi_lt, hi_eq = self.compare(lhs_hi, rhs_hi, 16)
         lo_lt, lo_eq = self.compare(lhs_lo, rhs_lo, 16)
         return FQ(hi_lt + hi_eq * lo_lt), FQ(hi_eq * lo_eq)
