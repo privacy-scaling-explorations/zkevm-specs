@@ -23,4 +23,4 @@ Pop an EVM word `value` from the stack. If it is zero, push `1` back to the stac
 
 ## Code
 
-See `src/zkevm_specs/opcode/iszero.py`
+See `src/zkevm_specs/evm/execution/iszero.py`
