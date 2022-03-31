@@ -308,9 +308,9 @@ def check_tx_log(row: Row, row_prev: Row):
 def check_tx_receipt(row: Row, row_prev: Row):
     tx_id = row.keys[1]
     pre_tx_id = row_prev.keys[1]
-    field_tag = row.keys[2]
+    field_tag = row.keys[3]
     # 0. Unused keys are 0
-    assert row.keys[3] == 0
+    assert row.keys[2] == 0
     assert row.keys[4] == 0
 
     # value for tag `PostStateOrStatus` is bool (0 or 1) according to EIP#658
@@ -616,7 +616,7 @@ class TxReceiptOp(Operation):
     def __new__(self, rw_counter: int, rw: RW, tx_id: int, field_tag: TxReceiptFieldTag, value: FQ):
         # fmt: off
         return super().__new__(self, rw_counter, rw,
-                U256(Tag.TxReceipt), U256(tx_id), U256(field_tag), U256(0), U256(0), # keys
+                U256(Tag.TxReceipt), U256(tx_id),  U256(0), U256(field_tag), U256(0), # keys
                 value, FQ(0), FQ(0)) # values
         # fmt: on
 

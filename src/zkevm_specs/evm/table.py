@@ -244,8 +244,8 @@ class TxLogFieldTag(IntEnum):
     Address = auto()  # address of the contract that generated the event
     Topic = auto()  # list of topics provided by the contract
     Data = auto()  # log data in bytes
-    Topic_Length = auto()  # topic number, For RLP encoding
-    Data_length = auto()  # how many bytes read from memory, For RLP encoding
+    TopicLength = auto()  # topic number, For RLP encoding
+    DataLength = auto()  # how many bytes read from memory, For RLP encoding
 
 
 class TxReceiptFieldTag(IntEnum):
@@ -256,8 +256,10 @@ class TxReceiptFieldTag(IntEnum):
 
     # The following are write-only data inside a transaction, they will be written in
     # State circuit directly.
-    PostStateOrStatus = auto()  # address of the contract that generated the event
-    CumulativeGasUsed = auto()  # list of topics provided by the contract
+    PostStateOrStatus = auto()  # flag indicates whether if a tx succeed or not
+    # the cumulative gas used in the block containing the transaction receipt as of immediately
+    # after the transaction has happened.
+    CumulativeGasUsed = auto()
 
 
 class WrongQueryKey(Exception):
