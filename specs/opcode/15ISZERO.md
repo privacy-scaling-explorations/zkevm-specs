@@ -1,4 +1,4 @@
-# ISZERO opcodes
+# ISZERO opcode
 
 ## Procedure
 
