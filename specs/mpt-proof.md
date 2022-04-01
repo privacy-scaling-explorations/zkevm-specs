@@ -150,13 +150,13 @@ The two parallel proofs are called S proof and C proof in the MPT circuit layout
 The first 34 columns are for the S proof.
 The next 34 columns are for the C proof.
 The remaining columns are selectors, for example, for specifying whether the
-row is branch node or leaf node.
+row is a branch node or a leaf node.
 
-34 columns presents 2 + 32. 32 columns are used because this is the length
-of hash output.
+34 columns presents 2 + 32.
+The first 2 columns are RLP specific as we will see below.
+32 columns are used because this is the length of hash output.
 Note that, for example, each branch node is given in a hash format -
 it occupies 32 positions.
-The first 2 columns are RLP specific as we will see below.
 
 In the codebase, the columns are named:
 
@@ -181,21 +181,22 @@ Branch (the two extension node rows are empty):
   <img src="./img/branch_diagram.png?raw=true" width="50%">
 </p>
 
-Extension node:
+Extension node (the two extension node rows are non-empty):
 
 <p align="center">
   <img src="./img/extension_node.png?raw=true" width="50%">
 </p>
 
 Boolean selectors `is_branch_init`, `is_branch_child`, `is_last_branch_child`,
-`is_modified` to trigger the constraints only when necessary.
+`is_modified` are used to trigger the constraints only when necessary.
 Two examples:
 
-- checking that branch RLC is computed properly is done in the last branch row (`is_last_branch_child`)
-- S and C children are checked to be the same in all rows except at `is_modified`
+- Checking that hash of a branch RLP is in the parent element
+  (branch / extension node) is done in the last branch row (`is_last_branch_child`)
+- S and C children are checked to be the same in all rows except at `is_modified`.
 
-There are two other columns that make sure the branch rows apply to the prescribed layout:
-`node_index` and `modified_node`.
+There are two other columns that ensure that branch rows follow
+the prescribed layout: `node_index` and `modified_node`.
 
 `node_index` is checked to be running monotonously from 0 to 15.
 This way it is ensured that branch layout really has 16 branch children rows.
@@ -209,16 +210,16 @@ it would be difficult to write a constraint for `node_index - modified_node = 0`
 
 `is_last_branch_child` is checked to be in the row with `node_index` = 15.
 `is_branch_child` is checked to follow either `is_branch_init` or `is_branch_child`.
-After `is_branch_init` it is checked to be `is_branch_child = 1`.
-After `is_branch_init` it is checked to be `node_index = 0`.
+After `is_branch_init` it is checked to be a row with  `is_branch_child = 1`.
+After `is_branch_init` it is checked to be a row `node_index = 0`.
 When `is_branch_child` changes, it is checked to be `node_index = 15` in the previous row.
 
-When `node_index != 15`, it is checked `is_last_branch_child = 0`.
-When `node_index = 15`, it is checked `is_last_branch_child = 1`.
+When `node_index != 15`, it is checked that `is_last_branch_child = 0`.
+When `node_index = 15`, it is checked that `is_last_branch_child = 1`.
 
-All these constraints are given in `branch.rs`.
+All these constraints are implemented in `branch.rs`.
 Constraints to ensure the proper order of rows (after what row `is_branch_init` can appear,
-for example) are given in `selectors.rs`.
+for example) are implemented in `selectors.rs`.
 
 <p align="center">
   <img src="./img/branch.png?raw=true" width="75%">
@@ -229,9 +230,15 @@ The last two rows are all zeros because this is a regular branch,
 not an extension node.
 
 Each branch node row starts with 34 S proof columns and 34 C proof columns.
-For non-empty rows, `rlp1` is always 160, because this denotes the length of the
-substream which is 32 (= 160 - 128). The substream (in `advices`) in this case is hash of a
-node.
+For non-empty rows, `rlp1` is always 160:
+
+```
+0, 160, 55, 235, ...
+```
+
+This is because 160 denotes (in RLP encoding) the length of the
+substream which is 32 (= 160 - 128). The substream in this case is hash
+of a branch child.
 
 When there is an empty node, the column looks like:
 
@@ -239,12 +246,14 @@ When there is an empty node, the column looks like:
 0, 0, 128, 0, ..., 0
 ```
 
-Empty node in a RLP stream is denoted only by one byte - value 128.
-MPT circuit uses padding with 0s to simplify the comparison
+Empty node in a RLP stream is denoted only by one byte - by value 128.
+However, MPT circuit uses padding with 0s - empty node occupies the whole row too.
+This is too simplify the comparisons
 between S and C branch. This way, the branch nodes are aligned horizontally
 for both proofs.
 
-Non-empty nodes are at positions 3 and 11. Position 11 corresponds to the key (that
+Non-empty nodes in the above picture are at positions 3 and 11.
+Position 11 corresponds to the key (that
 means the key nibble that determines the position of a node in this branch is 11) and
 is stored in `modified_node` column.
 
@@ -253,22 +262,23 @@ is stored in `modified_node` column.
 One can observe that in position 3: `s_advices = c_advices`,
 while in position 11: `s_advices != c_advices`.
 
-That is because this is due to the modification at `key1` from `val1` to `val2`,
-the nibble 11 corresponds to `key1`.
+That is because the nibble 11 corresponds to `key1` where the storage modification
+occured. The branch at position 3 is not affected by this storage modification.
 
 We need `s_advices/c_advices` for two things:
 
-- to compute the overall branch RLC (to be able to check the hash of a branch to be in a parent)
-- to check whether `s_advices/c_advices` (at `is_modified` position)
-  present the hash of the next element in a proof
+- To compute the overall branch RLC (to be able to check the hash of a branch RLP to be in a parent) - in this case, `s_advices/c_advices` is a substream of RLP stream, we need to compare hash of the whole RLP stream to be in a parent
+- To check whether `s_advices/c_advices` (at `is_modified` position)
+  present the hash of the next element in a proof - in this case, `s_advices/c_advices`
+  presents hash that is to be compared to be the hash of the underlying element.
 
-Branch in parent:
+Checking branch hash in a parent:
 
 <p align="center">
   <img src="./img/branch_in_parent.png?raw=true" width="50%">
 </p>
 
-Extension node in parent:
+Checking extension node hash in a parent:
 
 <p align="center">
   <img src="./img/extension_in_parent.png?raw=true" width="50%">
@@ -285,35 +295,32 @@ To integrate `*_advices` RLC into the computation of the whole branch RLC, we
 would just need to compute `mult * *_advices_RLC` and add this to the current RLC value.
 
 To simplify the lookups, the hash of the modified node in branch S is stored in
-`s_mod_node_hash_rlc` column. Similarly, for branch C in `c_mod_node_hash_rlc`.
+`s_mod_node_hash_rlc` column. Similarly, for branch C it is stored in `c_mod_node_hash_rlc`.
 It is checked that this value is the same in all 16 branch children rows.
 
 <p align="center">
   <img src="./img/mod_node_hash_rlc.png?raw=true" width="50%">
 </p>
 
-Having the same value in all rows makes it easier to check that the value correspond
-to the hash at `modified_node` position (otherwise it would be difficult to determine
-the rotation in the row where the hash rlc would be stored because the `modified_node`
-is not fixed).
+Having the same value in all rows makes it easier to check that the value corresponds
+to the hash at `modified_node` position: otherwise it would be difficult to determine
+the rotation to the row where hash rlc is stored because `modified_node`
+is not fixed.
 
-The lookup for a branch is in `branch_hash_in_parent`. The lookup for an extension
-node is in `extension_node.rs`.
+The lookup constraints for branch are implemented in `branch_hash_in_parent`. The lookup constraints for extension node are implemented in `extension_node.rs`.
 
 ### Computing branch RLC
 
 The intermediate branch RLC is computed in each row, the final one is given in
 `is_last_branch_child` row.
 
-The constraints for RLC in branch init row are in `branch_rlc_init.rs`.
-
-Note that the branch init contains the RLC bytes only in (some) of the first 10 columns.
+Branch init row contains the RLC bytes only in (some) of the first 10 columns.
 The columns after this stores branch / extension node selectors.
 
 The RLP of a branch can appear in two slightly different versions:
 
-- At the beginning there appear two RLP meta bytes
-- At the beginning there appear three RLP meta bytes
+- At the beginning there are two RLP meta bytes
+- At the beginning there are three RLP meta bytes.
 
 A branch with two RLP meta bytes looks like:
 
@@ -322,38 +329,47 @@ A branch with two RLP meta bytes looks like:
 ```
 
 In this case, there are 81 bytes from position two onward in the branch RLP stream.
-The RLC in this case should be `248 + 81r`.
+The intermediate RLC in this case should be `248 + 81r`.
 
 A branch with three RLP meta bytes looks like:
-`249, 1, 81,... `
-This means there are 1 * 256 + 81 bytes from position three onward.
-The RLC in this case should be `249 + 1r + 81r^2`.
 
-The first two columns in init branch specify whether S branch has two or three RLP meta bytes:
+```
+249, 1, 81,...
+```
+
+This means there are 1 * 256 + 81 bytes from position three onward.
+The intermediate RLC in this case should be `249 + 1r + 81r^2`.
+
+Columns 0 and 1 in branch init row specify whether S branch has two or three RLP meta bytes:
 
 - `1, 0` means two RLP meta bytes
-- `0, 1` means three RLP meta bytes
+- `0, 1` means three RLP meta bytes.
 
-Branch init RLP bytes:
+Similarly, columns 2 and 3 specify
+whether C branch has two or three RLP meta bytes.
 
-- cols 2 and 3: whether branch C has 2 or 3 RLP meta data bytes
-- cols 4 and 5: the actual branch S RLP meta data bytes
-- col 6: the actual branch S RLP meta data byte (if there are 3 RLP meta data bytes in branch S)
-- cols 7 and 8: branch C RLP meta data bytes
-- col 9: the actual branch C RLP meta data byte (if there are 3 RLP meta data bytes in branch C)
+Further branch init RLP bytes:
+
+- Columns 4 and 5: the actual branch S RLP meta data bytes
+- Column 6: the actual branch S RLP meta data byte (if there are 3 RLP meta data bytes in branch S)
+- Columns 7 and 8: branch C RLP meta data bytes
+- Column 9: the actual branch C RLP meta data byte (if there are 3 RLP meta data bytes in branch C)
 
 The intermediate RLC values are stored in `acc_s` and `acc_c` columns for S and C branch
 respectively.
+
+The constraints for RLC in branch init row are implemented in `branch_rlc_init.rs`.
 
 <p align="center">
   <img src="./img/branch_rlc_init.png?raw=true" width="60%">
 </p>
 
-Two additional columns are needed: `acc_mult_s` and `acc_mult_c`.
-These two columns are used to know with what multiplier should the next row begin with:
+To check the intermediate RLC for `is_branch_child` rows,
+two additional columns are needed: `acc_mult_s` and `acc_mult_c`.
+These two columns are used to know with what multiplier should be used in the next row:
 
 ```
-acc_s = acc_s_prev + s_rlp2 * acc_mult_s + s_advices[0] * acc_mult_s * r + s_advices[1] * acc_mult_s * r^2
+acc_s = acc_s_prev + s_rlp2 * acc_mult_s_prev + s_advices[0] * acc_mult_s_prev * r + s_advices[1] * acc_mult_s_prev * r^2
 ```
 
 <p align="center">
@@ -361,57 +377,79 @@ acc_s = acc_s_prev + s_rlp2 * acc_mult_s + s_advices[0] * acc_mult_s * r + s_adv
 </p>
 
 Constraints for `acc_s, acc_c, acc_mult_s, acc_mult_c`
-being computed properly are in `branch_rlc.rs`.
+are implemented in `branch_rlc.rs`.
 
-There are two types of branch child: empty and non-empty. An empty child only contains
-128 in `advices[0]` column, a non-empty child contains 160 in `rlp1` and then the child's
-hash is given in 32 `advices` columns.
-The constraints for `acc_s, acc_c, acc_mult_s, acc_mult_c` are thus simple because
-there is in both cases a fixed number of columns used. For example, the constraint
+There are two types of branch child: empty and non-empty.
+Both has a fixed number of bytes (33 and 1) which simplifies
+the constraints for `acc_s, acc_c, acc_mult_s, acc_mult_c`.
+For example, the constraint
 for `acc_mult_s` for non-empty child would be:
 
 ```
 acc_mult_s = acc_mult_s_prev * r^33
 ```
 
-It is different in leaf rows where the number of columns used is not fixed as we will
-see below.
+On the other hand, leaf rows do not have a fixed number of bytes (key in a leaf
+can be of different lengths) which require more complex constraints as is described
+below.
 
-In `is_last_branch_child` row, `acc_s` and `acc_c` contain the RLC of branch S and branch C
-respectively.
+In `is_last_branch_child` row, columns `acc_s` and `acc_c` contain the RLC of branch S and branch C respectively. These two values are compared to be the same as
+the intermediate RLC values in the last branch children row.
 
-### Branch length correspond to the RLP meta bytes
+### Branch length corresponds to the RLP meta bytes
 
-To check whether the length of the stream correspond to the length specified
-with the RLP meta bytes, we use column 0. In each row we subtract the number
-of bytes in a row. In the last row we checked whether the value is 1 (1 because
-RLP length includes also ValueNode which occupies 1 byte).
+As discussed above, branch RLP can have two or three RLP meta bytes that specify
+its length.
+To check whether the actual length of the stream corresponds to the length specified
+with the RLP meta bytes, column 0 is used (`s_rlp1, c_rlp1`).
+In each row we subtract the number
+of bytes in a row: 33 for non-empty row, 1 for empty row.
+In the last row we checked whether the value is 1.
+
+The final value should be 1 (and not 0) because
+RLP length includes also ValueNode which occupies 1 byte and is not stored in MPT layout.
 
 <p align="center">
-  <img src="./img/branch_length.png?raw=true" width="60%">
+  <img src="./img/branch_length.png?raw=true" width="20%">
 </p>
 
-Note that branch node row can have either have 33 bytes or 1 byte. So, in each row,
-the value in column 0 decreases by 33 or 1. These constraints are implemented in `branch.rs`.
+Constraints for RLP length are implemented in `branch.rs`.
 
 ### Address and key RLC in branch nodes
 
-`modified_node` in the branch corresponds to one of the nibbles of key/address.
-To check whether the proper key/address is used, key/address RLC is computed and
-finally checked in the leaf row.
-In each branch, an intermediate key/address RLC is checked to be computed properly.
+To check that storage modification occurs at the proper address / key,
+the circuit computes intermediate address RLC / key RLC at each branch / extension node. The final address RLC is computed in `is_account_leaf` row, the final
+key RLC is computed in `is_leaf_key` row.
+
+In each branch,
+`modified_node` corresponds to one of the nibbles of the key/address.
 
 <p align="center">
   <img src="./img/address_key_branch_rlc.png?raw=true" width="60%">
 </p>
 
-Two consecutive branches represent one byte of key/address. We need to know whether
-the branch `modified_node` is the first or the second nibble of the key/address byte.
-This information is given in branch init in two `s_advices` columns
+Let us say the address (after being hashed) is composed of the following nibbles:
+
+```
+n0 n1 n2 ... n63
+```
+
+This means the bytes are:
+
+```
+(n0 * 16 + n1) (n2 * 16 + n3) ... (n62 * 16 + n63)
+```
+
+`modified_node` in one branch / extension node corresponds to one nibble, two
+consecutive elements (each branch or extension node) corresponds to one byte.
+
+To compute the RLC, we need to know whether
+the branch / extension node is the first or second nibble of a byte.
+This information is given in branch init row in two `s_advices` columns:
 `s_advices[IS_BRANCH_C16_POS - LAYOUT_OFFSET]` and
 `s_advices[IS_BRANCH_C1_POS - LAYOUT_OFFSET]`.
-
 If it is the first nibble, `modified_node` is multiplied by 16, otherwise by 1.
+
 Constraints for
 `s_advices[IS_BRANCH_C16_POS - LAYOUT_OFFSET]` and
 `s_advices[IS_BRANCH_C1_POS - LAYOUT_OFFSET]`
@@ -422,39 +460,101 @@ discussed below), and the sum of the two needs to be 1.
 
 ### Extension node rows
 
-Extension node can be viewed as a special branch. It contains a regular branch
-with the addition of a key extension. Key extension is set of nibbles (most
-often only one or two nibbles) that "extend" the path to the branch.
+When does extension node appear?
 
-The extension node element in proof (returned by `eth getProof`) contains
-the information about nibbles and the hash of the underlying branch.
+Let us first observe the leaf in the picture below.
+
+<p align="center">
+  <img src="./img/leaf.png?raw=true" width="40%">
+</p>
+
+This leaf appears at position:
+
+```
+n0 n1 n2 n3
+```
+
+The rest of the nibbles are stored in the leaf.
+
+There are three possible storage modification scenarios:
+
+- If the storage modification occurs at the same key (all 64 nibbles match), the
+  value in the leaf will be updated.
+- If the storage modification occurs at the key where `n0 n1 n2 n3` match,
+  a branch is inserted instead of a leaf. Let us say the nibbles of the key where
+  change occurs are: `n0 n1 n2 n3 m4 m5 ... m63`. This branch contains two leaves:
+  the old one at position `n4` and the new one at position `m4`.
+
+<p align="center">
+  <img src="./img/into_branch.png?raw=true" width="35%">
+</p>
+- If the storage modification occurs at the key where `n0 n1 n2 n3` match and
+also some further nibbles match, for example: `n4 = m4, n5 = m5, n6 = m6`,
+ an extension node is inserted instead of a leaf. Extension node is like a leaf,
+ it contains key (which stores nibbles, in our example: `n4 n5 n6`) and value which is
+ hash of the new branch. The new branch contains two leaves:
+ the old one at position `n7` and the new one at position `m7` (where `n7 != m7`).
+<p align="center">
+  <img src="./img/into_extension.png?raw=true" width="35%">
+</p>
+
+Extension node can be viewed as a special branch. It contains a regular branch,
+but to arrive to this branch there is an extension - additional nibbles to be
+navigated. In the picture, the extension is: `n4 n5 n6`.
+
+The extension node element returned by `eth getProof` thus appear
+as leaf. It contains:
+
+- In the key: the information about nibbles in the leaf key.
+- In the value: the hash of the underlying branch.
 
 For example, the proof element of an extension node looks like:
 
-`228,130,0,149,160,114,253,150,133,18,192,156,19,241,162,51,210,24,1,151,16,48,7,177,42,60,49,34,230,254,242,79,132,165,90,75,249`
+```
+228,130,0,149,160,114,253,150,133,18,192,156,19,241,162,51,210,24,1,151,16,48,7,177,42,60,49,34,230,254,242,79,132,165,90,75,249
+```
 
-130 means there are 2 (130 - 128) bytes compressing the nibbles.
-These two bytes are
-`0, 149`.
-The two nibbles compressed are 9 and 5 (149 = 9 * 16 + 5).
+The key (information about nibbles) is stored in:
+
+```
+0 149
+```
+
+The value (branch hash) is stored in:
+
+```
+114 253 150 ...
+```
+
+The second byte (130) means there are 2 (130 - 128) bytes compressing the nibbles.
+These two bytes are `0, 149` and they represent
+the two nibbles: 9 and 5 (149 = 9 * 16 + 5).
 
 The bytes after 160 present a hash of the underlying branch.
 
-MPT layout uses `s_rlp1`, `s_rlp2`, and `s_advices` for RLP meta bytes and nibbles,
-while `c_advices` are used for branch hash (`c_rlp2` stores 160 - denoting the number
-of hash bytes).
+The layout uses `s_rlp1`, `s_rlp2`, and `s_advices` for RLP meta bytes and nibbles,
+while `c_advices` are used for branch hash, and `c_rlp2` stores 160 - denoting the number of hash bytes.
+
+<p align="center">
+  <img src="./img/extension_node_row.png?raw=true" width="35%">
+</p>
 
 There are two extension node rows - one for S proof, one for C proof.
-However, the extension key (nibbles) is the same for both proofs, we don't need
-to double this information.
-For this reason, in C row, we don't put key into `s_rlp1`, `s_rlp2`, and `s_advices`,
-we just put hash of C extension node underlying branch in `c_advices`.
+However, the extension key (nibbles) is the same for S and C, we do not need
+to duplicate this information.
+For this reason, in C row, we do not put key into `s_rlp1`, `s_rlp2`, and `s_advices`,
+we just put hash of C underlying branch in `c_advices`.
 
-However, in C row, we store additional witness for nibbles (because nibbles are
-given compressed in bytes) into `s_rlp1`, `s_rlp2`, and `s_advices`.
+But we do not leave `s_rlp1, s_rlp2, s_advices` empty in C row, we store additional witness for nibbles there because nibbles are
+compressed in bytes and it makes it difficult to decompress back into nibbles
+without any helper witnesses.
 
 For example:
 `0, 0, 5, 0, 0, ...`
+
+<!--
+modify extension in parent diagram
+-->
 
 Here, 5 presents the second nibbles of 149 (see above).
 Having the second nibble simplifies the computation of the first nibble.
