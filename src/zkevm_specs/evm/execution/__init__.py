@@ -3,6 +3,7 @@ from typing import Callable, Dict
 from ..execution_state import ExecutionState
 
 from .begin_tx import *
+from .copy_code_to_memory import *
 from .end_tx import *
 from .end_block import *
 from .memory_copy import *
@@ -19,6 +20,7 @@ from .caller import *
 from .callvalue import *
 from .calldatacopy import *
 from .calldataload import *
+from .codecopy import *
 from .gas import *
 from .iszero import *
 from .jump import *
@@ -39,6 +41,7 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.EndTx: end_tx,
     ExecutionState.EndBlock: end_block,
     ExecutionState.CopyToMemory: copy_to_memory,
+    ExecutionState.CopyCodeToMemory: copy_code_to_memory,
     ExecutionState.ADD: add,
     ExecutionState.ORIGIN: origin,
     ExecutionState.CALLER: caller,
@@ -46,6 +49,7 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.CALLDATACOPY: calldatacopy,
     ExecutionState.CALLDATALOAD: calldataload,
     ExecutionState.CALLDATASIZE: calldatasize,
+    ExecutionState.CODECOPY: codecopy,
     ExecutionState.COINBASE: coinbase,
     ExecutionState.TIMESTAMP: timestamp,
     ExecutionState.NUMBER: number,
