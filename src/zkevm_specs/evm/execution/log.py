@@ -12,8 +12,8 @@ def log(instruction: Instruction):
     instruction.range_lookup(opcode - Opcode.LOG0, 5)
 
     # pop `mstart`, `msize` from stack
-    mstart = instruction.rlc_to_fq_exact(instruction.stack_pop(), 8)
-    msize = instruction.rlc_to_fq_exact(instruction.stack_pop(), 8)
+    mstart = instruction.rlc_to_fq(instruction.stack_pop(), 8)
+    msize = instruction.rlc_to_fq(instruction.stack_pop(), 8)
 
     # check not static call
     instruction.constrain_equal(

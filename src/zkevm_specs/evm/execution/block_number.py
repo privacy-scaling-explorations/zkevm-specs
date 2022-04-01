@@ -11,7 +11,7 @@ def number(instruction: Instruction):
     # check block table for number
     instruction.constrain_equal(
         instruction.block_context_lookup(BlockContextFieldTag.Number),
-        instruction.rlc_to_fq_exact(instruction.stack_push(), N_BYTES_U64),
+        instruction.rlc_to_fq(instruction.stack_push(), N_BYTES_U64),
     )
 
     instruction.step_state_transition_in_same_context(

@@ -42,8 +42,8 @@ def call(instruction: Instruction):
     instruction.constrain_bool(is_success)
 
     # Recomposition of random linear combination to integer
-    callee_address = instruction.rlc_to_fq_unchecked(callee_address_rlc, N_BYTES_ACCOUNT_ADDRESS)
-    gas = instruction.rlc_to_fq_unchecked(gas_rlc, N_BYTES_GAS)
+    callee_address = instruction.rlc_to_fq(callee_address_rlc, N_BYTES_ACCOUNT_ADDRESS)
+    gas = instruction.rlc_to_fq(gas_rlc, N_BYTES_GAS)
     gas_is_u64 = instruction.is_zero(instruction.sum(gas_rlc.le_bytes[N_BYTES_GAS:]))
     cd_offset, cd_length = instruction.memory_offset_and_length(cd_offset_rlc, cd_length_rlc)
     rd_offset, rd_length = instruction.memory_offset_and_length(rd_offset_rlc, rd_length_rlc)
@@ -87,7 +87,7 @@ def call(instruction: Instruction):
     callee_nonce = instruction.account_read(callee_address, AccountFieldTag.Nonce)
     callee_code_hash = instruction.account_read(callee_address, AccountFieldTag.CodeHash)
     is_empty_code_hash = instruction.is_equal(
-        callee_code_hash, instruction.rlc_encode(EMPTY_CODE_HASH)
+        callee_code_hash, instruction.rlc_encode(EMPTY_CODE_HASH, 32)
     )
     is_account_empty = (
         instruction.is_zero(callee_nonce)

@@ -10,7 +10,7 @@ from .memory_copy import *
 from .copy_to_log import *
 
 # Opcode's successful cases
-from .add import *
+from .add_sub import *
 from .block_coinbase import *
 from .block_timestamp import *
 from .block_number import *
@@ -25,6 +25,7 @@ from .gas import *
 from .iszero import *
 from .jump import *
 from .jumpi import *
+from .mul_div_mod import *
 from .origin import *
 from .push import *
 from .slt_sgt import *
@@ -40,9 +41,10 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.BeginTx: begin_tx,
     ExecutionState.EndTx: end_tx,
     ExecutionState.EndBlock: end_block,
-    ExecutionState.CopyToMemory: copy_to_memory,
     ExecutionState.CopyCodeToMemory: copy_code_to_memory,
-    ExecutionState.ADD: add,
+    ExecutionState.CopyToMemory: copy_to_memory,
+    ExecutionState.ADD: add_sub,
+    ExecutionState.MUL: mul_div_mod,
     ExecutionState.ORIGIN: origin,
     ExecutionState.CALLER: caller,
     ExecutionState.CALLVALUE: callvalue,

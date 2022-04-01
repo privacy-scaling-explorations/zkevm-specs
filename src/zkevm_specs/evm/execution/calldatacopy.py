@@ -13,7 +13,7 @@ def calldatacopy(instruction: Instruction):
 
     # convert rlc to FQ
     memory_offset, length = instruction.memory_offset_and_length(memory_offset_word, length_word)
-    data_offset = instruction.rlc_to_fq_exact(data_offset_word, N_BYTES_MEMORY_ADDRESS)
+    data_offset = instruction.rlc_to_fq(data_offset_word, N_BYTES_MEMORY_ADDRESS)
 
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId, RW.Read)
     if instruction.curr.is_root:

@@ -62,9 +62,9 @@ class KeccakTable:
         self.table.add(
             (
                 FQ(1),
-                RLC(bytes(reversed(input)), randomness, n_bytes=64).value,
+                RLC(bytes(reversed(input)), randomness, n_bytes=64).expr(),
                 FQ(len(input)),
-                RLC(output, randomness).value,
+                RLC(output, randomness).expr(),
             )
         )
 
@@ -181,7 +181,7 @@ class SignVerifyGadget:
         pub_key_hash = keccak(pub_key.to_bytes())
         self_pub_key_hash = RLC(pub_key_hash, randomness)
         self_address = FQ(int.from_bytes(pub_key_hash[-20:], "big"))
-        self_msg_hash_rlc = RLC(int.from_bytes(msg_hash, "big"), randomness).value
+        self_msg_hash_rlc = RLC(int.from_bytes(msg_hash, "big"), randomness).expr()
         self_ecdsa_chip = ECDSAVerifyChip.assign(signature, pub_key, msg_hash)
         return cls(self_pub_key_hash, self_address, self_msg_hash_rlc, self_ecdsa_chip)
 
@@ -202,9 +202,9 @@ class SignVerifyGadget:
         )
         keccak_table.lookup(
             is_enabled,
-            RLC(bytes(reversed(pub_key_bytes)), randomness, n_bytes=64).value,
+            RLC(bytes(reversed(pub_key_bytes)), randomness, n_bytes=64).expr(),
             FQ(64) * is_enabled,
-            self.pub_key_hash.value,
+            self.pub_key_hash.expr(),
             assert_msg,
         )
 
@@ -308,15 +308,15 @@ def tx2witness(
     rows: List[Row] = []
     rows.append(Row(tx_id, FQ(Tag.Nonce), FQ(0), FQ(tx.nonce)))
     rows.append(Row(tx_id, FQ(Tag.Gas), FQ(0), FQ(tx.gas)))
-    rows.append(Row(tx_id, FQ(Tag.GasPrice), FQ(0), RLC(tx.gas_price, randomness).value))
+    rows.append(Row(tx_id, FQ(Tag.GasPrice), FQ(0), RLC(tx.gas_price, randomness).expr()))
     rows.append(Row(tx_id, FQ(Tag.GasTipCap), FQ(0), FQ(0)))
     rows.append(Row(tx_id, FQ(Tag.GasFeeCap), FQ(0), FQ(0)))
     rows.append(Row(tx_id, FQ(Tag.CallerAddress), FQ(0), FQ(int.from_bytes(addr, "big"))))
     rows.append(Row(tx_id, FQ(Tag.CalleeAddress), FQ(0), FQ(tx.to)))
     rows.append(Row(tx_id, FQ(Tag.IsCreate), FQ(0), FQ(1) if tx.to == FQ(0) else FQ(0)))
-    rows.append(Row(tx_id, FQ(Tag.Value), FQ(0), RLC(tx.value, randomness).value))
+    rows.append(Row(tx_id, FQ(Tag.Value), FQ(0), RLC(tx.value, randomness).expr()))
     rows.append(Row(tx_id, FQ(Tag.CallDataLength), FQ(0), FQ(len(tx.data))))
-    tx_sign_hash_rlc = RLC(int.from_bytes(tx_sign_hash, "big"), randomness).value
+    tx_sign_hash_rlc = RLC(int.from_bytes(tx_sign_hash, "big"), randomness).expr()
     rows.append(Row(tx_id, FQ(Tag.TxSignHash), FQ(0), tx_sign_hash_rlc))
     for byte_index, byte in enumerate(tx.data):
         rows.append(Row(tx_id, FQ(Tag.CallData), FQ(byte_index), FQ(byte)))

@@ -14,7 +14,7 @@ def calldatasize(instruction: Instruction):
         instruction.call_context_lookup(CallContextFieldTag.CallDataLength),
         # NOTE: We can replace this with N_BYTES_WORD if we reuse the 32 byte RLC constraint in
         # all places. See: https://github.com/appliedzkp/zkevm-specs/issues/101
-        instruction.rlc_to_fq_exact(instruction.stack_push(), N_BYTES_MEMORY_ADDRESS),
+        instruction.rlc_to_fq(instruction.stack_push(), N_BYTES_MEMORY_ADDRESS),
     )
 
     instruction.step_state_transition_in_same_context(
