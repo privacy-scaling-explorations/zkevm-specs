@@ -15,7 +15,7 @@ def codecopy(instruction: Instruction):
     )
 
     memory_offset, size = instruction.memory_offset_and_length(memory_offset_word, size_word)
-    code_offset = instruction.rlc_to_fq_exact(code_offset_word, N_BYTES_MEMORY_ADDRESS)
+    code_offset = instruction.rlc_to_fq(code_offset_word, N_BYTES_MEMORY_ADDRESS)
 
     code_size = instruction.bytecode_length(instruction.curr.code_source)
 
