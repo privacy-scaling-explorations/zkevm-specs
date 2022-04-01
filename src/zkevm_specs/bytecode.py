@@ -1,13 +1,13 @@
 from typing import Sequence, Union, Tuple, Set, NamedTuple
 from collections import namedtuple
-from .util import keccak256, FQ, RLC
-from .evm import get_push_size, BytecodeTableRow
+from .util import keccak256, EMPTY_HASH, FQ, RLC
+from .evm import get_push_size, BytecodeFieldTag, BytecodeTableRow
 from .encoding import U8, U256, is_circuit_code
 
 # Row in the circuit
 Row = namedtuple(
     "Row",
-    "q_first q_last hash index byte is_code push_data_left hash_rlc hash_length byte_push_size is_final padding",
+    "q_first q_last hash tag index is_code value push_data_left hash_rlc hash_length byte_push_size is_final padding",
 )
 # Unrolled bytecode
 class UnrolledBytecode(NamedTuple):
@@ -33,21 +33,28 @@ def select(
 def check_bytecode_row(
     row: Row,
     prev_row: Row,
+    next_row: Row,
     push_table: Set[Tuple[int, int]],
     keccak_table: Set[Tuple[int, int, int]],
     r: int,
 ):
     row = Row(*[v if isinstance(v, RLC) else FQ(v) for v in row])
     prev_row = Row(*[v if isinstance(v, RLC) else FQ(v) for v in prev_row])
+    next_row = Row(*[v if isinstance(v, RLC) else FQ(v) for v in next_row])
     if row.q_first == 0 and prev_row.is_final == 0:
         # Continue
-        # index needs to increase by 1
-        assert row.index == prev_row.index + 1
-        # is_code := push_data_left_prev == 0
-        assert row.is_code == (prev_row.push_data_left == 0)
+        if prev_row.tag == BytecodeFieldTag.Length:
+            # index starts from 0
+            assert row.index == 0
+            # is_code := 1, since this is the first byte of the bytecode
+            assert row.is_code == 1
+        else:
+            # index is 1 more than previous row's index
+            assert row.index == prev_row.index + 1
+            # is_code := push_data_left_prev == 0
+            assert row.is_code == (prev_row.push_data_left == 0)
         # hash_rlc := hash_rlc_prev * r + byte
-        assert row.hash_rlc == prev_row.hash_rlc * r + row.byte
-
+        assert row.hash_rlc == prev_row.hash_rlc * r + row.value
         # padding needs to remain the same
         assert row.padding == prev_row.padding
         # hash needs to remain the same
@@ -56,21 +63,33 @@ def check_bytecode_row(
         assert row.hash_length == prev_row.hash_length
     else:
         # Start
-        # index needs to start at 0
-        assert row.index == 0
-        # is_code needs to be 1 (first byte is always an opcode)
-        assert row.is_code == True
-        # hash_rlc needs to start at byte
-        assert row.hash_rlc == row.byte
+        # the row following an `is_final` previous row is either tagged Length
+        if row.tag == BytecodeFieldTag.Length:
+            # value matches hash length
+            assert row.value == row.hash_length
+            # if bytecode length is zero
+            if row.value == 0:
+                # bytecode hash should be EMPTY_HASH
+                assert row.hash == RLC(EMPTY_HASH, FQ(r)).expr()
+                # the next row should be a tag Length or padding
+                assert (next_row.tag == BytecodeFieldTag.Length) or (next_row.tag == 0)
+            else:
+                # the next row should be tag Byte
+                assert next_row.tag == BytecodeFieldTag.Byte
+        # or is the start of padding rows
+        else:
+            assert row.padding == 1
 
     # is_final needs to be boolean
     assert_bool(row.is_final)
     # padding needs to be boolean
     assert_bool(row.padding)
-    # push_data_left := is_code ? byte_push_size : push_data_left_prev - 1
-    assert row.push_data_left == select(
-        row.is_code, row.byte_push_size, prev_row.push_data_left - 1
-    )
+
+    if row.tag == BytecodeFieldTag.Byte:
+        # push_data_left := is_code ? byte_push_size : push_data_left_prev - 1
+        assert row.push_data_left == select(
+            row.is_code, row.byte_push_size, prev_row.push_data_left - 1
+        )
 
     # Padding
     if row.q_first == 0:
@@ -87,9 +106,10 @@ def check_bytecode_row(
         # the last row needs to be the last byte
         assert row.padding == 1 or row.is_final == 1
 
-    # Lookup how many bytes the current opcode pushes
-    # (also indirectly range checks `byte` to be in [0, 255])
-    assert (row.byte, row.byte_push_size) in push_table
+    if row.tag == BytecodeFieldTag.Byte:
+        # Lookup how many bytes the current opcode pushes
+        # (also indirectly range checks `byte` to be in [0, 255])
+        assert (row.value, row.byte_push_size) in push_table
 
     # keccak lookup when on the last byte
     if row.is_final == 1 and row.padding == 0:
@@ -107,13 +127,15 @@ def assign_bytecode_circuit(k: int, bytecodes: Sequence[UnrolledBytecode], rando
         push_data_left = 0
         hash_rlc = FQ(0)
         for idx, row in enumerate(bytecode.rows):
+            # Subsequent rows represent the bytecode bytes
             # Track which byte is an opcode and which is push data
             is_code = push_data_left == 0
-            byte_push_size = get_push_size(row.byte)
-            push_data_left = byte_push_size if is_code else push_data_left - 1
-
-            # Add the byte to the accumulator
-            hash_rlc = hash_rlc * randomness + row.byte
+            byte_push_size = 0
+            if idx > 0:
+                byte_push_size = get_push_size(row.value)
+                push_data_left = byte_push_size if is_code else push_data_left - 1
+                # Add the byte to the accumulator
+                hash_rlc = hash_rlc * randomness + row.value
 
             # Set the data for this row
             rows.append(
@@ -121,14 +143,16 @@ def assign_bytecode_circuit(k: int, bytecodes: Sequence[UnrolledBytecode], rando
                     offset == 0,
                     offset == last_row_offset,
                     row.bytecode_hash,
+                    row.field_tag,
                     row.index,
-                    row.byte,
                     row.is_code,
+                    row.value,
                     push_data_left,
                     hash_rlc,
                     len(bytecode.bytes),
                     byte_push_size,
-                    idx == len(bytecode.bytes) - 1,
+                    # Since 1 row is taken up by the Length tag
+                    idx == len(bytecode.bytes),
                     False,
                 )
             )
@@ -144,6 +168,7 @@ def assign_bytecode_circuit(k: int, bytecodes: Sequence[UnrolledBytecode], rando
             Row(
                 idx == 0,
                 idx == last_row_offset,
+                0,
                 0,
                 0,
                 0,

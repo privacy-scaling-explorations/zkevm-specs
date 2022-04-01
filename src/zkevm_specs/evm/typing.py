@@ -21,6 +21,7 @@ from .table import (
     AccountFieldTag,
     BlockContextFieldTag,
     BlockTableRow,
+    BytecodeFieldTag,
     BytecodeTableRow,
     CallContextFieldTag,
     RWTableRow,
@@ -256,18 +257,25 @@ class Bytecode:
                 return self
 
             def __next__(self):
-                if self.idx == len(self.code):
+                # return the length of the bytecode in the first row
+                if self.idx == 0:
+                    self.idx += 1
+                    return BytecodeTableRow(
+                        self.hash, FQ(BytecodeFieldTag.Length), FQ(0), FQ(0), FQ(len(self.code))
+                    )
+
+                if self.idx > len(self.code):
                     raise StopIteration
 
-                idx = self.idx
+                # the other rows represent each byte in the bytecode
+                idx = self.idx - 1
                 byte = self.code[idx]
-
                 is_code = self.push_data_left == 0
                 self.push_data_left = get_push_size(byte) if is_code else self.push_data_left - 1
-
                 self.idx += 1
-
-                return BytecodeTableRow(self.hash, FQ(idx), FQ(byte), FQ(is_code))
+                return BytecodeTableRow(
+                    self.hash, FQ(BytecodeFieldTag.Byte), FQ(idx), FQ(is_code), FQ(byte)
+                )
 
         return BytecodeIterator(RLC(self.hash(), randomness).expr(), self.code)
 

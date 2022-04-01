@@ -23,6 +23,7 @@ from .step import StepState
 from .table import (
     AccountFieldTag,
     BlockContextFieldTag,
+    BytecodeFieldTag,
     CallContextFieldTag,
     FixedTableRow,
     RWTableRow,
@@ -454,9 +455,16 @@ class Instruction:
         return value
 
     def bytecode_lookup(
-        self, bytecode_hash: Expression, index: Expression, is_code: bool
+        self, bytecode_hash: Expression, index: Expression, is_code: Expression = None
     ) -> Expression:
-        return self.tables.bytecode_lookup(bytecode_hash, index, FQ(is_code)).byte
+        return self.tables.bytecode_lookup(
+            bytecode_hash, FQ(BytecodeFieldTag.Byte), index, is_code
+        ).value
+
+    def bytecode_length(self, bytecode_hash: Expression) -> Expression:
+        return self.tables.bytecode_lookup(
+            bytecode_hash, FQ(BytecodeFieldTag.Length), FQ(0), FQ(0)
+        ).value
 
     def tx_gas_price(self, tx_id: Expression) -> RLC:
         return cast_expr(self.tx_context_lookup(tx_id, TxContextFieldTag.GasPrice), RLC)
@@ -475,7 +483,7 @@ class Instruction:
                 "The opcode source when is_root and is_create (root creation call) is not determined yet"
             )
         else:
-            return self.bytecode_lookup(self.curr.code_source, index, is_code).expr()
+            return self.bytecode_lookup(self.curr.code_source, index, FQ(is_code)).expr()
 
     def rw_lookup(
         self,
