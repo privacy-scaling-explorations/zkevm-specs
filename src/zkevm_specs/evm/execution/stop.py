@@ -36,8 +36,6 @@ def stop(instruction: Instruction):
             call_id=Transition.same(),
         )
     else:
-        caller_id = instruction.call_context_lookup(CallContextFieldTag.CallerId)
-
         # There are 2 possible branch for internal call:
         # 1. is_create:
         #   STOP returns empty bytes as deployment code, but when it's an internal creation call,
@@ -47,10 +45,9 @@ def stop(instruction: Instruction):
         #   STOP returns empty bytes as return_data, which doesn't affect caller's memory at all.
         # So we only need to restore caller's state as finishing this call.
 
-        # Restore caller state to next StepState:
+        # Restore caller state to next StepState
         instruction.step_state_transition_to_restored_context(
             rw_counter=Transition.delta(13),
-            caller_id=caller_id,
             return_data_offset=FQ(0),
             return_data_length=FQ(0),
             gas_left=instruction.curr.gas_left,

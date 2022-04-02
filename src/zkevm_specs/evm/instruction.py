@@ -232,12 +232,12 @@ class Instruction:
     def step_state_transition_to_restored_context(
         self,
         rw_counter: Transition,
-        caller_id: Expression,
         return_data_offset: Expression,
         return_data_length: Expression,
         gas_left: Expression,
     ):
         # Read caller's context for restore
+        caller_id = self.call_context_lookup(CallContextFieldTag.CallerId)
         [
             caller_is_root,
             caller_is_create,
