@@ -123,6 +123,7 @@ class CopyToLogAuxData:
         self.bytes_left = FQ(bytes_left)
         self.src_addr_end = FQ(src_addr_end)
         self.is_persistent = FQ(is_persistent)
+        self.tx_id = FQ(tx_id)
 
 
 class CopyCodeToMemoryAuxData:

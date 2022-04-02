@@ -260,6 +260,8 @@ class TxReceiptFieldTag(IntEnum):
     # the cumulative gas used in the block containing the transaction receipt as of immediately
     # after the transaction has happened.
     CumulativeGasUsed = auto()
+    # record how many log entries in the receipt/tx , 0 if tx fails
+    LogLength = auto()
 
 
 class WrongQueryKey(Exception):

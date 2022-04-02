@@ -297,9 +297,6 @@ def check_tx_log(row: Row, row_prev: Row):
             elif pre_field_tag == field_tag:
                 assert index == pre_index + 1
 
-        # both log_index topic_index data_index are non negative, all starts with zero
-    assert index.n >= 0 and log_id.n >= 0
-
     # make sure if log set is not empty within receipt/tx, tx must be successful status because failed execution will revert the log data,
     # in other words, logs section must be empty list for failed tx
 
@@ -324,7 +321,11 @@ def check_tx_receipt(row: Row, row_prev: Row):
             assert row.value.n > row_prev.value.n
 
     # tx id starts with 1
-    assert tx_id.n >= 1
+    if row.tag() != row_prev.tag():
+        # first row the tx id is 1
+        assert tx_id == FQ(1)
+
+    assert_in_range(tx_id, 1, 2 ** 11)
 
 
 @is_circuit_code
@@ -637,6 +638,12 @@ def op2row(op: Operation, randomness: FQ) -> Row:
     aux0 = FQ(op.aux0)
     aux1 = FQ(op.aux1)
 
+   # fmt: off
+    return Row(rw_counter, is_write,
+            # keys
+            (key0, key1, key2, key3, key4), key2_limbs, key4_bytes, # type: ignore
+            value, (aux0, aux1)) # values
+    # fmt: on
 
 
 # def rw_table_tag2tag(tag: RWTableTag) -> FQ:
