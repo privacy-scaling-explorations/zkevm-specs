@@ -325,7 +325,7 @@ def check_tx_receipt(row: Row, row_prev: Row):
         # first row the tx id is 1
         assert tx_id == FQ(1)
 
-    assert_in_range(tx_id, 1, 2 ** 11)
+    assert_in_range(tx_id, 1, 2**11)
 
 
 @is_circuit_code
@@ -638,7 +638,7 @@ def op2row(op: Operation, randomness: FQ) -> Row:
     aux0 = FQ(op.aux0)
     aux1 = FQ(op.aux1)
 
-   # fmt: off
+    # fmt: off
     return Row(rw_counter, is_write,
             # keys
             (key0, key1, key2, key3, key4), key2_limbs, key4_bytes, # type: ignore
