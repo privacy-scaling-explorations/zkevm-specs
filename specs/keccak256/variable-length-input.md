@@ -15,9 +15,8 @@ No matter what input is, the padding must be applied. The padding is a multi-rat
 Each row other than the first is corresponding to a `Keccak-f` permutation round.
 
 We define these state tags
-- Init: When a new hash job is initiated
-- Absorb: Absorbs non-zero inputs in this permutation
-- Finalize: The hash ends here. The output is ready for the consumer to use.
+- Absorb: Absorbs the current input and permutes state.
+- Finalize: Does the same but it marks the state output is usable for the consumer.
 
 ```mermaid
 stateDiagram-v2
@@ -26,6 +25,7 @@ stateDiagram-v2
     Absorb --> Absorb
     Absorb --> Finalize
     Finalize --> Absorb
+    Finalize --> Finalize
     Finalize --> [*]
 ```
 
@@ -39,26 +39,22 @@ This is also a lookup table for the other circuits to lookup the Keccak256 input
 
 Columns:
 
-- `state_tag` either 0=Start/End, 1=Absorb, 2=Finalize
-- `input_len` Length for correct padding
-- `input` 136 bytes to be absorbed in this round
-- `acc_len` How many length we have absorbed
+- `state_tag` either 0=Start/End/Null, 1=Absorb, 2=Finalize
+- `input_len` The length of the input.
+- `input` 136 bytes to be absorbed in this round. Padding not included yet.
+- `perm_count` Permutations we have done after the current one.
 - `acc_input` Accumulatd bytes by random linear combination (in big-endian order)
 - `output` The base-2 `state[:4]` output from this round `keccak_f`
 
 | state_tag | input_len | input | perm_count | acc_input | output |
 | --------: | --------: | ----: | ---------: | --------: | -----: |
 |         0 |         0 |     0 |          0 |         0 |      0 |
-|    Absorb |        20 |       |          0 |         0 |        |
 |  Finalize |        20 |       |          1 |           |        |
-|    Absorb |       150 |       |          0 |           |        |
 |    Absorb |       150 |       |          1 |           |        |
 |  Finalize |       150 |       |          2 |           |        |
-|    Absorb |         0 |       |          0 |         0 |        |
 |  Finalize |         0 |       |          1 |           |        |
-|    Absorb |       136 |       |          0 |         0 |        |
-|    Absorb |       136 |     0 |          1 |           |        |
-|  Finalize |       136 |       |          2 |           |        |
+|    Absorb |       136 |       |          1 |           |        |
+|  Finalize |       136 |     0 |          2 |           |        |
 |         0 |           |       |          0 |         0 |        |
 
 #### Checks
@@ -67,11 +63,11 @@ We branch the constraints to apply by state_tag
 
 - `q_start`
   - State transition
-    - next.state_tag === Absorb
+    - next.state_tag in (Absorb, Finalize)
 - Absorb
   - if input_len === 136 * (perm_count + 1) absorb a full block of 0x80...0x01
     - next.input === 0 (since the input is the unpadded input)
-    - next.state_tag === Absorb
+    - next.state_tag in (Absorb, Finalize)
   - Next row validity
     - next.acc_input === curr.acc_input * r**136
     - next.perm_count === next.perm_count + 1
@@ -79,14 +75,13 @@ We branch the constraints to apply by state_tag
     - next.state_tag in (Absorb, Finalize)
 - Finalize
     - This is a valid place to finalize
-        - (curr.perm_count * 136 - input_len) in 0~136
+        - (curr.perm_count * 136 - input_len) in 1~136
     - Next row validity
-        - next.perm_count === 0
-        - next.acc_input === 0
-    - State transition
-      - next.state_tag in (Absorb, 0)
+        - next.perm_count === 1
+    - State transition: (Absorb, Finalize, 0) all 3 states allowed
 - 0
     - next.state_tag === 0 (The first row is also satisfied!)
+    - We can broadcast this state_tag to the `keccak_f` as a flag to disable all checks.
 
 
 #### Lookup
@@ -98,15 +93,11 @@ To lookup the Keccak256 input to the output, query the following columns:
 - `acc_input`: RLC
 - `output`: RLC
 
-When the lookup is needed, constrain `state_tag === 3 (Finalize)`.
-
-#### Prover behavior
-
-If the prover uses less `Round`s than the circuit provides, the prover should add a dummy hash that has an input size to use all rest of the `Round`s.
+When the lookup is needed, constrain `state_tag === 2 (Finalize)`.
 
 ### Gadget: Padding Validator
 
-Note that we define a new `acc_len` which increments byte by byte, where the `acc_len` in the lookup region bumps by 136 bytes.
+When the state_tag is Finalize, we activate this region to check the padded input.
 
 #### Plain behavior: The padding rule
 
@@ -163,19 +154,20 @@ Generally we want these properties:
 
 We apply two different checks on the 0~134-th rows and the 135th row.
 
-1. For 0-th row
+1. All checks below are only enabled when `state_tag === Finalize`
+2. For 0-th row
    1. `input_len` is copied from the Lookup Region
-   2. `acc_len` is copied from the Lookup Region
+   2. `acc_len` is `(perm_count - 1)*136`
    3. `curr.is_pad_zone === 0`
-2. For all rows
+3. For all rows
    1. If `is_pad_zone` then `byte === 0`. `is_pad_zone * byte === 0`
-3. For 0~134-th rows
+4. For 0~134-th rows
    1. `next.input_len === curr.input_len`
    2. `next.acc_len === curr.acc_len + 1`
    3. Inverse check for `curr.condition_80_inv`
    4. If `curr.input_len - curr.acc_len` is 0, pad `0x80`: `curr.padded_byte === curr.byte + (1 - (curr.input_len - curr.acc_len) * curr.condition_80_inv) * 0x80`
    5. Set `is_pad_zone` to 1 if we entered. `next.is_pad_zone === curr.is_pad_zone + (1 - (next.input_len - next.acc_len) * next.condition_80_inv)`
-4. For the 135th row
+5. For the 135th row
    1. Same as the previous 0x80 pad, but pad 0x01 if we are in the pad zone. `curr.padded_byte === curr.byte + (1 - (curr.input_len - curr.acc_len) * curr.condition_80_inv) * 0x80 + is_pad_zone * 0x01`
-5. Use `byte_RLC` to running sum `byte`. The sum should be equal to `input` in the lookup region
-6. `padded_byte` are copied to a word builder gadget to build padded words, which would later be copied to the `Keccak-f` permutation
+6. Use `byte_RLC` to running sum `byte`. The sum should be equal to `input` in the lookup region
+7. `padded_byte` are copied to a word builder gadget to build padded words, which would later be copied to the `Keccak-f` permutation
