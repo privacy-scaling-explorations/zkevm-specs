@@ -102,12 +102,13 @@ When the state_tag is Finalize, we activate this region to check the padded inpu
 #### Plain behavior: The padding rule
 
 ```python
-def get_padding(acc_len) -> bytes:
+def get_padding(input_len: int, perm_count: int) -> bytes:
     """
     output big-endian bytes
     """
+    acc_len = (perm_count - 1) * 136
     # note that diff is at maximum 135
-    diff = 136 - acc_len
+    diff = input_len - acc_len
     if diff == 0:
         # pad the next full block
         return [0x80] + ([0x00] * 134) + [0x01]
