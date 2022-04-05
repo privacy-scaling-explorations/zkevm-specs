@@ -49,6 +49,10 @@ class Block:
     difficulty: U256
     base_fee: U256
 
+    # Even ChainId is not a block parameter, since all txs of a block are meant
+    # to use the same chain_id, we set it as as a block parameter.
+    chainid: U256
+
     # It contains most recent 256 block hashes in history, where the lastest
     # one is at history_hashes[-1].
     history_hashes: Sequence[U256]
@@ -61,6 +65,7 @@ class Block:
         timestamp: U64 = U64(0),
         difficulty: U256 = U256(0),
         base_fee: U256 = U256(int(1e9)),
+        chainid: U256 = U256(0x01),
         history_hashes: Sequence[U256] = [],
     ) -> None:
         assert len(history_hashes) <= min(256, number)
@@ -71,6 +76,7 @@ class Block:
         self.timestamp = timestamp
         self.difficulty = difficulty
         self.base_fee = base_fee
+        self.chainid = chainid
         self.history_hashes = history_hashes
 
     def table_assignments(self, randomness: FQ) -> List[BlockTableRow]:
@@ -83,6 +89,7 @@ class Block:
                 FQ(BlockContextFieldTag.Difficulty), FQ(0), RLC(self.difficulty, randomness)
             ),
             BlockTableRow(FQ(BlockContextFieldTag.BaseFee), FQ(0), RLC(self.base_fee, randomness)),
+            BlockTableRow(FQ(BlockContextFieldTag.ChainId), FQ(0), RLC(self.chainid, randomness)),
         ] + [
             BlockTableRow(
                 FQ(BlockContextFieldTag.HistoryHash),
