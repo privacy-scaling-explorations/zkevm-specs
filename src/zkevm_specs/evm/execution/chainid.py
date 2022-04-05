@@ -8,13 +8,10 @@ def chainid(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
     instruction.constrain_equal(opcode, Opcode.CHAINID)
 
-    # Rw Lookup for the stack write of the chain_id
-    value = instruction.stack_push()
-   
     # check block table for CHAINID value
     instruction.constrain_equal(
-        value,
-        instruction.block_context_lookup(BlockContextFieldTag.ChainId)   
+        instruction.stack_push(),
+        instruction.block_context_lookup(BlockContextFieldTag.ChainId)
     )
 
     instruction.step_state_transition_in_same_context(

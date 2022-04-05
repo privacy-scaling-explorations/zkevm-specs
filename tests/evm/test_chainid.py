@@ -9,12 +9,13 @@ from zkevm_specs.evm import (
     RW,
     Block,
     Bytecode,
+    RWDictionary,
 )
 from zkevm_specs.util import  rand_fq, RLC, U256
 from zkevm_specs.util.param import N_BYTES_WORD
 
 
-TESTING_DATA = (0x030201, rand_fq())
+TESTING_DATA = (0x030201, rand_fq().n)
 
 
 @pytest.mark.parametrize("chainid", TESTING_DATA)
@@ -30,11 +31,7 @@ def test_chainid(chainid: U256):
         block_table=set(block.table_assignments(randomness)),
         tx_table=set(),
         bytecode_table=set(bytecode.table_assignments(randomness)),
-        rw_table=set(
-            [
-                (9, RW.Write, RWTableTag.Stack, 1, 1023, 0, RLC(chainid, randomness, N_BYTES_WORD), 0, 0, 0),
-            ]
-        ),
+        rw_table=set(RWDictionary(9).stack_write(1, 1023, RLC(block.chainid.to_bytes(N_BYTES_WORD, "little"), randomness)).rws),
     )
 
     verify_steps(
