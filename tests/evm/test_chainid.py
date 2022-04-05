@@ -10,16 +10,16 @@ from zkevm_specs.evm import (
     Block,
     Bytecode,
 )
-from zkevm_specs.util import  rand_fp, RLC, U256
+from zkevm_specs.util import  rand_fq, RLC, U256
 from zkevm_specs.util.param import N_BYTES_WORD
 
 
-TESTING_DATA = (0x030201, rand_fp())
+TESTING_DATA = (0x030201, rand_fq())
 
 
 @pytest.mark.parametrize("chainid", TESTING_DATA)
 def test_chainid(chainid: U256):
-    randomness = rand_fp()
+    randomness = rand_fq()
 
     block = Block(chainid=chainid)
 
