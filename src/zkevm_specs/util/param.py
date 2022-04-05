@@ -83,7 +83,7 @@ WARM_STORAGE_READ_COST = 100
 SLOAD_GAS = 100
 SSTORE_SET_GAS = 20000
 SSTORE_RESET_GAS = 2900
-SSTORE_CLEARS_SCHEDULE = 15000
+SSTORE_CLEARS_SCHEDULE = 4800
 
 # The max number of bytes that can be copied in a step limited by the number
 # of cells in a step
