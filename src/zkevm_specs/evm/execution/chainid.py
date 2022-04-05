@@ -10,8 +10,7 @@ def chainid(instruction: Instruction):
 
     # check block table for CHAINID value
     instruction.constrain_equal(
-        instruction.stack_push(),
-        instruction.block_context_lookup(BlockContextFieldTag.ChainId)
+        instruction.stack_push(), instruction.block_context_lookup(BlockContextFieldTag.ChainId)
     )
 
     instruction.step_state_transition_in_same_context(
