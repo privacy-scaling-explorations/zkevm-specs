@@ -12,7 +12,13 @@ We recommend the reader to start with [Introduction](./specs/introduction.md)
 
 We provide the [Beacon Chain](https://github.com/ethereum/eth2.0-specs) style Python executable specification to help implementors figure out the specified behavior.
 
-Installing dependencies(Python 3.9 is required)
+Installing [poetry](https://python-poetry.org)(Python 3.9 is required)
+
+```
+curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python -
+```
+
+Installing dependencies
 
 ```
 make install

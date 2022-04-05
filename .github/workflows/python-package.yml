@@ -1,10 +1,8 @@
+
+   
 name: Python package
 
-on:
-  push:
-    branches: [ master ]
-  pull_request:
-    branches: [ master ]
+on: [push, pull_request]
 
 jobs:
   build:
@@ -21,13 +19,16 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
-    - name: Install dependencies
+    - name: Bootstrap poetry
       run: |
-        python -m pip install --upgrade pip
-        make install
+        curl -sL https://install.python-poetry.org | python - -y ${{ matrix.bootstrap-args }}
+    - name: Update PATH
+      run: echo "$HOME/.local/bin" >> $GITHUB_PATH
+    - name: Install
+      run: make install
     - name: Lint
       run: make lint
-    - name: Type check
+    - name: Type
       run: make type
     - name: Test with pytest
       run: make test

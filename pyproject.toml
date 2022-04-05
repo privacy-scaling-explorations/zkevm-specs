@@ -1,9 +1,35 @@
-[build-system]
-requires = [
-    "setuptools>=42",
-    "wheel"
+[tool.poetry]
+name = "zkEVM-specs"
+version = "0.0.1"
+description = "Zkevm specifications"
+authors = ["zkevm-team"]
+homepage = "https://github.com/appliedzkp/zkevm-specs/"
+classifiers = [
+	"Programming Language :: Python :: 3",
+    	"License :: OSI Approved :: MIT License",
+    	"Operating System :: OS Independent"
 ]
-build-backend = "setuptools.build_meta"
+
+
+[tool.poetry.dependencies]
+python = "^3.9"
+pycryptodome = "3.14.1"
+py-ecc = { version = "6.0.0", python = ">=3.9,<3.11" }
+black = "^22.1.0"
+mdformat = "^0.7.13"
+eth-keys = { version = "0.4.0", python = ">=3.9,<3.11" }
+eth-utils = "2.0.0"
+rlp = "3.0.0"
+eth-typing = { version = "3.0.0", python = ">=3.9,<3.11" }
+
+
+[tool.poetry.dev-dependencies]
+pytest = "^7.0.0"
+mypy = "0.942"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
 
 [tool.black]
 line-length = 100

@@ -4,19 +4,19 @@ help: ## Display this help screen
 		awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
 install: # Install the Python packages
-	pip3 install .[test,lint]
+	poetry update
 
 fmt: ## Format the code
-	black .
+	poetry run black .
 
-lint: ## Check whether the code is formatted correctly
-	black . --check
+lint: ## Check whether the code is formated correctly
+	poetry run black . --check
 
-type: ## Check the typing of the Python code
-	mypy src
+type: ## Check whether the typing of the Python code
+	poetry run mypy zkevm_specs
 
 test: ## Run tests
-	pytest
+	poetry run pytest
 
 
 .PHONY: help install fmt lint test

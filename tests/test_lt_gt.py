@@ -3,7 +3,7 @@ import pytest
 from zkevm_specs.encoding import u256_to_u8s, U256
 from zkevm_specs.opcode import check_lt, check_gt
 from zkevm_specs.opcode.stack import Stack
-from common import NASTY_AB_VALUES
+from tests.common import NASTY_AB_VALUES
 
 
 def gen_lt_gt_witness(a: U256, b: U256, is_gt: bool):

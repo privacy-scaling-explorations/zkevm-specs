@@ -12,7 +12,7 @@ from zkevm_specs.evm import (
     Bytecode,
 )
 from zkevm_specs.util import rand_fq, rand_word, RLC
-from common import generate_nasty_tests
+from tests.common import generate_nasty_tests
 
 
 TESTING_DATA = [
