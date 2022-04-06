@@ -30,7 +30,7 @@ def blockctx(instruction: Instruction):
     elif opcode == Opcode.CHAINID:
         op = BlockContextFieldTag.ChainId
         ctx_expr = instruction.stack_push().expr()
-        
+
     # check block table for corresponding op data
     instruction.constrain_equal(instruction.block_context_lookup(op), ctx_expr)
 
