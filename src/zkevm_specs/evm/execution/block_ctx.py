@@ -29,8 +29,8 @@ def blockctx(instruction: Instruction):
         ctx_expr = instruction.stack_push().expr()
     elif opcode == Opcode.CHAINID:
         op = BlockContextFieldTag.ChainId
-        ctx_expr = instruction.rlc_to_fq(instruction.stack_push(), N_BYTES_WORD)
-
+        ctx_expr = instruction.stack_push().expr()
+        
     # check block table for corresponding op data
     instruction.constrain_equal(instruction.block_context_lookup(op), ctx_expr)
 

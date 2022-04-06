@@ -102,7 +102,7 @@ def test_basefee(basefee: U256):
 
 @pytest.mark.parametrize("chainid", TESTING_DATA_U256)
 def test_chainid(chainid: U256):
-    block = Block(base_fee=chainid)
+    block = Block(chainid=chainid)
 
     bytecode = Bytecode().chainid()
 
