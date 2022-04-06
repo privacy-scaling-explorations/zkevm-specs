@@ -43,6 +43,8 @@ GAS_COST_SELF_DESTRUCT = 5000
 GAS_COST_COPY = 3
 # Gas cost of non-creation transaction
 GAS_COST_TX = 21000
+# Constant gas cost of LOG
+GAS_COST_LOG = 375
 # Gas cost of creation transaction
 GAS_COST_CREATION_TX = 53000
 # Gas cost of transaction call_data per non-zero byte
@@ -51,14 +53,14 @@ GAS_COST_TX_CALL_DATA_PER_NON_ZERO_BYTE = 16
 GAS_COST_TX_CALL_DATA_PER_ZERO_BYTE = 4
 # Gas cost of accessing account or storage slot, EIP 2929
 GAS_COST_WARM_ACCESS = 100
-# Extra gas cost of not-yet-accessed account
-EXTRA_GAS_COST_ACCOUNT_COLD_ACCESS = 2500
-# Extra gas cost of not-yet-accessed storage slot
-EXTRA_GAS_COST_STORAGE_SLOT_COLD_ACCESS = 2000
+# Gas cost of accessing not-yet-accessed account
+GAS_COST_ACCOUNT_COLD_ACCESS = 2600
+# Extra gas cost of accessing not-yet-accessed account
+EXTRA_GAS_COST_ACCOUNT_COLD_ACCESS = GAS_COST_ACCOUNT_COLD_ACCESS - GAS_COST_WARM_ACCESS
 # Gas cost of calling with non-zero value
 GAS_COST_CALL_WITH_VALUE = 9000
-# Gas cost of calling empty account
-GAS_COST_CALL_EMPTY_ACCOUNT = 25000
+# Gas cost of turning empty account into non-empty account
+GAS_COST_NEW_ACCOUNT = 25000
 # Gas stipend given if call with non-zero value
 GAS_STIPEND_CALL_WITH_VALUE = 2300
 
@@ -69,6 +71,12 @@ MEMORY_EXPANSION_QUAD_DENOMINATOR = 512
 # Coefficient of linear part of memory expansion gas cost
 MEMORY_EXPANSION_LINEAR_COEFF = 3
 
+# Maximum number of bytes copied during one single iteration of CopyToMemory, i.e. the internal state used by the
+# CALLDATACOPY gadget
+MAX_N_BYTES_COPY_TO_MEMORY = 32
+# Maximum number of bytes copied during one single iteration of CopyCodeToMemory, i.e. the internal state used by
+# the CODECOPY gadget
+MAX_N_BYTES_COPY_CODE_TO_MEMORY = 32
 
 COLD_SLOAD_COST = 2100
 WARM_STORAGE_READ_COST = 100
@@ -76,3 +84,7 @@ SLOAD_GAS = 100
 SSTORE_SET_GAS = 20000
 SSTORE_RESET_GAS = 2900
 SSTORE_CLEARS_SCHEDULE = 15000
+
+# The max number of bytes that can be copied in a step limited by the number
+# of cells in a step
+MAX_COPY_BYTES = 71

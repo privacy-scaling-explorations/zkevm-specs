@@ -8,11 +8,9 @@ install: # Install the Python packages
 
 fmt: ## Format the code
 	black .
-	mdformat . --number
 
-lint: ## Check whether the code is formated correctly
+lint: ## Check whether the code is formatted correctly
 	black . --check
-	mdformat specs/ --number --check
 
 type: ## Check the typing of the Python code
 	mypy src

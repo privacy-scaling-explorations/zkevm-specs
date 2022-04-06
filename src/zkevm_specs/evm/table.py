@@ -14,6 +14,7 @@ class FixedTableTag(IntEnum):
     table.
     """
 
+    Range5 = auto()  # value, 0, 0
     Range16 = auto()  # value, 0, 0
     Range32 = auto()  # value, 0, 0
     Range64 = auto()  # value, 0, 0
@@ -27,6 +28,8 @@ class FixedTableTag(IntEnum):
     ResponsibleOpcode = auto()  # execution_state, opcode, aux
 
     def table_assignments(self) -> List[FixedTableRow]:
+        if self == FixedTableTag.Range5:
+            return [FixedTableRow(FQ(self), FQ(i), FQ(0), FQ(0)) for i in range(5)]
         if self == FixedTableTag.Range16:
             return [FixedTableRow(FQ(self), FQ(i), FQ(0), FQ(0)) for i in range(16)]
         elif self == FixedTableTag.Range32:
@@ -69,6 +72,8 @@ class FixedTableTag(IntEnum):
             raise ValueError("Unreacheable")
 
     def range_table_tag(range: int) -> FixedTableTag:
+        if range == 5:
+            return FixedTableTag.Range5
         if range == 16:
             return FixedTableTag.Range16
         elif range == 32:
@@ -124,6 +129,15 @@ class TxContextFieldTag(IntEnum):
     CallData = auto()
 
 
+class BytecodeFieldTag(IntEnum):
+    """
+    Tag for BytecodeTable lookup.
+    """
+
+    Length = 1
+    Byte = 2
+
+
 class RW(IntEnum):
     Read = 0
     Write = 1
@@ -147,6 +161,7 @@ class RWTableTag(IntEnum):
     CallContext = auto()
     Stack = auto()
     Memory = auto()
+    TxLog = auto()
 
     # For state writes which affect future execution before reversion, we need
     # to write them with reversion when the write might fail.
@@ -193,6 +208,9 @@ class CallContextFieldTag(IntEnum):
     IsSuccess = auto()  # to peek result in the future
     IsPersistent = auto()  # to know if current call is within reverted call or not
     IsStatic = auto()  # to know if state modification is within static call or not
+    IsRoot = auto()
+    IsCreate = auto()
+    CodeSource = auto()
 
     # The following are read-only data inside a call like previous section for
     # opcode RETURNDATASIZE and RETURNDATACOPY, except they will be updated when
@@ -207,14 +225,24 @@ class CallContextFieldTag(IntEnum):
     # Note that stack and memory could also be included here, but since they
     # need extra constraints on their data format, so we separate them to be
     # different kinds of RWTableTag.
-    IsRoot = auto()
-    IsCreate = auto()
-    CodeSource = auto()
     ProgramCounter = auto()
     StackPointer = auto()
     GasLeft = auto()
     MemorySize = auto()
     StateWriteCounter = auto()
+
+
+class TxLogFieldTag(IntEnum):
+    """
+    Tag for RWTable lookup with tag TxLog, which is used to index specific
+    field of TxLog.
+    """
+
+    # The following are write-only data inside a transaction, they will be written in
+    # State circuit directly.
+    Address = auto()  # address of the contract that generated the event
+    Topic = auto()  # list of topics provided by the contract
+    Data = auto()  # log data in bytes
 
 
 class WrongQueryKey(Exception):
@@ -274,9 +302,10 @@ class TxTableRow(TableRow):
 @dataclass(frozen=True)
 class BytecodeTableRow(TableRow):
     bytecode_hash: Expression
+    field_tag: Expression
     index: Expression
-    byte: Expression
     is_code: Expression
+    value: Expression
 
 
 @dataclass(frozen=True)
@@ -323,8 +352,8 @@ class Tables:
         self,
         tag: Expression,
         value0: Expression,
-        value1: Expression = None,
-        value2: Expression = None,
+        value1: Expression = FQ(0),
+        value2: Expression = FQ(0),
     ) -> FixedTableRow:
         query = {
             "tag": tag,
@@ -332,7 +361,10 @@ class Tables:
             "value1": value1,
             "value2": value2,
         }
-        return _lookup(FixedTableRow, self.fixed_table, query)
+        row = FixedTableRow(tag, value0, value1, value2)
+        if row not in self.fixed_table:
+            raise LookupUnsatFailure(FixedTableRow.__name__, query)
+        return row
 
     def block_lookup(
         self, field_tag: Expression, block_number: Expression = FQ(0)
@@ -351,10 +383,15 @@ class Tables:
         return _lookup(TxTableRow, self.tx_table, query)
 
     def bytecode_lookup(
-        self, bytecode_hash: Expression, index: Expression, is_code: Expression
+        self,
+        bytecode_hash: Expression,
+        field_tag: Expression,
+        index: Expression,
+        is_code: Expression = None,
     ) -> BytecodeTableRow:
         query = {
             "bytecode_hash": bytecode_hash,
+            "field_tag": field_tag,
             "index": index,
             "is_code": is_code,
         }

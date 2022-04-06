@@ -10,7 +10,7 @@ def calldataload(instruction: Instruction):
     instruction.constrain_equal(opcode, Opcode.CALLDATALOAD)
 
     # offset is the 64-bit offset to start reading 32-bytes from start of calldata.
-    offset = instruction.rlc_to_fq_exact(instruction.stack_pop(), n_bytes=8)
+    offset = instruction.rlc_to_fq(instruction.stack_pop(), n_bytes=8)
 
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId, RW.Read)
 

@@ -8,7 +8,7 @@ def gas(instruction: Instruction):
     instruction.constrain_equal(opcode, Opcode.GAS)
 
     # fetch gas from rw table and consider only the lower 8 bytes (uint64)
-    gas = instruction.rlc_to_fq_exact(instruction.stack_push(), N_BYTES_GAS)
+    gas = instruction.rlc_to_fq(instruction.stack_push(), N_BYTES_GAS)
 
     instruction.constrain_equal(
         gas,

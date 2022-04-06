@@ -27,7 +27,7 @@ TESTING_DATA = tuple(
 def test_push(value_be_bytes: bytes):
     randomness = rand_fq()
 
-    value = RLC(bytes(reversed(value_be_bytes)), randomness, 32)
+    value = RLC(bytes(reversed(value_be_bytes)), randomness)
 
     bytecode = Bytecode().push(value_be_bytes, n_bytes=len(value_be_bytes))
     bytecode_hash = RLC(bytecode.hash(), randomness)

@@ -11,16 +11,16 @@ def blockctx(instruction: Instruction):
     # get block context op element
     if opcode == Opcode.COINBASE:
         op = BlockContextFieldTag.Coinbase
-        ctx_expr = instruction.rlc_to_fq_exact(instruction.stack_push(), N_BYTES_ACCOUNT_ADDRESS)
+        ctx_expr = instruction.rlc_to_fq(instruction.stack_push(), N_BYTES_ACCOUNT_ADDRESS)
     elif opcode == Opcode.TIMESTAMP:
         op = BlockContextFieldTag.Timestamp
-        ctx_expr = instruction.rlc_to_fq_exact(instruction.stack_push(), N_BYTES_U64)
+        ctx_expr = instruction.rlc_to_fq(instruction.stack_push(), N_BYTES_U64)
     elif opcode == Opcode.NUMBER:
         op = BlockContextFieldTag.Number
-        ctx_expr = instruction.rlc_to_fq_exact(instruction.stack_push(), N_BYTES_U64)
+        ctx_expr = instruction.rlc_to_fq(instruction.stack_push(), N_BYTES_U64)
     elif opcode == Opcode.GASLIMIT:
         op = BlockContextFieldTag.GasLimit
-        ctx_expr = instruction.rlc_to_fq_exact(instruction.stack_push(), N_BYTES_U64)
+        ctx_expr = instruction.rlc_to_fq(instruction.stack_push(), N_BYTES_U64)
     elif opcode == Opcode.DIFFICULTY:
         op = BlockContextFieldTag.Difficulty
         ctx_expr = instruction.stack_push().expr()

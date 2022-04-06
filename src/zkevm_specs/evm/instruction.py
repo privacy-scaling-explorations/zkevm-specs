@@ -23,6 +23,7 @@ from .step import StepState
 from .table import (
     AccountFieldTag,
     BlockContextFieldTag,
+    BytecodeFieldTag,
     CallContextFieldTag,
     FixedTableRow,
     RWTableRow,
@@ -31,6 +32,7 @@ from .table import (
     TxContextFieldTag,
     RW,
     RWTableTag,
+    TxLogFieldTag,
 )
 
 
@@ -81,10 +83,10 @@ class ReversionInfo:
         self.is_persistent = is_persistent.expr()
         self.state_write_counter = state_write_counter.expr()
 
-    def rw_counter(self) -> FQ:
-        rw_counter = self.rw_counter_end_of_reversion - self.state_write_counter
+    def rw_counter_of_reversion(self) -> FQ:
+        rw_counter_of_reversion = self.rw_counter_end_of_reversion - self.state_write_counter
         self.state_write_counter += 1
-        return rw_counter
+        return rw_counter_of_reversion
 
 
 class Instruction:
@@ -101,6 +103,7 @@ class Instruction:
     rw_counter_offset: int = 0
     program_counter_offset: int = 0
     stack_pointer_offset: int = 0
+    log_index_offset: int = 0
 
     def __init__(
         self,
@@ -166,6 +169,7 @@ class Instruction:
                 "gas_left",
                 "memory_size",
                 "state_write_counter",
+                "log_id",
             ]
         )
 
@@ -187,7 +191,7 @@ class Instruction:
                 if isinstance(transition.value, int):
                     transition.value = FQ(transition.value)
                 assert next.expr() == curr.expr() + transition.value.expr(), ConstraintUnsatFailure(
-                    f"State {key} should transit to {curr} + {transition.value}, but got {next}"
+                    f"State {key} should transit to {curr} + {transition.value} ({curr + transition.value}), but got {next}"
                 )
             elif transition.kind == TransitionKind.To:
                 if isinstance(transition.value, int):
@@ -231,6 +235,7 @@ class Instruction:
         memory_size: Transition = Transition.same(),
         state_write_counter: Transition = Transition.same(),
         dynamic_gas_cost: IntOrFQ = 0,
+        log_id: Transition = Transition.same(),
     ):
         self.responsible_opcode_lookup(opcode)
 
@@ -244,6 +249,7 @@ class Instruction:
             gas_left=Transition.delta(-gas_cost),
             memory_size=memory_size,
             state_write_counter=state_write_counter,
+            log_id=log_id,
             # Always stay same
             call_id=Transition.same(),
             is_root=Transition.same(),
@@ -285,6 +291,20 @@ class Instruction:
         assert rhs.expr().n < 256**n_bytes, f"rhs {rhs} exceeds the range of {n_bytes} bytes"
         return FQ(lhs.expr().n < rhs.expr().n), FQ(lhs.expr().n == rhs.expr().n)
 
+    def compare_word(self, lhs: RLC, rhs: RLC) -> Tuple[FQ, FQ]:
+        """
+        Compare the value of two 256-bit words, and return two outputs.
+        The first output value is 1 if the left-hand side is strictly smaller, 0 otherwise.
+        The second output value is 1 if the left-hand side is equal to the right-hand side, 0 otherwise.
+        """
+        assert len(lhs.le_bytes) == 32, "Expected word to contain 32 bytes"
+        assert len(rhs.le_bytes) == 32, "Expected word to contain 32 bytes"
+        lhs_lo, lhs_hi = self.word_to_lo_hi(lhs)
+        rhs_lo, rhs_hi = self.word_to_lo_hi(rhs)
+        hi_lt, hi_eq = self.compare(lhs_hi, rhs_hi, 16)
+        lo_lt, lo_eq = self.compare(lhs_lo, rhs_lo, 16)
+        return FQ(hi_lt + hi_eq * lo_lt), FQ(hi_eq * lo_eq)
+
     def min(self, lhs: Expression, rhs: Expression, n_bytes: int) -> FQ:
         lt, _ = self.compare(lhs, rhs, n_bytes)
         return cast_expr(self.select(lt, lhs, rhs), FQ)
@@ -292,6 +312,49 @@ class Instruction:
     def max(self, lhs: Expression, rhs: Expression, n_bytes: int) -> FQ:
         lt, _ = self.compare(lhs, rhs, n_bytes)
         return cast_expr(self.select(lt, rhs, lhs), FQ)
+
+    def rlc_to_fq(self, word: RLC, n_bytes: int) -> FQ:
+        if any(word.le_bytes[n_bytes:]):
+            raise ConstraintUnsatFailure(f"Word {word} has too many bytes to fit {n_bytes} bytes")
+        return self.bytes_to_fq(word.le_bytes[:n_bytes])
+
+    def word_is_zero(self, word: RLC) -> FQ:
+        assert len(word.le_bytes) == 32, "Expected word to contain 32 bytes"
+        return self.is_zero(self.sum(word.le_bytes))
+
+    def word_to_lo_hi(self, word: RLC) -> Tuple[FQ, FQ]:
+        assert len(word.le_bytes) == 32, "Expected word to contain 32 bytes"
+        return self.bytes_to_fq(word.le_bytes[:16]), self.bytes_to_fq(word.le_bytes[16:])
+
+    def word_to_64s(self, word: RLC) -> Tuple[FQ, ...]:
+        assert len(word.le_bytes) == 32, "Expected word to contain 32 bytes"
+        return tuple(self.bytes_to_fq(word.le_bytes[8 * i : 8 * (i + 1)]) for i in range(4))
+
+    def bytes_to_fq(self, value: bytes) -> FQ:
+        assert len(value) <= MAX_N_BYTES, "Too many bytes to composite an integer in field"
+        return FQ(int.from_bytes(value, "little"))
+
+    def rlc_encode(self, value: Union[FQ, int, bytes], n_bytes: int = None) -> RLC:
+        if isinstance(value, FQ):
+            value = value.n
+        if isinstance(value, bytes):
+            n_bytes = len(value) if n_bytes is None else n_bytes
+        else:
+            assert n_bytes is not None
+        return RLC(value, self.randomness, n_bytes)
+
+    def range_lookup(self, value: Expression, range: int):
+        self.fixed_lookup(FixedTableTag.range_table_tag(range), value)
+
+    def byte_range_lookup(self, value: Expression):
+        self.range_lookup(value, 256)
+
+    def range_check(self, value: Expression, n_bytes: int) -> bytes:
+        assert n_bytes <= MAX_N_BYTES, "Too many bytes to composite an integer in field"
+        try:
+            return value.expr().n.to_bytes(n_bytes, "little")
+        except OverflowError:
+            raise ConstraintUnsatFailure(f"Value {value} has too many bytes to fit {n_bytes} bytes")
 
     def add_words(self, addends: Sequence[RLC]) -> Tuple[RLC, FQ]:
         addends_lo, addends_hi = list(zip(*map(self.word_to_lo_hi, addends)))
@@ -328,47 +391,47 @@ class Instruction:
 
         return self.rlc_encode(product_bytes), FQ(quotient_hi)
 
-    def rlc_to_fq_unchecked(self, word: RLC, n_bytes: int) -> Tuple[FQ, FQ]:
-        return self.bytes_to_fq(word.le_bytes[:n_bytes]), self.is_zero(
-            self.sum(word.le_bytes[n_bytes:])
+    def mul_add_words(self, a: RLC, b: RLC, c: RLC, d: RLC) -> FQ:
+        """
+        The function constrains a * b + c == d, where a, b, c, d are 256-bit words.
+        It returns the overflow part of a * b + c.
+        """
+        a64s = self.word_to_64s(a)
+        b64s = self.word_to_64s(b)
+        c_lo, c_hi = self.word_to_lo_hi(c)
+        d_lo, d_hi = self.word_to_lo_hi(d)
+
+        t0 = a64s[0] * b64s[0]
+        t1 = a64s[0] * b64s[1] + a64s[1] * b64s[0]
+        t2 = a64s[0] * b64s[2] + a64s[1] * b64s[1] + a64s[2] * b64s[0]
+        t3 = a64s[0] * b64s[3] + a64s[1] * b64s[2] + a64s[2] * b64s[1] + a64s[3] * b64s[0]
+        carry_lo = (t0 + (t1 * 2**64) + c_lo - d_lo) / (2**128)
+        carry_hi = (t2 + (t3 * 2**64) + c_hi + carry_lo - d_hi) / (2**128)
+        overflow = (
+            carry_hi
+            + a64s[1] * b64s[3]
+            + a64s[2] * b64s[2]
+            + a64s[3] * b64s[1]
+            + a64s[2] * b64s[3]
+            + a64s[3] * b64s[2]
+            + a64s[3] * b64s[3]
         )
 
-    def rlc_to_fq_exact(self, word: RLC, n_bytes: int) -> FQ:
-        if any(word.le_bytes[n_bytes:]):
-            raise ConstraintUnsatFailure(f"Word {word} has too many bytes to fit {n_bytes} bytes")
+        # range check for carries
+        self.range_check(carry_lo, 9)
+        self.range_check(carry_hi, 9)
 
-        return self.bytes_to_fq(word.le_bytes[:n_bytes])
+        self.constrain_equal(t0 + t1 * (2**64) + c_lo, d_lo + carry_lo * (2**128))
+        self.constrain_equal(t2 + t3 * (2**64) + c_hi + carry_lo, d_hi + carry_hi * (2**128))
 
-    def word_to_lo_hi(self, word: RLC) -> Tuple[FQ, FQ]:
-        assert len(word.le_bytes) == 32, "Expected word to contain 32 bytes"
-        return self.bytes_to_fq(word.le_bytes[:16]), self.bytes_to_fq(word.le_bytes[16:])
-
-    def bytes_to_fq(self, value: bytes) -> FQ:
-        assert len(value) <= MAX_N_BYTES, "Too many bytes to composite an integer in field"
-        return FQ(int.from_bytes(value, "little"))
-
-    def rlc_encode(self, value: bytes) -> RLC:
-        return RLC(value, self.randomness)
-
-    def range_lookup(self, value: Expression, range: int):
-        self.fixed_lookup(FixedTableTag.range_table_tag(range), value)
-
-    def byte_range_lookup(self, value: Expression):
-        self.range_lookup(value, 256)
-
-    def range_check(self, value: Expression, n_bytes: int) -> bytes:
-        assert n_bytes <= MAX_N_BYTES, "Too many bytes to composite an integer in field"
-        try:
-            return value.expr().n.to_bytes(n_bytes, "little")
-        except OverflowError:
-            raise ConstraintUnsatFailure(f"Value {value} has too many bytes to fit {n_bytes} bytes")
+        return overflow
 
     def fixed_lookup(
         self,
         tag: FixedTableTag,
         value0: Expression,
-        value1: Expression = None,
-        value2: Expression = None,
+        value1: Expression = FQ(0),
+        value2: Expression = FQ(0),
     ) -> FixedTableRow:
         return self.tables.fixed_lookup(FQ(tag), value0, value1, value2)
 
@@ -383,10 +446,25 @@ class Instruction:
     def tx_calldata_lookup(self, tx_id: Expression, call_data_index: Expression) -> Expression:
         return self.tables.tx_lookup(tx_id, FQ(TxContextFieldTag.CallData), call_data_index).value
 
+    # look up tx log fields (Data, Address, Topic),
+    def tx_log_lookup(self, field_tag: TxLogFieldTag, index: int = 0) -> Expression:
+        # evm only write tx log
+        value = self.rw_lookup(
+            RW.Write, RWTableTag.TxLog, key1=self.curr.log_id, key2=FQ(index), key3=FQ(field_tag)
+        ).value
+        return value
+
     def bytecode_lookup(
-        self, bytecode_hash: Expression, index: Expression, is_code: bool
+        self, bytecode_hash: Expression, index: Expression, is_code: Expression = None
     ) -> Expression:
-        return self.tables.bytecode_lookup(bytecode_hash, index, FQ(is_code)).byte
+        return self.tables.bytecode_lookup(
+            bytecode_hash, FQ(BytecodeFieldTag.Byte), index, is_code
+        ).value
+
+    def bytecode_length(self, bytecode_hash: Expression) -> Expression:
+        return self.tables.bytecode_lookup(
+            bytecode_hash, FQ(BytecodeFieldTag.Length), FQ(0), FQ(0)
+        ).value
 
     def tx_gas_price(self, tx_id: Expression) -> RLC:
         return cast_expr(self.tx_context_lookup(tx_id, TxContextFieldTag.GasPrice), RLC)
@@ -405,7 +483,7 @@ class Instruction:
                 "The opcode source when is_root and is_create (root creation call) is not determined yet"
             )
         else:
-            return self.bytecode_lookup(self.curr.code_source, index, is_code).expr()
+            return self.bytecode_lookup(self.curr.code_source, index, FQ(is_code)).expr()
 
     def rw_lookup(
         self,
@@ -453,9 +531,9 @@ class Instruction:
 
         row = self.rw_lookup(RW.Write, tag, key1, key2, key3, value, value_prev, aux0, aux1)
 
-        if reversion_info is not None and reversion_info.is_persistent == 0:
+        if reversion_info is not None and reversion_info.is_persistent == FQ(0):
             self.tables.rw_lookup(
-                rw_counter=reversion_info.rw_counter(),
+                rw_counter=reversion_info.rw_counter_of_reversion(),
                 rw=FQ(RW.Write),
                 tag=FQ(tag),
                 key1=row.key1,
@@ -478,12 +556,17 @@ class Instruction:
         return self.rw_lookup(rw, RWTableTag.CallContext, call_id, FQ(field_tag)).value
 
     def reversion_info(self, call_id: Expression = None) -> ReversionInfo:
-        rw_counter_end_of_reversion = self.call_context_lookup(
-            CallContextFieldTag.RwCounterEndOfReversion, call_id=call_id
-        )
-        is_persistent = self.call_context_lookup(CallContextFieldTag.IsPersistent, call_id=call_id)
+        [rw_counter_end_of_reversion, is_persistent] = [
+            self.call_context_lookup(tag, call_id=call_id)
+            for tag in [
+                CallContextFieldTag.RwCounterEndOfReversion,
+                CallContextFieldTag.IsPersistent,
+            ]
+        ]
         return ReversionInfo(
-            rw_counter_end_of_reversion, is_persistent, self.curr.state_write_counter
+            rw_counter_end_of_reversion,
+            is_persistent,
+            self.curr.state_write_counter if call_id is None else FQ(0),
         )
 
     def stack_pop(self) -> RLC:
@@ -503,6 +586,11 @@ class Instruction:
 
     def memory_write(self, memory_address: Expression, call_id: Expression = None) -> FQ:
         return self.memory_lookup(RW.Write, memory_address, call_id)
+
+    def memory_read(
+        self, memory_address: Expression, call_id: Optional[Expression] = None
+    ) -> Expression:
+        return self.memory_lookup(RW.Read, memory_address, call_id)
 
     def memory_lookup(self, rw: RW, memory_address: Expression, call_id: Expression = None) -> FQ:
         if call_id is None:
@@ -657,10 +745,10 @@ class Instruction:
         return sender_balance_pair, receiver_balance_pair
 
     def memory_offset_and_length(self, offset_word: RLC, length_word: RLC) -> Tuple[FQ, FQ]:
-        length = self.rlc_to_fq_exact(length_word, N_BYTES_MEMORY_ADDRESS)
+        length = self.rlc_to_fq(length_word, N_BYTES_MEMORY_ADDRESS)
         if self.is_zero(length) == 1:
             return FQ(0), FQ(0)
-        offset = self.rlc_to_fq_exact(offset_word, N_BYTES_MEMORY_ADDRESS)
+        offset = self.rlc_to_fq(offset_word, N_BYTES_MEMORY_ADDRESS)
         return offset, length
 
     def memory_gas_cost(self, memory_size: Expression) -> FQ:

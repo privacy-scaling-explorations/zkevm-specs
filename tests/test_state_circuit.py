@@ -38,14 +38,14 @@ def test_state_ok():
         MemoryOp(rw_counter=2, rw=RW.Write, call_id=1, mem_addr=0, value=42),
         MemoryOp(rw_counter=3, rw=RW.Read,  call_id=1, mem_addr=0, value=42),
 
-        StackOp(rw_counter=4, rw=RW.Write, call_id=1, stack_ptr=1022, value=RLC(4321 ,r).value),
-        StackOp(rw_counter=5, rw=RW.Write, call_id=1, stack_ptr=1023, value=RLC(533 ,r).value),
-        StackOp(rw_counter=6, rw=RW.Read,  call_id=1, stack_ptr=1023, value=RLC(533 ,r).value),
+        StackOp(rw_counter=4, rw=RW.Write, call_id=1, stack_ptr=1022, value=RLC(4321 ,r).expr()),
+        StackOp(rw_counter=5, rw=RW.Write, call_id=1, stack_ptr=1023, value=RLC(533 ,r).expr()),
+        StackOp(rw_counter=6, rw=RW.Read,  call_id=1, stack_ptr=1023, value=RLC(533 ,r).expr()),
 
-        StorageOp(rw_counter=0, rw=RW.Write, addr=0x12345678, key=0x1516, value=RLC(789, r).value),
-        StorageOp(rw_counter=7, rw=RW.Read,  addr=0x12345678, key=0x1516, value=RLC(789, r).value),
-        StorageOp(rw_counter=0, rw=RW.Write, addr=0x12345678, key=0x4959, value=RLC(98765, r).value),
-        StorageOp(rw_counter=8, rw=RW.Write, addr=0x12345678, key=0x4959, value=RLC(38491, r).value),
+        StorageOp(rw_counter=0, rw=RW.Write, addr=0x12345678, key=0x1516, value=RLC(789, r).expr()),
+        StorageOp(rw_counter=7, rw=RW.Read,  addr=0x12345678, key=0x1516, value=RLC(789, r).expr()),
+        StorageOp(rw_counter=0, rw=RW.Write, addr=0x12345678, key=0x4959, value=RLC(98765, r).expr()),
+        StorageOp(rw_counter=8, rw=RW.Write, addr=0x12345678, key=0x4959, value=RLC(38491, r).expr()),
 
         CallContextOp(rw_counter= 9, rw=RW.Read, call_id=1, field_tag=CallContextFieldTag.IsStatic, value=FQ(0)),
         CallContextOp(rw_counter=10, rw=RW.Read, call_id=2, field_tag=CallContextFieldTag.IsStatic, value=FQ(0)),
@@ -86,7 +86,7 @@ def test_state_bad_key4():
     # fmt: off
     ops = [
         StartOp(),
-        StorageOp(rw_counter=0, rw=RW.Write, addr=0x12345678, key=0x15161718, value=RLC(789, r).value),
+        StorageOp(rw_counter=0, rw=RW.Write, addr=0x12345678, key=0x15161718, value=RLC(789, r).expr()),
     ]
     # fmt: on
     rows = assign_state_circuit(ops, r)
@@ -98,7 +98,7 @@ def test_state_bad_is_write():
     # fmt: off
     ops = [
         StartOp(),
-        StorageOp(rw_counter=0, rw=RW.Write, addr=0x12345678, key=0x15161718, value=RLC(789, r).value),
+        StorageOp(rw_counter=0, rw=RW.Write, addr=0x12345678, key=0x15161718, value=RLC(789, r).expr()),
     ]
     # fmt: on
     rows = assign_state_circuit(ops, r)
@@ -110,8 +110,8 @@ def test_state_keys_non_lexicographic_order():
     # fmt: off
     ops = [
         StartOp(),
-        StorageOp(rw_counter=0, rw=RW.Write, addr=0x12345678, key=0x1112, value=RLC(98765, r).value),
-        StorageOp(rw_counter=0, rw=RW.Write, addr=0x12345678, key=0x1111, value=RLC(789, r).value),
+        StorageOp(rw_counter=0, rw=RW.Write, addr=0x12345678, key=0x1112, value=RLC(98765, r).expr()),
+        StorageOp(rw_counter=0, rw=RW.Write, addr=0x12345678, key=0x1111, value=RLC(789, r).expr()),
     ]
     # fmt: on
     verify(ops, randomness, success=False)
@@ -119,8 +119,8 @@ def test_state_keys_non_lexicographic_order():
     # fmt: off
     ops = [
         StartOp(),
-        StorageOp(rw_counter=0, rw=RW.Write, addr=0x12345678, key=2 << 250, value=RLC(98765, r).value),
-        StorageOp(rw_counter=0, rw=RW.Write, addr=0x12345678, key=1 << 250, value=RLC(789, r).value),
+        StorageOp(rw_counter=0, rw=RW.Write, addr=0x12345678, key=2 << 250, value=RLC(98765, r).expr()),
+        StorageOp(rw_counter=0, rw=RW.Write, addr=0x12345678, key=1 << 250, value=RLC(789, r).expr()),
     ]
     # fmt: on
     verify(ops, randomness, success=False)
@@ -128,8 +128,8 @@ def test_state_keys_non_lexicographic_order():
     # fmt: off
     ops = [
         StartOp(),
-        StorageOp(rw_counter=0, rw=RW.Write, addr=0x12345678, key=123, value=RLC(98765, r).value),
-        StorageOp(rw_counter=1, rw=RW.Write, addr=0x12345678, key=123, value=RLC(789, r).value),
+        StorageOp(rw_counter=0, rw=RW.Write, addr=0x12345678, key=123, value=RLC(98765, r).expr()),
+        StorageOp(rw_counter=1, rw=RW.Write, addr=0x12345678, key=123, value=RLC(789, r).expr()),
         MemoryOp(rw_counter=2, rw=RW.Read,  call_id=1, mem_addr=0, value=0),
     ]
     # fmt: on
@@ -156,7 +156,7 @@ def test_state_bad_rwc():
     verify(ops, randomness, success=False)
 
 
-def test_state_bad_read_consisntency():
+def test_state_bad_read_consistency():
     # fmt: off
     ops = [
         StartOp(),
@@ -180,33 +180,27 @@ def test_start_bad():
     verify(rows, randomness, success=False)
 
 
-def test_memory_bad_first_access():
-    # fmt: off
-    ops = [
-        StartOp(),
-        MemoryOp(rw_counter=1, rw=RW.Read,  call_id=1, mem_addr=123, value=3),
-    ]
-    # fmt: on
+def first_memory_op(rw_counter=1, rw=RW.Write, call_id=1, mem_addr=2**32 - 1, value=3):
+    return MemoryOp(rw_counter, rw, call_id, mem_addr, value)
+
+
+def test_first_memory_op_ok():
+    ops = [StartOp(), first_memory_op()]
+    verify(ops, randomness, success=True)
+
+
+def test_memory_bad_address():
+    ops = [StartOp(), first_memory_op(mem_addr=2**32)]
     verify(ops, randomness, success=False)
 
 
-def test_memory_bad_mem_addr_range():
-    # fmt: off
-    ops = [
-        StartOp(),
-        MemoryOp(rw_counter=1, rw=RW.Read,  call_id=1, mem_addr=2**32, value=3),
-    ]
-    # fmt: on
+def test_memory_bad_first_access():
+    ops = [StartOp(), first_memory_op(rw=RW.Read)]
     verify(ops, randomness, success=False)
 
 
 def test_memory_bad_value_range():
-    # fmt: off
-    ops = [
-        StartOp(),
-        MemoryOp(rw_counter=1, rw=RW.Read,  call_id=1, mem_addr=123, value=256),
-    ]
-    # fmt: on
+    ops = [StartOp(), first_memory_op(value=2**8)]
     verify(ops, randomness, success=False)
 
 
@@ -214,7 +208,7 @@ def test_stack_bad_first_access():
     # fmt: off
     ops = [
         StartOp(),
-        StackOp(rw_counter=1, rw=RW.Read, call_id=1, stack_ptr=1023, value=RLC(4321 ,r).value),
+        StackOp(rw_counter=1, rw=RW.Read, call_id=1, stack_ptr=1023, value=RLC(4321 ,r).expr()),
     ]
     # fmt: on
     verify(ops, randomness, success=False)
@@ -224,7 +218,7 @@ def test_stack_bad_stack_ptr_range():
     # fmt: off
     ops = [
         StartOp(),
-        StackOp(rw_counter=1, rw=RW.Write, call_id=1, stack_ptr=1024, value=RLC(4321 ,r).value),
+        StackOp(rw_counter=1, rw=RW.Write, call_id=1, stack_ptr=1024, value=RLC(4321 ,r).expr()),
     ]
     # fmt: on
     verify(ops, randomness, success=False)
@@ -234,8 +228,8 @@ def test_stack_bad_stack_ptr_inc():
     # fmt: off
     ops = [
         StartOp(),
-        StackOp(rw_counter=1, rw=RW.Write, call_id=1, stack_ptr=1021, value=RLC(4321 ,r).value),
-        StackOp(rw_counter=2, rw=RW.Write, call_id=1, stack_ptr=1023, value=RLC(4321 ,r).value),
+        StackOp(rw_counter=1, rw=RW.Write, call_id=1, stack_ptr=1021, value=RLC(4321 ,r).expr()),
+        StackOp(rw_counter=2, rw=RW.Write, call_id=1, stack_ptr=1023, value=RLC(4321 ,r).expr()),
     ]
     # fmt: on
     verify(ops, randomness, success=False)
@@ -245,7 +239,7 @@ def test_storage_bad_first_access():
     # fmt: off
     ops = [
         StartOp(),
-        StorageOp(rw_counter=0, rw=RW.Read, addr=0x12345678, key=0x1516, value=RLC(789, r).value),
+        StorageOp(rw_counter=0, rw=RW.Read, addr=0x12345678, key=0x1516, value=RLC(789, r).expr()),
     ]
     # fmt: on
     verify(ops, randomness, success=False)
@@ -253,7 +247,7 @@ def test_storage_bad_first_access():
     # fmt: off
     ops = [
         StartOp(),
-        StorageOp(rw_counter=1, rw=RW.Write, addr=0x12345678, key=0x1516, value=RLC(789, r).value),
+        StorageOp(rw_counter=1, rw=RW.Write, addr=0x12345678, key=0x1516, value=RLC(789, r).expr()),
     ]
     # fmt: on
     verify(ops, randomness, success=False)

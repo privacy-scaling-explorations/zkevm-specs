@@ -14,12 +14,14 @@ from ..util import (
     keccak256,
     GAS_COST_TX_CALL_DATA_PER_NON_ZERO_BYTE,
     GAS_COST_TX_CALL_DATA_PER_ZERO_BYTE,
+    EMPTY_CODE_HASH,
 )
 from .table import (
     RW,
     AccountFieldTag,
     BlockContextFieldTag,
     BlockTableRow,
+    BytecodeFieldTag,
     BytecodeTableRow,
     CallContextFieldTag,
     RWTableRow,
@@ -255,18 +257,25 @@ class Bytecode:
                 return self
 
             def __next__(self):
-                if self.idx == len(self.code):
+                # return the length of the bytecode in the first row
+                if self.idx == 0:
+                    self.idx += 1
+                    return BytecodeTableRow(
+                        self.hash, FQ(BytecodeFieldTag.Length), FQ(0), FQ(0), FQ(len(self.code))
+                    )
+
+                if self.idx > len(self.code):
                     raise StopIteration
 
-                idx = self.idx
+                # the other rows represent each byte in the bytecode
+                idx = self.idx - 1
                 byte = self.code[idx]
-
                 is_code = self.push_data_left == 0
                 self.push_data_left = get_push_size(byte) if is_code else self.push_data_left - 1
-
                 self.idx += 1
-
-                return BytecodeTableRow(self.hash, FQ(idx), FQ(byte), FQ(is_code))
+                return BytecodeTableRow(
+                    self.hash, FQ(BytecodeFieldTag.Byte), FQ(idx), FQ(is_code), FQ(byte)
+                )
 
         return BytecodeIterator(RLC(self.hash(), randomness).expr(), self.code)
 
@@ -300,6 +309,9 @@ class Account:
 
     def storage_trie_hash(self) -> U256:
         raise NotImplementedError("Trie has not been implemented")
+
+    def is_empty(self) -> bool:
+        return self.nonce == 0 and self.balance == 0 and self.code_hash() == EMPTY_CODE_HASH
 
 
 class RWDictionary:
@@ -339,6 +351,15 @@ class RWDictionary:
             value = FQ(value)
         return self._append(
             RW.Read, RWTableTag.CallContext, key1=FQ(call_id), key2=FQ(field_tag), value=value
+        )
+
+    def call_context_write(
+        self, call_id: IntOrFQ, field_tag: CallContextFieldTag, value: Union[int, FQ, RLC]
+    ) -> RWDictionary:
+        if isinstance(value, int):
+            value = FQ(value)
+        return self._append(
+            RW.Write, RWTableTag.CallContext, key1=FQ(call_id), key2=FQ(field_tag), value=value
         )
 
     def tx_refund_read(self, tx_id: IntOrFQ, refund: IntOrFQ) -> RWDictionary:

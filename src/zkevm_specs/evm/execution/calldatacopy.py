@@ -13,7 +13,7 @@ def calldatacopy(instruction: Instruction):
 
     # convert rlc to FQ
     memory_offset, length = instruction.memory_offset_and_length(memory_offset_word, length_word)
-    data_offset = instruction.rlc_to_fq_exact(data_offset_word, N_BYTES_MEMORY_ADDRESS)
+    data_offset = instruction.rlc_to_fq(data_offset_word, N_BYTES_MEMORY_ADDRESS)
 
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId, RW.Read)
     if instruction.curr.is_root:
@@ -33,7 +33,7 @@ def calldatacopy(instruction: Instruction):
     gas_cost = instruction.memory_copier_gas_cost(length, memory_expansion_gas_cost)
 
     # When length != 0, constrain the state in the next execution state CopyToMemory
-    if not instruction.is_zero(length):
+    if instruction.is_zero(length) == FQ(0):
         assert instruction.next is not None
         instruction.constrain_equal(instruction.next.execution_state, ExecutionState.CopyToMemory)
         next_aux = instruction.next.aux_data
@@ -44,6 +44,7 @@ def calldatacopy(instruction: Instruction):
         )
         instruction.constrain_equal(next_aux.from_tx, FQ(instruction.curr.is_root))
         instruction.constrain_equal(next_aux.tx_id, tx_id)
+        instruction.constrain_equal(next_aux.bytes_left, length)
 
     instruction.step_state_transition_in_same_context(
         opcode,

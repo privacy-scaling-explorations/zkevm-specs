@@ -2,7 +2,7 @@ from ..instruction import Instruction, Transition
 from ..opcode import Opcode
 
 
-def add(instruction: Instruction):
+def add_sub(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
 
     is_sub, _ = instruction.pair_select(opcode, Opcode.SUB, Opcode.ADD)

@@ -15,39 +15,28 @@ from zkevm_specs.util import rand_fq, rand_word, RLC
 
 
 TESTING_DATA = (
-    (Opcode.ADD, 0x030201, 0x060504, 0x090705),
-    (Opcode.SUB, 0x090705, 0x060504, 0x030201),
-    (Opcode.ADD, rand_word(), rand_word(), None),
-    (Opcode.SUB, rand_word(), rand_word(), None),
+    bytes([0]),
+    bytes([7]),
 )
 
 
-@pytest.mark.parametrize("opcode, a, b, c", TESTING_DATA)
-def test_add(opcode: Opcode, a: int, b: int, c: Optional[int]):
+@pytest.mark.parametrize("value_be_bytes", TESTING_DATA)
+def test_iszero(value_be_bytes: bytes):
     randomness = rand_fq()
 
-    c = (
-        RLC(c, randomness)
-        if c is not None
-        else RLC((a + b if opcode == Opcode.ADD else a - b) % 2**256, randomness)
-    )
-    a = RLC(a, randomness)
-    b = RLC(b, randomness)
+    value = int.from_bytes(value_be_bytes, "big")
+    result = 0x1 if value == 0x0 else 0x0
+    value = RLC(value, randomness)
+    result = RLC(result, randomness)
 
-    bytecode = Bytecode().add(a, b) if opcode == Opcode.ADD else Bytecode().sub(a, b)
+    bytecode = Bytecode().push1(value_be_bytes).iszero().stop()
     bytecode_hash = RLC(bytecode.hash(), randomness)
 
     tables = Tables(
         block_table=set(Block().table_assignments(randomness)),
         tx_table=set(),
         bytecode_table=set(bytecode.table_assignments(randomness)),
-        rw_table=set(
-            RWDictionary(9)
-            .stack_read(1, 1022, a)
-            .stack_read(1, 1023, b)
-            .stack_write(1, 1023, c)
-            .rws
-        ),
+        rw_table=set(RWDictionary(9).stack_read(1, 1023, value).stack_write(1, 1023, result).rws),
     )
 
     verify_steps(
@@ -55,24 +44,24 @@ def test_add(opcode: Opcode, a: int, b: int, c: Optional[int]):
         tables=tables,
         steps=[
             StepState(
-                execution_state=ExecutionState.ADD,
+                execution_state=ExecutionState.ISZERO,
                 rw_counter=9,
                 call_id=1,
                 is_root=True,
                 is_create=False,
                 code_source=bytecode_hash,
-                program_counter=66,
-                stack_pointer=1022,
+                program_counter=2,
+                stack_pointer=1023,
                 gas_left=3,
             ),
             StepState(
                 execution_state=ExecutionState.STOP,
-                rw_counter=12,
+                rw_counter=11,
                 call_id=1,
                 is_root=True,
                 is_create=False,
                 code_source=bytecode_hash,
-                program_counter=67,
+                program_counter=3,
                 stack_pointer=1023,
                 gas_left=0,
             ),

@@ -21,3 +21,9 @@ NASTY_AB_VALUES = (
     ((1 << 256) - 1, 0),
     (0, (1 << 256) - 1),
 )
+
+
+def generate_nasty_tests(tests, opcodes):
+    for opcode in opcodes:
+        for a, b in NASTY_AB_VALUES:
+            tests.append((opcode, a, b))
