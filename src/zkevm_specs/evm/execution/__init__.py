@@ -11,9 +11,7 @@ from .copy_to_log import *
 
 # Opcode's successful cases
 from .add_sub import *
-from .block_coinbase import *
-from .block_timestamp import *
-from .block_number import *
+from .block_ctx import *
 from .call import *
 from .calldatasize import *
 from .caller import *
@@ -52,9 +50,7 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.CALLDATALOAD: calldataload,
     ExecutionState.CALLDATASIZE: calldatasize,
     ExecutionState.CODECOPY: codecopy,
-    ExecutionState.COINBASE: coinbase,
-    ExecutionState.TIMESTAMP: timestamp,
-    ExecutionState.NUMBER: number,
+    ExecutionState.BlockCtx: blockctx,
     ExecutionState.JUMP: jump,
     ExecutionState.JUMPI: jumpi,
     ExecutionState.PUSH: push,
