@@ -549,22 +549,23 @@ But we do not leave `s_rlp1, s_rlp2, s_advices` empty in C row, we store additio
 compressed in bytes and it makes it difficult to decompress back into nibbles
 without any helper witnesses.
 
-For example:
-`0, 0, 5, 0, 0, ...`
+Thus, the two extension rows look like:
+
+<!--
+generated with TestExtensionTwoKeyBytesSel1
+-->
+
+```
+[228,130,0,149,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,160,114,253,150,133,18,192,156,19,241,162,51,210,24,1,151,16,48,7,177,42,60,49,34,230,254,242,79,132,165,90,75,249]
+[0,0,5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,160,57,70,87,80,220,197,201,254,196,232,29,240,104,158,250,223,175,172,44,123,126,255,126,108,15,160,185,239,174,205,146,130]
+```
+
+Here, 5 presents the second nibble of 149 (149 = 9 * 16 + 5).
+Having the second nibble simplifies the computation of the first nibble.
 
 <!--
 modify extension in parent diagram
 -->
-
-Here, 5 presents the second nibbles of 149 (see above).
-Having the second nibble simplifies the computation of the first nibble.
-
-Thus, the two extension rows look like:
-
-```
-228,130,0,149, 0, ..., 0, 160, S underlying branch hash
-0, 0, 5, 0, ..., 0, 160, C underlying branch hash
-```
 
 There is bit of a difference in RLP stream when only one nibble appears.
 In this case there is no byte specifying the length of the key extension
@@ -732,6 +733,32 @@ For example:
 <p align="center">
   <img src="./img/storage_leaf.png?raw=true" width="60%">
 </p>
+
+Storage leaf can appear in two RLP formats:
+
+- Short: if leaf RLP length is less or equal 55, it has only two RLP meta bytes, like:
+
+```
+[226,160,59,138,106,70,105,186,37,13,38,205,122,69,158,202,157,33,95,131,7,227,58,235,229,3,121,188,90,54,23,236,52,68,1]
+```
+
+In the above example `226 160` are RLP meta data bytes. 226 means the length of leaf RLP (behind this byte) is 34 (226 - 192). 160 means there are 32 (160 - 128) bytes in the
+following substream that represents the `key` (compressed nibbles).
+Finally, there is a last byte that represents the leaf value: 1.
+Summary: `226 (representing length: 34) 160 (representing key length: 32) 59 ... 68 (32 bytes representing key) 1 (representing value)`.
+
+- Long: if leaf RLP length is more than 55, it has only two RLP meta bytes, like:
+
+```
+[248,67,160,59,138,106,70,105,186,37,13,38,205,122,69,158,202,157,33,95,131,7,227,58,235,229,3,121,188,90,54,23,236,52,68,161,160,187,239,170,18,88,1,56,188,38,60,149,117,120,38,223,78,36,235,129,201,170,170,170,170,170,170,170,170,170,170,170,170]
+```
+
+In this example, `248 67 160` are RLP meta bytes. 248 means there is 1 byte (248 - 247)
+specifying the length of RLP. This byte is 67 - there are 67 bytes after this byte.
+160 means there are 32 bytes in the substream that follows and represents the `key`.
+`161 160` represents RLP meta bytes for leaf `value`. 161 represents length 31 (161 - 128),
+160 represents length 32 (160 - 128) which is the length of the actual value: `187 239 ... 170`.
+Summary: `248 67 (representing length) 160 (representing key length: 32) 59 ... 68 (32 bytes representing length) 161 160 (representing value length: 32) 187 ... 170 (representing value)`.
 
 ##### Constraint: key RLC
 
