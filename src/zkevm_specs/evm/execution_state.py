@@ -61,7 +61,6 @@ class ExecutionState(IntEnum):
     EXTCODEHASH = auto()
     BLOCKHASH = auto()
     BlockCtx = auto()
-    CHAINID = auto()
     SELFBALANCE = auto()
     POP = auto()
     MEMORY = auto()  # MLOAD, MSTORE, MSTORE8
@@ -234,9 +233,8 @@ class ExecutionState(IntEnum):
                 Opcode.DIFFICULTY,
                 Opcode.GASLIMIT,
                 Opcode.BASEFEE,
+                Opcode.CHAINID,
             ]
-        elif self == ExecutionState.CHAINID:
-            return [Opcode.CHAINID]
         elif self == ExecutionState.SELFBALANCE:
             return [Opcode.SELFBALANCE]
         elif self == ExecutionState.POP:

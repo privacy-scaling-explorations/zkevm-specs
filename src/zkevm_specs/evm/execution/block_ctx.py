@@ -1,4 +1,4 @@
-from ...util.param import N_BYTES_ACCOUNT_ADDRESS, N_BYTES_U64
+from ...util.param import N_BYTES_ACCOUNT_ADDRESS, N_BYTES_U64, N_BYTES_WORD
 from ..instruction import Instruction, Transition
 from ..table import BlockContextFieldTag
 from ..opcode import Opcode
@@ -27,6 +27,9 @@ def blockctx(instruction: Instruction):
     elif opcode == Opcode.BASEFEE:
         op = BlockContextFieldTag.BaseFee
         ctx_expr = instruction.stack_push().expr()
+    elif opcode == Opcode.CHAINID:
+        op = BlockContextFieldTag.ChainId
+        ctx_expr = instruction.rlc_to_fq(instruction.stack_push(), N_BYTES_WORD)
 
     # check block table for corresponding op data
     instruction.constrain_equal(instruction.block_context_lookup(op), ctx_expr)

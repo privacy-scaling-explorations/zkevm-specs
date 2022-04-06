@@ -19,7 +19,6 @@ from .callvalue import *
 from .calldatacopy import *
 from .calldataload import *
 from .codecopy import *
-from .chainid import *
 from .gas import *
 from .iszero import *
 from .jump import *
