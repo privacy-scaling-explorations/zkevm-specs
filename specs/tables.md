@@ -123,8 +123,9 @@ Proved by the bytecode circuit.
 
 Proved by the block circuit.
 
-__Note that a generalisation is done by storing the ChainId field in the block_table__
-__when it should indeed live inside of the tx_table.__
+__Note that a generalisation is done by storing the ChainId field inside the block_table__
+__when it should indeed live inside of the chain configuration section (which we don't have).__ 
+__Hence the addition inside of the block_table.__
 
 | 0 Tag                  | 1      | 2 value |
 | ---                    | ---    | ---     |
