@@ -33,7 +33,7 @@ def test_chainid(chainid: U256):
         bytecode_table=set(bytecode.table_assignments(randomness)),
         rw_table=set(
             RWDictionary(9)
-            .stack_write(1, 1023, RLC(block.chainid.to_bytes(N_BYTES_WORD, "little"), randomness))
+            .stack_write(1, 1023, RLC(block.chainid, randomness))
             .rws
         ),
     )
