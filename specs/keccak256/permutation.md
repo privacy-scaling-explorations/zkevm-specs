@@ -25,7 +25,7 @@ def keccak_f(state_tag):
         state_base9 = pi(state_base9)
         state_base9 = xi(state_base9)
         state_base9 = iota_base9(state_base9)
-        state_base13 = convert_base(state_b2, _from=9, _to=13)
+        state_base13 = convert_base(state_b9, _from=9, _to=13)
     # The 24-th round we do iota different
     state_base13 = theta(state_base13)
     state_base9 = rho(state_base13)
