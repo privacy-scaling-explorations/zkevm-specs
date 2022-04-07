@@ -65,6 +65,23 @@ def test_state_ok():
 
         AccountDestructedOp(rw_counter=20, rw=RW.Read, addr=0x12345678, value=FQ(1)),
         AccountDestructedOp(rw_counter=21, rw=RW.Read, addr=0x12345678, value=FQ(1)),
+        TxLogOp(rw_counter=22, rw=RW.Write, tx_id=1, log_id=0, field_tag=TxLogFieldTag.Address, index=0, value=FQ(124)),
+        TxLogOp(rw_counter=23, rw=RW.Write, tx_id=1, log_id=0, field_tag=TxLogFieldTag.Topic, index=0, value=FQ(10)),
+        TxLogOp(rw_counter=24, rw=RW.Write, tx_id=1, log_id=0, field_tag=TxLogFieldTag.Topic, index=1,  value=FQ(5)),
+        TxLogOp(rw_counter=25, rw=RW.Write, tx_id=1, log_id=0, field_tag=TxLogFieldTag.Topic, index=2,  value=FQ(200)),
+        TxLogOp(rw_counter=26, rw=RW.Write, tx_id=1, log_id=0, field_tag=TxLogFieldTag.Topic, index=3,  value=FQ(278)),
+        TxLogOp(rw_counter=27, rw=RW.Write, tx_id=1, log_id=0, field_tag=TxLogFieldTag.Data,  index=0,  value=FQ(10)),
+        TxLogOp(rw_counter=28, rw=RW.Write, tx_id=1, log_id=0, field_tag=TxLogFieldTag.Data,  index=1,  value=FQ(255)),
+        TxLogOp(rw_counter=29, rw=RW.Write, tx_id=1, log_id=1, field_tag=TxLogFieldTag.Address, index=0,  value=FQ(255)),
+        TxLogOp(rw_counter=30, rw=RW.Write, tx_id=1, log_id=1, field_tag=TxLogFieldTag.Data, index=0,  value=FQ(88)),
+        TxLogOp(rw_counter=31, rw=RW.Write, tx_id=2, log_id=0, field_tag=TxLogFieldTag.Address, index=0,  value=FQ(210)),
+        TxLogOp(rw_counter=32, rw=RW.Write, tx_id=2, log_id=0, field_tag=TxLogFieldTag.Topic, index=0,  value=FQ(255)),
+        TxLogOp(rw_counter=33, rw=RW.Write, tx_id=2, log_id=0, field_tag=TxLogFieldTag.Data, index=0,  value=FQ(10)),
+
+        TxReceiptOp(rw_counter=34, rw=RW.Read, tx_id=1, field_tag=TxReceiptFieldTag.PostStateOrStatus, value=FQ(1)),
+        TxReceiptOp(rw_counter=35, rw=RW.Read, tx_id=1, field_tag=TxReceiptFieldTag.CumulativeGasUsed, value=FQ(200)),
+        TxReceiptOp(rw_counter=36, rw=RW.Read, tx_id=2, field_tag=TxReceiptFieldTag.PostStateOrStatus, value=FQ(1)),
+        TxReceiptOp(rw_counter=37, rw=RW.Read, tx_id=2, field_tag=TxReceiptFieldTag.CumulativeGasUsed, value=FQ(500)),
     ]
     # fmt: on
     verify(ops, randomness)
@@ -266,6 +283,108 @@ def test_account_bad_first_access():
     ops = [
         StartOp(),
         AccountOp(rw_counter=1, rw=RW.Write, addr=0x12345678, field_tag=AccountFieldTag.Nonce, value=FQ(0)),
+    ]
+    # fmt: on
+    verify(ops, randomness, success=False)
+
+
+def test_tx_log_bad():
+    # fmt: off
+    # topic index is not increasing
+    ops = [
+        StartOp(),
+        TxLogOp(rw_counter=1, rw=RW.Write, tx_id=1, log_id=0, field_tag=TxLogFieldTag.Address, index=0, value=FQ(124)),
+        TxLogOp(rw_counter=2, rw=RW.Write, tx_id=1, log_id=0, field_tag=TxLogFieldTag.Topic, index=0, value=FQ(10)),
+        TxLogOp(rw_counter=3, rw=RW.Write, tx_id=1, log_id=0, field_tag=TxLogFieldTag.Topic, index=0, value=FQ(5)),
+    ]
+    # fmt: on
+    verify(ops, randomness, success=False)
+
+    # fmt: off
+    # topic index out of range >= 4
+    ops = [
+        StartOp(),
+        TxLogOp(rw_counter=1, rw=RW.Write, tx_id=1, log_id=0, field_tag=TxLogFieldTag.Address, index=0, value=FQ(124)),
+        TxLogOp(rw_counter=2, rw=RW.Write, tx_id=1, log_id=0, field_tag=TxLogFieldTag.Topic, index=0, value=FQ(10)),
+        TxLogOp(rw_counter=3, rw=RW.Write, tx_id=1, log_id=0, field_tag=TxLogFieldTag.Topic, index=1, value=FQ(5)),
+        TxLogOp(rw_counter=4, rw=RW.Write, tx_id=1, log_id=0, field_tag=TxLogFieldTag.Topic, index=2, value=FQ(5)),
+        TxLogOp(rw_counter=5, rw=RW.Write, tx_id=1, log_id=0, field_tag=TxLogFieldTag.Topic, index=3, value=FQ(5)),
+        TxLogOp(rw_counter=6, rw=RW.Write, tx_id=1, log_id=0, field_tag=TxLogFieldTag.Topic, index=4, value=FQ(5)),
+    ]
+    # fmt: on
+    verify(ops, randomness, success=False)
+
+    # fmt: off
+    # Data index is not increasing
+    ops = [
+        StartOp(),
+        TxLogOp(rw_counter=1, rw=RW.Write, tx_id=1, log_id=0, field_tag=TxLogFieldTag.Address, index=0, value=FQ(124)),
+        TxLogOp(rw_counter=2, rw=RW.Write, tx_id=1, log_id=0, field_tag=TxLogFieldTag.Data, index=0, value=FQ(10)),
+        TxLogOp(rw_counter=3, rw=RW.Write, tx_id=1, log_id=0, field_tag=TxLogFieldTag.Data, index=0, value=FQ(255)),
+    ]
+    # fmt: on
+    verify(ops, randomness, success=False)
+
+    # fmt: off
+    # log id is decreasing
+    ops = [
+        StartOp(),
+        TxLogOp(rw_counter=1, rw=RW.Write, tx_id=1, log_id=1, field_tag=TxLogFieldTag.Address, index=0, value=FQ(124)),
+        TxLogOp(rw_counter=2, rw=RW.Write, tx_id=1, log_id=0, field_tag=TxLogFieldTag.Data, index=0, value=FQ(10)),
+        TxLogOp(rw_counter=3, rw=RW.Write, tx_id=1, log_id=0, field_tag=TxLogFieldTag.Data, index=0, value=FQ(255)),
+    ]
+    # fmt: on
+    verify(ops, randomness, success=False)
+
+    # fmt: off
+    # TxLogFieldTag is decreasing
+    ops = [
+        StartOp(),
+        TxLogOp(rw_counter=2, rw=RW.Write, tx_id=1, log_id=0, field_tag=TxLogFieldTag.Data, index=0, value=FQ(10)),
+        TxLogOp(rw_counter=1, rw=RW.Write, tx_id=1, log_id=1, field_tag=TxLogFieldTag.Address, index=0, value=FQ(124)),
+        TxLogOp(rw_counter=3, rw=RW.Write, tx_id=1, log_id=0, field_tag=TxLogFieldTag.Data, index=0, value=FQ(255)),
+    ]
+    # fmt: on
+    verify(ops, randomness, success=False)
+
+    # fmt: off
+    # when tx_id change, log_id is not reset
+    ops = [
+        StartOp(),
+        TxLogOp(rw_counter=2, rw=RW.Write, tx_id=1, log_id=0, field_tag=TxLogFieldTag.Data, index=0, value=FQ(10)),
+        TxLogOp(rw_counter=1, rw=RW.Write, tx_id=1, log_id=1, field_tag=TxLogFieldTag.Address, index=0, value=FQ(124)),
+        TxLogOp(rw_counter=3, rw=RW.Write, tx_id=2, log_id=1, field_tag=TxLogFieldTag.Data, index=0, value=FQ(255)),
+    ]
+    # fmt: on
+    verify(ops, randomness, success=False)
+
+
+def test_tx_receipt_bad():
+    # fmt: off
+    # PostStateOrStatus is invalid
+    ops = [
+        StartOp(),
+        TxReceiptOp(rw_counter=1, rw=RW.Read, tx_id=1, field_tag=TxReceiptFieldTag.PostStateOrStatus, value=FQ(3)),
+    ]
+    # fmt: on
+    verify(ops, randomness, success=False)
+
+    # fmt: off
+    # tx_id is decreasing when changes
+    ops = [
+        StartOp(),
+        TxReceiptOp(rw_counter=1, rw=RW.Read, tx_id=2, field_tag=TxReceiptFieldTag.PostStateOrStatus, value=FQ(3)),
+        TxReceiptOp(rw_counter=2, rw=RW.Read, tx_id=1, field_tag=TxReceiptFieldTag.CumulativeGasUsed, value=FQ(200)),
+    ]
+    # fmt: on
+    verify(ops, randomness, success=False)
+
+    # fmt: off
+    # tx_id is not increasing by one
+    ops = [
+        StartOp(),
+        TxReceiptOp(rw_counter=1, rw=RW.Read, tx_id=1, field_tag=TxReceiptFieldTag.PostStateOrStatus, value=FQ(3)),
+        TxReceiptOp(rw_counter=2, rw=RW.Read, tx_id=5, field_tag=TxReceiptFieldTag.CumulativeGasUsed, value=FQ(200)),
     ]
     # fmt: on
     verify(ops, randomness, success=False)

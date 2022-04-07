@@ -447,10 +447,17 @@ class Instruction:
         return self.tables.tx_lookup(tx_id, FQ(TxContextFieldTag.CallData), call_data_index).value
 
     # look up tx log fields (Data, Address, Topic),
-    def tx_log_lookup(self, field_tag: TxLogFieldTag, index: int = 0) -> Expression:
+    def tx_log_lookup(
+        self, tx_id: Expression, field_tag: TxLogFieldTag, index: int = 0
+    ) -> Expression:
         # evm only write tx log
         value = self.rw_lookup(
-            RW.Write, RWTableTag.TxLog, key1=self.curr.log_id, key2=FQ(index), key3=FQ(field_tag)
+            RW.Write,
+            RWTableTag.TxLog,
+            key1=tx_id,
+            key2=self.curr.log_id,
+            key3=FQ(field_tag),
+            key4=FQ(index),
         ).value
         return value
 
@@ -492,6 +499,7 @@ class Instruction:
         key1: Expression = None,
         key2: Expression = None,
         key3: Expression = None,
+        key4: Expression = None,
         value: Expression = None,
         value_prev: Expression = None,
         aux0: Expression = None,
@@ -509,6 +517,7 @@ class Instruction:
             key1,
             key2,
             key3,
+            key4,
             value,
             value_prev,
             aux0,
@@ -521,6 +530,7 @@ class Instruction:
         key1: Expression = None,
         key2: Expression = None,
         key3: Expression = None,
+        key4: Expression = None,
         value: Expression = None,
         value_prev: Expression = None,
         aux0: Expression = None,
@@ -529,7 +539,7 @@ class Instruction:
     ) -> RWTableRow:
         assert tag.write_with_reversion()
 
-        row = self.rw_lookup(RW.Write, tag, key1, key2, key3, value, value_prev, aux0, aux1)
+        row = self.rw_lookup(RW.Write, tag, key1, key2, key3, key4, value, value_prev, aux0, aux1)
 
         if reversion_info is not None and reversion_info.is_persistent == FQ(0):
             self.tables.rw_lookup(
@@ -539,6 +549,7 @@ class Instruction:
                 key1=row.key1,
                 key2=row.key2,
                 key3=row.key3,
+                key4=row.key4,
                 # Swap value and value_prev
                 value=row.value_prev,
                 value_prev=row.value,

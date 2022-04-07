@@ -27,6 +27,7 @@ from .table import (
     RWTableRow,
     RWTableTag,
     TxContextFieldTag,
+    TxLogFieldTag,
     TxTableRow,
 )
 from .opcode import get_push_size, Opcode
@@ -369,6 +370,26 @@ class RWDictionary:
             RW.Write, RWTableTag.CallContext, key1=FQ(call_id), key2=FQ(field_tag), value=value
         )
 
+    def tx_log_write(
+        self,
+        tx_id: IntOrFQ,
+        log_id: IntOrFQ,
+        field_tag: TxLogFieldTag,
+        index: IntOrFQ,
+        value: Union[int, FQ, RLC],
+    ) -> RWDictionary:
+        if isinstance(value, int):
+            value = FQ(value)
+        return self._append(
+            RW.Write,
+            RWTableTag.TxLog,
+            key1=FQ(tx_id),
+            key2=FQ(log_id),
+            key3=FQ(field_tag),
+            key4=FQ(index),
+            value=value,
+        )
+
     def tx_refund_read(self, tx_id: IntOrFQ, refund: IntOrFQ) -> RWDictionary:
         return self._append(
             RW.Read, RWTableTag.TxRefund, key1=FQ(tx_id), value=FQ(refund), value_prev=FQ(refund)
@@ -551,6 +572,7 @@ class RWDictionary:
         key1: Expression = FQ(0),
         key2: Expression = FQ(0),
         key3: Expression = FQ(0),
+        key4: Expression = FQ(0),
         value: Expression = FQ(0),
         value_prev: Expression = FQ(0),
         aux0: Expression = FQ(0),
@@ -569,6 +591,7 @@ class RWDictionary:
                 key1,
                 key2,
                 key3,
+                key4,
                 value,
                 value_prev,
                 aux0,

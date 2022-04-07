@@ -23,7 +23,9 @@ def copy_to_log(instruction: Instruction):
         buffer_reader.constrain_byte(i, byte)
         # when is_persistent = false, only do memory_lookup, no tx_log_lookup
         if buffer_reader.has_data(i) == 1 and aux.is_persistent == 1:
-            instruction.constrain_equal(byte, instruction.tx_log_lookup(TxLogFieldTag.Data, i))
+            instruction.constrain_equal(
+                byte, instruction.tx_log_lookup(aux.tx_id, TxLogFieldTag.Data, i)
+            )
 
     copied_bytes = buffer_reader.num_bytes()
     lt, finished = instruction.compare(copied_bytes, aux.bytes_left, N_BYTES_MEMORY_SIZE)

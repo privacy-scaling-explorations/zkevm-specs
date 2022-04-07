@@ -53,8 +53,9 @@ Type sizes:
 - **topic**, field size, RLC encoded (Random Linear Combination)
 - **TxLog -> data**, 1 byte
 - **index**, 8 byte, indicates order in tx log data or topics
+- **TxReceipt -> PostStateOrStatus**, 1 byte
+- **TxReceipt -> CumulativeGasUsed**, 8 byte
 
-NOTE: TxLog is currently Work In Progress and will be updated to include $txID in each row.
 
 | 0 *rwc*  | 1 *isWrite* | 2 *Key0 (Tag)*             | 3 *Key1* | 4 *Key2* | 5 *Key3*                   | 6 *Key4*    | 7 *Value0* | 8 *Value1* | 9 *Aux0* | 10 *Aux1*       |
 | -------- | ----------- | -------------------------- | -------- | -------- | -------------------------- | ----------- | ---------  | ---------- | -------- | --------------- |
@@ -104,9 +105,15 @@ NOTE: TxLog is currently Work In Progress and will be updated to include $txID i
 | $counter | $isWrite    | Memory                     | $callID  | $memoryAddress |                      |             | $value     | 0          | 0        | 0               |
 | $counter | $isWrite    | AccountStorage             |          | $address       |                      | $storageKey | $value     | $valuePrev | $txID    | $CommittedValue |
 |          |             |                            |          |             |                         |             |            |            |          |                 |
-| $counter | true        | TxLog                      | $logID   | 0           |  Address                |             | $value     | 0          | 0        | 0               |
-| $counter | true        | TxLog                      | $logID   | $topicIndex |  Topic                       |             | $value     | 0          | 0        | 0               |
-| $counter | true        | TxLog                      | $logID   | $byteIndex  |  Data                   |             | $value     | 0          | 0        | 0               |
+| $counter | true        | TxLog                     |$txID      | $logID    |  Address                 |       0     | $value     | 0          | 0        | 0               |
+| $counter | true        | TxLog                     |$txID      | $logID    |  Topic                   | $topicIndex | $value     | 0          | 0        | 0               |
+| $counter | true        | TxLog                     |$txID      | $logID    |  Data                    | $byteIndex  | $value     | 0          | 0        | 0               |
+| $counter | true        | TxLog                     |$txID      | $logID    |  TopicLength            |       0     | $value     | 0          | 0        | 0               |
+| $counter | true        | TxLog                     |$txID      | $logID    |  DataLength             |       0     | $value     | 0          | 0        | 0               |
+|          |             |                            |          |           |                         |             |            |            |          |                 |
+| $counter | false       | TxReceipt                 |$txID      |   0       |  PostStateOrStatus      |       0     | $value     | 0          | 0        | 0               |
+| $counter | false       | TxReceipt                 |$txID      |   0       |  CumulativeGasUsed      |       0     | $value     | 0          | 0        | 0               |
+| $counter | false       | TxReceipt                 |$txID      |   0       |  LogLength              |       0     | $value     | 0          | 0        | 0               |
 
 ## `bytecode_table`
 

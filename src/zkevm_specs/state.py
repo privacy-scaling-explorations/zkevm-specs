@@ -4,12 +4,12 @@ from math import log, ceil
 
 from .util import FQ, RLC, U160, U256
 from .encoding import U8, is_circuit_code
-from .evm import RW, AccountFieldTag, CallContextFieldTag
+from .evm import RW, AccountFieldTag, CallContextFieldTag, TxLogFieldTag, TxReceiptFieldTag
 
 MAX_MEMORY_ADDRESS = 2**32 - 1
 MAX_KEY_DIFF = 2**32 - 1
 MAX_STACK_PTR = 1023
-MAX_KEY0 = 10  # Number of Tag variants
+MAX_KEY0 = 12  # Number of Tag variants
 MAX_KEY1 = 2**16 - 1  # Maximum number of calls in a block
 MAX_KEY2 = 2**160 - 1  # Ethereum Address size
 MAX_KEY3 = 24  # Max(# of CallContextFieldTag, # of AccountFieldTag) - 1
@@ -37,6 +37,8 @@ class Tag(IntEnum):
     TxAccessListAccount = 8
     TxAccessListAccountStorage = 9
     AccountDestructed = 10
+    TxLog = 11
+    TxReceipt = 12
 
 
 class Row(NamedTuple):
@@ -264,6 +266,69 @@ def check_account_destructed(row: Row, row_prev: Row):
 
 
 @is_circuit_code
+def check_tx_log(row: Row, row_prev: Row):
+    # tx_id | log_id | field_tag | index | value
+    tx_id = row.keys[1]
+    pre_tx_id = row_prev.keys[1]
+    log_id = row.keys[2]
+    pre_field_tag = row_prev.keys[3]
+    field_tag = row.keys[3]
+    index = row.keys[4]
+    pre_index = row_prev.keys[4]
+
+    # is_write is always true
+    assert row.is_write == 1
+    # reset log_id when tx_id increases
+    if row.tag() == row_prev.tag():
+        if tx_id != pre_tx_id:
+            assert tx_id == pre_tx_id + 1
+            assert log_id == 0
+        else:
+            # increase log_id when tag changes to Address, make sure tag can only increase(Non-Decreasing),
+            # when log_index stays same,
+            if pre_field_tag == U256(TxLogFieldTag.Address):
+                assert (field_tag - pre_field_tag).n > 0
+            # make sure if tag Data appear, data_index can only increase by one when tag stays same.
+            # make sure if tag Topic appear, topic_index in range [0,4),can only increase by one when tag stays same.
+            if field_tag == U256(TxLogFieldTag.Topic):
+                assert_in_range(index, 0, 3)
+            if field_tag not in [U256(TxLogFieldTag.Topic), U256(TxLogFieldTag.Data)]:
+                assert index == 0
+            elif pre_field_tag == field_tag:
+                assert index == pre_index + 1
+
+    # make sure if log set is not empty within receipt/tx, tx must be successful status because failed execution will revert the log data,
+    # in other words, logs section must be empty list for failed tx
+
+
+@is_circuit_code
+def check_tx_receipt(row: Row, row_prev: Row):
+    tx_id = row.keys[1]
+    pre_tx_id = row_prev.keys[1]
+    field_tag = row.keys[3]
+    # 0. Unused keys are 0
+    assert row.keys[2] == 0
+    assert row.keys[4] == 0
+
+    # value for tag `PostStateOrStatus` is bool (0 or 1) according to EIP#658
+    if field_tag == U256(TxReceiptFieldTag.PostStateOrStatus):
+        assert row.value in [0, 1]
+
+    # when tx id changes, must be increasing by one , the CumulativeGasUsed must be increasing as well
+    if tx_id != pre_tx_id and row.tag() == row_prev.tag():
+        assert tx_id == pre_tx_id + 1
+        if field_tag == U256(TxReceiptFieldTag.CumulativeGasUsed):
+            assert row.value.n > row_prev.value.n
+
+    # tx id starts with 1
+    if row.tag() != row_prev.tag():
+        # first row the tx id is 1
+        assert tx_id == FQ(1)
+
+    assert_in_range(tx_id, 1, 2**11)
+
+
+@is_circuit_code
 def check_state_row(row: Row, row_prev: Row, randomness: FQ):
     #
     # Constraints that affect all rows, no matter which Tag they use
@@ -358,6 +423,10 @@ def check_state_row(row: Row, row_prev: Row, randomness: FQ):
         check_tx_access_list_account(row, row_prev)
     elif row.tag() == Tag.AccountDestructed:
         check_account_destructed(row, row_prev)
+    elif row.tag() == Tag.TxReceipt:
+        check_tx_receipt(row, row_prev)
+    elif row.tag() == Tag.TxLog:
+        check_tx_log(row, row_prev)
     else:
         raise ValueError("Unreacheable")
 
@@ -514,6 +583,41 @@ class AccountDestructedOp(Operation):
         # fmt: off
         return super().__new__(self, rw_counter, rw,
                 U256(Tag.AccountDestructed), U256(0), U256(addr), U256(0), U256(0), # keys
+                value, FQ(0), FQ(0)) # values
+        # fmt: on
+
+
+class TxLogOp(Operation):
+    """
+    TxLog Operation
+    """
+
+    def __new__(
+        self,
+        rw_counter: int,
+        rw: RW,
+        tx_id: int,
+        log_id: int,
+        field_tag: TxLogFieldTag,
+        index: int,
+        value: FQ,
+    ):
+        # fmt: off
+        return super().__new__(self, rw_counter, rw,
+                U256(Tag.TxLog),U256(tx_id), U256(log_id), U256(field_tag), U256(index), # keys
+                value, FQ(0), FQ(0)) # values
+        # fmt: on
+
+
+class TxReceiptOp(Operation):
+    """
+    TxReceipt Operation
+    """
+
+    def __new__(self, rw_counter: int, rw: RW, tx_id: int, field_tag: TxReceiptFieldTag, value: FQ):
+        # fmt: off
+        return super().__new__(self, rw_counter, rw,
+                U256(Tag.TxReceipt), U256(tx_id),  U256(0), U256(field_tag), U256(0), # keys
                 value, FQ(0), FQ(0)) # values
         # fmt: on
 
