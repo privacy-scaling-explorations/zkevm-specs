@@ -72,7 +72,7 @@ We branch the constraints to apply by state_tag
     - next.input === 0 (since the input is the unpadded input)
     - next.state_tag in (Absorb, Finalize)
   - Next row validity
-    - next.acc_input === curr.acc_input * r**136
+    - next.acc_input === curr.acc_input * r**136 + next.input
     - next.perm_count === curr.perm_count + 1
   - State transition
     - next.state_tag in (Absorb, Finalize)
@@ -81,6 +81,7 @@ We branch the constraints to apply by state_tag
         - (curr.perm_count * 136 - input_len) in 1~136
     - Next row validity
         - next.perm_count === 1
+        - next.acc_input === next.input
     - State transition: (Absorb, Finalize, 0) all 3 states allowed
 - Null
     - next.state_tag === 0 (The first row is also satisfied!)
