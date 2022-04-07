@@ -123,6 +123,10 @@ Proved by the bytecode circuit.
 
 Proved by the block circuit.
 
+__Note that a generalisation is done by storing the ChainId field inside the block_table__
+__when it should indeed live inside of the chain configuration section (which we don't have).__ 
+__Hence the addition inside of the block_table.__
+
 | 0 Tag                  | 1      | 2 value |
 | ---                    | ---    | ---     |
 | *BlockContextFieldTag* |        |         |
@@ -133,6 +137,7 @@ Proved by the block circuit.
 | Difficulty             | 0      | $value  |
 | BaseFee                | 0      | $value  |
 | BlockHash              | 0..256 | $value  |
+| ChainID                | 0      | $value  |
 
 ## `fixed`
 
