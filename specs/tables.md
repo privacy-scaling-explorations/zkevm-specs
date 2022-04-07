@@ -112,12 +112,21 @@ NOTE: TxLog is currently Work In Progress and will be updated to include $txID i
 
 Proved by the bytecode circuit.
 
+> - **tag**: Tag whether the row represents the bytecode length or a byte in
+>   the bytecode.
+
 > - **isCode**: A boolean value to specify if the value is executable opcode or
 >   the data portion of PUSH\* operations.
 
-| 0 codeHash | 1 byteIndex | 2 value | 3 isCode |
-| ---        | ---         | ---     | ---      |
-| $codeHash  | $byteIndex  | $value  | $isCode  |
+| 0 codeHash | 1 tag              | 2 index | 3 isCode | 4 value |
+| ---        | ---                | ---     | ---      | ---     |
+|            | *BytecodeFieldTag* |         |          |         |
+| $codeHash  | Length             | 0       | 0        | $value  |
+| $codeHash  | Byte               | $index  | $isCode  | $value  |
+| ...        | ...                | ...     | ...      | ...     |
+| $codeHash  | Byte               | $index  | $isCode  | $value  |
+
+In the case of an account without code, it can still have a row in the bytecode circuit to represent the `BytecodeFieldTag::Length` tag, with a `value = 0` and `codeHash = EMPTY_CODE_HASH`.
 
 ## `block_table`
 
