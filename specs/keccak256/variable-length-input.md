@@ -70,7 +70,7 @@ We branch the constraints to apply by state_tag
     - next.state_tag in (Absorb, Finalize)
   - Next row validity
     - next.acc_input === curr.acc_input * r**136
-    - next.perm_count === next.perm_count + 1
+    - next.perm_count === curr.perm_count + 1
   - State transition
     - next.state_tag in (Absorb, Finalize)
 - Finalize
