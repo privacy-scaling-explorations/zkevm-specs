@@ -32,4 +32,4 @@ The `CHAINID` opcode loads a 256-bit value from the chain configuration (the cha
 
 ## Code
 
-Please refer to [`chainid.py`](src/zkevm_specs/evm/execution/chainid.py)
+Please refer to [`block_ctx.py`](src/zkevm_specs/evm/execution/block_ctx.py)
