@@ -1,19 +1,20 @@
 
+We denote `X.curr()` and `X.prev()` for current row and previous row for column X. If curr or prev is unspecified for a column, we refer to the cell at the current row.
 
 ```python
 # state: 25 cols/words that the current keccak_f works on
 # input: 17 cols/words that the current keccak_f works on
 def keccak_f(state_tag):
     # if the previous keccak_f is marked as finalized, we need to initialize the state
-    state_base13 = (prev.state_tag == Tag.Finalize) * convert_base(
-        curr.input, _from=2, _to=13
+    state_base13 = (state_tag.prev() == Tag.Finalize) * convert_base(
+        input.curr(), _from=2, _to=13
     )
 
     # if the previous keccak_f is NOT marked as finalized, we need to absorb the current input from the previous output
     # if we are at the finalize step, use the padded input, otherwise, simply use the current input.
-    _input = curr.input + (curr.state_tag == Tag.Finalize) * curr.padded_input
-    state_base9 = (prev.state_tag != Tag.Finalize) * absorb(prev.state_base9, _input)
-    state_base13 = (prev.state_tag != Tag.Finalize) * convert_base(state_base9, _from=9, _to=13)
+    _input = input.curr() + (state_tag.curr() == Tag.Finalize) * padded_input.curr()
+    state_base9 = (state_tag.prev() != Tag.Finalize) * absorb(state_base9.prev(), _input)
+    state_base13 = (state_tag.prev() != Tag.Finalize) * convert_base(state_base9, _from=9, _to=13)
     # apply 24th of the round constant which was not completed in previous round
     state_base13 = (state_tag != Tag.Init) * iota_base13(state_base13)
 
