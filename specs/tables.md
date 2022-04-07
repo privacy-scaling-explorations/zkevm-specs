@@ -108,11 +108,12 @@ Type sizes:
 | $counter | true        | TxLog                     |$txID      | $logID    |  Address                 |       0     | $value     | 0          | 0        | 0               |
 | $counter | true        | TxLog                     |$txID      | $logID    |  Topic                   | $topicIndex | $value     | 0          | 0        | 0               |
 | $counter | true        | TxLog                     |$txID      | $logID    |  Data                    | $byteIndex  | $value     | 0          | 0        | 0               |
-| $counter | true        | TxLog                     |$txID      | $logID    |  Topic_Length            |       0     | $value     | 0          | 0        | 0               |
-| $counter | true        | TxLog                     |$txID      | $logID    |  Data_length             |       0     | $value     | 0          | 0        | 0               |
+| $counter | true        | TxLog                     |$txID      | $logID    |  TopicLength            |       0     | $value     | 0          | 0        | 0               |
+| $counter | true        | TxLog                     |$txID      | $logID    |  DataLength             |       0     | $value     | 0          | 0        | 0               |
 |          |             |                            |          |           |                         |             |            |            |          |                 |
 | $counter | false       | TxReceipt                 |$txID      |   0       |  PostStateOrStatus      |       0     | $value     | 0          | 0        | 0               |
 | $counter | false       | TxReceipt                 |$txID      |   0       |  CumulativeGasUsed      |       0     | $value     | 0          | 0        | 0               |
+| $counter | false       | TxReceipt                 |$txID      |   0       |  LogLength              |       0     | $value     | 0          | 0        | 0               |
 
 ## `bytecode_table`
 
