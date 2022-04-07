@@ -17,16 +17,19 @@ Each row other than the first is corresponding to a `Keccak-f` permutation round
 We define these state tags
 - Absorb: Absorbs the current input and permutes state.
 - Finalize: Does the same but it marks the state output is usable for the consumer.
+- Null: A dummy tag for the first row and the rest of the unused rows.
 
 ```mermaid
 stateDiagram-v2
     direction LR
-    [*] --> Absorb
+    [*] --> Null
+    Null --> Absorb
     Absorb --> Absorb
     Absorb --> Finalize
     Finalize --> Absorb
     Finalize --> Finalize
-    Finalize --> [*]
+    Finalize --> Null
+    Null --> [*]
 ```
 
 #### State transition
@@ -39,7 +42,7 @@ This is also a lookup table for the other circuits to lookup the Keccak256 input
 
 Columns:
 
-- `state_tag` either 0=Start/End/Null, 1=Absorb, 2=Finalize
+- `state_tag` either 0=Null, 1=Absorb, 2=Finalize
 - `input_len` The length of the input.
 - `input` 136 bytes to be absorbed in this round. Padding not included yet.
 - `perm_count` Permutations we have done after the current one.
@@ -48,14 +51,14 @@ Columns:
 
 | state_tag | input_len | input | perm_count | acc_input | output |
 | --------: | --------: | ----: | ---------: | --------: | -----: |
-|         0 |         0 |     0 |          0 |         0 |      0 |
+|      Null |         0 |     0 |          0 |         0 |      0 |
 |  Finalize |        20 |       |          1 |           |        |
 |    Absorb |       150 |       |          1 |           |        |
 |  Finalize |       150 |       |          2 |           |        |
 |  Finalize |         0 |       |          1 |           |        |
 |    Absorb |       136 |       |          1 |           |        |
 |  Finalize |       136 |     0 |          2 |           |        |
-|         0 |           |       |          0 |         0 |        |
+|      Null |           |       |          0 |         0 |        |
 
 #### Checks
 
@@ -79,7 +82,7 @@ We branch the constraints to apply by state_tag
     - Next row validity
         - next.perm_count === 1
     - State transition: (Absorb, Finalize, 0) all 3 states allowed
-- 0
+- Null
     - next.state_tag === 0 (The first row is also satisfied!)
     - We can broadcast this state_tag to the `keccak_f` as a flag to disable all checks.
 
