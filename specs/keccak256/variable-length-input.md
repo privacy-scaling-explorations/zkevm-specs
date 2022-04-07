@@ -43,11 +43,11 @@ This is also a lookup table for the other circuits to lookup the Keccak256 input
 Columns:
 
 - `state_tag` either 0=Null, 1=Absorb, 2=Finalize
-- `input_len` The length of the input.
-- `input` 136 bytes to be absorbed in this round. Padding not included yet.
-- `perm_count` Permutations we have done after the current one.
-- `acc_input` Accumulatd bytes by random linear combination (in big-endian order)
-- `output` The base-2 `state[:4]` output from this round `keccak_f`
+- `input_len`: int. The length of the input.
+- `input`: RLC of 136 bytes. 136 bytes to be absorbed in this round. Padding not included yet.
+- `perm_count`: int. Permutations we have done after the current one.
+- `acc_input`: RLC. Accumulatd bytes by random linear combination (in big-endian order)
+- `output` RLC of 32 bytes. The base-2 `state[:4]` output from this round `keccak_f`
 
 | state_tag | input_len | input | perm_count | acc_input | output |
 | --------: | --------: | ----: | ---------: | --------: | -----: |
