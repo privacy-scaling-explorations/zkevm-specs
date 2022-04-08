@@ -31,7 +31,6 @@ def copy_to_memory(instruction: Instruction):
     instruction.constrain_zero((1 - lt) * (1 - finished))
 
     if finished == 0:
-        assert instruction.next is not None
         next_aux = instruction.next.aux_data
 
         assert isinstance(next_aux, CopyToMemoryAuxData)
