@@ -28,6 +28,7 @@ from zkevm_specs.util import (
 
 
 TX_ID = 13
+CALLER_ID = 0
 CALL_ID = 1
 TESTING_DATA = (
     # simple cases
@@ -70,7 +71,7 @@ def make_copy_step(
         src_addr_end=src_addr_end,
         bytes_left=bytes_left,
         from_tx=from_tx,
-        tx_id=TX_ID,
+        src_id=TX_ID if from_tx else CALLER_ID,
     )
     step = StepState(
         execution_state=ExecutionState.CopyToMemory,
@@ -89,7 +90,7 @@ def make_copy_step(
     for i in range(num_bytes):
         byte = buffer_map[src_addr + i] if src_addr + i < src_addr_end else 0
         if not from_tx and src_addr + i < src_addr_end:
-            rw_dictionary.memory_read(CALL_ID, src_addr + i, byte)
+            rw_dictionary.memory_read(CALLER_ID, src_addr + i, byte)
         rw_dictionary.memory_write(CALL_ID, dst_addr + i, byte)
 
     return step
@@ -205,12 +206,17 @@ def test_calldatacopy(
         .stack_read(CALL_ID, 1021, memory_offset_rlc)
         .stack_read(CALL_ID, 1022, data_offset_rlc)
         .stack_read(CALL_ID, 1023, length_rlc)
-        .call_context_read(CALL_ID, CallContextFieldTag.TxId, TX_ID)
     )
-    if not from_tx:
+    if from_tx:
+        rw_dictionary.call_context_read(CALL_ID, CallContextFieldTag.TxId, TX_ID)
+    else:
         rw_dictionary.call_context_read(
+            CALL_ID, CallContextFieldTag.CallerId, CALLER_ID
+        ).call_context_read(
             CALL_ID, CallContextFieldTag.CallDataLength, call_data_length
-        ).call_context_read(CALL_ID, CallContextFieldTag.CallDataOffset, call_data_offset)
+        ).call_context_read(
+            CALL_ID, CallContextFieldTag.CallDataOffset, call_data_offset
+        )
 
     new_steps = make_copy_steps(
         call_data,

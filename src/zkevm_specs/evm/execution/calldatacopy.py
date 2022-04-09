@@ -15,11 +15,12 @@ def calldatacopy(instruction: Instruction):
     memory_offset, length = instruction.memory_offset_and_length(memory_offset_word, length_word)
     data_offset = instruction.rlc_to_fq(data_offset_word, N_BYTES_MEMORY_ADDRESS)
 
-    tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId, RW.Read)
     if instruction.curr.is_root:
-        call_data_length = instruction.tx_context_lookup(tx_id, TxContextFieldTag.CallDataLength)
+        src_id = instruction.call_context_lookup(CallContextFieldTag.TxId, RW.Read)
+        call_data_length = instruction.tx_context_lookup(src_id, TxContextFieldTag.CallDataLength)
         call_data_offset: Expression = FQ.zero()
     else:
+        src_id = instruction.call_context_lookup(CallContextFieldTag.CallerId, RW.Read)
         call_data_length = instruction.call_context_lookup(
             CallContextFieldTag.CallDataLength, RW.Read
         )
@@ -43,7 +44,7 @@ def calldatacopy(instruction: Instruction):
             next_aux.src_addr_end, call_data_length.expr() + call_data_offset
         )
         instruction.constrain_equal(next_aux.from_tx, FQ(instruction.curr.is_root))
-        instruction.constrain_equal(next_aux.tx_id, tx_id)
+        instruction.constrain_equal(next_aux.src_id, src_id)
         instruction.constrain_equal(next_aux.bytes_left, length)
 
     instruction.step_state_transition_in_same_context(

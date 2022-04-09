@@ -37,10 +37,11 @@ copying data to the memory if `length > 0`.
    - `memory_offset` is at the top of the stack
    - `data_offset` is at the second position of the stack
    - `length` is at the third position of the stack
-   - `tx_id` is in the rw table (call context)
    - for root calls (`is_root = 1`):
+     - `tx_id` is in the rw table (call context)
      - `call_data_length` is in the tx table
    - for internal calls (`is_root = 0`):
+     - `caller_id` is in the rw table (call context)
      - `call_data_length` is in the rw table (call context)
      - `call_data_offset` is in the rw table (call context)
 
