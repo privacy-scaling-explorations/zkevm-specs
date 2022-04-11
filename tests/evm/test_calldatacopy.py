@@ -208,7 +208,9 @@ def test_calldatacopy(
         .stack_read(CALL_ID, 1023, length_rlc)
     )
     if from_tx:
-        rw_dictionary.call_context_read(CALL_ID, CallContextFieldTag.TxId, TX_ID)
+        rw_dictionary.call_context_read(CALL_ID, CallContextFieldTag.TxId, TX_ID).call_context_read(
+            CALL_ID, CallContextFieldTag.CallDataLength, call_data_length
+        )
     else:
         rw_dictionary.call_context_read(
             CALL_ID, CallContextFieldTag.CallerId, CALLER_ID

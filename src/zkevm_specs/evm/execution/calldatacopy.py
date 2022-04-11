@@ -17,7 +17,9 @@ def calldatacopy(instruction: Instruction):
 
     if instruction.curr.is_root:
         src_id = instruction.call_context_lookup(CallContextFieldTag.TxId, RW.Read)
-        call_data_length = instruction.tx_context_lookup(src_id, TxContextFieldTag.CallDataLength)
+        call_data_length = instruction.call_context_lookup(
+            CallContextFieldTag.CallDataLength, RW.Read
+        )
         call_data_offset: Expression = FQ.zero()
     else:
         src_id = instruction.call_context_lookup(CallContextFieldTag.CallerId, RW.Read)
