@@ -85,7 +85,7 @@ class CopyToMemoryAuxData:
     bytes_left: FQ
     src_addr_end: FQ
     from_tx: FQ
-    tx_id: FQ
+    src_id: FQ
 
     def __init__(
         self,
@@ -94,14 +94,14 @@ class CopyToMemoryAuxData:
         bytes_left: int,
         src_addr_end: int,
         from_tx: bool,
-        tx_id: int,
+        src_id: int,
     ):
         self.src_addr = FQ(src_addr)
         self.dst_addr = FQ(dst_addr)
         self.bytes_left = FQ(bytes_left)
         self.src_addr_end = FQ(src_addr_end)
         self.from_tx = FQ(from_tx)
-        self.tx_id = FQ(tx_id)
+        self.src_id = FQ(src_id)
 
 
 class CopyToLogAuxData:
