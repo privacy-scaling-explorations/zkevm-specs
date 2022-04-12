@@ -88,14 +88,15 @@ def test_calldataload(
         parent_call_id = 1
 
     rw_dictionary = (
-        RWDictionary(1)
-        .stack_write(call_id, 1023, offset_rlc)
-        .stack_read(call_id, 1023, offset_rlc)
-        .call_context_read(call_id, CallContextFieldTag.TxId, 1)
+        RWDictionary(1).stack_write(call_id, 1023, offset_rlc).stack_read(call_id, 1023, offset_rlc)
     )
     if is_root:
-        rw_dictionary.stack_write(call_id, 1023, expected_stack_top)
+        rw_dictionary.call_context_read(call_id, CallContextFieldTag.TxId, 1).call_context_read(
+            call_id, CallContextFieldTag.CallDataLength, call_data_length
+        ).stack_write(call_id, 1023, expected_stack_top)
     else:
+        # add to RW table call context, caller'd ID (read)
+        rw_dictionary.call_context_read(call_id, CallContextFieldTag.CallerId, parent_call_id)
         # add to RW table call context, call data length (read)
         rw_dictionary.call_context_read(
             call_id, CallContextFieldTag.CallDataLength, call_data_length
@@ -104,8 +105,6 @@ def test_calldataload(
         rw_dictionary.call_context_read(
             call_id, CallContextFieldTag.CallDataOffset, call_data_offset
         )
-        # add to RW table call context, caller'd ID (read)
-        rw_dictionary.call_context_read(call_id, CallContextFieldTag.CallerId, parent_call_id)
         # add to RW table memory (read)
         for i in range(0, len(call_data)):
             idx = offset + call_data_offset + i
