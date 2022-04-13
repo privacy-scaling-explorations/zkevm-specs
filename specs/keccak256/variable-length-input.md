@@ -15,7 +15,7 @@ No matter what input is, the padding must be applied. The padding is a multi-rat
 Each row other than the first is corresponding to a `Keccak-f` permutation round.
 
 We define these state tags
-- Absorb: Absorbs the current input and permutes state.
+- Continue: Absorbs the current input and permutes state.
 - Finalize: Does the same but it marks the state output is usable for the consumer.
 - Null: A dummy tag for the first row and the rest of the unused rows.
 
@@ -23,10 +23,10 @@ We define these state tags
 stateDiagram-v2
     direction LR
     [*] --> Null
-    Null --> Absorb
-    Absorb --> Absorb
-    Absorb --> Finalize
-    Finalize --> Absorb
+    Null --> Continue
+    Continue --> Continue
+    Continue --> Finalize
+    Finalize --> Continue
     Finalize --> Finalize
     Finalize --> Null
     Null --> [*]
@@ -42,7 +42,7 @@ This is also a lookup table for the other circuits to lookup the Keccak256 input
 
 Columns:
 
-- `state_tag` either 0=Null, 1=Absorb, 2=Finalize
+- `state_tag` either 0=Null, 1=Continue, 2=Finalize
 - `input_len`: int. The length of the input.
 - `input`: RLC of 136 bytes. 136 bytes to be absorbed in this round. Padding not included yet.
 - `perm_count`: int. Permutations we have done after the current one.
@@ -53,10 +53,10 @@ Columns:
 | --------: | --------: | ----: | ---------: | --------: | -----: |
 |      Null |         0 |     0 |          0 |         0 |      0 |
 |  Finalize |        20 |       |          1 |           |        |
-|    Absorb |       150 |       |          1 |           |        |
+|  Continue |       150 |       |          1 |           |        |
 |  Finalize |       150 |       |          2 |           |        |
 |  Finalize |         0 |       |          1 |           |        |
-|    Absorb |       136 |       |          1 |           |        |
+|  Continue |       136 |       |          1 |           |        |
 |  Finalize |       136 |     0 |          2 |           |        |
 |      Null |           |       |          0 |         0 |        |
 
@@ -66,23 +66,23 @@ We branch the constraints to apply by state_tag
 
 - `q_start`
   - State transition
-    - next.state_tag in (Absorb, Finalize)
-- Absorb
+    - next.state_tag in (Continue, Finalize)
+- Continue
   - if input_len === 136 * (perm_count + 1) absorb a full block of 0x80...0x01
     - next.input === 0 (since the input is the unpadded input)
-    - next.state_tag in (Absorb, Finalize)
+    - next.state_tag in (Continue, Finalize)
   - Next row validity
     - next.acc_input === curr.acc_input * r**136 + next.input
     - next.perm_count === curr.perm_count + 1
   - State transition
-    - next.state_tag in (Absorb, Finalize)
+    - next.state_tag in (Continue, Finalize)
 - Finalize
     - This is a valid place to finalize
         - (curr.perm_count * 136 - input_len) in 1~136
     - Next row validity
         - next.perm_count === 1
         - next.acc_input === next.input
-    - State transition: (Absorb, Finalize, 0) all 3 states allowed
+    - State transition: (Continue, Finalize, 0) all 3 states allowed
 - Null
     - next.state_tag === 0 (The first row is also satisfied!)
     - We can broadcast this state_tag to the `keccak_f` as a flag to disable all checks.
