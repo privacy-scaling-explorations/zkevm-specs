@@ -16,7 +16,11 @@ def shr(instruction: Instruction):
 
     result = instruction.select(
         shift_valid,
-        word_shift_right(instruction, a, instruction.bytes_to_fq(shift_lo)),
+        instruction.select(
+            instruction.is_zero(instruction.sum(shift_lo)),
+            a,
+            word_shift_right(instruction, a, instruction.bytes_to_fq(shift_lo)),
+        ),
         RLC(0),
     )
     instruction.constrain_equal(result, instruction.stack_push())
