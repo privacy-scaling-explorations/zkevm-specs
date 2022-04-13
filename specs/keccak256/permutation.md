@@ -12,11 +12,11 @@ def keccak_f(state_tag):
 
     # if the previous keccak_f is NOT marked as finalized, we need to absorb the current input from the previous output
     # if we are at the finalize step, use the padded input, otherwise, simply use the current input.
-    _input = (state_tag.curr() != Tag.Finalize) * input.curr() + (state_tag.curr() == Tag.Finalize) * padded_input.curr()
-    state_base9 = (state_tag.prev() != Tag.Finalize) * absorb(state_base9.prev(), _input)
-    state_base13 = (state_tag.prev() != Tag.Finalize) * convert_base(state_base9, _from=9, _to=13)
+    _input = (state_tag.curr() == Tag.Continue) * input.curr() + (state_tag.curr() == Tag.Finalize) * padded_input.curr()
+    state_base9 = (state_tag.prev() == Tag.Continue) * absorb(state_base9.prev(), _input)
+    state_base13 = (state_tag.prev() == Tag.Continue) * convert_base(state_base9, _from=9, _to=13)
     # apply 24th of the round constant which was not completed in previous round
-    state_base13 = (state_tag.prev() != Tag.Finalize) * iota_base13(state_base13)
+    state_base13 = (state_tag.prev() == Tag.Continue) * iota_base13(state_base13)
 
     # The core permutation
     # first 23 rounds
