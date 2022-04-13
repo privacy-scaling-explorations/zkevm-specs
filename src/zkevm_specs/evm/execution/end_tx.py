@@ -1,7 +1,7 @@
 from ...util import N_BYTES_GAS, MAX_REFUND_QUOTIENT_OF_GAS_USED, FQ, RLC, cast_expr
 from ..execution_state import ExecutionState
 from ..instruction import Instruction, Transition
-from ..table import BlockContextFieldTag, CallContextFieldTag, TxContextFieldTag
+from ..table import BlockContextFieldTag, CallContextFieldTag, TxContextFieldTag, TxReceiptFieldTag
 
 
 def end_tx(instruction: Instruction):
@@ -33,6 +33,9 @@ def end_tx(instruction: Instruction):
     coinbase = instruction.block_context_lookup(BlockContextFieldTag.Coinbase)
     instruction.add_balance(coinbase, [reward])
 
+    # constrain log id matches with `LogLength` of TxReceipt tag in RW
+    log_id = instruction.tx_receipt_lookup(tx_id, TxReceiptFieldTag.LogLength)
+    instruction.constrain_equal(log_id, instruction.curr.log_id)
     # When to next transaction
     if instruction.next.execution_state == ExecutionState.BeginTx:
         # Check next tx_id is increased by 1

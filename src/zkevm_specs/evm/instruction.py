@@ -33,6 +33,7 @@ from .table import (
     RW,
     RWTableTag,
     TxLogFieldTag,
+    TxReceiptFieldTag,
 )
 
 
@@ -458,6 +459,24 @@ class Instruction:
             key2=self.curr.log_id,
             key3=FQ(field_tag),
             key4=FQ(index),
+        ).value
+        return value
+
+        # look up tx log fields (Data, Address, Topic),
+
+    def tx_receipt_lookup(
+        self,
+        tx_id: Expression,
+        field_tag: TxReceiptFieldTag,
+    ) -> Expression:
+        # evm only write tx log
+        value = self.rw_lookup(
+            RW.Read,
+            RWTableTag.TxReceipt,
+            key1=tx_id,
+            key2=FQ(0),
+            key3=FQ(field_tag),
+            key4=FQ(0),
         ).value
         return value
 

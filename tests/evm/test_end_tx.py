@@ -7,6 +7,7 @@ from zkevm_specs.evm import (
     Tables,
     AccountFieldTag,
     CallContextFieldTag,
+    TxReceiptFieldTag,
     Block,
     Transaction,
     RWDictionary,
@@ -64,6 +65,8 @@ def test_end_tx(tx: Transaction, gas_left: int, refund: int, is_last_tx: bool):
             .tx_refund_read(tx.id, refund)
             .account_write(tx.caller_address, AccountFieldTag.Balance, RLC(caller_balance, randomness), RLC(caller_balance_prev, randomness))
             .account_write(block.coinbase, AccountFieldTag.Balance, RLC(coinbase_balance, randomness), RLC(coinbase_balance_prev, randomness))
+            # TODO: test log id is not zero condition
+            .tx_receipt_read(tx.id, TxReceiptFieldTag.LogLength, 0)
         # fmt: on
     )
     if not is_last_tx:
