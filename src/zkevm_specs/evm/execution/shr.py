@@ -1,4 +1,12 @@
-from ...encoding import u256_to_u64s, u64s_to_u256, u8s_to_u64s, U256, U64, U8
+from ...encoding import (
+    # Conflict with imports in `__init__.py`
+    U256 as EU256,
+    U64 as EU64,
+    U8,
+    u256_to_u64s,
+    u64s_to_u256,
+    u8s_to_u64s,
+)
 from ...util import FQ, RLC
 from ..instruction import Instruction, Transition
 from ..opcode import Opcode
@@ -39,7 +47,7 @@ def word_shift_right(instruction: Instruction, a: RLC, shift: FQ) -> RLC:
     shift_mod_by_64_pow = 1 << shift_mod_by_64
     shift_mod_by_64_decpow = (1 << 64) // shift_mod_by_64_pow
 
-    a64s = u256_to_u64s(U256(a.int_value))
+    a64s = u256_to_u64s(EU256(a.int_value))
     slice_hi = 0
     slice_lo = 0
     a_slice_hi = [U8(0)] * 32
@@ -62,10 +70,10 @@ def word_shift_right(instruction: Instruction, a: RLC, shift: FQ) -> RLC:
     a_slice_hi_digits = u8s_to_u64s(a_slice_hi)
     a_slice_lo_digits = u8s_to_u64s(a_slice_lo)
 
-    b_digits = [U64(0)] * 4
+    b_digits = [EU64(0)] * 4
     b_digits[3 - shift_div_by_64] = a_slice_hi_digits[3]
     for i in range(0, 3 - shift_div_by_64):
-        b_digits[i] = U64(
+        b_digits[i] = EU64(
             a_slice_hi_digits[i + shift_div_by_64]
             + a_slice_lo_digits[i + shift_div_by_64 + 1] * shift_mod_by_64_decpow
         )
