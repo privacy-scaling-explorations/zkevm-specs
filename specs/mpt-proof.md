@@ -683,7 +683,7 @@ lookup(acc_c, extension node C length, c_mod_node_hash_rlc::(rot-1))
 For S:
 `lookup(S branch RLC (retrived from the last branch children row), S branch length, c_advices RLC in extension row)`.
 
-### Account leaf
+## Account leaf
 
 There are five rows for an account leaf:
 
@@ -701,7 +701,7 @@ There is only one key row, because the key is always the same for the two parall
   <img src="./img/address_rlc.png?raw=true" width="60%">
 </p>
 
-### Storage leaf
+## Storage leaf
 
 There are five rows for a storage leaf:
 
@@ -745,7 +745,8 @@ Storage leaf can appear in two RLP formats:
 In the above example `226 160` are RLP meta data bytes. 226 means the length of leaf RLP (behind this byte) is 34 (226 - 192). 160 means there are 32 (160 - 128) bytes in the
 following substream that represents the `key` (compressed nibbles).
 Finally, there is a last byte that represents the leaf value: 1.
-Summary: `226 (representing length: 34) 160 (representing key length: 32) 59 ... 68 (32 bytes representing key) 1 (representing value)`.
+
+Leaf RLP: `226 (representing leaf length: 34) 160 (representing key length: 32) 59 ... 68 (32 bytes representing key) 1 (representing value)`.
 
 - Long: if leaf RLP length is more than 55, it has only two RLP meta bytes, like:
 
@@ -758,9 +759,10 @@ specifying the length of RLP. This byte is 67 - there are 67 bytes after this by
 160 means there are 32 bytes in the substream that follows and represents the `key`.
 `161 160` represents RLP meta bytes for leaf `value`. 161 represents length 31 (161 - 128),
 160 represents length 32 (160 - 128) which is the length of the actual value: `187 239 ... 170`.
-Summary: `248 67 (representing length) 160 (representing key length: 32) 59 ... 68 (32 bytes representing length) 161 160 (representing value length: 32) 187 ... 170 (representing value)`.
 
-##### Constraint: key RLC
+Leaf RLP: `248 67 (representing leaf length) 160 (representing key length: 32) 59 ... 68 (32 bytes representing length) 161 160 (representing value length: 32) 187 ... 170 (representing value)`.
+
+### Key RLC in storage leaf
 
 <p align="center">
   <img src="./img/key_rlc.png?raw=true" width="60%">
@@ -768,18 +770,96 @@ Summary: `248 67 (representing length) 160 (representing key length: 32) 59 ... 
 
 The first row contains the storage leaf S key bytes. These bytes are what remains from the
 key after key nibbles are used to navigate through branches / extension nodes.
-That means key RLC that is being partially computed in branches / extension nodes can
+That means: key RLC that is being partially computed in branches / extension nodes can
 be finalized here.
 
-Intermediate key RLC `key_rlc_acc_start` is retrieved from the first branch children row.
-Likewise, intermediate multiplication factor `key_mult_start` is retrieved from the same row.
+Let us say there are two branches above the leaf as in the picture above.
+The intermediate key RLC is thus: `n0 * 16 + n1`
+where `n1` is the position of the leaf in the second branch and `n0` is the position
+of the second branch in the first branch.
+
+The remaining key nibbles (`n2 ... n63`) are stored in `leaf key` row.
+The final `key_rlc` to be computed is:
 
 ```
+(n0 * 16 + n1) + (n2 * 16 + n3) * r + ... + (n62 * 16 + n63) * r^31
 ```
 
-... `key_len_lookup`
+This computation depends on two things:
 
-##### Constraint: leaf RLC
+- Whether it is short or long RLP (see above).
+- Whether the remaining number of nibbles is even or odd.
+
+Key nibbles are stored from position 2 (short RLP) or 3 (long RLP) onward.
+
+Let observe how the even or odd number of the remaining key nibbles affects the computation
+using two examples. The two selectors to determine whether it is the even or odd case is retrieved
+from the branch init row (IS_BRANCH_C16_POS, IS_BRANCH_C1_POS). The constraints for
+these selectors are implemented in `branch_key`.
+
+#### Example with even number of remaining nibbles
+
+Let us have the following key RLP:
+
+```
+[226, 160, 32, 16 * 3 + 2, 16 * 8 + 4, ...
+```
+
+32 means there are even number of remaining nibbles. The remaining nibbles are:
+`3, 2, 8, 4, ...`.
+To compute `key_rlc`, the intermediate `key_rlc_prev` and `key_rlc_mult_prev` are retrieved
+from the branch above:
+
+```
+key_rlc = key_rlc_prev + (16 * 3 + 2) * key_rlc_mult_prev + (16 * 8 + 4) * key_rlc_mult_prev * r + ...
+```
+
+#### Example with odd number of remaining nibbles
+
+Let us have the following key RLP:
+
+```
+[226, 160, 48 + 7, 16 * 3 + 2, 16 * 8 + 4, ...
+```
+
+48 + 7 means the first of the remaining nibbles is 7. `key_rlc` is computed:
+
+```
+key_rlc = key_rlc_prev + 7 * key_rlc_mult_prev + (16 * 3 + 2) * key_rlc_mult_prev * r + (16 * 8 + 4) * key_rlc_mult_prev * r^2 + ...
+```
+
+### Leaf RLC
+
+Leaf RLC is computed in both, `leaf key` row and `leaf value` row.
+It goes over all leaf RLP bytes (`b0 b1 ... bl`) and computes:
+
+```
+b0 + b1 * r + ... + bl * r^l
+```
+
+The intermediate RLC is computed in `leaf key` row, this value (`leaf_rlc_prev`) is then retrieved in `leaf value` row and used for the final computation.
+
+Leaf hash is checked to be in the parent branch / extension node at the
+`modified_node` position.
+
+However, there are a couple of special case when check of the hash needs to be handled
+separately.
+
+#### Case 1: storage trie has only one leaf
+
+Let observe the case where there is only one leaf in the storage trie and another leaf
+is added. That means the storage trie in the S proof will contain only one leaf, whereas
+the storage trie in the C proof will contain a branch or extension node with two leaves.
+
+<p align="center">
+  <img src="./img/one_leaf_in_tree.png?raw=true" width="50%">
+</p>
+
+In order not to break the layout, a placeholder branch / extension node is added in S
+proof. This way, the leaf S and leaf C are positioned one after another as in other cases
+(where the number of branches above the leaf S and leaf C is the same).
+
+No constraints are triggered for a placeholder branch / extension node.
 
 ## Lookups into MPT
 
@@ -795,12 +875,13 @@ Storage codehash S
 Storage codehash C
 ```
 
-Lookup for `nonce` and `balance` modifications are enabled in the third 
+Lookup for `nonce` and `balance` modifications are enabled in the third
 account leaf row (`Nonce balance C`).
 To enable lookups, this row contains `nonce` and `balance` S (previous) and C (current) values
 (their RLCs).
 
 `nonce` lookup should check for the following fields:
+
 ```
 counter, address_rlc, nonce_s_rlc, nonce_c_rlc, is_nonce_mod
 ```
@@ -808,24 +889,27 @@ counter, address_rlc, nonce_s_rlc, nonce_c_rlc, is_nonce_mod
 `balance` is to be ignored in `nonce` lookup, but it is ensured that it does not change
 when `is_nonce_mod` (meaning `balance_s_rlc = balance_c_rlc`).
 
-Similarly, 
+Similarly,
 `balance` lookup should check for the following fields:
+
 ```
 counter, address_rlc, balance_s_rlc, balance_c_rlc, is_balance_mod
 ```
 
-Lookup for `codehash` modifications is enabled in the fifth 
+Lookup for `codehash` modifications is enabled in the fifth
 account leaf row (`Storage codehash C`).
 To enable lookups, this row contains `codehash` S (previous) and C (current) values
 (their RLCs).
 
 `codehash` lookup should check for the following fields:
+
 ```
 counter, address_rlc, codehash_s_rlc, codehash_c_rlc, is_codehash_mod
 ```
 
 Differently, storage modification lookup is enabled in the storage leaf value C row.
 Storage leaf rows are the following:
+
 ```
 Leaf key S
 Leaf value S
@@ -838,6 +922,7 @@ To enable lookups, `Leaf value C` row contains leaf value S (previous) and leaf 
 (current) RLCs, as well as leaf key C RLC.
 
 `storage` lookup should check for the following fields:
+
 ```
 counter, address_rlc, key_rlc, value_s_rlc, value_c_rlc, is_storage_mod
 ```
@@ -856,7 +941,6 @@ lookups where the attacker would avoid triggering all account proof related cons
 However, this is prevented by ensuring each storage proof has a corresponding account
 proof (by checking `address_rlc` starts with 0 value in the first level of the proof
 and can be changed only in `account leaf key` row).
-
 
 ## Helper techniques
 
