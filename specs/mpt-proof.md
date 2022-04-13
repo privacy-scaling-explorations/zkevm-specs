@@ -410,7 +410,7 @@ The final value should be 1 (and not 0) because
 RLP length includes also ValueNode which occupies 1 byte and is not stored in MPT layout.
 
 <p align="center">
-  <img src="./img/branch_length.png?raw=true" width="20%">
+  <img src="./img/branch_length.png?raw=true" width="30%">
 </p>
 
 Constraints for RLP length are implemented in `branch.rs`.
@@ -536,7 +536,7 @@ The layout uses `s_rlp1`, `s_rlp2`, and `s_advices` for RLP meta bytes and nibbl
 while `c_advices` are used for branch hash, and `c_rlp2` stores 160 - denoting the number of hash bytes.
 
 <p align="center">
-  <img src="./img/extension_node_row.png?raw=true" width="35%">
+  <img src="./img/extension_node_row.png?raw=true" width="45%">
 </p>
 
 There are two extension node rows - one for S proof, one for C proof.
@@ -781,7 +781,86 @@ Likewise, intermediate multiplication factor `key_mult_start` is retrieved from 
 
 ##### Constraint: leaf RLC
 
-## Zeros in s_advices after substream ends
+## Lookups into MPT
+
+Lookups for `nonce`, `balance`, and `codehash` modifications are enabled in account
+leaf rows.
+Account leaf rows are the following:
+
+```
+Key S
+Nonce balance S
+Nonce balance C
+Storage codehash S
+Storage codehash C
+```
+
+Lookup for `nonce` and `balance` modifications are enabled in the third 
+account leaf row (`Nonce balance C`).
+To enable lookups, this row contains `nonce` and `balance` S (previous) and C (current) values
+(their RLCs).
+
+`nonce` lookup should check for the following fields:
+```
+counter, address_rlc, nonce_s_rlc, nonce_c_rlc, is_nonce_mod
+```
+
+`balance` is to be ignored in `nonce` lookup, but it is ensured that it does not change
+when `is_nonce_mod` (meaning `balance_s_rlc = balance_c_rlc`).
+
+Similarly, 
+`balance` lookup should check for the following fields:
+```
+counter, address_rlc, balance_s_rlc, balance_c_rlc, is_balance_mod
+```
+
+Lookup for `codehash` modifications is enabled in the fifth 
+account leaf row (`Storage codehash C`).
+To enable lookups, this row contains `codehash` S (previous) and C (current) values
+(their RLCs).
+
+`codehash` lookup should check for the following fields:
+```
+counter, address_rlc, codehash_s_rlc, codehash_c_rlc, is_codehash_mod
+```
+
+Differently, storage modification lookup is enabled in the storage leaf value C row.
+Storage leaf rows are the following:
+```
+Leaf key S
+Leaf value S
+Leaf key C
+Leaf value C
+Leaf in added branch
+```
+
+To enable lookups, `Leaf value C` row contains leaf value S (previous) and leaf value C
+(current) RLCs, as well as leaf key C RLC.
+
+`storage` lookup should check for the following fields:
+```
+counter, address_rlc, key_rlc, value_s_rlc, value_c_rlc, is_storage_mod
+```
+
+Selectors `is_nonce_mod`, `is_balance_mod`, `is_codehash_mod`, `is_storage_mod` are ensured
+to be booleans and their sum is ensured to be 1. It is ensured that only one modification
+takes place at once.
+
+`address_rlc` used in `storage` lookup is ensured to be the same as computed in the
+`account leaf key` row. This is done by checking that the value in `address_rlc` column
+does not change when passing down from `account leaf key` row to `leaf value C` row.
+
+Note that that the attacker could try to omit the account proof and providing just
+a storage proof with the appropriate `address_rlc` value. This would enable `storage`
+lookups where the attacker would avoid triggering all account proof related constraints.
+However, this is prevented by ensuring each storage proof has a corresponding account
+proof (by checking `address_rlc` starts with 0 value in the first level of the proof
+and can be changed only in `account leaf key` row).
+
+
+## Helper techniques
+
+### Zeros in s_advices after substream ends
 
 In various cases, `s_advices` are used only to certain point. Consider the example below:
 
@@ -832,7 +911,7 @@ bigger then `-32 * 255` which is much bigger than `33 * 255`.
 
 See `key_len_lookup` in `helpers.rs` for the implementation.
 
-## RLC multiplication factor after s_advices
+### RLC multiplication factor after s_advices
 
 As we have seen above,
 in various cases, `s_advices` are used only to certain point. Consider the example below:
