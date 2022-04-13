@@ -63,7 +63,7 @@ def test_stop_is_root(tx: Transaction, bytecode: Bytecode):
                 program_counter=2,
                 stack_pointer=1023,
                 gas_left=0,
-                state_write_counter=2,
+                reversible_write_counter=2,
             ),
             StepState(
                 execution_state=ExecutionState.EndTx,
@@ -83,7 +83,7 @@ CallContext = namedtuple(
         "stack_pointer",
         "gas_left",
         "memory_size",
-        "state_write_counter",
+        "reversible_write_counter",
     ],
     defaults=[True, False, 232, 1023, 0, 0, 0],
 )
@@ -102,7 +102,7 @@ def test_stop_not_root(caller_ctx: CallContext, callee_bytecode: Bytecode):
     caller_bytecode_hash = RLC(caller_bytecode.hash(), randomness)
     callee_bytecode_hash = RLC(callee_bytecode.hash(), randomness)
     callee_gas_left = 400
-    callee_state_write_counter = 2
+    callee_reversible_write_counter = 2
 
     tables = Tables(
         block_table=set(Block().table_assignments(randomness)),
@@ -125,7 +125,7 @@ def test_stop_not_root(caller_ctx: CallContext, callee_bytecode: Bytecode):
             .call_context_read(1, CallContextFieldTag.StackPointer, caller_ctx.stack_pointer)
             .call_context_read(1, CallContextFieldTag.GasLeft, caller_ctx.gas_left)
             .call_context_read(1, CallContextFieldTag.MemorySize, caller_ctx.memory_size)
-            .call_context_read(1, CallContextFieldTag.StateWriteCounter, caller_ctx.state_write_counter)
+            .call_context_read(1, CallContextFieldTag.ReversibleWriteCounter, caller_ctx.reversible_write_counter)
             .call_context_write(1, CallContextFieldTag.LastCalleeId, 24)
             .call_context_write(1, CallContextFieldTag.LastCalleeReturnDataOffset, 0)
             .call_context_write(1, CallContextFieldTag.LastCalleeReturnDataLength, 0)
@@ -148,7 +148,7 @@ def test_stop_not_root(caller_ctx: CallContext, callee_bytecode: Bytecode):
                 program_counter=2,
                 stack_pointer=1023,
                 gas_left=callee_gas_left,
-                state_write_counter=callee_state_write_counter,
+                reversible_write_counter=callee_reversible_write_counter,
             ),
             StepState(
                 execution_state=ExecutionState.STOP,
@@ -161,7 +161,8 @@ def test_stop_not_root(caller_ctx: CallContext, callee_bytecode: Bytecode):
                 stack_pointer=caller_ctx.stack_pointer,
                 gas_left=caller_ctx.gas_left + callee_gas_left,
                 memory_size=caller_ctx.memory_size,
-                state_write_counter=caller_ctx.state_write_counter + callee_state_write_counter,
+                reversible_write_counter=caller_ctx.reversible_write_counter
+                + callee_reversible_write_counter,
             ),
         ],
     )

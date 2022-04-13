@@ -246,7 +246,7 @@ class Instruction:
             caller_stack_pointer,
             caller_gas_left,
             caller_memory_size,
-            caller_state_write_counter,
+            caller_reversible_write_counter,
         ] = [
             self.call_context_lookup(field_tag, call_id=caller_id)
             for field_tag in [
@@ -257,7 +257,7 @@ class Instruction:
                 CallContextFieldTag.StackPointer,
                 CallContextFieldTag.GasLeft,
                 CallContextFieldTag.MemorySize,
-                CallContextFieldTag.StateWriteCounter,
+                CallContextFieldTag.ReversibleWriteCounter,
             ]
         ]
 
@@ -276,14 +276,14 @@ class Instruction:
         if self.curr.execution_state.halts_in_exception():
             gas_left = FQ(0)
 
-        # Accumulate state_write_counter in case this call stack reverts
+        # Accumulate reversible_write_counter in case this call stack reverts
         # in the future even it itself succeeds.
         # Note that when sub-call halts in failure, we don't need to
-        # accumulate state_write_counter because what happened in the
+        # accumulate reversible_write_counter because what happened in the
         # sub-call has been reverted.
-        state_write_counter = FQ(0)
+        reversible_write_counter = FQ(0)
         if self.curr.execution_state.halts_in_success():
-            state_write_counter = self.curr.state_write_counter
+            reversible_write_counter = self.curr.reversible_write_counter
 
         self.constrain_step_state_transition(
             rw_counter=rw_counter,
@@ -296,9 +296,9 @@ class Instruction:
             # Pays back gas_left to caller
             gas_left=Transition.to(caller_gas_left.expr() + gas_left.expr()),
             memory_size=Transition.to(caller_memory_size),
-            # Accumulate state_write_counter to caller
-            state_write_counter=Transition.to(
-                caller_state_write_counter.expr() + state_write_counter.expr()
+            # Accumulate reversible_write_counter to caller
+            reversible_write_counter=Transition.to(
+                caller_reversible_write_counter.expr() + reversible_write_counter.expr()
             ),
         )
 
