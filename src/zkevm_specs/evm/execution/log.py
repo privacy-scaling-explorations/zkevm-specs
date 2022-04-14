@@ -34,11 +34,11 @@ def log(instruction: Instruction):
         )
 
     # constrain topics in stack & logs
-    is_topic_zeros = [1] * 4
+    topic_selectors = [0] * 4
     topic_count = int(opcode) - Opcode.LOG0
     for i in range(4):
         if i < topic_count:
-            is_topic_zeros[i] = 0
+            topic_selectors[i] = 1
             topic = instruction.stack_pop()
             if instruction.is_zero(is_persistent) == 0:
                 instruction.constrain_equal(
@@ -48,12 +48,14 @@ def log(instruction: Instruction):
                     ).expr(),
                 )
 
-    # TOPIC_COUNT == Non zero topic count
-    assert sum(is_topic_zeros) == 4 - topic_count
-    # `is_topic_zeros` order must be from 0 --> 1
-    for i in range(1, 4):
-        diff = is_topic_zeros[i] - is_topic_zeros[i - 1]
-        instruction.constrain_bool(FQ(diff))
+    # TOPIC_COUNT == Non zero topic selector count
+    assert sum(topic_selectors) == topic_count
+    # `topic_selectors` order must be from 1 --> 0
+    for i in range(0, 4):
+        instruction.constrain_bool(FQ(topic_selectors[i]))
+        if i > 0:
+            diff = topic_selectors[i - 1] - topic_selectors[i]
+            instruction.constrain_bool(FQ(diff))
 
     # check memory copy, should do in next step here
     # When length != 0, constrain the state in the next execution state CopyToLog
@@ -81,7 +83,6 @@ def log(instruction: Instruction):
         rw_counter=Transition.delta(instruction.rw_counter_offset),
         program_counter=Transition.delta(1),
         stack_pointer=Transition.delta(2 + opcode - Opcode.LOG0),
-        state_write_counter=Transition.delta(1),
         dynamic_gas_cost=dynamic_gas,
         memory_size=Transition.to(next_memory_size),
         log_id=Transition.delta(is_persistent),

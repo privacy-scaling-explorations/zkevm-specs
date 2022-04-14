@@ -76,7 +76,6 @@ def make_log_copy_step(
     memory_size: int,
     gas_left: int,
     code_source: RLC,
-    state_write_counter: int,
     log_id: int,
     is_persistent: bool,
 ) -> Tuple[StepState, Sequence[RW]]:
@@ -97,7 +96,6 @@ def make_log_copy_step(
         memory_size=memory_size,
         code_source=code_source,
         log_id=is_persistent,
-        state_write_counter=state_write_counter,
         aux_data=aux_data,
     )
     num_bytes = min(MAX_COPY_BYTES, bytes_left)
@@ -122,7 +120,6 @@ def make_log_copy_steps(
     memory_size: int,
     gas_left: int,
     code_source: RLC,
-    state_write_counter: int,
     log_id: int,
     is_persistent: bool,
 ) -> Sequence[StepState]:
@@ -142,7 +139,6 @@ def make_log_copy_steps(
             memory_size,
             gas_left,
             code_source,
-            state_write_counter,
             log_id,
             is_persistent,
         )
@@ -175,7 +171,6 @@ def test_logs(topics: list, mstart: U64, msize: U64, is_persistent: bool):
             memory_size=mstart,
             gas_left=dynamic_gas,
             log_id=0,
-            state_write_counter=0,
         )
     ]
 
@@ -205,7 +200,6 @@ def test_logs(topics: list, mstart: U64, msize: U64, is_persistent: bool):
         stack_pointer=1015 + (2 + topic_count),
         gas_left=0,
         code_source=bytecode_hash,
-        state_write_counter=1,
         log_id=1,
         is_persistent=is_persistent,
     )
@@ -223,7 +217,6 @@ def test_logs(topics: list, mstart: U64, msize: U64, is_persistent: bool):
             stack_pointer=1015 + (2 + topic_count),
             memory_size=next_memory_size,
             gas_left=0,
-            state_write_counter=1,
             log_id=is_persistent,
         )
     )
