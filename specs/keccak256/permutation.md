@@ -4,17 +4,19 @@ We denote `X.curr()` and `X.prev()` for current row and previous row for column 
 ```python
 # state: 25 cols/words that the current keccak_f works on
 # input: 17 cols/words that the current keccak_f works on
+# padded_input: 17 cols/words from the padding validator
 def keccak_f(state_tag):
+    # Determine the input we use:
+    # If we are at the finalize step, use the padded input, otherwise, simply use the current input.
+    _input = (state_tag.curr() == Tag.Continue) * input.curr() + (state_tag.curr() == Tag.Finalize) * padded_input.curr()
+
     # if the previous keccak_f is marked as finalized, we need to initialize the state
     state_base13 = (state_tag.prev() == Tag.Finalize) * convert_base(
-        input.curr(), _from=2, _to=13
+        _input.curr(), _from=2, _to=13
     )
-
     # if the previous keccak_f is NOT marked as finalized, we need to absorb the current input from the previous output
-    # if we are at the finalize step, use the padded input, otherwise, simply use the current input.
-    _input = (state_tag.curr() == Tag.Continue) * input.curr() + (state_tag.curr() == Tag.Finalize) * padded_input.curr()
-    state_base9 = (state_tag.prev() == Tag.Continue) * absorb(state_base9.prev(), _input)
-    state_base13 = (state_tag.prev() == Tag.Continue) * convert_base(state_base9, _from=9, _to=13)
+    state_base9 = (state_tag.prev() == Tag.Continue) * absorb(state_base9.prev(), _input.curr())
+    state_base13 = state_base13 + (state_tag.prev() == Tag.Continue) * convert_base(state_base9, _from=9, _to=13)
     # apply 24th of the round constant which was not completed in previous round
     state_base13 = (state_tag.prev() == Tag.Continue) * iota_base13(state_base13)
 
