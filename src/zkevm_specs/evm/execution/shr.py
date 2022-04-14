@@ -29,7 +29,7 @@ def shr(instruction: Instruction):
         instruction.select(
             instruction.is_zero(instruction.sum(shift_lo)),
             a,
-            word_shift_right(instruction, a, instruction.bytes_to_fq(shift_lo)),
+            word_shift_right(instruction, shift_valid, a, instruction.bytes_to_fq(shift_lo)),
         ),
         RLC(0),
     )
@@ -43,7 +43,9 @@ def shr(instruction: Instruction):
     )
 
 
-def word_shift_right(instruction: Instruction, a: RLC, shift: FQ) -> RLC:
+def word_shift_right(instruction: Instruction, shift_valid: FQ, a: RLC, shift: FQ) -> RLC:
+    if shift_valid == 0 or shift == 0:
+        return RLC(0)
     shift_div_by_64 = shift.n // 64
     shift_mod_by_64 = shift.n % 64
     shift_mod_by_64_div_by_8 = shift.n % 64 // 8
@@ -161,12 +163,12 @@ def check_internal_constraints(
             for idx in range(digit_transplacement + 1, 8):
                 now_idx = virtual_idx * 8 + idx
                 instruction.constrain_zero(
-                    FQ(select_transplacement_polynomial * a_slice_lo[now_idx])
+                    FQ(select_transplacement_polynomial * a_slice_hi[now_idx])
                 )
             for idx in range(8 - digit_transplacement, 8):
                 now_idx = virtual_idx * 8 + idx
                 instruction.constrain_zero(
-                    FQ(select_transplacement_polynomial * a_slice_hi[now_idx])
+                    FQ(select_transplacement_polynomial * a_slice_lo[now_idx])
                 )
 
     # slice_bits_lookups
