@@ -70,11 +70,11 @@ class FixedTableTag(IntEnum):
                     execution_state.responsible_opcode(),
                 )
             ]
-        elif self == FixedTableTag.Bitlevel:
+        elif self == FixedTableTag.Bitslevel:
             return [
                 FixedTableRow(FQ(self), FQ(powtag), FQ(value))
-                for value in range(0, 1 << powtag)
                 for powtag in range(0, 9)
+                for value in range(0, 1 << powtag)
             ]
         elif self == FixedTableTag.Pow64:
             return [
