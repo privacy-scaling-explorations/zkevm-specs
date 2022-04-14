@@ -52,5 +52,5 @@ def copy_to_memory(instruction: Instruction):
         program_counter=Transition.same(),
         stack_pointer=Transition.same(),
         memory_size=Transition.same(),
-        state_write_counter=Transition.same(),
+        reversible_write_counter=Transition.same(),
     )

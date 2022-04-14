@@ -71,21 +71,21 @@ class Transition:
 class ReversionInfo:
     rw_counter_end_of_reversion: FQ
     is_persistent: FQ
-    state_write_counter: FQ
+    reversible_write_counter: FQ
 
     def __init__(
         self,
         rw_counter_end_of_reversion: Expression,
         is_persistent: Expression,
-        state_write_counter: Expression,
+        reversible_write_counter: Expression,
     ) -> None:
         self.rw_counter_end_of_reversion = rw_counter_end_of_reversion.expr()
         self.is_persistent = is_persistent.expr()
-        self.state_write_counter = state_write_counter.expr()
+        self.reversible_write_counter = reversible_write_counter.expr()
 
     def rw_counter_of_reversion(self) -> FQ:
-        rw_counter_of_reversion = self.rw_counter_end_of_reversion - self.state_write_counter
-        self.state_write_counter += 1
+        rw_counter_of_reversion = self.rw_counter_end_of_reversion - self.reversible_write_counter
+        self.reversible_write_counter += 1
         return rw_counter_of_reversion
 
 
@@ -168,7 +168,7 @@ class Instruction:
                 "stack_pointer",
                 "gas_left",
                 "memory_size",
-                "state_write_counter",
+                "reversible_write_counter",
                 "log_id",
             ]
         )
@@ -210,7 +210,7 @@ class Instruction:
         is_create: Transition,
         code_source: Transition,
         gas_left: Transition,
-        state_write_counter: Transition,
+        reversible_write_counter: Transition,
     ):
         self.constrain_step_state_transition(
             rw_counter=rw_counter,
@@ -219,7 +219,7 @@ class Instruction:
             is_create=is_create,
             code_source=code_source,
             gas_left=gas_left,
-            state_write_counter=state_write_counter,
+            reversible_write_counter=reversible_write_counter,
             # Initailization unconditionally
             program_counter=Transition.to(0),
             stack_pointer=Transition.to(1024),
@@ -233,7 +233,7 @@ class Instruction:
         program_counter: Transition = Transition.same(),
         stack_pointer: Transition = Transition.same(),
         memory_size: Transition = Transition.same(),
-        state_write_counter: Transition = Transition.same(),
+        reversible_write_counter: Transition = Transition.same(),
         dynamic_gas_cost: IntOrFQ = 0,
         log_id: Transition = Transition.same(),
     ):
@@ -248,7 +248,7 @@ class Instruction:
             stack_pointer=stack_pointer,
             gas_left=Transition.delta(-gas_cost),
             memory_size=memory_size,
-            state_write_counter=state_write_counter,
+            reversible_write_counter=reversible_write_counter,
             log_id=log_id,
             # Always stay same
             call_id=Transition.same(),
@@ -577,7 +577,7 @@ class Instruction:
         return ReversionInfo(
             rw_counter_end_of_reversion,
             is_persistent,
-            self.curr.state_write_counter if call_id is None else FQ(0),
+            self.curr.reversible_write_counter if call_id is None else FQ(0),
         )
 
     def stack_pop(self) -> RLC:

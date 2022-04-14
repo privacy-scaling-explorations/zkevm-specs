@@ -54,7 +54,7 @@ def test_sload(tx: Transaction, storage_key_be_bytes: bytes, warm: bool, is_pers
     value_committed = RLC(0, randomness)
 
     rw_counter_end_of_reversion = 19
-    state_write_counter = 3
+    reversible_write_counter = 3
 
     tables = Tables(
         block_table=set(Block().table_assignments(randomness)),
@@ -70,7 +70,7 @@ def test_sload(tx: Transaction, storage_key_be_bytes: bytes, warm: bool, is_pers
             .stack_read(1, 1023, storage_key)
             .account_storage_read(tx.callee_address, storage_key, value, tx.id, value_committed)
             .stack_write(1, 1023, value)
-            .tx_access_list_account_storage_write(tx.id, tx.callee_address, storage_key, 1, 1 if warm else 0, rw_counter_of_reversion=None if is_persistent else rw_counter_end_of_reversion - state_write_counter)
+            .tx_access_list_account_storage_write(tx.id, tx.callee_address, storage_key, 1, 1 if warm else 0, rw_counter_of_reversion=None if is_persistent else rw_counter_end_of_reversion - reversible_write_counter)
             .rws
             # fmt: on
         ),
@@ -89,7 +89,7 @@ def test_sload(tx: Transaction, storage_key_be_bytes: bytes, warm: bool, is_pers
                 code_source=bytecode_hash,
                 program_counter=33,
                 stack_pointer=1023,
-                state_write_counter=state_write_counter,
+                reversible_write_counter=reversible_write_counter,
                 gas_left=WARM_STORAGE_READ_COST if warm else COLD_SLOAD_COST,
             ),
             StepState(
@@ -101,7 +101,7 @@ def test_sload(tx: Transaction, storage_key_be_bytes: bytes, warm: bool, is_pers
                 code_source=bytecode_hash,
                 program_counter=34,
                 stack_pointer=1023,
-                state_write_counter=state_write_counter + 1,
+                reversible_write_counter=reversible_write_counter + 1,
                 gas_left=0,
             ),
         ],

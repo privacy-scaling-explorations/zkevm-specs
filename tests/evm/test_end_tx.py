@@ -90,7 +90,7 @@ def test_end_tx(tx: Transaction, gas_left: int, refund: int, is_last_tx: bool):
                 program_counter=0,
                 stack_pointer=1024,
                 gas_left=gas_left,
-                state_write_counter=2,
+                reversible_write_counter=2,
             ),
             StepState(
                 execution_state=ExecutionState.EndBlock if is_last_tx else ExecutionState.BeginTx,

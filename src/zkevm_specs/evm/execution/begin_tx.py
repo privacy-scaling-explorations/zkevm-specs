@@ -112,5 +112,5 @@ def begin_tx(instruction: Instruction):
                 is_create=Transition.to(False),
                 code_source=Transition.to(code_hash),
                 gas_left=Transition.to(gas_left),
-                state_write_counter=Transition.to(2),
+                reversible_write_counter=Transition.to(2),
             )

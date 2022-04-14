@@ -165,7 +165,7 @@ def test_sstore(
                 code_source=bytecode_hash,
                 program_counter=66,
                 stack_pointer=1022,
-                state_write_counter=0,
+                reversible_write_counter=0,
                 gas_left=expected_gas_cost,
             ),
             StepState(
@@ -177,7 +177,7 @@ def test_sstore(
                 code_source=bytecode_hash,
                 program_counter=67,
                 stack_pointer=1024,
-                state_write_counter=3,
+                reversible_write_counter=3,
                 gas_left=0,
             ),
         ],
