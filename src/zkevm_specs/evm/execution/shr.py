@@ -120,7 +120,7 @@ def check_internal_constraints(
 ):
     # shift_split_constraints
     instruction.constrain_equal(
-        shift, shift_div_by_64 * 64 + shift_mod_by_64_div_by_8 * 8 + shift_mod_by_8
+        shift, FQ(shift_div_by_64 * 64 + shift_mod_by_64_div_by_8 * 8 + shift_mod_by_8)
     )
 
     # shr_constraints
@@ -147,7 +147,8 @@ def check_internal_constraints(
     # merge_constraints
     for idx in range(4):
         instruction.constrain_equal(
-            a_slice_lo_digits[idx] + a_slice_hi_digits[idx] * shift_mod_by_64_pow, FQ(a_digits[idx])
+            FQ(a_slice_lo_digits[idx] + a_slice_hi_digits[idx] * shift_mod_by_64_pow),
+            FQ(a_digits[idx]),
         )
 
     # slice_higher_cell_equal_to_zero_constraints
