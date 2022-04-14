@@ -25,6 +25,7 @@ TESTING_DATA = (
         994,
         4800,
         False,
+        0,
     ),
     # Tx with capped refund
     (
@@ -34,6 +35,7 @@ TESTING_DATA = (
         3952,
         38400,
         False,
+        100,
     ),
     # Last tx
     (
@@ -43,12 +45,15 @@ TESTING_DATA = (
         0,
         0,
         True,
+        20000,
     ),
 )
 
 
-@pytest.mark.parametrize("tx, gas_left, refund, is_last_tx", TESTING_DATA)
-def test_end_tx(tx: Transaction, gas_left: int, refund: int, is_last_tx: bool):
+@pytest.mark.parametrize("tx, gas_left, refund, is_last_tx, pre_tx_gas_cumulate", TESTING_DATA)
+def test_end_tx(
+    tx: Transaction, gas_left: int, refund: int, is_last_tx: bool, pre_tx_gas_cumulate: int
+):
     randomness = rand_fq()
 
     block = Block()
@@ -62,11 +67,14 @@ def test_end_tx(tx: Transaction, gas_left: int, refund: int, is_last_tx: bool):
         # fmt: off
         RWDictionary(17)
             .call_context_read(1, CallContextFieldTag.TxId, tx.id)
+            .call_context_read(1, CallContextFieldTag.IsPersistent, 1)
             .tx_refund_read(tx.id, refund)
             .account_write(tx.caller_address, AccountFieldTag.Balance, RLC(caller_balance, randomness), RLC(caller_balance_prev, randomness))
             .account_write(block.coinbase, AccountFieldTag.Balance, RLC(coinbase_balance, randomness), RLC(coinbase_balance_prev, randomness))
-            # TODO: test log id is not zero condition
             .tx_receipt_read(tx.id, TxReceiptFieldTag.LogLength, 0)
+            .tx_receipt_read(tx.id, TxReceiptFieldTag.PostStateOrStatus, 1)
+            .tx_receipt_read(tx.id - 1, TxReceiptFieldTag.CumulativeGasUsed, pre_tx_gas_cumulate)
+            .tx_receipt_read(tx.id, TxReceiptFieldTag.CumulativeGasUsed, tx.gas - gas_left + pre_tx_gas_cumulate)
         # fmt: on
     )
     if not is_last_tx:

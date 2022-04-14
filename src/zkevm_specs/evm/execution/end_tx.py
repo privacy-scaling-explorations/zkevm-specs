@@ -6,6 +6,7 @@ from ..table import BlockContextFieldTag, CallContextFieldTag, TxContextFieldTag
 
 def end_tx(instruction: Instruction):
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
+    is_tx_persistent = instruction.call_context_lookup(CallContextFieldTag.IsPersistent)
 
     # Handle gas refund (refund is capped to gas_used // MAX_REFUND_QUOTIENT_OF_GAS_USED in EIP 3529)
     tx_gas = instruction.tx_context_lookup(tx_id, TxContextFieldTag.Gas)
@@ -36,6 +37,21 @@ def end_tx(instruction: Instruction):
     # constrain log id matches with `LogLength` of TxReceipt tag in RW
     log_id = instruction.tx_receipt_lookup(tx_id, TxReceiptFieldTag.LogLength)
     instruction.constrain_equal(log_id, instruction.curr.log_id)
+
+    # constrain tx status matches with `PostStateOrStatus` of TxReceipt tag in RW
+    instruction.constrain_equal(
+        is_tx_persistent, instruction.tx_receipt_lookup(tx_id, TxReceiptFieldTag.PostStateOrStatus)
+    )
+
+    # constrain `CumulativeGasUsed` of TxReceipt tag in RW
+    pre_tx_gas_cumulate = instruction.tx_receipt_lookup(
+        tx_id - FQ(1), TxReceiptFieldTag.CumulativeGasUsed
+    )
+    instruction.constrain_equal(
+        pre_tx_gas_cumulate + gas_used,
+        instruction.tx_receipt_lookup(tx_id, TxReceiptFieldTag.CumulativeGasUsed),
+    )
+
     # When to next transaction
     if instruction.next.execution_state == ExecutionState.BeginTx:
         # Check next tx_id is increased by 1
