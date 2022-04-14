@@ -151,7 +151,7 @@ def call(instruction: Instruction):
             (CallContextFieldTag.StackPointer, instruction.curr.stack_pointer + 6),
             (CallContextFieldTag.GasLeft, instruction.curr.gas_left - gas_cost - callee_gas_left),
             (CallContextFieldTag.MemorySize, next_memory_size),
-            (CallContextFieldTag.StateWriteCounter, instruction.curr.reversible_write_counter + 1),
+            (CallContextFieldTag.ReversibleWriteCounter, instruction.curr.reversible_write_counter + 1),
         ]:
             instruction.constrain_equal(
                 instruction.call_context_lookup(field_tag, RW.Write),

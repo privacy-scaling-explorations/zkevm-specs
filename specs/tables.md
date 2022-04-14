@@ -99,7 +99,7 @@ Type sizes:
 | $counter | $isWrite    | CallContext                | $callID  |          | StackPointer               |             | $value     | 0          | 0        | 0               |
 | $counter | $isWrite    | CallContext                | $callID  |          | GasLeft                    |             | $value     | 0          | 0        | 0               |
 | $counter | $isWrite    | CallContext                | $callID  |          | MemorySize                 |             | $value     | 0          | 0        | 0               |
-| $counter | $isWrite    | CallContext                | $callID  |          | StateWriteCounter          |             | $value     | 0          | 0        | 0               |
+| $counter | $isWrite    | CallContext                | $callID  |          | ReversibleWriteCounter     |             | $value     | 0          | 0        | 0               |
 |          |             |                            |          |          |                            |             |            |            |          |                 |
 | $counter | $isWrite    | Stack                      | $callID  | $stackPointer  |                      |             | $value     | 0          | 0        | 0               |
 | $counter | $isWrite    | Memory                     | $callID  | $memoryAddress |                      |             | $value     | 0          | 0        | 0               |
@@ -140,7 +140,7 @@ In the case of an account without code, it can still have a row in the bytecode 
 Proved by the block circuit.
 
 __Note that a generalisation is done by storing the ChainId field inside the block_table__
-__when it should indeed live inside of the chain configuration section (which we don't have).__ 
+__when it should indeed live inside of the chain configuration section (which we don't have).__
 __Hence the addition inside of the block_table.__
 
 | 0 Tag                  | 1      | 2 value |

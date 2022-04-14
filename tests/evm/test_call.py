@@ -220,7 +220,7 @@ def test_call(
         .call_context_write(1, CallContextFieldTag.StackPointer, 1023) \
         .call_context_write(1, CallContextFieldTag.GasLeft, expected.caller_gas_left) \
         .call_context_write(1, CallContextFieldTag.MemorySize, expected.next_memory_size) \
-        .call_context_write(1, CallContextFieldTag.StateWriteCounter, caller_ctx.reversible_write_counter + 1) \
+        .call_context_write(1, CallContextFieldTag.ReversibleWriteCounter, caller_ctx.reversible_write_counter + 1) \
         .call_context_read(24, CallContextFieldTag.CallerId, 1) \
         .call_context_read(24, CallContextFieldTag.TxId, 1) \
         .call_context_read(24, CallContextFieldTag.Depth, 2) \
