@@ -462,14 +462,12 @@ class Instruction:
         ).value
         return value
 
-        # look up tx log fields (Data, Address, Topic),
-
+    # look up TxReceipt fields (PostStateOrStatus, CumulativeGasUsed, LogLength)
     def tx_receipt_lookup(
         self,
         tx_id: Expression,
         field_tag: TxReceiptFieldTag,
     ) -> Expression:
-        # evm only write tx log
         value = self.rw_lookup(
             RW.Read,
             RWTableTag.TxReceipt,
