@@ -845,21 +845,85 @@ Leaf hash is checked to be in the parent branch / extension node at the
 However, there are a couple of special case when check of the hash needs to be handled
 separately.
 
-#### Case 1: storage trie has only one leaf
+#### Case 1: Leaf turns into branch / extension node
 
-Let observe the case where there is only one leaf in the storage trie and another leaf
-is added. That means the storage trie in the S proof will contain only one leaf, whereas
-the storage trie in the C proof will contain a branch or extension node with two leaves.
+Let us observe the case where storing a value turns a leaf into a branch or extension node.
+Let us say we have `Leaf 1` and we set
+value `val` at key `key` which will result in `Leaf 2`.
+
+In this case S proof will be shorter than C proof.
+The layout would look like:
+
+```
+Branch 1 | Branch 1
+         | Branch 11
+Leaf 1   | Leaf 2
+```
+
+`Leaf 1` is replaced by `Branch 11`. `Branch 11` contains two leaves: `Leaf 1` and `Leaf 2`.
+However, `Leaf 1` has a shorter key now. To enable the verification that `Branch 11` contains
+only two leaves and one of them is `Leaf 1` (with shorted key), the modified `Leaf 1` is stored
+in the fifth storage leaf row (`Leaf in added branch`). It is ensured that the values
+in this row correspond to `Leaf 1`.
 
 <p align="center">
-  <img src="./img/one_leaf_in_tree.png?raw=true" width="50%">
+  <img src="./img/placeholder_branch.png?raw=true" width="50%">
 </p>
 
-In order not to break the layout, a placeholder branch / extension node is added in S
+In order not to break the layout, a placeholder branch is added in S
 proof. This way, the leaf S and leaf C are positioned one after another as in other cases
 (where the number of branches above the leaf S and leaf C is the same).
 
-No constraints are triggered for a placeholder branch / extension node.
+To make it simpler, for the placeholder branch its paralell counterpart is used (when
+S branch is a placeholder, C branch is used as a placeholder; when C branch is a placeholder,
+S branch is used as a placeholder).
+
+This way, the equalities between S and C branch still holds.
+On the other hand, the constraint for branch hash to be in a parent element is switched off.
+Instead, the hash of a leaf is checked to be in an element that is above the placeholder
+branch.
+
+In case when there are two leaves in a branch and one of them is deleted, the scenario is
+reversed: C proof contains placeholder branch.
+
+#### Case 2: Key not used yet
+
+Let us say no value is set at key `key`.
+After setting the value at `key`, S proof would not have a leaf, while C proof would have it:
+
+```
+Branch 1 | Branch 1
+         | Leaf 2
+```
+
+To preserve the layout a placeholder leaf `Leaf 1` is added:
+
+```
+Branch 1 | Branch 1
+Leaf 1   | Leaf 2
+```
+
+In this case, the leaf constraints are switched off for the placeholder leaf.
+Instead, it is checked that there is an empty row in branch at `modified_node` position.
+
+<p align="center">
+  <img src="./img/storage_leaf_placeholder.png?raw=true" width="50%">
+</p>
+
+The information whether the leaf is a placeholder is stored in `sel1` and `sel2` columns
+in branch rows (in all rows to simplify the constraints, similarly as `modified_node`, see
+above).
+
+Note that when the key is deleted, the scenario is reversed: C proof constains the placeholder
+leaf.
+
+#### Case 3: Key in first level - leaf turns into branch / extension node
+
+<p align="center">
+  <img src="./img/one_leaf_in_trie.png?raw=true" width="50%">
+</p>
+
+#### Case 4: Key in first level - key not used yet
 
 ## Lookups into MPT
 
