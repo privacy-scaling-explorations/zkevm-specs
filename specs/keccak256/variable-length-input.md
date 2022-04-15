@@ -129,52 +129,50 @@ def get_padding(input_len: int, perm_count: int) -> bytes:
 
 The Padding Region is a 136-row region.
 
+- `f_enable` a flag that's 1 when `state_tag === Finalize`. It would be all 1 or all 0 in all rows, so we don't show it in the examples.
 - `byte` individual byte of the input in big-endian
 - `input_len` Length for correct padding
-- `acc_len` How many bytes we have processed
-- `condition_80_inv` The inverse of `input_len - acc_len` or 0.
+- `acc_len` How many bytes we have processed.
+- `diff_is_zero`: Returns 1 if `input_len - acc_len` is 0. Otherwise, it is 0. This is achived using an IsZero gadget.
 - `padded_byte` Mostly the same as the original `byte` but padded
 - `is_pad_zone` A flag to define the rows that `byte` should be 0
 - `byte_RLC` This accumulate `byte` into RLC
 
-| offset | byte | input_len | acc_len | condition_80_inv | padded_byte | is_pad_zone | byte_RLC |
-| -----: | :--- | --------: | ------: | ---------------: | :---------- | ----------: | -------- |
-|      0 | 0    |       250 |     2   |                  | 0           |           0 |          |
-|      1 | 0xff |       250 |     136 |                  | 0xff        |           0 |          |
-|      2 | 0xff |       250 |     137 |                  | 0xff        |           0 |          |
-|    ... |  ... |       ... |     ... |                  | ...         |           0 |          |
-|    114 | 0xff |       250 |     249 |                1 | 0xff        |           0 |          |
-|    115 | 0x00 |       250 |     250 |                0 | 0x80        |           1 |          |
-|    116 | 0x00 |       250 |     251 |               -1 | 0x00        |           1 |          |
-|    ... | ...  |       ... |     ... |              ... | ...         |         ... |          |
-|    135 | 0x00 |       250 |     270 |                  | 0x00        |           1 |          |
-|    136 | 0x00 |       250 |     271 |                  | 0x01        |           1 |          |
+| offset | byte | input_len | acc_len | diff_is_zero | padded_byte | is_pad_zone | byte_RLC |
+| -----: | :--- | --------: | ------: | -----------: | :---------- | ----------: | -------- |
+|      0 | 0xff |       250 |     136 |              | 0xff        |           0 |          |
+|      1 | 0xff |       250 |     137 |              | 0xff        |           0 |          |
+|    ... | ...  |       ... |     ... |              | ...         |           0 |          |
+|    113 | 0xff |       250 |     249 |              | 0xff        |           0 |          |
+|    114 | 0x00 |       250 |     250 |            1 | 0x80        |           1 |          |
+|    115 | 0x00 |       250 |     251 |              | 0x00        |           1 |          |
+|    ... | ...  |       ... |     ... |          ... | ...         |         ... |          |
+|    134 | 0x00 |       250 |     270 |              | 0x00        |           1 |          |
+|    135 | 0x00 |       250 |     271 |              | 0x01        |           1 |          |
 
 The full-pad case
 
-| offset | byte | input_len | acc_len | condition_80_inv | padded_byte | is_pad_zone | byte_RLC |
-| -----: | :--- | --------: | ------: | ---------------: | :---------- | ----------: | -------- |
-|      0 | 0    |       136 |     2   |                0 | 0           |           0 |          |
-|      1 | 0x00 |       136 |     136 |                0 | 0x80        |           1 |          |
-|      2 | 0x00 |       136 |     137 |               -1 | 0x00        |           1 |          |
-|    ... | ...  |       ... |     ... |              ... | ...         |         ... |          |
-|    135 | 0x00 |       136 |     270 |                  | 0x00        |           1 |          |
-|    136 | 0x00 |       136 |     271 |                  | 0x01        |           1 |          |
+| offset | byte | input_len | acc_len | diff_is_zero | padded_byte | is_pad_zone | byte_RLC |
+| -----: | :--- | --------: | ------: | -----------: | :---------- | ----------: | -------- |
+|      0 | 0x00 |       136 |     136 |            1 | 0x80        |           1 |          |
+|      1 | 0x00 |       136 |     137 |              | 0x00        |           1 |          |
+|    ... | ...  |       ... |     ... |          ... | ...         |         ... |          |
+|    134 | 0x00 |       136 |     270 |              | 0x00        |           1 |          |
+|    135 | 0x00 |       136 |     271 |              | 0x01        |           1 |          |
 
 The 0x81 case
 
-| offset | byte | input_len | acc_len | condition_80_inv | padded_byte | is_pad_zone | byte_RLC |
-| -----: | :--- | --------: | ------: | ---------------: | :---------- | ----------: | -------- |
-|      0 | 0    |       271 |     2   |                  | 0           |           0 |          |
-|      1 | 0xff |       271 |     136 |                  | 0xff        |           0 |          |
-|      2 | 0xff |       271 |     137 |                  | 0xff        |           0 |          |
-|    ... |  ... |       ... |     ... |              ... | ...         |           0 |          |
-|    114 | 0xff |       271 |     249 |                  | 0xff        |           0 |          |
-|    115 | 0xff |       271 |     250 |                  | 0xff        |           0 |          |
-|    116 | 0xff |       271 |     251 |                  | 0xff        |           0 |          |
-|    ... | ...  |       ... |     ... |              ... | ...         |         ... |          |
-|    135 | 0xff |       271 |     270 |                1 | 0xff        |           0 |          |
-|    136 | 0x00 |       271 |     271 |                0 | 0x81        |           1 |          |
+| offset | byte | input_len | acc_len | diff_is_zero | padded_byte | is_pad_zone | byte_RLC |
+| -----: | :--- | --------: | ------: | -----------: | :---------- | ----------: | -------- |
+|      0 | 0xff |       271 |     136 |              | 0xff        |           0 |          |
+|      1 | 0xff |       271 |     137 |              | 0xff        |           0 |          |
+|    ... | ...  |       ... |     ... |          ... | ...         |           0 |          |
+|    113 | 0xff |       271 |     249 |              | 0xff        |           0 |          |
+|    114 | 0xff |       271 |     250 |              | 0xff        |           0 |          |
+|    115 | 0xff |       271 |     251 |              | 0xff        |           0 |          |
+|    ... | ...  |       ... |     ... |          ... | ...         |         ... |          |
+|    134 | 0xff |       271 |     270 |              | 0xff        |           0 |          |
+|    135 | 0x00 |       271 |     271 |            1 | 0x81        |           1 |          |
 
 
 #### Checks
@@ -186,21 +184,20 @@ Generally we want these properties:
 
 We apply two different checks on the 0~134-th rows and the 135th row.
 
-1. All checks below are only enabled when `state_tag === Finalize`
-2. For 0-th row (We use this row for initializing and copying)
+1. For 0-th row (We use this row for initializing and copying)
    1. `input_len` is copied from the Lookup Region.
-   2. `acc_len` is copied from the `perm_count`, and set `next.acc_len === (curr.acc_len - 1) * 136`
-   3. `is_pad_zone === 0`
-   4. initialize all other columns to be 0
+   2. `acc_len` is copied from a `(perm_count - 1) * 136` cell in some other region
+   3. `f_enable` is copied from some other region
+   4. `is_pad_zone === diff_is_zero`
+2. All checks below are only enabled when `f_enable === 1`
 3. For all rows
-   1. If `is_pad_zone` then `byte === 0`. `is_pad_zone * byte === 0`
-   2. `next.input_len === curr.input_len`
-4. For 1~135-th rows
-   1. `next.acc_len === curr.acc_len + 1`
-   2. Inverse check for `curr.condition_80_inv`
-   3. If `curr.input_len - curr.acc_len` is 0, pad `0x80`: `curr.padded_byte === curr.byte + (1 - (curr.input_len - curr.acc_len) * curr.condition_80_inv) * 0x80`
-   4. Set `is_pad_zone` to 1 if we entered. `next.is_pad_zone === curr.is_pad_zone + (1 - (next.input_len - next.acc_len) * next.condition_80_inv)`
-5. For the 136th row
-   1. Since this is the last byte, it must a pad zone and we pad 0x01. It might be the case the 0x80 is also padded here, together with 0x01 we have 0x81. `curr.padded_byte === (1 - (curr.input_len - curr.acc_len) * curr.condition_80_inv) * 0x80 + 0x01`
+   1. If `is_pad_zone` then `byte === 0`. `curr.is_pad_zone * curr.byte === 0`
+4. For 0~134-th rows
+   1. `next.input_len === curr.input_len`
+   2. `next.acc_len === curr.acc_len + 1`
+   3. If `curr.input_len - curr.acc_len` is 0, pad `0x80`: `curr.padded_byte === curr.byte + curr.diff_is_zero * 0x80`
+   4. Set `is_pad_zone` to 1 if we entered. `next.is_pad_zone === curr.is_pad_zone + curr.diff_is_zero`
+5. For the 135th row
+   1. This is the last byte, if `f_enable === 1` then we must be in a `Finalize` state_tag that needs to pad 0x01 here. It might be the case the 0x80 is also padded here, together with 0x01 we have 0x81. `curr.padded_byte === curr.diff_is_zero * 0x80 + 0x01`
 6. Use `byte_RLC` to running sum `byte`. The sum should be equal to `input` in the lookup region
 7. `padded_byte` are copied to a word builder gadget to build padded words, which would later be copied to the `Keccak-f` permutation
