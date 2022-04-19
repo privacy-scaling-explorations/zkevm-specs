@@ -462,17 +462,14 @@ discussed below), and the sum of the two needs to be 1.
 
 When does extension node appear?
 
-Let us first observe the leaf in the picture below.
+Let us observe the leaf in the picture below.
 
 <p align="center">
   <img src="./img/leaf.png?raw=true" width="40%">
 </p>
 
-This leaf appears at position:
-
-```
-n0 n1 n2 n3
-```
+The leaf appears at position `n3` in the branch. Its parent branch appears at position `n2` in
+its own parent. Likewise for `n1` and `n0` (`n0` is position in the root branch).
 
 The rest of the nibbles are stored in the leaf.
 
@@ -482,18 +479,23 @@ There are three possible storage modification scenarios:
   value in the leaf will be updated.
 - If the storage modification occurs at the key where `n0 n1 n2 n3` match,
   a branch is inserted instead of a leaf. Let us say the nibbles of the key where
-  change occurs are: `n0 n1 n2 n3 m4 m5 ... m63`. This branch contains two leaves:
+  change occurs are: `n0 n1 n2 n3 m4 m5 ... m63`. The new branch contains two leaves:
   the old one at position `n4` and the new one at position `m4`.
+- If the storage modification occurs at the key where `n0 n1 n2 n3` match and
+  also some further nibbles match, for example: `n4 = m4, n5 = m5, n6 = m6`,
+  an extension node is inserted instead of a leaf. Extension node is like a leaf,
+  it contains key (which stores nibbles, in our example: `n4 n5 n6`) and value which is
+  a hash of the new branch. As in the second scenario, the new branch contains two leaves:
+  the old one at position `n7` and the new one at position `m7` (where `n7 != m7`).
+
+Leaf into branch:
 
 <p align="center">
   <img src="./img/into_branch.png?raw=true" width="35%">
 </p>
-- If the storage modification occurs at the key where `n0 n1 n2 n3` match and
-also some further nibbles match, for example: `n4 = m4, n5 = m5, n6 = m6`,
- an extension node is inserted instead of a leaf. Extension node is like a leaf,
- it contains key (which stores nibbles, in our example: `n4 n5 n6`) and value which is
- hash of the new branch. The new branch contains two leaves:
- the old one at position `n7` and the new one at position `m7` (where `n7 != m7`).
+
+Leaf into extension node:
+
 <p align="center">
   <img src="./img/into_extension.png?raw=true" width="35%">
 </p>
@@ -508,7 +510,7 @@ as leaf. It contains:
 - In the key: the information about nibbles in the leaf key.
 - In the value: the hash of the underlying branch.
 
-For example, the proof element of an extension node looks like:
+For example, the `eth getProof` returns:
 
 ```
 228,130,0,149,160,114,253,150,133,18,192,156,19,241,162,51,210,24,1,151,16,48,7,177,42,60,49,34,230,254,242,79,132,165,90,75,249
@@ -526,14 +528,14 @@ The value (branch hash) is stored in:
 114 253 150 ...
 ```
 
-The second byte (130) means there are 2 (130 - 128) bytes compressing the nibbles.
+The second byte (130) means there are two (130 - 128) bytes compressing the nibbles.
 These two bytes are `0, 149` and they represent
 the two nibbles: 9 and 5 (149 = 9 * 16 + 5).
 
-The bytes after 160 present a hash of the underlying branch.
+The bytes after 160 represent a hash of the underlying branch.
 
 The layout uses `s_rlp1`, `s_rlp2`, and `s_advices` for RLP meta bytes and nibbles,
-while `c_advices` are used for branch hash, and `c_rlp2` stores 160 - denoting the number of hash bytes.
+while `c_advices` are used for branch hash, and `c_rlp2` stores 160 (denoting the number of hash bytes).
 
 <p align="center">
   <img src="./img/extension_node_row.png?raw=true" width="45%">
@@ -545,9 +547,10 @@ to duplicate this information.
 For this reason, in C row, we do not put key into `s_rlp1`, `s_rlp2`, and `s_advices`,
 we just put hash of C underlying branch in `c_advices`.
 
-But we do not leave `s_rlp1, s_rlp2, s_advices` empty in C row, we store additional witness for nibbles there because nibbles are
-compressed in bytes and it makes it difficult to decompress back into nibbles
-without any helper witnesses.
+But we do not leave `s_rlp1, s_rlp2, s_advices` empty in C row, we store additional witness for
+nibbles there because nibbles are
+compressed into bytes and it is difficult to decompress back into nibbles
+without any helper witnesses. This is not needed in all cases though, as we will see below.
 
 Thus, the two extension rows look like:
 
@@ -556,51 +559,152 @@ generated with TestExtensionTwoKeyBytesSel1
 -->
 
 ```
-[228,130,0,149,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,160,114,253,150,133,18,192,156,19,241,162,51,210,24,1,151,16,48,7,177,42,60,49,34,230,254,242,79,132,165,90,75,249]
+[228,130,0,149,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,160,114,253,150,133,18,192,156,19,241,162,51,210,24,1,151,16,48,7,177,42,60,49,34,230,254,242,79,132,165,90,75,249]
+[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,160,57,70,87,80,220,197,201,254,196,232,29,240,104,158,250,223,175,172,44,123,126,255,126,108,15,160,185,239,174,205,146,130]
+```
+
+The first row contains:
+
+- `s_advices`: extension (nibbles `3`, `9`, and `5` compressed into bytes)
+- `c_advices`: hash of S branch
+
+The second row contains:
+
+- `s_advices`: the second nibble of each byte stored in the first row
+- `c_advices`: hash of C branch
+
+In extension node, the intermediate `key_rlc` is computed by taking `key_rlc` and `key_rlc_mult`
+(denoted by `key_rlc_prev` and `key_rlc_mult`)
+from the parent element and adding the extension node bytes.
+However, the calculation depends on:
+
+- How many nibbles have already been used in the branches / extension nodes above
+- Whether there are even or odd nibbles in the extension.
+
+These different cases are the reason for a rather heavy branching in the `extension_node_key`.
+
+#### Even nibbles above, even nibbles in extension
+
+Even nibbles in extension means no nibble will be stored at `s_advices[0]`.
+
+```
+key_rlc = key_rlc_prev + s_advices[1] * key_rlc_mult + s_advices[2] * key_rlc_mult * r + ...
+```
+
+For the example above this would mean:
+
+```
+key_rlc = key_rlc_prev + 149 * key_rlc_mult
+```
+
+#### Even nibbles above, odd nibbles in extension
+
+Odd nibbles in extension means one nibble will be stored at `s_advices[0]`.
+
+This is the case when the second nibbles witnesses are needed. For example:
+
+```
+[228,130,16+3,9*16+5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,160,114,253,150,133,18,192,156,19,241,162,51,210,24,1,151,16,48,7,177,42,60,49,34,230,254,242,79,132,165,90,75,249]
 [0,0,5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,160,57,70,87,80,220,197,201,254,196,232,29,240,104,158,250,223,175,172,44,123,126,255,126,108,15,160,185,239,174,205,146,130]
 ```
 
-Here, 5 presents the second nibble of 149 (149 = 9 * 16 + 5).
-Having the second nibble simplifies the computation of the first nibble.
+In the second row, 5 presents the second nibble of 149 (149 = 9 * 16 + 5).
+Having the second nibble simplifies the computation of the first nibble (including both, first
+and second nibbles, as witnesses is not possible as there is not enough space in `s_advices` for
+cases where extension would be more than 32 nibbles).
 
-<!--
-modify extension in parent diagram
--->
+In this case, the intermediate `key_rlc` is computed:
 
-There is bit of a difference in RLP stream when only one nibble appears.
-In this case there is no byte specifying the length of the key extension
-(130 in the above case).
+```
+key_rlc = key_rlc_prev + ((s_advices[0] - 16) * 16 + s_advices[1]_first_nibble) * key_rlc_mult + (s_advices[1]_second_nibble * 16 + s_advices[2]_first_nibble) * key_rlc_mult * r + ...
+```
+
+For the example above:
+
+```
+key_rlc = key_rlc_prev + (3 * 16 + 9) * key_rlc_mult + 5 * 16 * key_rlc_mult + r
+```
+
+#### Odd nibbles above, even nibbles in extension
+
+Even nibbles in extension means no nibble will be stored at `s_advices[0]`.
+The second nibbles witnesses are needed here:
+
+```
+key_rlc = key_rlc_prev + s_advices[1]_first_nibble * key_rlc_mult + (s_advices[1]_second_nibble * 16 + s_advices[2]_first_nibble) * key_rlc_mult * r + ...
+```
+
+For example:
+
+```
+[228,130,0,9*16+5,8*16+4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,160,114,253,150,133,18,192,156,19,241,162,51,210,24,1,151,16,48,7,177,42,60,49,34,230,254,242,79,132,165,90,75,249]
+[0,0,5,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,160,57,70,87,80,220,197,201,254,196,232,29,240,104,158,250,223,175,172,44,123,126,255,126,108,15,160,185,239,174,205,146,130]
+```
+
+```
+key_rlc = key_rlc_prev + 9 * key_rlc_mult + (5 * 16 + 8) * key_rlc_mult * r + 4 * 16 * key_rlc_mult * r^2
+```
+
+#### Odd nibbles above, odd nibbles in extension
+
+Odd nibbles in extension means one nibble will be stored at `s_advices[0]`. We do not need the second
+nibbles witnesses here:
+
+```
+key_rlc = key_rlc_prev + (s_advices[0] - 16) * key_rlc_mult + s_advices[1] * key_rlc_mult * r + s_advices[2] * key_rlc_mult * r^2 + ...
+```
+
+For example:
+
+```
+[228,130,16+3,149,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,160,114,253,150,133,18,192,156,19,241,162,51,210,24,1,151,16,48,7,177,42,60,49,34,230,254,242,79,132,165,90,75,249]
+[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,160,57,70,87,80,220,197,201,254,196,232,29,240,104,158,250,223,175,172,44,123,126,255,126,108,15,160,185,239,174,205,146,130]
+```
+
+```
+key_rlc = key_rlc_prev + 3 * key_rlc_mult + 149 * key_rlc_mult * r
+```
+
+#### Only one nibble
+
+When there is only one nibble, there is no byte specifying the length of the key extension
+(130 in the above cases).
 For example, in the case below, the nibble is 0 (16 - 16):
 
 `226,16,160,172,105,12...`
 
-In this case special witnesses for nibbles are not needed.
+In this case, the second nibble witnesses are not needed too.
 
-#### Constraints
+There are two subcases. When there are even nibbles above:
 
-##### Constraint: selectors
+```
+key_rlc = key_rlc_mult + (s_rlp2 - 16) * 16 * key_rlc_mult
+```
 
-There are six possible scenarios:
+And when there are odd nibbles above:
 
-- extension node key contains only one nibble and `modified_node` needs to be
-  multiplied by `16` for `key RLC`
-- extension node key contains only one nibble and `modified_node` needs to be
-  multiplied by `1` for `key RLC`
-- extension node key contains even number of nibbles and `modified_node` needs to be
-  multiplied by `16` for `key RLC`
-- extension node key contains even number of nibbles and `modified_node` needs to be
-  multiplied by `1` for `key RLC`
-- extension node key contains odd number of nibbles (and more than 1) and `modified_node` needs to be multiplied by `16` for `key RLC`
-- extension node key contains odd number of nibbles (and more than 1) and `modified_node` needs to be multiplied by `1` for `key RLC`
+```
+key_rlc = key_rlc_mult + (s_rlp2 - 16) * key_rlc_mult
+```
 
-Extension node RLP encoding needs to be differently handled in different scenarios.
-For example, in the the case of only one nibble, there is only one RLP meta byte
-(key starts already in `s_rlp2`).
+### Selectors
 
-Key RLC information is packed together with information about number of nibbles to
-reduce the expression degree.
+The following selectors are used to handle the computation of `key_rlc`. The following witnesses
+are stored in branch init row:
 
-It needs to be ensured that the selectors are boolean and their sum is `0` or `1`.
+- `is_branch_c16`: whether the branch `modified_node` needs to be multiplied by 16 when computing `key_rlc`
+- `is_branch_c1`: whether the branch `modified_node` needs to be multiplied by 1 when computing `key_rlc`
+- `is_ext_short_c16`: whether the extension is of length 1 and the branch `modified_node` needs to be multiplied by 16 when computing `key_rlc`
+- `is_ext_short_c1`: whether the extension is of length 1 and the branch `modified_node` needs to be multiplied by 1 when computing `key_rlc`
+- `is_ext_long_even_c16`: whether the extension is of even length and the branch `modified_node` needs to be multiplied by 16 when computing `key_rlc`
+- `is_ext_long_even_c1`: whether the extension is of even length and the branch `modified_node` needs to be multiplied by 1 when computing `key_rlc`
+- `is_ext_long_odd_c16`: whether the extension is of odd length (and more than 1) and the branch `modified_node` needs to be multiplied by 16 when computing `key_rlc`
+- `is_ext_long_odd_c1`: whether the extension is of odd length (and more than 1) and the branch `modified_node` needs to be multiplied by 1 when computing `key_rlc`
+
+Multiple bits of information are used to reduce the expression degree.
+
+It needs to be ensured that the selectors are boolean. Further, the sum of `ext` selectors
+needs to be `0` or `1`.
 If it is `0`, there is a regular branch. If it is `1`, there is an extension node.
 See `extension_node.rs` for the constraints.
 
@@ -608,80 +712,9 @@ Further, there are constraints that ensure the selector
 value is correct. For example, when there is only one nibble, `s_rlp1` has to be `226`.
 Also, when there is an even number of nibbles, `s_advices[0]` has to be `0`.
 
-Information about key RLC multiplication factor is doubled to reduce the expression degree.
-Thus the information appear in branch init row at the following positions:
-
-```
-pub const IS_BRANCH_C16_POS: usize = 19;
-pub const IS_BRANCH_C1_POS: usize = 20;
-pub const IS_EXT_SHORT_C16_POS: usize = 21;
-pub const IS_EXT_SHORT_C1_POS: usize = 22;
-pub const IS_EXT_LONG_EVEN_C16_POS: usize = 23;
-pub const IS_EXT_LONG_EVEN_C1_POS: usize = 24;
-pub const IS_EXT_LONG_ODD_C16_POS: usize = 25;
-pub const IS_EXT_LONG_ODD_C1_POS: usize = 26;
-```
-
 There are constraints (`extension_node.rs`) that ensure the information at positions
 `IS_BRANCH_C16_POS` and `IS_BRANCH_C1_POS` correspond to the information at positions
 where extension node selectors are given.
-
-##### Constraint: extension node RLC is properly computed
-
-Extension node RLC needs to be prperly computed for both, S and C.
-This is done by taking into account each byte of the extension node.
-The RLC is computed in two steps: the first
-step computes bytes in `s_rlp1', 's_rlp2`, `s_advices` (stored in `acc_s` column),
-the second step in `c_rlp1', 'c_rlp2`, `c_advices` (stored in `acc_c` column).
-
-First step:
-
-```
-rlc_s = s_rlp1 + s_rlp2 * r + s_advices[0] * r^2 + s_advices[1] * r^3 + ... + s_advices[31] * r^33 
-```
-
-Constraint:
-
-```
-rlc_s = acc_s
-```
-
-Second step:
-
-```
-rlc = rlc_first + c_rlp1 * r_1 + c_rlp2 * r_1^2 + c_advices[0] * r_1^3 + c_advices[1] * r_1^4 + ... + c_advices[31] * r_1^34 
-```
-
-Constraint:
-
-```
-rlc = acc_c
-```
-
-Note that not all `s_advices` are always used. In the above example, there is only
-`0, 149`. The rest of `s_advices` are 0s. To ensure `s_advices` are 0 for `i > 1`,
-`key_len_lookup` function is used (see below for a more detailed description).
-
-For S:
-`lookup(S branch RLC (retrived from the last branch children row), S branch RLC length, c_advices RLC in extension row)`.
-
-For C extension node, the RLC from the first step from S extension node row is reused.
-The second step is analogous to the S row, but uses the values from C row.
-
-##### Constraint: hash of the extension node is in the parent branch
-
-It needs to be checked that the extension node RLC is `mod_node_hash_rlc`
-in the parent branch.
-
-```
-lookup(acc_c, extension node S length, s_mod_node_hash_rlc::(rot))
-lookup(acc_c, extension node C length, c_mod_node_hash_rlc::(rot-1))
-```
-
-##### Constraint: hash of the underlying branch is in the extension node c_advices
-
-For S:
-`lookup(S branch RLC (retrived from the last branch children row), S branch length, c_advices RLC in extension row)`.
 
 ## Account leaf
 
