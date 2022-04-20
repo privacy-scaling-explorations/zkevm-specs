@@ -701,7 +701,9 @@ are stored in branch init row:
 - `is_ext_long_odd_c16`: whether the extension is of odd length (and more than 1) and the branch `modified_node` needs to be multiplied by 16 when computing `key_rlc`
 - `is_ext_long_odd_c1`: whether the extension is of odd length (and more than 1) and the branch `modified_node` needs to be multiplied by 1 when computing `key_rlc`
 
-Multiple bits of information are used to reduce the expression degree.
+Multiple bits of information are packed into selectors to reduce the expression degree.
+It is ensured that `is_branch_c16` and `is_branch_c1` correspond properly to `c16/c1`
+part of extension node selectors.
 
 It needs to be ensured that the selectors are boolean. Further, the sum of `ext` selectors
 needs to be `0` or `1`.
@@ -711,10 +713,6 @@ See `extension_node.rs` for the constraints.
 Further, there are constraints that ensure the selector
 value is correct. For example, when there is only one nibble, `s_rlp1` has to be `226`.
 Also, when there is an even number of nibbles, `s_advices[0]` has to be `0`.
-
-There are constraints (`extension_node.rs`) that ensure the information at positions
-`IS_BRANCH_C16_POS` and `IS_BRANCH_C1_POS` correspond to the information at positions
-where extension node selectors are given.
 
 ## Account leaf
 
@@ -728,11 +726,24 @@ Storage codehash S
 Storage codehash C
 ```
 
-There is only one key row, because the key is always the same for the two parallel proofs.
+There is only one key row, because the key is always the same for the two parallel proofs (TODO: support account creation, then the keys can be different).
 
 <p align="center">
   <img src="./img/address_rlc.png?raw=true" width="60%">
 </p>
+
+Only one modification is allowed at a time, thus S proof and C proof differ in one
+of the following:
+
+- Nonce
+- Balance
+- Storage trie root
+- Codehash
+
+When `nonce`, `balance`, or `codehash` is modified, there is no storage proof and
+no rows below account leaf. When `storage` is modified, it is ensured that there
+is a storage proof (via `address_rlc` being changed only in one of storage
+leaf rows; `address_rlc` is needed for lookup of the storage change).
 
 ## Storage leaf
 
@@ -888,14 +899,15 @@ In this case S proof will be shorter than C proof.
 The layout would look like:
 
 ```
-Branch 1 | Branch 1
-         | Branch 11
+Branch 0 | Branch 0
+         | Branch 1
 Leaf 1   | Leaf 2
 ```
 
-`Leaf 1` is replaced by `Branch 11`. `Branch 11` contains two leaves: `Leaf 1` and `Leaf 2`.
-However, `Leaf 1` has a shorter key now. To enable the verification that `Branch 11` contains
-only two leaves and one of them is `Leaf 1` (with shorted key), the modified `Leaf 1` is stored
+`Leaf 1` in `Branch0` is replaced by `Branch 1`. `Branch 1` contains two leaves: `Leaf 1` and `Leaf 2`.
+However, `Leaf 1` has a shorter key now. To enable the verification that `Branch 1`
+contains only two leaves and one of them is `Leaf 1` (with shorter key),
+the modified `Leaf 1` is stored
 in the fifth storage leaf row (`Leaf in added branch`). It is ensured that the values
 in this row correspond to `Leaf 1`.
 
@@ -903,21 +915,42 @@ in this row correspond to `Leaf 1`.
   <img src="./img/placeholder_branch.png?raw=true" width="50%">
 </p>
 
-In order not to break the layout, a placeholder branch is added in S
+In order not to break the layout, a placeholder branch is added in the S
 proof. This way, the leaf S and leaf C are positioned one after another as in other cases
 (where the number of branches above the leaf S and leaf C is the same).
 
 To make it simpler, for the placeholder branch its paralell counterpart is used (when
-S branch is a placeholder, C branch is used as a placeholder; when C branch is a placeholder,
-S branch is used as a placeholder).
+S branch is a placeholder, C branch values are used as a placeholder; when C branch is a placeholder, S branch values are used as a placeholder).
 
-This way, the equalities between S and C branch still holds.
+This way, the equalities between S and C branch still holds (constraints are
+still fullfilled).
 On the other hand, the constraint for branch hash to be in a parent element is switched off.
 Instead, the hash of a leaf is checked to be in an element that is above the placeholder
 branch.
 
-In case when there are two leaves in a branch and one of them is deleted, the scenario is
-reversed: C proof contains placeholder branch.
+<p align="center">
+  <img src="./img/drifted_leaf.png?raw=true" width="50%">
+</p>
+
+Let us denote by `Leaf 11` the leaf `Leaf 1` after it drifted down into
+`Branch 1`.
+
+There are some further equalities to be ensured.
+For example, `Leaf 11 key_rlc` needs to be the same as `Leaf 1 key_rlc`.
+
+Note: `Leaf 1 key_rlc` is computed using nibbles in the branches above `Branch 0`,
+using `modified_node` of `Branch 0`, and using the key stored in `Leaf 1`.
+Once `Leaf 1` drifted into `Branch 1`, its `key_rlc` is computed using nibbles
+above `Branch 1`, using `drifed_pos` in `Branch 1`, and using the key
+stored in `Leaf 11`.
+If `Branch 1` is extension node instead, the computation of `Leaf 11 key_rlc`
+needs to take account also the extension nibbles.
+
+Further, `Leaf 11` hash needs to be checked to be the same as `Branch 1` child
+at `drifted_mod` position. The only other non-empty child of `Branch 1` needs
+to be `Leaf 2` hash at `modified_node` position.
+
+In case when there are two leaves in a branch and one of them is deleted, the scenario is reversed: C proof contains placeholder branch.
 
 #### Case 2: Key not used yet
 
@@ -952,11 +985,54 @@ leaf.
 
 #### Case 3: Key in first level - leaf turns into branch / extension node
 
+In case there is only one leaf in storage trie, there will be no branch.
+When the second leaf is added, the branch or extension node appears.
+Similarly as in the first case, a placeholder branch / extension node
+is added. The difference is that the hash of the leaf in the S proof is
+checked to be the S storage trie root stored in the account leaf rows.
+The hash of the added branch / extension node is checked to be the C
+storage trie root. All other constraits are the same as in the first case.
+
 <p align="center">
   <img src="./img/one_leaf_in_trie.png?raw=true" width="50%">
 </p>
 
-#### Case 4: Key in first level - key not used yet
+#### Case 4: No key in first level
+
+When there is no value stored yet in the storage trie, a placeholder leaf
+is inserted as in the second case. Here, instead of checking that the hash
+of a (placeholder) leaf is the storage trie root stored in the account leaf
+rows, it is checked that the storage trie root is hash of an empty trie.
+Thus, placeholder leaf is used just to not break the circuit layout.
+
+In the C proof, the hash of a leaf (the first leaf that is added to the trie)
+is checked to be the storage trie root. When the only leaf in the storage trie
+is deleted, the scenario is reversed: the placeholder is in the C proof.
+
+<p align="center">
+  <img src="./img/one_leaf.png?raw=true" width="50%">
+</p>
+
+## Proof chaining
+
+One S/C proof proves one modification. When two or more modifications are to be
+proved to be correct, a chaining between proofs is needed.
+That means we need to ensure:
+
+```
+current S state trie root = previous C state trie root
+```
+
+For this reason `not_first_level` selector is used which is set to 0 for the
+first rows of the account proof. These are either the rows of the first
+branch / extension node or the rows of the account leaf (if only one element
+in the state trie).
+
+The constraints make sure:
+
+- `current S state trie root = previous C state trie root` in the first row of the first level
+- `address_rlc` is set to 0 in the first row of the first level (in the account leaf it is set to the correct value, elsewhere it is not allowed to change)
+- `counter` does not change except in the first row of the first level
 
 ## Lookups into MPT
 
