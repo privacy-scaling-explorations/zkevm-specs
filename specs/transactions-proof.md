@@ -212,6 +212,10 @@ Organizing the table this way allows having the values of `CallerAddress` and
 add copy constraints of these values to cells into another region that performs
 the signature verification and hash lookup.
 
+### Diagram
+
+![](./tx_circuit.rev1.png)
+
 ### Summary of changes
 
 - Skip verification of correct construction of the transaction trie (no MPT table lookups)

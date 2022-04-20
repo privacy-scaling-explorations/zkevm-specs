@@ -81,10 +81,22 @@ class WrongFieldInteger:
     https://github.com/appliedzkp/halo2wrong/blob/master/integer/src/integer.rs
     """
 
-    limbs: bytes  # Little-Endian bytes
+    limbs: Tuple[FQ, FQ, FQ, FQ]  # Little-Endian limbs of [72, 72, 72, 40] bits
+    le_bytes: bytes  # Little-Endian bytes
 
     def __init__(self, value: int) -> None:
-        self.limbs = value.to_bytes(32, "little")
+        mask = (1 << 72) - 1
+        l0 = (value >> 0 * 72) & mask
+        l1 = (value >> 1 * 72) & mask
+        l2 = (value >> 2 * 72) & mask
+        l3 = (value >> 3 * 72) & mask
+        self.limbs = (FQ(l0), FQ(l1), FQ(l2), FQ(l3))
+        self.le_bytes = value.to_bytes(32, "little")
+
+    def to_le_bytes(self) -> bytes:
+        (l0, l1, l2, l3) = self.limbs
+        val = l0.n + (l1.n << 1 * 72) + (l2.n << 2 * 72) + (l3.n << 3 * 72)
+        return val.to_bytes(32, "little")
 
 
 class Secp256k1BaseField(WrongFieldInteger):
@@ -114,7 +126,10 @@ class ECDSAVerifyChip:
 
     signature: Tuple[Secp256k1ScalarField, Secp256k1ScalarField]
     pub_key: Tuple[Secp256k1BaseField, Secp256k1BaseField]
+    pub_key_x_bytes: bytes
+    pub_key_y_bytes: bytes
     msg_hash: Secp256k1ScalarField
+    msg_hash_bytes: bytes
 
     def __init__(
         self,
@@ -125,6 +140,12 @@ class ECDSAVerifyChip:
         self.signature = signature
         self.pub_key = pub_key
         self.msg_hash = msg_hash
+        self.pub_key_x_bytes = pub_key[0].to_le_bytes()
+        self.pub_key_y_bytes = pub_key[1].to_le_bytes()
+        self.msg_hash_bytes = msg_hash.to_le_bytes()
+        # NOTE: The circuit must constraint that all elements in the `*_bytes`
+        # parameters  are in range 0..255 and that they represent the same
+        # value as their corresponding WrongFieldInteger limbs.
 
     @classmethod
     def assign(cls, signature: KeyAPI.Signature, pub_key: KeyAPI.PublicKey, msg_hash: bytes):
@@ -137,23 +158,23 @@ class ECDSAVerifyChip:
         self_msg_hash = Secp256k1ScalarField(int.from_bytes(msg_hash, "big"))
         return cls(self_signature, self_pub_key, self_msg_hash)
 
-    def verify(self, is_enabled: FQ, assert_msg: str):
-        msg_hash = bytes(reversed(self.msg_hash.limbs))
-        sig_r = int.from_bytes(self.signature[0].limbs, "little")
-        sig_s = int.from_bytes(self.signature[1].limbs, "little")
+    def verify(self, assert_msg: str):
+        msg_hash = bytes(reversed(self.msg_hash.to_le_bytes()))
+        sig_r = int.from_bytes(self.signature[0].to_le_bytes(), "little")
+        sig_s = int.from_bytes(self.signature[1].to_le_bytes(), "little")
         signature = KeyAPI.Signature(vrs=[0, sig_r, sig_s])
         public_key = KeyAPI.PublicKey(
-            bytes(reversed(self.pub_key[0].limbs)) + bytes(reversed(self.pub_key[1].limbs))
+            bytes(reversed(self.pub_key[0].to_le_bytes()))
+            + bytes(reversed(self.pub_key[1].to_le_bytes()))
         )
-        if is_enabled == 1:
-            assert KeyAPI().ecdsa_verify(
-                msg_hash, signature, public_key
-            ), f"{assert_msg}: ecdsa_verify failed"
+        assert KeyAPI().ecdsa_verify(
+            msg_hash, signature, public_key
+        ), f"{assert_msg}: ecdsa_verify failed"
 
 
-class SignVerifyGadget:
+class SignVerifyChip:
     """
-    Auxiliary Gadget to verify a that a message hash is signed by the public
+    Auxiliary Chip to verify a that a message hash is signed by the public
     key corresponding to an Ethereum Address.
     """
 
@@ -161,6 +182,9 @@ class SignVerifyGadget:
     address: FQ
     msg_hash_rlc: FQ  # Set to 0 to disable verification check
     ecdsa_chip: ECDSAVerifyChip
+    pub_key_x_bytes: bytes
+    pub_key_y_bytes: bytes
+    msg_hash_bytes: bytes
 
     def __init__(
         self,
@@ -173,6 +197,9 @@ class SignVerifyGadget:
         self.address = address
         self.msg_hash_rlc = msg_hash_rlc
         self.ecdsa_chip = ecdsa_chip
+        self.pub_key_x_bytes = ecdsa_chip.pub_key_x_bytes
+        self.pub_key_y_bytes = ecdsa_chip.pub_key_y_bytes
+        self.msg_hash_bytes = ecdsa_chip.msg_hash_bytes
 
     @classmethod
     def assign(
@@ -186,43 +213,49 @@ class SignVerifyGadget:
         return cls(self_pub_key_hash, self_address, self_msg_hash_rlc, self_ecdsa_chip)
 
     def verify(self, keccak_table: KeccakTable, randomness: FQ, assert_msg: str):
-        is_enabled = FQ(1 - (self.msg_hash_rlc == 0))  # 1 - is_zero(self.msg_hash_rlc)
+        is_not_padding = FQ(1 - (self.address == 0))  # 1 - is_zero(self.address)
 
-        # 0. Verify that the first 20 bytes of the pub_key_hash equal the address
+        # 0. Copy constraints between pub_key and msg_hash bytes of this chip
+        # and the ECDSA chip
+        assert self.pub_key_x_bytes == self.ecdsa_chip.pub_key_x_bytes
+        assert self.pub_key_y_bytes == self.ecdsa_chip.pub_key_y_bytes
+        assert self.msg_hash_bytes == self.ecdsa_chip.msg_hash_bytes
+
+        # 1. Verify that keccak(pub_key_bytes) = pub_key_hash by keccak table
+        # lookup, where pub_key_bytes is built from the pub_key in the
+        # ecdsa_chip
+        pub_key_bytes = bytes(reversed(self.pub_key_x_bytes)) + bytes(
+            reversed(self.pub_key_y_bytes)
+        )
+        keccak_table.lookup(
+            is_not_padding,
+            is_not_padding * RLC(bytes(reversed(pub_key_bytes)), randomness, n_bytes=64).expr(),
+            is_not_padding * FQ(64),
+            is_not_padding * self.pub_key_hash.expr(),
+            assert_msg,
+        )
+
+        # 2. Verify that the first 20 bytes of the pub_key_hash equal the address
         addr_expr = FQ.linear_combine(list(reversed(self.pub_key_hash.le_bytes[-20:])), FQ(2**8))
         assert (
             addr_expr == self.address
         ), f"{assert_msg}: {hex(addr_expr.n)} != {hex(self.address.n)}"
 
-        # 1. Verify that keccak(pub_key_bytes) = pub_key_hash by keccak table
-        # lookup, where pub_key_bytes is built from the pub_key in the
-        # ecdsa_chip
-        pub_key_bytes = bytes(reversed(self.ecdsa_chip.pub_key[0].limbs)) + bytes(
-            reversed(self.ecdsa_chip.pub_key[1].limbs)
-        )
-        keccak_table.lookup(
-            is_enabled,
-            RLC(bytes(reversed(pub_key_bytes)), randomness, n_bytes=64).expr(),
-            FQ(64) * is_enabled,
-            self.pub_key_hash.expr(),
-            assert_msg,
-        )
-
-        # 2. Verify that the signed message in the ecdsa_chip with RLC encoding
+        # 3. Verify that the signed message in the ecdsa_chip with RLC encoding
         # corresponds to msg_hash_rlc
-        msg_hash_rlc_expr = FQ.linear_combine(self.ecdsa_chip.msg_hash.limbs, randomness)
+        msg_hash_rlc_expr = is_not_padding * FQ.linear_combine(self.msg_hash_bytes, randomness)
         assert (
             msg_hash_rlc_expr == self.msg_hash_rlc
         ), f"{assert_msg}: {hex(msg_hash_rlc_expr.n)} != {hex(self.msg_hash_rlc.n)}"
 
-        # Verify the ECDSA signature
-        self.ecdsa_chip.verify(is_enabled, assert_msg)
+        # 4. Verify the ECDSA signature
+        self.ecdsa_chip.verify(assert_msg)
 
 
 class Witness(NamedTuple):
     rows: List[Row]  # Transaction table rows
     keccak_table: KeccakTable
-    sign_verifications: List[SignVerifyGadget]
+    sign_verifications: List[SignVerifyChip]
 
 
 @is_circuit_code
@@ -245,12 +278,12 @@ def verify_circuit(
         caller_addr_index = tx_row_index + Tag.CallerAddress - 1
         tx_sign_hash_index = tx_row_index + Tag.TxSignHash - 1
 
-        # SignVerifyGadget constraint verification.  Padding txs rows contain
-        # 0 in all values.  The SignVerifyGadget skips the verification when
+        # SignVerifyChip constraint verification.  Padding txs rows contain
+        # 0 in all values.  The SignVerifyChip skips the verification when
         # the msg_hash_rlc == 0.
         sign_verifications[tx_index].verify(keccak_table, randomness, assert_msg)
 
-        # 0. Copy constraints using fixed offsets between the tx rows and the SignVerifyGadget
+        # 0. Copy constraints using fixed offsets between the tx rows and the SignVerifyChip
         assert rows[caller_addr_index].value == sign_verifications[tx_index].address, (
             f"{assert_msg}: {hex(rows[caller_addr_index].value.n)} != "
             + f"{hex(sign_verifications[tx_index].address.n)}"
@@ -281,11 +314,11 @@ class Transaction(NamedTuple):
 
 def tx2witness(
     index: int, tx: Transaction, chain_id: U64, randomness: FQ, keccak_table: KeccakTable
-) -> Tuple[List[Row], SignVerifyGadget]:
+) -> Tuple[List[Row], SignVerifyChip]:
     """
     Generate the witness data for a single transaction: generate the tx table
     rows, insert the pub_key_bytes entry in the keccak_table and assign the
-    SignVerifyGadget.
+    SignVerifyChip.
     """
 
     tx_sign_data = rlp.encode(
@@ -302,7 +335,7 @@ def tx2witness(
     pk_hash = keccak(pk.to_bytes())
     addr = pk_hash[-20:]
 
-    sign_verification = SignVerifyGadget.assign(sig, pk, tx_sign_hash, randomness)
+    sign_verification = SignVerifyChip.assign(sig, pk, tx_sign_hash, randomness)
 
     tx_id = FQ(index + 1)
     rows: List[Row] = []
@@ -324,6 +357,22 @@ def tx2witness(
     return (rows, sign_verification)
 
 
+# Dummy signature, public key and message hash that passes verification used to
+# padding transactions.  This values have calculated using the following values:
+# secret key = 1
+# message hash = 1
+# randomness = 1
+DUMMY_SIGNATURE = (
+    0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798,
+    0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81799,
+)
+DUMMY_PUBLIC_KEY = (
+    0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798,
+    0x483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8,
+)
+DUMMY_MSG_HASH = 0x0000000000000000000000000000000000000000000000000000000000000001
+
+
 def txs2witness(
     txs: List[Transaction], chain_id: U64, MAX_TXS: int, MAX_CALLDATA_BYTES: int, randomness: FQ
 ) -> Witness:
@@ -333,7 +382,7 @@ def txs2witness(
     assert len(txs) <= MAX_TXS
 
     keccak_table = KeccakTable()
-    sign_verifications: List[SignVerifyGadget] = []
+    sign_verifications: List[SignVerifyChip] = []
     tx_fixed_rows: List[Row] = []  # Accumulate fixed rows of each tx
     tx_dyn_rows: List[Row] = []  # Accumulate CallData rows of each tx
     for index, tx in enumerate(txs):
@@ -357,16 +406,16 @@ def txs2witness(
         + [Row(FQ(0), FQ(Tag.Pad), FQ(0), FQ(0))] * (MAX_CALLDATA_BYTES - len(tx_dyn_rows))
     )
 
-    empty_ecdsa_chip = ECDSAVerifyChip(
-        (Secp256k1ScalarField(0), Secp256k1ScalarField(0)),
-        (Secp256k1BaseField(0), Secp256k1BaseField(0)),
-        Secp256k1ScalarField(0),
+    dummy_ecdsa_chip = ECDSAVerifyChip(
+        (Secp256k1ScalarField(DUMMY_SIGNATURE[0]), Secp256k1ScalarField(DUMMY_SIGNATURE[1])),
+        (Secp256k1BaseField(DUMMY_PUBLIC_KEY[0]), Secp256k1BaseField(DUMMY_PUBLIC_KEY[1])),
+        Secp256k1ScalarField(DUMMY_MSG_HASH),
     )
-    empty_sign_verification = SignVerifyGadget(
+    empty_sign_verification = SignVerifyChip(
         RLC(0, randomness),
         FQ(0),
         FQ(0),
-        empty_ecdsa_chip,
+        dummy_ecdsa_chip,
     )
     # Fill the rest of sign_verifications with the witnessess assigned to 0 to
     # disable the verification.

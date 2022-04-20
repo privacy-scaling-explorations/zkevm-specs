@@ -75,7 +75,7 @@ def test_ecdsa_verify_chip():
     sig = sk.sign_msg_hash(msg_hash)
 
     ecdsa_chip = ECDSAVerifyChip.assign(sig, pk, msg_hash)
-    ecdsa_chip.verify(is_enabled=FQ(1), assert_msg="ecdsa verification failed")
+    ecdsa_chip.verify(assert_msg="ecdsa verification failed")
 
 
 def test_tx2witness():
