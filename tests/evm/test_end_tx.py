@@ -20,7 +20,7 @@ TESTING_DATA = (
     # Tx with non-capped refund
     (
         Transaction(
-            caller_address=0xFE, callee_address=CALLEE_ADDRESS, gas=27000, gas_price=int(2e9)
+            id=1, caller_address=0xFE, callee_address=CALLEE_ADDRESS, gas=27000, gas_price=int(2e9)
         ),
         994,
         4800,
@@ -30,7 +30,7 @@ TESTING_DATA = (
     # Tx with capped refund
     (
         Transaction(
-            caller_address=0xFE, callee_address=CALLEE_ADDRESS, gas=65000, gas_price=int(2e9)
+            id=2, caller_address=0xFE, callee_address=CALLEE_ADDRESS, gas=65000, gas_price=int(2e9)
         ),
         3952,
         38400,
@@ -40,7 +40,7 @@ TESTING_DATA = (
     # Last tx
     (
         Transaction(
-            caller_address=0xFE, callee_address=CALLEE_ADDRESS, gas=21000, gas_price=int(2e9)
+            id=3, caller_address=0xFE, callee_address=CALLEE_ADDRESS, gas=21000, gas_price=int(2e9)
         ),
         0,
         0,
@@ -71,12 +71,23 @@ def test_end_tx(
             .tx_refund_read(tx.id, refund)
             .account_write(tx.caller_address, AccountFieldTag.Balance, RLC(caller_balance, randomness), RLC(caller_balance_prev, randomness))
             .account_write(block.coinbase, AccountFieldTag.Balance, RLC(coinbase_balance, randomness), RLC(coinbase_balance_prev, randomness))
-            .tx_receipt_read(tx.id, TxReceiptFieldTag.LogLength, 0)
             .tx_receipt_read(tx.id, TxReceiptFieldTag.PostStateOrStatus, 1)
-            .tx_receipt_read(tx.id - 1, TxReceiptFieldTag.CumulativeGasUsed, pre_tx_gas_cumulate)
-            .tx_receipt_read(tx.id, TxReceiptFieldTag.CumulativeGasUsed, tx.gas - gas_left + pre_tx_gas_cumulate)
+            .tx_receipt_read(tx.id, TxReceiptFieldTag.LogLength, 0)
         # fmt: on
     )
+
+    # check it is first tx
+    if tx.id == 1:
+        assert pre_tx_gas_cumulate == 0
+        rw_dictionary.tx_receipt_read(tx.id, TxReceiptFieldTag.CumulativeGasUsed, tx.gas - gas_left)
+    else:
+        rw_dictionary.tx_receipt_read(
+            tx.id - 1, TxReceiptFieldTag.CumulativeGasUsed, pre_tx_gas_cumulate
+        )
+        rw_dictionary.tx_receipt_read(
+            tx.id, TxReceiptFieldTag.CumulativeGasUsed, tx.gas - gas_left + pre_tx_gas_cumulate
+        )
+
     if not is_last_tx:
         rw_dictionary.call_context_read(22, CallContextFieldTag.TxId, tx.id + 1)
 
