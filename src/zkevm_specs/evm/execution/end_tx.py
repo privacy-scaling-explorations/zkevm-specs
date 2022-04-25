@@ -45,14 +45,14 @@ def end_tx(instruction: Instruction):
 
     # constrain `CumulativeGasUsed` of TxReceipt tag in RW
     if tx_id == 1:  # check if it is the first tx
-        pre_tx_gas_cumulate = FQ(0)
+        current_cumulative_gas_used = FQ(0)
     else:
-        pre_tx_gas_cumulate = instruction.tx_receipt_lookup(
+        current_cumulative_gas_used = instruction.tx_receipt_lookup(
             tx_id - FQ(1), TxReceiptFieldTag.CumulativeGasUsed
         ).expr()
 
     instruction.constrain_equal(
-        pre_tx_gas_cumulate + gas_used,
+        current_cumulative_gas_used + gas_used,
         instruction.tx_receipt_lookup(tx_id, TxReceiptFieldTag.CumulativeGasUsed),
     )
 

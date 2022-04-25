@@ -50,9 +50,11 @@ TESTING_DATA = (
 )
 
 
-@pytest.mark.parametrize("tx, gas_left, refund, is_last_tx, pre_tx_gas_cumulate", TESTING_DATA)
+@pytest.mark.parametrize(
+    "tx, gas_left, refund, is_last_tx, current_cumulative_gas_used", TESTING_DATA
+)
 def test_end_tx(
-    tx: Transaction, gas_left: int, refund: int, is_last_tx: bool, pre_tx_gas_cumulate: int
+    tx: Transaction, gas_left: int, refund: int, is_last_tx: bool, current_cumulative_gas_used: int
 ):
     randomness = rand_fq()
 
@@ -78,14 +80,16 @@ def test_end_tx(
 
     # check it is first tx
     if tx.id == 1:
-        assert pre_tx_gas_cumulate == 0
+        assert current_cumulative_gas_used == 0
         rw_dictionary.tx_receipt_read(tx.id, TxReceiptFieldTag.CumulativeGasUsed, tx.gas - gas_left)
     else:
         rw_dictionary.tx_receipt_read(
-            tx.id - 1, TxReceiptFieldTag.CumulativeGasUsed, pre_tx_gas_cumulate
+            tx.id - 1, TxReceiptFieldTag.CumulativeGasUsed, current_cumulative_gas_used
         )
         rw_dictionary.tx_receipt_read(
-            tx.id, TxReceiptFieldTag.CumulativeGasUsed, tx.gas - gas_left + pre_tx_gas_cumulate
+            tx.id,
+            TxReceiptFieldTag.CumulativeGasUsed,
+            tx.gas - gas_left + current_cumulative_gas_used,
         )
 
     if not is_last_tx:

@@ -198,5 +198,5 @@ def call(instruction: Instruction):
             is_create=Transition.to(False),
             code_source=Transition.to(callee_code_hash),
             gas_left=Transition.to(callee_gas_left),
-            reversible_write_counter=Transition.to(2),
+            state_write_counter=Transition.to(2),
         )
