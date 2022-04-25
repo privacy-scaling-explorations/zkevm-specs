@@ -79,7 +79,8 @@ def test_end_tx(
     )
 
     # check it is first tx
-    if tx.id == 1:
+    is_first_tx = tx.id == 1
+    if is_first_tx:
         assert current_cumulative_gas_used == 0
         rw_dictionary.tx_receipt_read(tx.id, TxReceiptFieldTag.CumulativeGasUsed, tx.gas - gas_left)
     else:
@@ -93,7 +94,7 @@ def test_end_tx(
         )
 
     if not is_last_tx:
-        rw_dictionary.call_context_read(22, CallContextFieldTag.TxId, tx.id + 1)
+        rw_dictionary.call_context_read(27 - is_first_tx, CallContextFieldTag.TxId, tx.id + 1)
 
     tables = Tables(
         block_table=set(block.table_assignments(randomness)),
@@ -120,7 +121,7 @@ def test_end_tx(
             ),
             StepState(
                 execution_state=ExecutionState.EndBlock if is_last_tx else ExecutionState.BeginTx,
-                rw_counter=22 - is_last_tx,
+                rw_counter=27 - is_first_tx - is_last_tx,
                 call_id=1 if is_last_tx else 0,
             ),
         ],

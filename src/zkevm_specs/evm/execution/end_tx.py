@@ -44,7 +44,8 @@ def end_tx(instruction: Instruction):
     instruction.constrain_equal(log_id, instruction.curr.log_id)
 
     # constrain `CumulativeGasUsed` of TxReceipt tag in RW
-    if tx_id == 1:  # check if it is the first tx
+    is_first_tx = tx_id == 1
+    if is_first_tx:  # check if it is the first tx
         current_cumulative_gas_used = FQ(0)
     else:
         current_cumulative_gas_used = instruction.tx_receipt_lookup(
@@ -66,11 +67,11 @@ def end_tx(instruction: Instruction):
             tx_id.expr() + 1,
         )
         # Do step state transition for rw_counter
-        instruction.constrain_step_state_transition(rw_counter=Transition.delta(5))
+        instruction.constrain_step_state_transition(rw_counter=Transition.delta(10 - is_first_tx))
 
     # When to end of block
     if instruction.next.execution_state == ExecutionState.EndBlock:
         # Do step state transition for rw_counter and call_id
         instruction.constrain_step_state_transition(
-            rw_counter=Transition.delta(4), call_id=Transition.same()
+            rw_counter=Transition.delta(9 - is_first_tx), call_id=Transition.same()
         )
