@@ -13,6 +13,7 @@ from .copy_to_log import *
 from .add_sub import *
 from .block_ctx import *
 from .call import *
+from .callcode import *
 from .calldatasize import *
 from .caller import *
 from .callvalue import *
@@ -64,5 +65,6 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.CopyToLog: copy_to_log,
     ExecutionState.LOG: log,
     ExecutionState.CALL: call,
+    ExecutionState.CALLCODE: callcode,
     ExecutionState.ISZERO: iszero,
 }
