@@ -231,7 +231,7 @@ class Instruction:
 
     def step_state_transition_to_restored_context(
         self,
-        rw_counter: Transition,
+        rw_counter_delta: int,
         return_data_offset: Expression,
         return_data_length: Expression,
         gas_left: Expression,
@@ -286,7 +286,7 @@ class Instruction:
             reversible_write_counter = self.curr.reversible_write_counter
 
         self.constrain_step_state_transition(
-            rw_counter=rw_counter,
+            rw_counter=Transition.delta(rw_counter_delta + 12),
             call_id=Transition.to(caller_id),
             is_root=Transition.to(caller_is_root),
             is_create=Transition.to(caller_is_create),

@@ -20,9 +20,7 @@ def stop(instruction: Instruction):
 
     # Go to EndTx only when is_root
     is_to_end_tx = instruction.is_equal(instruction.next.execution_state, ExecutionState.EndTx)
-    instruction.constrain_equal(
-        instruction.curr.is_root + is_to_end_tx, 2 * instruction.curr.is_root * is_to_end_tx
-    )
+    instruction.constrain_equal(FQ(instruction.curr.is_root), is_to_end_tx)
 
     if instruction.curr.is_root:
         # When a transaction ends with STOP, this call must be persistent
@@ -46,7 +44,7 @@ def stop(instruction: Instruction):
 
         # Restore caller state to next StepState
         instruction.step_state_transition_to_restored_context(
-            rw_counter=Transition.delta(13),
+            rw_counter_delta=1,
             return_data_offset=FQ(0),
             return_data_length=FQ(0),
             gas_left=instruction.curr.gas_left,
