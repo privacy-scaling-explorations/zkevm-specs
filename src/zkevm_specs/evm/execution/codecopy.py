@@ -25,7 +25,6 @@ def codecopy(instruction: Instruction):
     gas_cost = instruction.memory_copier_gas_cost(size, memory_expansion_gas_cost)
 
     if instruction.is_zero(size) == FQ(0):
-        assert instruction.next is not None
         instruction.constrain_equal(
             instruction.next.execution_state, ExecutionState.CopyCodeToMemory
         )

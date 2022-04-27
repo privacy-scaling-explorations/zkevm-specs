@@ -37,7 +37,6 @@ def calldatacopy(instruction: Instruction):
 
     # When length != 0, constrain the state in the next execution state CopyToMemory
     if instruction.is_zero(length) == FQ(0):
-        assert instruction.next is not None
         instruction.constrain_equal(instruction.next.execution_state, ExecutionState.CopyToMemory)
         next_aux = instruction.next.aux_data
         instruction.constrain_equal(next_aux.src_addr, data_offset + call_data_offset)

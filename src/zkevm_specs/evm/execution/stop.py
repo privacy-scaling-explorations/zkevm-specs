@@ -19,7 +19,6 @@ def stop(instruction: Instruction):
     instruction.constrain_equal(is_success, FQ(1))
 
     # Go to EndTx only when is_root
-    assert instruction.next is not None
     is_to_end_tx = instruction.is_equal(instruction.next.execution_state, ExecutionState.EndTx)
     instruction.constrain_equal(
         instruction.curr.is_root + is_to_end_tx, 2 * instruction.curr.is_root * is_to_end_tx
