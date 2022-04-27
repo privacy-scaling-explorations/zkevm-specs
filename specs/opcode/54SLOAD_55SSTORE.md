@@ -33,7 +33,7 @@
      - `SLOAD`: remains the same
      - `SSTORE`: -2
    - pc + 1
-   - state_write_counter
+   - reversible_write_counter
      - `SLOAD`: +1 (access_list)
      - `SSTORE`: +3 (for storage, access_list & gas_refund respectively)
    - gas:

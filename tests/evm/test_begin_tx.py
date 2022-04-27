@@ -161,7 +161,7 @@ def test_begin_tx(tx: Transaction, callee: Account, is_success: bool):
                 program_counter=0,
                 stack_pointer=1024,
                 gas_left=0,
-                state_write_counter=2,
+                reversible_write_counter=2,
             ),
         ],
         begin_with_first_step=True,

@@ -31,7 +31,7 @@ CallContext = namedtuple(
         "is_persistent",
         "gas_left",
         "memory_size",
-        "state_write_counter",
+        "reversible_write_counter",
     ],
     defaults=[0, True, 0, 0, 2],
 )
@@ -102,7 +102,7 @@ def gen_testing_data():
     ]
     call_contexts = [
         CallContext(gas_left=100000, is_persistent=True),
-        CallContext(gas_left=100000, is_persistent=True, memory_size=8, state_write_counter=5),
+        CallContext(gas_left=100000, is_persistent=True, memory_size=8, reversible_write_counter=5),
         CallContext(gas_left=100000, is_persistent=False, rw_counter_end_of_reversion=88),
     ]
     stacks = [
@@ -175,7 +175,7 @@ def test_call(
         80
         if is_reverted_by_callee
         else (
-            caller_ctx.rw_counter_end_of_reversion - (caller_ctx.state_write_counter + 1)
+            caller_ctx.rw_counter_end_of_reversion - (caller_ctx.reversible_write_counter + 1)
             if is_reverted_by_caller
             else 0
         )
@@ -198,7 +198,7 @@ def test_call(
         .stack_read(1, 1022, RLC(stack.rd_offset, randomness))
         .stack_read(1, 1023, RLC(stack.rd_length, randomness))
         .stack_write(1, 1023, RLC(is_success, randomness))
-        .tx_access_list_account_write(1, callee.address, True, is_warm_access, rw_counter_of_reversion=None if caller_ctx.is_persistent else caller_ctx.rw_counter_end_of_reversion - caller_ctx.state_write_counter)
+        .tx_access_list_account_write(1, callee.address, True, is_warm_access, rw_counter_of_reversion=None if caller_ctx.is_persistent else caller_ctx.rw_counter_end_of_reversion - caller_ctx.reversible_write_counter)
         .call_context_read(24, CallContextFieldTag.RwCounterEndOfReversion, callee_rw_counter_end_of_reversion)
         .call_context_read(24, CallContextFieldTag.IsPersistent, callee_is_persistent)
         .account_write(caller.address, AccountFieldTag.Balance, caller_balance, caller_balance_prev, rw_counter_of_reversion=None if callee_is_persistent else callee_rw_counter_end_of_reversion)
@@ -220,7 +220,7 @@ def test_call(
         .call_context_write(1, CallContextFieldTag.StackPointer, 1023) \
         .call_context_write(1, CallContextFieldTag.GasLeft, expected.caller_gas_left) \
         .call_context_write(1, CallContextFieldTag.MemorySize, expected.next_memory_size) \
-        .call_context_write(1, CallContextFieldTag.StateWriteCounter, caller_ctx.state_write_counter + 1) \
+        .call_context_write(1, CallContextFieldTag.ReversibleWriteCounter, caller_ctx.reversible_write_counter + 1) \
         .call_context_read(24, CallContextFieldTag.CallerId, 1) \
         .call_context_read(24, CallContextFieldTag.TxId, 1) \
         .call_context_read(24, CallContextFieldTag.Depth, 2) \
@@ -268,7 +268,7 @@ def test_call(
                 stack_pointer=1017,
                 gas_left=caller_ctx.gas_left,
                 memory_size=caller_ctx.memory_size,
-                state_write_counter=caller_ctx.state_write_counter,
+                reversible_write_counter=caller_ctx.reversible_write_counter,
             ),
             (
                 StepState(
@@ -282,7 +282,7 @@ def test_call(
                     stack_pointer=1023,
                     gas_left=expected.caller_gas_left,
                     memory_size=expected.next_memory_size,
-                    state_write_counter=caller_ctx.state_write_counter + 3,
+                    reversible_write_counter=caller_ctx.reversible_write_counter + 3,
                 )
                 if callee.code_hash() == EMPTY_CODE_HASH
                 else StepState(
@@ -297,7 +297,7 @@ def test_call(
                     program_counter=0,
                     stack_pointer=1024,
                     gas_left=expected.callee_gas_left,
-                    state_write_counter=2,
+                    reversible_write_counter=2,
                 )
             ),
         ],
