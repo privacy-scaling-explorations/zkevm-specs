@@ -993,3 +993,29 @@ class Instruction:
 
     def pow2_lookup(self, value: Expression, value_pow: Expression):
         self.fixed_lookup(FixedTableTag.Pow2, value, value_pow)
+
+    def copy_lookup(
+        self,
+        src_id: Expression,
+        src_type: CopyDataTypeTag,
+        dst_id: Expression,
+        dst_type: CopyDataTypeTag,
+        src_addr: Expression,
+        src_addr_end: Expression,
+        dst_addr: Expression,
+        length: Expression,
+        rw_counter: Expression,
+        log_id: Expression = None,
+    ) -> FQ:
+        return self.tables.copy_lookup(
+            src_id,
+            src_type,
+            dst_id,
+            dst_type,
+            src_addr,
+            src_addr_end,
+            dst_addr,
+            length,
+            rw_counter,
+            log_id
+        ).rwc_inc
