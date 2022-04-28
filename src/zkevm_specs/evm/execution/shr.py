@@ -61,8 +61,8 @@ def shr(instruction: Instruction):
 
 def check_witness(
     instruction: Instruction,
-    a_digits: Sequence[EncodingU64],
-    b_digits: Sequence[EncodingU64],
+    a64s: Sequence[EncodingU64],
+    b64s: Sequence[EncodingU64],
     a_slice_hi_digits: Sequence[EncodingU64],
     a_slice_lo_digits: Sequence[EncodingU64],
     a_slice_hi: Sequence[U8],
