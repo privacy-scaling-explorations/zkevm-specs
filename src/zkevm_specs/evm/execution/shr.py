@@ -7,7 +7,7 @@ from ...encoding import (
     u64s_to_u256,
     u8s_to_u64s,
 )
-from ...util import FQ, RLC
+from ...util import FQ, N_BYTES_U64, RLC
 from ..instruction import Instruction, Transition
 from ..typing import Sequence
 
@@ -77,7 +77,12 @@ def check_witness(
     shift_overflow,
 ):
     # SHR main constraints
-    instruction.constrain_equal(FQ(u64s_to_u256(b64s)), FQ(instruction.stack_push().int_value))
+    result = instruction.stack_push()
+    for i in range(4):
+        offset = i * N_BYTES_U64
+        instruction.constrain_equal(
+            FQ(b64s[i]), instruction.bytes_to_fq(result.le_bytes[offset : offset + N_BYTES_U64])
+        )
 
     # shift[0]_split_constraints
     # if shift_overflow == 0:
