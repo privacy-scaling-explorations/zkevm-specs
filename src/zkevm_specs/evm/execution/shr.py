@@ -91,7 +91,7 @@ def check_witness(
         instruction.select(
             shift_overflow,
             shift_0,
-            FQ(shift_div_by_64.n * 64 + shift_mod_by_64_div_by_8.n * 8 + shift_mod_by_8.n),
+           shift_div_by_64 * 64 + shift_mod_by_64_div_by_8 * 8 + shift_mod_by_8,
         ),
     )
 
