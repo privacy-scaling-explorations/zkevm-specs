@@ -19,8 +19,8 @@ def shr(instruction: Instruction):
     shift = instruction.stack_pop()
 
     (
-        a_digits,
-        b_digits,
+        a64s,
+        b64s,
         a_slice_hi_digits,
         a_slice_lo_digits,
         a_slice_hi,
@@ -35,8 +35,8 @@ def shr(instruction: Instruction):
     ) = gen_witness(instruction, a, shift)
     check_witness(
         instruction,
-        a_digits,
-        b_digits,
+        a64s,
+        b64s,
         a_slice_hi_digits,
         a_slice_lo_digits,
         a_slice_hi,
@@ -77,7 +77,7 @@ def check_witness(
     shift_overflow,
 ):
     # SHR main constraints
-    instruction.constrain_equal(FQ(u64s_to_u256(b_digits)), FQ(instruction.stack_push().int_value))
+    instruction.constrain_equal(FQ(u64s_to_u256(b64s)), FQ(instruction.stack_push().int_value))
 
     # shift[0]_split_constraints
     # if shift_overflow == 0:
@@ -91,7 +91,7 @@ def check_witness(
         instruction.select(
             shift_overflow,
             shift_0,
-           shift_div_by_64 * 64 + shift_mod_by_64_div_by_8 * 8 + shift_mod_by_8,
+            shift_div_by_64 * 64 + shift_mod_by_64_div_by_8 * 8 + shift_mod_by_8,
         ),
     )
 
@@ -105,17 +105,15 @@ def check_witness(
             merge_a = a_slice_hi_digits[tmp_hi_idx.n] + instruction.select(
                 is_max_idx, FQ(0), a_slice_lo_digits[tmp_lo_idx.n] * shift_mod_by_64_decpow
             )
-            instruction.constrain_zero(
-                FQ((merge_a - b_digits[idx]) * select_transplacement_polynomial)
-            )
+            instruction.constrain_zero(FQ((merge_a - b64s[idx]) * select_transplacement_polynomial))
         for idx in range(4 - transplacement, 4):
-            instruction.constrain_zero(FQ(select_transplacement_polynomial * b_digits[idx]))
+            instruction.constrain_zero(FQ(select_transplacement_polynomial * b64s[idx]))
 
     # merge_constraints
     for idx in range(4):
         instruction.constrain_equal(
             FQ(a_slice_lo_digits[idx] + a_slice_hi_digits[idx] * shift_mod_by_64_pow),
-            FQ(a_digits[idx]),
+            FQ(a64s[idx]),
         )
 
     # slice_higher_cell_equal_to_zero_constraints
@@ -170,15 +168,15 @@ def gen_witness(instruction: Instruction, a: RLC, shift: RLC):
     shift_mod_by_8 = FQ(shift.int_value % 8)
     shift_overflow = FQ(1 - instruction.is_zero(instruction.sum(shift.le_bytes[1:])))
 
-    a_digits = u256_to_u64s(EncodingU256(a.int_value))
+    a64s = u256_to_u64s(EncodingU256(a.int_value))
     slice_hi = 0
     slice_lo = 0
     a_slice_hi = [U8(0)] * 32
     a_slice_lo = [U8(0)] * 32
     is_shift_mod_by_64_zero = instruction.is_zero(FQ(shift_mod_by_64))
     for virtual_idx in range(0, 4):
-        slice_hi = a_digits[virtual_idx] // shift_mod_by_64_pow.n
-        slice_lo = a_digits[virtual_idx] % shift_mod_by_64_pow.n
+        slice_hi = a64s[virtual_idx] // shift_mod_by_64_pow.n
+        slice_lo = a64s[virtual_idx] % shift_mod_by_64_pow.n
 
         for idx in range(0, 8):
             now_idx = (virtual_idx << 3) + idx
@@ -190,17 +188,17 @@ def gen_witness(instruction: Instruction, a: RLC, shift: RLC):
     a_slice_hi_digits = u8s_to_u64s(a_slice_hi)
     a_slice_lo_digits = u8s_to_u64s(a_slice_lo)
 
-    b_digits = [EncodingU64(0)] * 4
-    b_digits[3 - shift_div_by_64.n] = a_slice_hi_digits[3]
+    b64s = [EncodingU64(0)] * 4
+    b64s[3 - shift_div_by_64.n] = a_slice_hi_digits[3]
     for i in range(0, 3 - shift_div_by_64.n):
-        b_digits[i] = EncodingU64(
+        b64s[i] = EncodingU64(
             a_slice_hi_digits[i + shift_div_by_64.n]
             + a_slice_lo_digits[i + shift_div_by_64.n + 1] * shift_mod_by_64_decpow.n
         )
 
     return (
-        a_digits,
-        b_digits,
+        a64s,
+        b64s,
         a_slice_hi_digits,
         a_slice_lo_digits,
         a_slice_hi,
