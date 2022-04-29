@@ -28,6 +28,7 @@ from .table import (
     RWTableTag,
     TxContextFieldTag,
     TxLogFieldTag,
+    TxReceiptFieldTag,
     TxTableRow,
 )
 from .opcode import get_push_size, Opcode
@@ -387,6 +388,24 @@ class RWDictionary:
             key2=FQ(log_id),
             key3=FQ(field_tag),
             key4=FQ(index),
+            value=value,
+        )
+
+    def tx_receipt_read(
+        self,
+        tx_id: IntOrFQ,
+        field_tag: TxReceiptFieldTag,
+        value: Union[int, FQ, RLC],
+    ) -> RWDictionary:
+        if isinstance(value, int):
+            value = FQ(value)
+        return self._append(
+            RW.Read,
+            RWTableTag.TxReceipt,
+            key1=FQ(tx_id),
+            key2=FQ(0),
+            key3=FQ(field_tag),
+            key4=FQ(0),
             value=value,
         )
 

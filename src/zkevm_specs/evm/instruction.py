@@ -33,6 +33,7 @@ from .table import (
     RW,
     RWTableTag,
     TxLogFieldTag,
+    TxReceiptFieldTag,
 )
 
 
@@ -211,6 +212,7 @@ class Instruction:
         code_source: Transition,
         gas_left: Transition,
         reversible_write_counter: Transition,
+        log_id: Transition,
     ):
         self.constrain_step_state_transition(
             rw_counter=rw_counter,
@@ -220,6 +222,7 @@ class Instruction:
             code_source=code_source,
             gas_left=gas_left,
             reversible_write_counter=reversible_write_counter,
+            log_id=log_id,
             # Initailization unconditionally
             program_counter=Transition.to(0),
             stack_pointer=Transition.to(1024),
@@ -458,6 +461,22 @@ class Instruction:
             key2=self.curr.log_id,
             key3=FQ(field_tag),
             key4=FQ(index),
+        ).value
+        return value
+
+    # look up TxReceipt fields (PostStateOrStatus, CumulativeGasUsed, LogLength)
+    def tx_receipt_lookup(
+        self,
+        tx_id: Expression,
+        field_tag: TxReceiptFieldTag,
+    ) -> Expression:
+        value = self.rw_lookup(
+            RW.Read,
+            RWTableTag.TxReceipt,
+            key1=tx_id,
+            key2=FQ(0),
+            key3=FQ(field_tag),
+            key4=FQ(0),
         ).value
         return value
 
