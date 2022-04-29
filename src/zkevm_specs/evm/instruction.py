@@ -212,6 +212,7 @@ class Instruction:
         code_source: Transition,
         gas_left: Transition,
         reversible_write_counter: Transition,
+        log_id: Transition,
     ):
         self.constrain_step_state_transition(
             rw_counter=rw_counter,
@@ -221,6 +222,7 @@ class Instruction:
             code_source=code_source,
             gas_left=gas_left,
             reversible_write_counter=reversible_write_counter,
+            log_id=log_id,
             # Initailization unconditionally
             program_counter=Transition.to(0),
             stack_pointer=Transition.to(1024),

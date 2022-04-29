@@ -7,8 +7,6 @@ from ..table import CallContextFieldTag, TxContextFieldTag, AccountFieldTag
 
 def begin_tx(instruction: Instruction):
     call_id = instruction.curr.rw_counter
-    log_id = instruction.curr.log_id
-    instruction.constrain_zero(log_id)
 
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId, call_id=call_id)
     reversion_info = instruction.reversion_info(call_id=call_id)
@@ -114,5 +112,6 @@ def begin_tx(instruction: Instruction):
                 is_create=Transition.to(False),
                 code_source=Transition.to(code_hash),
                 gas_left=Transition.to(gas_left),
-                state_write_counter=Transition.to(2),
+                reversible_write_counter=Transition.to(2),
+                log_id=Transition.to(0),
             )
