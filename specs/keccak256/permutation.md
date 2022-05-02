@@ -51,3 +51,7 @@ The `state_tag` starts with `Start`.
 The first `keccak_f` comes with its state_tag `Continue`. The `keccak_f` initializes the state as 25 zero words. It then takes the first 136 bytes of the input in 17 words or binary. The `keccak_f` converts the 17 words from binary to base 13 then adds them to the state. We now getting a base 13 pre-state with 17 non-zero words and 8 zero words. The `keccak_f` runs the core permutations to get the post-state in base 9.
 
 The second `keccak_f` comes with its state_tag `Finalize`. The `keccak_f` initializes the state from the previous `keccak_f`'s base 9 post-state. The input still has remaining 24 bytes. The input is padded to a full 136 bytes. The `keccak_f` takes the padded input as 17 words, converting them to base 9. `keccak_f` adds the 17 words to the state, then runs the core permutations.
+
+## References
+
+We use Konstantin Panarin's [sparse representation](https://hackmd.io/xfgP5_uMTZyaEJJG4EJoRQ) idea and ported implementation from [matter-labs/franklin-crypto](https://github.com/matter-labs/franklin-crypto/blob/dev/src/plonk/circuit/hashes_with_tables/keccak/gadgets.rs)
