@@ -179,8 +179,8 @@ class SignVerifyChip:
     """
 
     pub_key_hash: RLC
-    address: FQ
-    msg_hash_rlc: FQ  # Set to 0 to disable verification check
+    address: FQ # Set to 0 to disable verification check
+    msg_hash_rlc: FQ
     ecdsa_chip: ECDSAVerifyChip
     pub_key_x_bytes: bytes
     pub_key_y_bytes: bytes
@@ -411,14 +411,14 @@ def txs2witness(
         (Secp256k1BaseField(DUMMY_PUBLIC_KEY[0]), Secp256k1BaseField(DUMMY_PUBLIC_KEY[1])),
         Secp256k1ScalarField(DUMMY_MSG_HASH),
     )
-    empty_sign_verification = SignVerifyChip(
+    padding_sign_verification = SignVerifyChip(
         RLC(0, randomness),
         FQ(0),
         FQ(0),
         dummy_ecdsa_chip,
     )
-    # Fill the rest of sign_verifications with the witnessess assigned to 0 to
-    # disable the verification.
-    sign_verifications = sign_verifications + [empty_sign_verification] * (MAX_TXS - len(txs))
+    # Fill the rest of sign_verifications with the witnessess assigned to 0s
+    # and dummy ecdsa vefification values to disable the verification.
+    sign_verifications = sign_verifications + [padding_sign_verification] * (MAX_TXS - len(txs))
 
     return Witness(rows, keccak_table, sign_verifications)
