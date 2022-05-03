@@ -179,7 +179,7 @@ class SignVerifyChip:
     """
 
     pub_key_hash: RLC
-    address: FQ # Set to 0 to disable verification check
+    address: FQ  # Set to 0 to disable verification check
     msg_hash_rlc: FQ
     ecdsa_chip: ECDSAVerifyChip
     pub_key_x_bytes: bytes
