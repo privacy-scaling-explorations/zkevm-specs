@@ -147,9 +147,8 @@ difference in usage compared to the Tx Circuit:
    root.
 2. While the State Trie and Account Storage Trie inserts use leafs that are
    bounded in size, for the Transactions Trie, the leafs are the RLP of the
-   Transaction, which contain a variable size calldata.  This means that a MPT
-   update can't be done with a single lookup.  Also the MPT circuit needs to
-   accomodate variable length leaf values.
+   Transaction, which contain a variable size calldata.  This means that the
+   MPT circuit needs to accomodate variable length leaf values.
 
 Once the first iteration of the MPT (the one that fulfills the needs of the
 State Circuit lookups) is finished, we'll work on this.
@@ -211,6 +210,10 @@ Organizing the table this way allows having the values of `CallerAddress` and
 `TxSignHash` for each transaction at a fixed offset.  This makes it possible to
 add copy constraints of these values to cells into another region that performs
 the signature verification and hash lookup.
+
+### Diagram
+
+![](./tx_circuit.rev1.png)
 
 ### Summary of changes
 
