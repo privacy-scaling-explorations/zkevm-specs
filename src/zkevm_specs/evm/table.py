@@ -455,14 +455,14 @@ class Tables:
             self.copy_table = self._convert_copy_circuit_to_table(copy_circuit)
 
     def _convert_copy_circuit_to_table(self, copy_circuit: Sequence[CopyTableRow]):
-        rows = set()
+        rows = []
         for i, row in enumerate(copy_circuit):
-            if row.q_step != 1:
+            if row.q_first != 1:
                 continue
             assert i + 1 < len(copy_circuit), "Not enough rows in copy circuit"
             next_row = copy_circuit[i + 1]
             assert next_row.q_step == 0, "Invalid copy circuit"
-            rows.add(CopyTableRow(
+            rows.append(CopyTableRow(
                 src_id = row.id,
                 src_type = row.tag,
                 dst_id = next_row.id,
@@ -473,9 +473,9 @@ class Tables:
                 length = row.bytes_left,
                 rw_counter = row.rw_counter,
                 rwc_inc = row.rwc_inc_left,
-                log_id = row.log_id
+                log_id = next_row.log_id
             ))
-        return rows
+        return set(rows)
 
     def fixed_lookup(
         self,

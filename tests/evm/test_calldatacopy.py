@@ -16,7 +16,10 @@ from zkevm_specs.evm import (
     Transaction,
     Bytecode,
     RWDictionary,
+    CopyCircuit,
+    CopyDataTypeTag,
 )
+from zkevm_specs.copy_circuit import verify_copy_table
 from zkevm_specs.util import (
     rand_fq,
     rand_bytes,
@@ -24,6 +27,8 @@ from zkevm_specs.util import (
     MAX_N_BYTES_COPY_TO_MEMORY,
     MEMORY_EXPANSION_QUAD_DENOMINATOR,
     MEMORY_EXPANSION_LINEAR_COEFF,
+    memory_word_size,
+    memory_expansion,
 )
 
 
@@ -47,109 +52,6 @@ TESTING_DATA = (
 )
 
 
-def to_word_size(addr: int) -> int:
-    return (addr + 31) // 32
-
-
-def make_copy_step(
-    buffer_map: Mapping[int, int],
-    src_addr: int,
-    dst_addr: int,
-    src_addr_end: int,
-    bytes_left: int,
-    from_tx: bool,
-    rw_dictionary: RWDictionary,
-    program_counter: int,
-    stack_pointer: int,
-    memory_size: int,
-    gas_left: int,
-    code_hash: RLC,
-) -> StepState:
-    aux_data = CopyToMemoryAuxData(
-        src_addr=src_addr,
-        dst_addr=dst_addr,
-        src_addr_end=src_addr_end,
-        bytes_left=bytes_left,
-        from_tx=from_tx,
-        src_id=TX_ID if from_tx else CALLER_ID,
-    )
-    step = StepState(
-        execution_state=ExecutionState.CopyToMemory,
-        rw_counter=rw_dictionary.rw_counter,
-        call_id=1,
-        is_root=from_tx,
-        program_counter=program_counter,
-        stack_pointer=stack_pointer,
-        gas_left=gas_left,
-        memory_size=memory_size,
-        code_hash=code_hash,
-        aux_data=aux_data,
-    )
-
-    num_bytes = min(MAX_N_BYTES_COPY_TO_MEMORY, bytes_left)
-    for i in range(num_bytes):
-        byte = buffer_map[src_addr + i] if src_addr + i < src_addr_end else 0
-        if not from_tx and src_addr + i < src_addr_end:
-            rw_dictionary.memory_read(CALLER_ID, src_addr + i, byte)
-        rw_dictionary.memory_write(CALL_ID, dst_addr + i, byte)
-
-    return step
-
-
-def make_copy_steps(
-    buffer: bytes,
-    buffer_addr: int,
-    src_addr: int,
-    dst_addr: int,
-    length: int,
-    from_tx: bool,
-    rw_dictionary: RWDictionary,
-    program_counter: int,
-    stack_pointer: int,
-    memory_size: int,
-    gas_left: int,
-    code_hash: RLC,
-) -> Sequence[StepState]:
-    buffer_addr_end = buffer_addr + len(buffer)
-    buffer_map = dict(zip(range(buffer_addr, buffer_addr_end), buffer))
-    steps = []
-    bytes_left = length
-    while bytes_left > 0:
-        new_step = make_copy_step(
-            buffer_map,
-            src_addr,
-            dst_addr,
-            buffer_addr_end,
-            bytes_left,
-            from_tx,
-            rw_dictionary,
-            program_counter,
-            stack_pointer,
-            memory_size,
-            gas_left,
-            code_hash,
-        )
-        steps.append(new_step)
-        src_addr += MAX_N_BYTES_COPY_TO_MEMORY
-        dst_addr += MAX_N_BYTES_COPY_TO_MEMORY
-        bytes_left -= MAX_N_BYTES_COPY_TO_MEMORY
-    return steps
-
-
-def memory_gas_cost(memory_word_size: int) -> int:
-    quad_cost = memory_word_size * memory_word_size // MEMORY_EXPANSION_QUAD_DENOMINATOR
-    linear_cost = memory_word_size * MEMORY_EXPANSION_LINEAR_COEFF
-    return quad_cost + linear_cost
-
-
-def memory_copier_gas_cost(
-    curr_memory_word_size: int, next_memory_word_size: int, length: int
-) -> int:
-    curr_memory_cost = memory_gas_cost(curr_memory_word_size)
-    next_memory_cost = memory_gas_cost(next_memory_word_size)
-    return to_word_size(length) * GAS_COST_COPY + next_memory_cost - curr_memory_cost
-
-
 @pytest.mark.parametrize(
     "call_data_length, data_offset, memory_offset, length, from_tx, call_data_offset", TESTING_DATA
 )
@@ -171,14 +73,12 @@ def test_calldatacopy(
     length_rlc = RLC(length, randomness)
     call_data = rand_bytes(call_data_length)
 
-    curr_memory_word_size = to_word_size(0 if from_tx else call_data_offset + call_data_length)
-    if length == 0:
-        next_memory_word_size = curr_memory_word_size
-    else:
-        next_memory_word_size = max(curr_memory_word_size, to_word_size(memory_offset + length))
-    gas = Opcode.CALLDATACOPY.constant_gas_cost() + memory_copier_gas_cost(
-        curr_memory_word_size, next_memory_word_size, length
-    )
+    curr_mem_size = memory_word_size(0 if from_tx else call_data_offset + call_data_length)
+    address = 0 if length == 0 else memory_offset + length
+    next_mem_size, memory_gas_cost = memory_expansion(
+        curr_mem_size, memory_offset + length if length else 0)
+    gas = Opcode.CALLDATACOPY.constant_gas_cost() + memory_gas_cost + \
+        memory_word_size(length) * GAS_COST_COPY
 
     if from_tx:
         tx = Transaction(id=TX_ID, gas=gas, call_data=call_data)
@@ -196,11 +96,18 @@ def test_calldatacopy(
             code_hash=bytecode_hash,
             program_counter=99,
             stack_pointer=1021,
-            memory_size=curr_memory_word_size,
+            memory_size=curr_mem_size,
             gas_left=gas,
         )
     ]
 
+    rw_dictionary = (
+        RWDictionary(1)
+        .stack_read(CALL_ID, 1021, memory_offset_rlc)
+        .stack_read(CALL_ID, 1022, data_offset_rlc)
+        .stack_read(CALL_ID, 1023, length_rlc)
+        .call_context_read(CALL_ID, CallContextFieldTag.TxId, TX_ID)
+    )
     rw_dictionary = (
         RWDictionary(1)
         .stack_read(CALL_ID, 1021, memory_offset_rlc)
@@ -211,6 +118,8 @@ def test_calldatacopy(
         rw_dictionary.call_context_read(CALL_ID, CallContextFieldTag.TxId, TX_ID).call_context_read(
             CALL_ID, CallContextFieldTag.CallDataLength, call_data_length
         )
+        src_data = dict(zip(range(call_data_length), call_data))
+        assert call_data_offset == 0
     else:
         rw_dictionary.call_context_read(
             CALL_ID, CallContextFieldTag.CallerId, CALLER_ID
@@ -220,21 +129,20 @@ def test_calldatacopy(
             CALL_ID, CallContextFieldTag.CallDataOffset, call_data_offset
         )
 
-    new_steps = make_copy_steps(
-        call_data,
-        call_data_offset,
-        call_data_offset + data_offset,
+    src_data = dict([(call_data_offset + i, call_data[i])
+                     for i in range(data_offset, min(data_offset+length, len(call_data)))])
+    copy_circuit = CopyCircuit().copy(
+        rw_dictionary,
+        TX_ID if from_tx else CALLER_ID,
+        CopyDataTypeTag.TxCalldata if from_tx else CopyDataTypeTag.Memory,
+        CALL_ID,
+        CopyDataTypeTag.Memory,
+        data_offset + call_data_offset,
+        call_data_length + call_data_offset,
         memory_offset,
         length,
-        from_tx,
-        rw_dictionary=rw_dictionary,
-        program_counter=100,
-        memory_size=next_memory_word_size,
-        stack_pointer=1024,
-        gas_left=0,
-        code_hash=bytecode_hash,
+        src_data,
     )
-    steps.extend(new_steps)
 
     steps.append(
         StepState(
@@ -246,7 +154,7 @@ def test_calldatacopy(
             code_hash=bytecode_hash,
             program_counter=100,
             stack_pointer=1024,
-            memory_size=next_memory_word_size,
+            memory_size=next_mem_size,
             gas_left=0,
         )
     )
@@ -256,8 +164,10 @@ def test_calldatacopy(
         tx_table=set(tx.table_assignments(randomness)),
         bytecode_table=set(bytecode.table_assignments(randomness)),
         rw_table=set(rw_dictionary.rws),
+        copy_circuit=copy_circuit.rows,
     )
 
+    verify_copy_table(copy_circuit, tables)
     verify_steps(
         randomness=randomness,
         tables=tables,

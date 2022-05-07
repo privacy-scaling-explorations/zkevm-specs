@@ -201,9 +201,11 @@ class Transaction:
 
 class Bytecode:
     code: bytearray
+    is_code: Sequence[bool]
 
-    def __init__(self, code: Optional[bytearray] = None) -> None:
+    def __init__(self, code: Optional[bytearray] = None, is_code: Optional[Sequence[bool]] = None) -> None:
         self.code = bytearray() if code is None else code
+        self.is_code = [] if is_code is None else is_code
 
     def __getattr__(self, name: str):
         def method(*args) -> Bytecode:
@@ -218,11 +220,13 @@ class Bytecode:
             elif opcode.is_dup() or opcode.is_swap():
                 assert len(args) == 0
                 self.code.append(opcode)
+                self.is_code.append(True)
             else:
                 assert len(args) <= 1024 - opcode.max_stack_pointer()
                 for arg in reversed(args):
                     self.push(arg, 32)
                 self.code.append(opcode)
+                self.is_code.append(True)
 
             return self
 
@@ -244,7 +248,9 @@ class Bytecode:
 
         opcode = Opcode.PUSH1 + n_bytes - 1
         self.code.append(opcode)
+        self.is_code.append(True)
         self.code.extend(value.rjust(n_bytes, b"\x00"))
+        self.is_code.extend([False] * n_bytes)
 
         return self
 
@@ -254,15 +260,16 @@ class Bytecode:
     def table_assignments(self, randomness: FQ) -> Iterator[BytecodeTableRow]:
         class BytecodeIterator:
             idx: int
-            push_data_left: int
             hash: FQ
             code: bytes
+            is_code: Sequence[bool]
 
-            def __init__(self, hash: FQ, code: bytes):
+            def __init__(self, hash: FQ, code: bytes, is_code: Sequence[bool]):
                 self.idx = 0
-                self.push_data_left = 0
                 self.hash = hash
                 self.code = code
+                self.is_code = is_code
+                assert len(code) == len(is_code)
 
             def __iter__(self):
                 return self
@@ -281,14 +288,13 @@ class Bytecode:
                 # the other rows represent each byte in the bytecode
                 idx = self.idx - 1
                 byte = self.code[idx]
-                is_code = self.push_data_left == 0
-                self.push_data_left = get_push_size(byte) if is_code else self.push_data_left - 1
+                is_code = self.is_code[idx]
                 self.idx += 1
                 return BytecodeTableRow(
                     self.hash, FQ(BytecodeFieldTag.Byte), FQ(idx), FQ(is_code), FQ(byte)
                 )
 
-        return BytecodeIterator(RLC(self.hash(), randomness).expr(), self.code)
+        return BytecodeIterator(RLC(self.hash(), randomness).expr(), self.code, self.is_code)
 
 
 Storage = NewType("Storage", Dict[U256, U256])
@@ -643,23 +649,23 @@ class CopyCircuit:
         src_data: Mapping[IntOrFQ, Union[IntOrFQ, Tuple[IntOrFQ, IntOrFQ]]],
         log_id: IntOrFQ = FQ(0),
     ) -> FQ:
-        print("here")
         new_rows = []
-        print(src_data)
         for i in range(int(copy_length)):
-            if int(src_addr) < int(src_addr_end):
+            if int(src_addr + i) < int(src_addr_end):
                 is_pad = False
                 assert src_addr in src_data, f"Cannot find data at the offset {src_addr}"
                 value = src_data[src_addr + i]
-                print(i, value)
                 if src_type == CopyDataTypeTag.Bytecode:
                     value, is_code = value
                 else:
                     is_code = FQ(0)
+                value = FQ(value)
+                is_code = FQ(is_code)
             else:
                 is_pad = True
                 value = FQ(0)
                 is_code = FQ(0)
+
             # read row, because TxLog is write-only, no need to feed log_id in the read row
             self._append_row(
                 new_rows,
@@ -676,6 +682,7 @@ class CopyCircuit:
                 addr_end = src_addr_end,
                 bytes_left = copy_length - i,
             )
+
             # write row
             self._append_row(
                 new_rows,
@@ -691,10 +698,11 @@ class CopyCircuit:
                 False,
                 log_id = log_id
             )
+
+        # update the rwc_inc_left column
         rw_counter = rw_dict.rw_counter
         for row in new_rows:
             row.rwc_inc_left = rw_counter - row.rw_counter
-            print(row)
         self.rows.extend(new_rows)
         return self
 

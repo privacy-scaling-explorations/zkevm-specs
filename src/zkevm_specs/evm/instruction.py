@@ -154,8 +154,6 @@ class Instruction:
             assert curr.halts() or curr == ExecutionState.BeginTx
         elif next == ExecutionState.EndBlock:
             assert curr in [ExecutionState.EndTx, ExecutionState.EndBlock]
-        elif next == ExecutionState.CopyToMemory:
-            assert curr in [ExecutionState.CopyToMemory, ExecutionState.CALLDATACOPY]
 
     def constrain_step_state_transition(self, **kwargs: Transition):
         keys = set(
@@ -1009,9 +1007,9 @@ class Instruction:
     ) -> FQ:
         return self.tables.copy_lookup(
             src_id,
-            src_type,
+            FQ(src_type),
             dst_id,
-            dst_type,
+            FQ(dst_type),
             src_addr,
             src_addr_end,
             dst_addr,

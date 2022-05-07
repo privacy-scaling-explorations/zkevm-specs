@@ -45,6 +45,8 @@ GAS_COST_COPY = 3
 GAS_COST_TX = 21000
 # Constant gas cost of LOG
 GAS_COST_LOG = 375
+# Gas cost of per byte in a LOG* operation's data.
+GAS_COST_LOGDATA = 8
 # Gas cost of creation transaction
 GAS_COST_CREATION_TX = 53000
 # Gas cost of transaction call_data per non-zero byte
