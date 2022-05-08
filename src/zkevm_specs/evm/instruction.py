@@ -818,8 +818,5 @@ class Instruction:
         self.range_check(gas_cost, N_BYTES_GAS)
         return gas_cost
 
-    def bitslevel_lookup(self, powtag: Expression, value: Expression):
-        self.fixed_lookup(FixedTableTag.Bitslevel, powtag, value)
-
-    def pow64_lookup(self, value: Expression, value_pow: Expression, value_depow: Expression):
-        self.fixed_lookup(FixedTableTag.Pow64, value, value_pow, value_depow)
+    def pow65_lookup(self, value: Expression, value_pow: Expression):
+        self.fixed_lookup(FixedTableTag.Pow65, value, value_pow)

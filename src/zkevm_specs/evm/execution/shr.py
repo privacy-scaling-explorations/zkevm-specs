@@ -1,12 +1,3 @@
-from ...encoding import (
-    # Conflict with imports in `__init__.py`
-    U256 as EncodingU256,
-    U64 as EncodingU64,
-    U8,
-    u256_to_u64s,
-    u64s_to_u256,
-    u8s_to_u64s,
-)
 from ...util import FQ, N_BYTES_U64, RLC
 from ..instruction import Instruction, Transition
 from ..typing import Sequence
@@ -26,6 +17,7 @@ def shr(instruction: Instruction):
         a64s_hi,
         shf_div64,
         shf_mod64,
+        shf_lt256,
         p_lo,
         p_hi,
     ) = gen_witness(instruction, a, shift)
@@ -40,6 +32,7 @@ def shr(instruction: Instruction):
         a64s_hi,
         shf_div64,
         shf_mod64,
+        shf_lt256,
         p_lo,
         p_hi,
     )
@@ -63,36 +56,97 @@ def check_witness(
     a64s_hi: Sequence[FQ],
     shf_div64,
     shf_mod64,
+    shf_lt256,
     p_lo,
     p_hi,
 ):
-    # a64s and b64s constraints
+    # Set `shf_real_div64` to an overflow value of 4 for merge contraints.
+    shf_real_div64 = instruction.select(shf_lt256, shf_div64, FQ(4))
     for idx in range(4):
-        offset = idx << 3  # idx * 8
+        offset = idx * N_BYTES_U64
+
+        # a64s constraint
         instruction.constrain_equal(
             a64s[idx],
-            FQ(int.from_bytes(a.le_bytes[offset : offset + 8], "little")),
+            instruction.bytes_to_fq(a.le_bytes[offset : offset + N_BYTES_U64]),
         )
+
+        # b64s constraint
         instruction.constrain_equal(
             b64s[idx],
-            FQ(int.from_bytes(b.le_bytes[offset : offset + 8], "little")),
+            instruction.bytes_to_fq(b.le_bytes[offset : offset + N_BYTES_U64]),
         )
+
+        # `a64s[idx] == a64s_lo[idx] + a64s_hi[idx] * p_lo`
+        instruction.constrain_equal(a64s[idx], a64s_lo[idx] + a64s_hi[idx] * p_lo)
+
+        # `a64s_lo[idx] < p_lo`
+        a64s_lo_lt_p_lo, _ = instruction.compare(a64s_lo[idx], p_lo, N_BYTES_U64)
+        instruction.constrain_equal(a64s_lo_lt_p_lo, FQ(1))
+
+        # merge constraits
+        #
+        # shf_div64_eq0 = is_zero(shf_div64)
+        # shf_div64_eq1 = is_zero(shf_div64 - 1)
+        # shf_div64_eq2 = is_zero(shf_div64 - 2)
+        #
+        # b64s[0] ==
+        #     (a64s_hi[0] + a64s_lo[1] * p_hi) * shf_div64_eq0 +
+        #     (a64s_hi[1] + a64s_lo[2] * p_hi) * shf_div64_eq1 +
+        #     (a64s_hi[2] + a64s_lo[3] * p_hi) * shf_div64_eq2 +
+        #     a64s_hi[3] * (1 - shf_div64_eq0 - shf_div64_eq1 - shf_div64_eq2)
+        # b64s[1] ==
+        #     (a64s_hi[1] + a64s_lo[2] * p_hi) * shf_div64_eq0 +
+        #     (a64s_hi[2] + a64s_lo[3] * p_hi) * shf_div64_eq1 +
+        #     a64s_hi[3] * shf_div64_eq2
+        # b64s[2] ==
+        #     (a64s_hi[2] + a64s_lo[3] * p_hi) * shf_div64_eq0 +
+        #     a64s_hi[3] * shf_div64_eq1
+        # b64s[3] == a64s_hi[3] * shf_div64_eq0
+        merge_result = FQ(0)
+        for merge_idx in range(idx, 4):
+            is_selected = instruction.is_equal(shf_real_div64, FQ(merge_idx - idx))
+            is_last_idx = instruction.is_equal(FQ(merge_idx), FQ(3))
+            a64s_lo_idx = instruction.select(is_last_idx, FQ(0), FQ(merge_idx + 1))
+            merge_result += instruction.select(
+                is_last_idx,
+                is_selected * a64s_hi[3],
+                is_selected * (a64s_hi[merge_idx] + a64s_lo[a64s_lo_idx.n] * p_hi),
+            )
+        instruction.constrain_equal(b64s[idx], merge_result)
+
+    # shift[0] constraint
+    shf0 = instruction.bytes_to_fq(shift.le_bytes[:1])
+    instruction.constrain_equal(
+        shf0,
+        instruction.select(
+            shf_lt256,
+            shf_mod64 + (shf_div64.n * 64),
+            shf0,
+        ),
+    )
+
+    # shf_div64 in [0, 4), shf_mod64 in [0, 64) and shf_div64 in [0, 1).
+    assert instruction.select(shf_lt256, shf_div64, FQ(0)).n in range(4)
+    assert shf_mod64 in range(64)
+    instruction.constrain_bool(shf_lt256)
+
+    # `p_lo == pow(2, shf_mod64)` and `p_hi == pow(2, 64 - shf_mod64)`.
+    instruction.pow65_lookup(shf_mod64, p_lo)
+    instruction.pow65_lookup(64 - shf_mod64, p_hi)
 
 
 def gen_witness(instruction: Instruction, a: RLC, shift: RLC):
     shf_div64 = FQ(shift.int_value // 64)
     shf_mod64 = FQ(shift.int_value % 64)
+    shf_lt256 = instruction.is_zero(instruction.bytes_to_fq(shift.le_bytes[1:]))
     p_lo = FQ(1 << shf_mod64.n)
     p_hi = FQ(1 << (64 - shf_mod64.n))
 
-    a64s = [FQ(0)] * 4
+    a64s = instruction.word_to_64s(a)
     a64s_lo = [FQ(0)] * 4
     a64s_hi = [FQ(0)] * 4
     for idx in range(4):
-        idx_offset = idx << 3  # idx * 8
-        for i in range(8):
-            a64s[idx] = FQ(a64s[idx] + a.le_bytes[idx_offset + i] * (1 << 8 * i))  # * pow(256, i)
-
         a64s_lo[idx] = FQ(a64s[idx].n % p_lo.n)
         a64s_hi[idx] = FQ(a64s[idx].n // p_lo.n)
 
@@ -101,15 +155,6 @@ def gen_witness(instruction: Instruction, a: RLC, shift: RLC):
     for k in range(0, 3 - shf_div64.n):
         b64s[k] = FQ(a64s_hi[k + shf_div64.n] + a64s_lo[k + shf_div64.n + 1] * p_hi.n)
 
-    print("shift = ", shift)
-    print("shf_div64 = ", shf_div64)
-    print("shf_mod64 = ", shf_mod64)
-    print("p_lo = ", p_lo)
-    print("p_hi = ", p_hi)
-    print("shift = ", shift)
-    print("a64s = ", a64s)
-    print("b64s = ", b64s)
-
     return (
         a64s,
         b64s,
@@ -117,6 +162,7 @@ def gen_witness(instruction: Instruction, a: RLC, shift: RLC):
         a64s_hi,
         shf_div64,
         shf_mod64,
+        shf_lt256,
         p_lo,
         p_hi,
     )
