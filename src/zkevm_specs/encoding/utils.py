@@ -23,13 +23,6 @@ def u256_to_u64s(x: U256) -> Tuple[U64, ...]:
     return tuple(U64((x >> 64 * i) & 0xFFFFFFFFFFFFFFFF) for i in range(4))
 
 
-def u64s_to_u256(xs: Sequence[U64]) -> U256:
-    assert len(xs) == 4
-    for u64 in xs:
-        assert 0 <= u64 <= 2**64
-    return U256(sum(x * (2 ** (64 * i)) for i, x in enumerate(xs)))
-
-
 def u8s_to_u256(xs: Sequence[U8]) -> U256:
     assert len(xs) == 32
     for u8 in xs:
