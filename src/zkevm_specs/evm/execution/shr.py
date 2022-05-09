@@ -60,8 +60,6 @@ def check_witness(
     p_lo,
     p_hi,
 ):
-    # Set `shf_real_div64` to an overflow value of 4 for merge contraints.
-    shf_real_div64 = instruction.select(shf_lt256, shf_div64, FQ(4))
     for idx in range(4):
         offset = idx * N_BYTES_U64
 
@@ -84,36 +82,27 @@ def check_witness(
         a64s_lo_lt_p_lo, _ = instruction.compare(a64s_lo[idx], p_lo, N_BYTES_U64)
         instruction.constrain_equal(a64s_lo_lt_p_lo, FQ(1))
 
-        # merge constraits
-        #
-        # shf_div64_eq0 = is_zero(shf_div64)
-        # shf_div64_eq1 = is_zero(shf_div64 - 1)
-        # shf_div64_eq2 = is_zero(shf_div64 - 2)
-        #
-        # b64s[0] ==
-        #     (a64s_hi[0] + a64s_lo[1] * p_hi) * shf_div64_eq0 +
-        #     (a64s_hi[1] + a64s_lo[2] * p_hi) * shf_div64_eq1 +
-        #     (a64s_hi[2] + a64s_lo[3] * p_hi) * shf_div64_eq2 +
-        #     a64s_hi[3] * (1 - shf_div64_eq0 - shf_div64_eq1 - shf_div64_eq2)
-        # b64s[1] ==
-        #     (a64s_hi[1] + a64s_lo[2] * p_hi) * shf_div64_eq0 +
-        #     (a64s_hi[2] + a64s_lo[3] * p_hi) * shf_div64_eq1 +
-        #     a64s_hi[3] * shf_div64_eq2
-        # b64s[2] ==
-        #     (a64s_hi[2] + a64s_lo[3] * p_hi) * shf_div64_eq0 +
-        #     a64s_hi[3] * shf_div64_eq1
-        # b64s[3] == a64s_hi[3] * shf_div64_eq0
-        merge_result = FQ(0)
-        for merge_idx in range(idx, 4):
-            is_selected = instruction.is_equal(shf_real_div64, FQ(merge_idx - idx))
-            is_last_idx = instruction.is_equal(FQ(merge_idx), FQ(3))
-            a64s_lo_idx = instruction.select(is_last_idx, FQ(0), FQ(merge_idx + 1))
-            merge_result += instruction.select(
-                is_last_idx,
-                is_selected * a64s_hi[3],
-                is_selected * (a64s_hi[merge_idx] + a64s_lo[a64s_lo_idx.n] * p_hi),
-            )
-        instruction.constrain_equal(b64s[idx], merge_result)
+    # merge contraints
+    shf_div64_eq0 = instruction.is_zero(shf_div64)
+    shf_div64_eq1 = instruction.is_zero(shf_div64 - 1)
+    shf_div64_eq2 = instruction.is_zero(shf_div64 - 2)
+    instruction.constrain_equal(
+        b64s[0],
+        (a64s_hi[0] + a64s_lo[1] * p_hi) * shf_div64_eq0
+        + (a64s_hi[1] + a64s_lo[2] * p_hi) * shf_div64_eq1
+        + (a64s_hi[2] + a64s_lo[3] * p_hi) * shf_div64_eq2
+        + a64s_hi[3] * (1 - shf_div64_eq0 - shf_div64_eq1 - shf_div64_eq2),
+    )
+    instruction.constrain_equal(
+        b64s[1],
+        (a64s_hi[1] + a64s_lo[2] * p_hi) * shf_div64_eq0
+        + (a64s_hi[2] + a64s_lo[3] * p_hi) * shf_div64_eq1
+        + a64s_hi[3] * shf_div64_eq2,
+    )
+    instruction.constrain_equal(
+        b64s[2], (a64s_hi[2] + a64s_lo[3] * p_hi) * shf_div64_eq0 + a64s_hi[3] * shf_div64_eq1
+    )
+    instruction.constrain_equal(b64s[3], a64s_hi[3] * shf_div64_eq0)
 
     # shift[0] constraint
     shf0 = instruction.bytes_to_fq(shift.le_bytes[:1])

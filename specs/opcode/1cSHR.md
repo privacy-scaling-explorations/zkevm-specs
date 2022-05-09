@@ -14,7 +14,7 @@ Pop two EVM words `a` and `shift` from the stack, and push `b` to the stack, whe
 ### Circuit behavior
 
 To prove the `SHR` opcode, we first construct a `ShrGadget` that proves `a >> shift = b` where `a, b, shift` are all 256-bit words.
-As usual, we use 32 cells to represent word `a` and `b`, where each cell holds a 8-bit value. Then split each word into four 64-bit limbs denoted by `a64s[idx]` and `b64s[idx]` where idx in (0, 1, 2, 3).
+As usual, we use 32 cells to represent word `a` and `b`, where each cell holds a 8-bit value. Then split each word into four 64-bit limbs denoted by `a64s[idx]` and `b64s[idx]` where idx in `(0, 1, 2, 3)`.
 We put the lower `n` bits of a limb into the `lo` array, and put the higher `64 - n` bits into the `hi` array. During the SHR operation, the `lo` array will move to higher bits of the result, and the `hi` array will move to lower bits of the result.
 
 The following figure illustrates how shift right works under the case of `shift < 64`.
@@ -62,38 +62,78 @@ $$
 
 Then we could validate the below constraints:
 
-- `a64s[idx] == from_bytes(a[8 * idx : 8 * (idx + 1)])`
-- `b64s[idx] == from_bytes(b[8 * idx : 8 * (idx + 1)])`
-- `a64s[idx] == a64s_lo[idx] + a64s_hi[idx] * p_lo`
-- `a64s_lo[idx] < p_lo`
-- Create IsZero gadgets
-    - `shf_div64_eq0 = is_zero(shf_div64)`
-    - `shf_div64_eq1 = is_zero(shf_div64 - 1)`
-    - `shf_div64_eq2 = is_zero(shf_div64 - 2)`
-- `b64s[0] == (a64s_hi[0] + a64s_lo[1] * p_hi) * shf_div64_eq0 +`
-  `(a64s_hi[1] + a64s_lo[2] * p_hi) * shf_div64_eq1 +`
-  `(a64s_hi[2] + a64s_lo[3] * p_hi) * shf_div64_eq2 +`
-  `a64s_hi[3] * (1 - shf_div64_eq0 - shf_div64_eq1 - shf_div64_eq2)`
-- `b64s[1] == (a64s_hi[1] + a64s_lo[2] * p_hi) * shf_div64_eq0 +`
-  `(a64s_hi[2] + a64s_lo[3] * p_hi) * shf_div64_eq1 +`
-  `a64s_hi[3] * shf_div64_eq2`
-- `b64s[2] == (a64s_hi[2] + a64s_lo[3] * p_hi) * shf_div64_eq0 +`
-  `a64s_hi[3] * shf_div64_eq1`
-- `b64s[3] == a64s_hi[3] * shf_div64_eq0`
-- `shift[0] == shf_mod64 + shf_div64 * 64`
-- Range check `shf_mod64` in the range [0, 64)
-- Range check `shf_div64` in the range [0, 4)
-- Look up Pow65 (since `shf_mod64` may be zero) table for `(shf_mod64, p_lo)` and `(64 - shf_mod64, p_hi)`
-- `stack_pop(rlc_encode(a))`
-- `stack_pop(rlc_encode(shift))`
-- `stack_push(shift_lt256 * rlc_encode(b))`
+1. `a64s` and `b64s` constraints
+
+* `a64s[idx]`: It should be equal to `from_bytes(a[8 * idx : 8 * (idx + 1)])` where idx in `(0, 1, 2, 3)`.
+* `b64s[idx]`: It should be equal to `from_bytes(b[8 * idx : 8 * (idx + 1)])` where idx in `(0, 1, 2, 3)`.
+
+2. `a64s_lo` and `a64s_hi` constraints
+
+* `a64s[idx]`: It should be equal to `a64s_lo[idx] + a64s_hi[idx] * p_lo`.
+* `a64s_lo[idx]` should always be less than `p_lo` (`a64s_lo[idx] < p_lo`).
+
+3. Merge constraints
+
+* First create three `IsZero` gadgets:
+```
+shf_div64_eq0 = is_zero(shf_div64)
+shf_div64_eq1 = is_zero(shf_div64 - 1)
+shf_div64_eq2 = is_zero(shf_div64 - 2)
+```
+
+* `b64s[0]` should be equal to:
+```
+(a64s_hi[0] + a64s_lo[1] * p_hi) * shf_div64_eq0 +
+  (a64s_hi[1] + a64s_lo[2] * p_hi) * shf_div64_eq1 +
+  (a64s_hi[2] + a64s_lo[3] * p_hi) * shf_div64_eq2 +
+  a64s_hi[3] * (1 - shf_div64_eq0 - shf_div64_eq1 - shf_div64_eq2)
+```
+
+* `b64s[1]` should be equal to:
+```
+(a64s_hi[1] + a64s_lo[2] * p_hi) * shf_div64_eq0 +
+  (a64s_hi[2] + a64s_lo[3] * p_hi) * shf_div64_eq1 +
+  a64s_hi[3] * shf_div64_eq2
+```
+
+* `b64s[2]` should be equal to:
+```
+(a64s_hi[2] + a64s_lo[3] * p_hi) * shf_div64_eq0 +
+  a64s_hi[3] * shf_div64_eq1
+```
+
+* `b64s[3]` should be equal to:
+```
+a64s_hi[3] * shf_div64_eq0
+```
+
+4. `shift[0]` constraint
+
+* `shift[0]`: It should be equal to `shf_mod64 + shf_div64 * 64`.
+
+5. `shf_div64` and `shf_mod64` range constraints
+
+* `shf_div64`: It should be in the range of `[0, 4)`.
+* `shf_mod64`: It should be in the range of `[0, 64)`.
+
+6. `Pow65` table look up
+
+* First build `Pow65` table by tuple $[value, value\_pow]$ which meets $${value\_pow == 2^{value}}$$
+
+* Look up for `(shf_mod64, p_lo)` and `(64 - shf_mod64, p_hi)`
+
+7. Stack pop and push
+
+* Pop word `a`
+* Pop word `shift`
+* Push word `shift_lt256 * b`
 
 ## Constraints
 
 1. opId = OpcodeId(0x1c)
 2. state transition:
    - gc + 3 (2 stack reads + 1 stack write)
-   - stack_pointer + 1
+   - stack\_pointer + 1
    - pc + 1
    - gas + 3
 3. lookups: 3 busmapping lookups
