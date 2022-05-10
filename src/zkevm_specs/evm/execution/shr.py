@@ -108,11 +108,7 @@ def check_witness(
     shf0 = instruction.bytes_to_fq(shift.le_bytes[:1])
     instruction.constrain_equal(
         shf0,
-        instruction.select(
-            shf_lt256,
-            shf_mod64 + (shf_div64.n * 64),
-            shf0,
-        ),
+        shf_mod64 + shf_div64 * 64,
     )
 
     # shf_div64 in [0, 4), shf_mod64 in [0, 64) and shf_div64 in [0, 1).
