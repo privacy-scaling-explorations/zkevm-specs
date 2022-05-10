@@ -111,18 +111,13 @@ a64s_hi[3] * shf_div64_eq0
 
 * `shift[0]`: It should be equal to `shf_mod64 + shf_div64 * 64`.
 
-5. `shf_div64` and `shf_mod64` range constraints
+5. `Pow2` table look up
 
-* `shf_div64`: It should be in the range of `[0, 4)`.
-* `shf_mod64`: It should be in the range of `[0, 64)`.
-
-6. `Pow65` table look up
-
-* First build `Pow65` table by tuple $[value, value\_pow]$ which meets $${value\_pow == 2^{value}}$$
+* First build `Pow2` table by tuple $[value, value\_pow]$ which meets $${value\_pow == 2^{value}}$$
 
 * Look up for `(shf_mod64, p_lo)` and `(64 - shf_mod64, p_hi)`
 
-7. Stack pop and push
+6. Stack pop and push
 
 * Pop word `a`
 * Pop word `shift`

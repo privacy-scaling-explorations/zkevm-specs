@@ -26,7 +26,7 @@ class FixedTableTag(IntEnum):
     BitwiseOr = auto()  # lhs, rhs, lhs | rhs, 0
     BitwiseXor = auto()  # lhs, rhs, lhs ^ rhs, 0
     ResponsibleOpcode = auto()  # execution_state, opcode, aux
-    Pow65 = auto()  # value, value_pow
+    Pow2 = auto()  # value, value_pow
 
     def table_assignments(self) -> List[FixedTableRow]:
         if self == FixedTableTag.Range5:

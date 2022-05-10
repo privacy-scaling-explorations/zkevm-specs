@@ -17,7 +17,6 @@ def shr(instruction: Instruction):
         a64s_hi,
         shf_div64,
         shf_mod64,
-        shf_lt256,
         p_lo,
         p_hi,
     ) = gen_witness(instruction, a, shift)
@@ -32,7 +31,6 @@ def shr(instruction: Instruction):
         a64s_hi,
         shf_div64,
         shf_mod64,
-        shf_lt256,
         p_lo,
         p_hi,
     )
@@ -56,10 +54,10 @@ def check_witness(
     a64s_hi: Sequence[FQ],
     shf_div64,
     shf_mod64,
-    shf_lt256,
     p_lo,
     p_hi,
 ):
+    shf_lt256 = instruction.is_zero(instruction.bytes_to_fq(shift.le_bytes[1:]))
     for idx in range(4):
         offset = idx * N_BYTES_U64
 
@@ -71,7 +69,7 @@ def check_witness(
 
         # b64s constraint
         instruction.constrain_equal(
-            b64s[idx],
+            b64s[idx] * shf_lt256,
             instruction.bytes_to_fq(b.le_bytes[offset : offset + N_BYTES_U64]),
         )
 
@@ -104,27 +102,21 @@ def check_witness(
     )
     instruction.constrain_equal(b64s[3], a64s_hi[3] * shf_div64_eq0)
 
-    # shift[0] constraint
-    shf0 = instruction.bytes_to_fq(shift.le_bytes[:1])
+    # shift constraint
     instruction.constrain_equal(
-        shf0,
+        instruction.bytes_to_fq(shift.le_bytes[:1]),
         shf_mod64 + shf_div64 * 64,
     )
 
-    # shf_div64 in [0, 4), shf_mod64 in [0, 64) and shf_div64 in [0, 1).
-    assert instruction.select(shf_lt256, shf_div64, FQ(0)).n in range(4)
-    assert shf_mod64 in range(64)
-    instruction.constrain_bool(shf_lt256)
-
     # `p_lo == pow(2, shf_mod64)` and `p_hi == pow(2, 64 - shf_mod64)`.
-    instruction.pow65_lookup(shf_mod64, p_lo)
-    instruction.pow65_lookup(64 - shf_mod64, p_hi)
+    instruction.pow2_lookup(shf_mod64, p_lo)
+    instruction.pow2_lookup(64 - shf_mod64, p_hi)
 
 
 def gen_witness(instruction: Instruction, a: RLC, shift: RLC):
-    shf_div64 = FQ(shift.int_value // 64)
-    shf_mod64 = FQ(shift.int_value % 64)
-    shf_lt256 = instruction.is_zero(instruction.bytes_to_fq(shift.le_bytes[1:]))
+    shf0 = instruction.bytes_to_fq(shift.le_bytes[:1])
+    shf_div64 = FQ(shf0.n // 64)
+    shf_mod64 = FQ(shf0.n % 64)
     p_lo = FQ(1 << shf_mod64.n)
     p_hi = FQ(1 << (64 - shf_mod64.n))
 
@@ -147,7 +139,6 @@ def gen_witness(instruction: Instruction, a: RLC, shift: RLC):
         a64s_hi,
         shf_div64,
         shf_mod64,
-        shf_lt256,
         p_lo,
         p_hi,
     )
