@@ -64,8 +64,9 @@ Then we could validate the below constraints:
 
 1. `a64s` and `b64s` constraints
 
+* First calculate `shf_lt256` as `is_zero(sum(shift[1:]))`.
 * `a64s[idx]`: It should be equal to `from_bytes(a[8 * idx : 8 * (idx + 1)])` where idx in `(0, 1, 2, 3)`.
-* `b64s[idx]`: It should be equal to `from_bytes(b[8 * idx : 8 * (idx + 1)])` where idx in `(0, 1, 2, 3)`.
+* `b64s[idx] * shf_lt256`: It should be equal to `from_bytes(b[8 * idx : 8 * (idx + 1)])` where idx in `(0, 1, 2, 3)`.
 
 2. `a64s_lo` and `a64s_hi` constraints
 
