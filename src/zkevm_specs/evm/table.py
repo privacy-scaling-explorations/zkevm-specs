@@ -69,7 +69,7 @@ class FixedTableTag(IntEnum):
                     execution_state.responsible_opcode(),
                 )
             ]
-        elif self == FixedTableTag.Pow65:
+        elif self == FixedTableTag.Pow2:
             return [FixedTableRow(FQ(self), FQ(value), FQ(1 << value)) for value in range(65)]
         else:
             raise ValueError("Unreacheable")
