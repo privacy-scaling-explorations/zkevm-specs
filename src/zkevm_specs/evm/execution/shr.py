@@ -57,7 +57,7 @@ def check_witness(
     p_lo,
     p_hi,
 ):
-    shf_lt256 = instruction.is_zero(instruction.bytes_to_fq(shift.le_bytes[1:]))
+    shf_lt256 = instruction.is_zero(instruction.sum(shift.le_bytes[1:]))
     for idx in range(4):
         offset = idx * N_BYTES_U64
 
