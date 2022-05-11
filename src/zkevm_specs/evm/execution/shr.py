@@ -127,10 +127,8 @@ def gen_witness(instruction: Instruction, a: RLC, shift: RLC):
         a64s_lo[idx] = FQ(a64s[idx].n % p_lo.n)
         a64s_hi[idx] = FQ(a64s[idx].n // p_lo.n)
 
-    b64s = [FQ(0)] * 4
-    b64s[3 - shf_div64.n] = a64s_hi[3]
-    for k in range(0, 3 - shf_div64.n):
-        b64s[k] = FQ(a64s_hi[k + shf_div64.n] + a64s_lo[k + shf_div64.n + 1] * p_hi.n)
+    bb = a.int_value >> shf0.n
+    b64s = [FQ((bb >> 64 * i) & 0xFFFFFFFFFFFFFFFF) for i in range(4)]
 
     return (
         a64s,

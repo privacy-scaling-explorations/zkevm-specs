@@ -37,26 +37,19 @@ More formally, the variables are defined as follows:
 
 $$
 \begin{align}
-shf\_div64 &= shift // 64\\
-shf\_mod64 &= shift \% 64\\
-shf\_lt256 &= is\_zero(sum(shift[1:]))\\
+shf0 &= bytes\to\_fq(shift.le\_bytes[:1]) \\
+shf\_div64 &= shift // 64 \\
+shf\_mod64 &= shift \% 64 \\
+shf\_lt256 &= is\_zero(sum(shift[1:])) \\
 p\_lo &= 2^{shf\_mod64} \\
 p\_hi &= 2^{64 - shf\_mod64} \\
-a64s[idx] &= \sum_{i=0}^7 a[8\cdot idx + i] \cdot 256^i~~~~(idx=0,1,2,3)\\
+a64s[idx] &= \sum_{i=0}^7 a[8\cdot idx + i] \cdot 256^i~~~~(idx=0,1,2,3) \\
 a64s\_lo[idx] &= a64s[idx] ~\%~p\_lo \\
 a64s\_hi[idx] &= a64s[idx] ~/~ p\_lo \\
 \end{align}
 $$
 
-If $shift\ge 256$, `b64s` are all 0. Otherwise, `b64s` can be derived using
-
-$$
-b64s[k] = \cases{
-    a64s\_hi[k + shf\_div64] + a64s\_lo[k + shf\_div64 + 1] \cdot p\_hi & k < 3 - shf_div64 \\
-    a64s\_hi[3] & k = 3 - shf_div64 \\
-    0 & k > 3 - shf_div64
-}
-$$
+If $shift\ge 256$, `b64s` are all 0. Otherwise, `b64s` can be calculated by `a >> shf0` then split into four 64-bit limbs.
 
 #### Constraint Validation
 
