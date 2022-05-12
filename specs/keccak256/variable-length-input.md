@@ -75,7 +75,7 @@ We branch the constraints to apply by state_tag
 - Continue
   - if input_len === 136 * (perm_count + 1) absorb a full block of 0x80...0x01
     - next.input === 0 (since the input is the unpadded input)
-    - next.state_tag in (Continue, Finalize)
+    - next.state_tag === Finalize
   - Next row validity
     - next.acc_input === curr.acc_input * r**136 + next.input
     - next.perm_count === curr.perm_count + 1
