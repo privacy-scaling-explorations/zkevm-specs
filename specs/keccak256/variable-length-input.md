@@ -201,8 +201,9 @@ We apply two different checks on the 0~134-th rows and the 135th row.
    1. `next.input_len === curr.input_len`
    2. `next.acc_len === curr.acc_len + 1`
    3. If `curr.input_len - curr.acc_len` is 0, pad `0x80`: `curr.padded_byte === curr.byte + curr.diff_is_zero * 0x80`
-   4. Set `is_pad_zone` to 1 if we entered. `next.is_pad_zone === curr.is_pad_zone + curr.diff_is_zero`
-5. For the 135th row
+5. For 1~135-th row
+   1. Set `is_pad_zone` to 1 if we entered. `curr.is_pad_zone === prev.is_pad_zone + curr.diff_is_zero`
+6. For the 135th row
    1. This is the last byte, if `f_enable === 1` then we must be in a `Finalize` state_tag that needs to pad 0x01 here. It might be the case the 0x80 is also padded here, together with 0x01 we have 0x81. `curr.padded_byte === curr.diff_is_zero * 0x80 + 0x01`
-6. Use `byte_RLC` to running sum `byte`. The sum should be equal to `input` in the lookup region
-7. `padded_byte` are copied to a word builder gadget to build padded words, which would later be copied to the `Keccak-f` permutation
+7. Use `byte_RLC` to running sum `byte`. The sum should be equal to `input` in the lookup region
+8. `padded_byte` are copied to a word builder gadget to build padded words, which would later be copied to the `Keccak-f` permutation
