@@ -9,8 +9,9 @@ The bytecode proof helps the EVM proof by making the bytecode (identified by its
 | `q_first`             | `1` on the first row, else `0`                                     |
 | `q_last`              | `1` on the last row, else `0`                                      |
 | `hash`                | The keccak hash of the bytecode                                    |
+| `tag`                 | Tag indicates whether `value` is a byte or length of the bytecode  |
 | `index`               | The position of the byte in the bytecode                           |
-| `byte`                | The byte data for the current position                             |
+| `value`               | The byte data for the current position, or length of the bytecode  |
 | `is_code`             | `1` if the byte is code, `0` if the byte is PUSH data              |
 | `push_data_left`      | The number of PUSH data bytes that still follow the current row    |
 | `hash_rlc`            | The accumulator containing the current and previous bytes          |
@@ -30,13 +31,17 @@ Because we do this lookup for each byte, this table is also indirectly used to r
 
 | Byte                                    | Num bytes pushed  |
 | --------------------------------------- | ----------------- |
-| \[0, OpcodeId::PUSH1\[                  | `0`               |
+| \[0, OpcodeId::PUSH1\]                  | `0`               |
 | \[OpcodeId::PUSH1, OpcodeId::PUSH32\]   | `[1..32]`         |
-| \]OpcodeId::PUSH32, 256\[               | `0`               |
+| \[OpcodeId::PUSH32, 256\]               | `0`               |
 
 ### Circuit behavior
 
-The circuit runs over all the bytes of the bytecode starting at the byte at position `0`. Each row unrolls a single byte of the bytecode while also storing its position (`index`), the code hash it's part of (`hash`), and if it is code or not (`is_code`).
+The circuit starts by adding a row that contains the bytecode length using `tag = Length`.  Then it
+runs over all the bytes of the bytecode starting at the byte at position `0`.
+Each following row unrolls a single byte of the bytecode while also storing its position
+(`index`), the code hash it's part of (`hash`), and if it is code or not
+(`is_code`); using `tag = Byte`
 
 All byte data is accumulated per byte (with one byte per row) into `hash_rlc` as follows:
 
