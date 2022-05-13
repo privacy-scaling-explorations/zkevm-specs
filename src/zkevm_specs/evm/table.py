@@ -144,6 +144,17 @@ class RW(IntEnum):
     Write = 1
 
 
+class MPTTableTag(IntEnum):
+    """
+    Tag for MPTTable lookup
+    """
+
+    Nonce = 1
+    Balance = 2
+    CodeHash = 4
+    Storage = 8
+
+
 class RWTableTag(IntEnum):
     """
     Tag for RWTable lookup, where the RWTable an advice-column table built by
@@ -179,9 +190,9 @@ class RWTableTag(IntEnum):
 
 
 class AccountFieldTag(IntEnum):
-    Nonce = auto()
-    Balance = auto()
-    CodeHash = auto()
+    Nonce = 1
+    Balance = 2
+    CodeHash = 4
 
 
 class CallContextFieldTag(IntEnum):
@@ -343,6 +354,16 @@ class RWTableRow(TableRow):
     aux1: Expression = field(default=FQ(0))
 
 
+@dataclass(frozen=True)
+class MPTTableRow(TableRow):
+    counter: Expression
+    target: Expression  # MPTTableTag
+    address: Expression
+    key: Expression
+    value: Expression
+    value_prev: Expression
+
+
 class Tables:
     """
     A collection of lookup tables used in EVM circuit.
@@ -391,7 +412,7 @@ class Tables:
         self, field_tag: Expression, block_number: Expression = FQ(0)
     ) -> BlockTableRow:
         query = {"field_tag": field_tag, "block_number_or_zero": block_number}
-        return _lookup(BlockTableRow, self.block_table, query)
+        return lookup(BlockTableRow, self.block_table, query)
 
     def tx_lookup(
         self, tx_id: Expression, field_tag: Expression, call_data_index: Expression = FQ(0)
@@ -401,7 +422,7 @@ class Tables:
             "field_tag": field_tag,
             "call_data_index_or_zero": call_data_index,
         }
-        return _lookup(TxTableRow, self.tx_table, query)
+        return lookup(TxTableRow, self.tx_table, query)
 
     def bytecode_lookup(
         self,
@@ -416,7 +437,7 @@ class Tables:
             "index": index,
             "is_code": is_code,
         }
-        return _lookup(BytecodeTableRow, self.bytecode_table, query)
+        return lookup(BytecodeTableRow, self.bytecode_table, query)
 
     def rw_lookup(
         self,
@@ -445,13 +466,13 @@ class Tables:
             "aux0": aux0,
             "aux1": aux1,
         }
-        return _lookup(RWTableRow, self.rw_table, query)
+        return lookup(RWTableRow, self.rw_table, query)
 
 
 T = TypeVar("T", bound=TableRow)
 
 
-def _lookup(
+def lookup(
     table_cls: Type[T],
     table: Set[T],
     query: Mapping[str, Optional[Expression]],

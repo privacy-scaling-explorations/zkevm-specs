@@ -8,7 +8,12 @@ randomness = rand_fq()
 r = randomness
 
 # Verify the state circuit with the given data
-def verify(ops_or_rows: Union[List[Operation], List[Row]], randomness: FQ, success: bool = True):
+def verify(
+    ops_or_rows: Union[List[Operation], List[Row]],
+    tables: Tables,
+    randomness: FQ,
+    success: bool = True,
+):
     rows = ops_or_rows
     if isinstance(ops_or_rows[0], Operation):
         rows = assign_state_circuit(ops_or_rows, randomness)
@@ -16,7 +21,7 @@ def verify(ops_or_rows: Union[List[Operation], List[Row]], randomness: FQ, succe
     for (idx, row) in enumerate(rows):
         row_prev = rows[(idx - 1) % len(rows)]
         try:
-            check_state_row(row, row_prev, randomness)
+            check_state_row(row, row_prev, tables, randomness)
         except AssertionError as e:
             if success:
                 traceback.print_exc()
@@ -84,7 +89,8 @@ def test_state_ok():
         TxReceiptOp(rw_counter=37, rw=RW.Read, tx_id=2, field_tag=TxReceiptFieldTag.CumulativeGasUsed, value=FQ(500)),
     ]
     # fmt: on
-    verify(ops, randomness)
+    tables = Tables(mpt_table_from_ops(ops, randomness))
+    verify(ops, tables, randomness)
 
 
 def test_state_bad_key2():
@@ -96,7 +102,8 @@ def test_state_bad_key2():
     # fmt: on
     rows = assign_state_circuit(ops, r)
     rows[1] = rows[1]._replace(key2_limbs=(FQ(1),) * 10)
-    verify(rows, randomness, success=False)
+    tables = Tables(mpt_table_from_ops(ops, randomness))
+    verify(rows, tables, randomness, success=False)
 
 
 def test_state_bad_key4():
@@ -108,7 +115,8 @@ def test_state_bad_key4():
     # fmt: on
     rows = assign_state_circuit(ops, r)
     rows[1] = rows[1]._replace(key4_bytes=(FQ(1),) * 10)
-    verify(rows, randomness, success=False)
+    tables = Tables(mpt_table_from_ops(ops, randomness))
+    verify(rows, tables, randomness, success=False)
 
 
 def test_state_bad_is_write():
@@ -120,7 +128,8 @@ def test_state_bad_is_write():
     # fmt: on
     rows = assign_state_circuit(ops, r)
     rows[1] = rows[1]._replace(is_write=FQ(2))
-    verify(rows, randomness, success=False)
+    tables = Tables(mpt_table_from_ops(ops, randomness))
+    verify(rows, tables, randomness, success=False)
 
 
 def test_state_keys_non_lexicographic_order():
@@ -131,7 +140,8 @@ def test_state_keys_non_lexicographic_order():
         StorageOp(rw_counter=0, rw=RW.Write, addr=0x12345678, key=0x1111, value=RLC(789, r).expr()),
     ]
     # fmt: on
-    verify(ops, randomness, success=False)
+    tables = Tables(mpt_table_from_ops(ops, randomness))
+    verify(ops, tables, randomness, success=False)
 
     # fmt: off
     ops = [
@@ -140,7 +150,8 @@ def test_state_keys_non_lexicographic_order():
         StorageOp(rw_counter=0, rw=RW.Write, addr=0x12345678, key=1 << 250, value=RLC(789, r).expr()),
     ]
     # fmt: on
-    verify(ops, randomness, success=False)
+    tables = Tables(mpt_table_from_ops(ops, randomness))
+    verify(ops, tables, randomness, success=False)
 
     # fmt: off
     ops = [
@@ -150,7 +161,8 @@ def test_state_keys_non_lexicographic_order():
         MemoryOp(rw_counter=2, rw=RW.Read,  call_id=1, mem_addr=0, value=0),
     ]
     # fmt: on
-    verify(ops, randomness, success=False)
+    tables = Tables(mpt_table_from_ops(ops, randomness))
+    verify(ops, tables, randomness, success=False)
 
     # fmt: off
     ops = [
@@ -159,7 +171,8 @@ def test_state_keys_non_lexicographic_order():
         MemoryOp(rw_counter=2, rw=RW.Read,  call_id=1, mem_addr=0, value=0),
     ]
     # fmt: on
-    verify(ops, randomness, success=False)
+    tables = Tables(mpt_table_from_ops(ops, randomness))
+    verify(ops, tables, randomness, success=False)
 
 
 def test_state_bad_rwc():
@@ -170,7 +183,8 @@ def test_state_bad_rwc():
         MemoryOp(rw_counter=1, rw=RW.Read,  call_id=2, mem_addr=123, value=0),
     ]
     # fmt: on
-    verify(ops, randomness, success=False)
+    tables = Tables(mpt_table_from_ops(ops, randomness))
+    verify(ops, tables, randomness, success=False)
 
 
 def test_state_bad_read_consistency():
@@ -182,7 +196,8 @@ def test_state_bad_read_consistency():
         MemoryOp(rw_counter=3, rw=RW.Read,  call_id=2, mem_addr=123, value=0),
     ]
     # fmt: on
-    verify(ops, randomness, success=False)
+    tables = Tables(mpt_table_from_ops(ops, randomness))
+    verify(ops, tables, randomness, success=False)
 
 
 def test_start_bad():
@@ -194,7 +209,8 @@ def test_start_bad():
     # fmt: on
     rows = assign_state_circuit(ops, r)
     rows[0] = rows[0]._replace(rw_counter=FQ(1))
-    verify(rows, randomness, success=False)
+    tables = Tables(mpt_table_from_ops(ops, randomness))
+    verify(rows, tables, randomness, success=False)
 
 
 def first_memory_op(rw_counter=1, rw=RW.Write, call_id=1, mem_addr=2**32 - 1, value=3):
@@ -203,22 +219,26 @@ def first_memory_op(rw_counter=1, rw=RW.Write, call_id=1, mem_addr=2**32 - 1, va
 
 def test_first_memory_op_ok():
     ops = [StartOp(), first_memory_op()]
-    verify(ops, randomness, success=True)
+    tables = Tables(mpt_table_from_ops(ops, randomness))
+    verify(ops, tables, randomness, success=True)
 
 
 def test_memory_bad_address():
     ops = [StartOp(), first_memory_op(mem_addr=2**32)]
-    verify(ops, randomness, success=False)
+    tables = Tables(mpt_table_from_ops(ops, randomness))
+    verify(ops, tables, randomness, success=False)
 
 
 def test_memory_bad_first_access():
     ops = [StartOp(), first_memory_op(rw=RW.Read)]
-    verify(ops, randomness, success=False)
+    tables = Tables(mpt_table_from_ops(ops, randomness))
+    verify(ops, tables, randomness, success=False)
 
 
 def test_memory_bad_value_range():
     ops = [StartOp(), first_memory_op(value=2**8)]
-    verify(ops, randomness, success=False)
+    tables = Tables(mpt_table_from_ops(ops, randomness))
+    verify(ops, tables, randomness, success=False)
 
 
 def test_stack_bad_first_access():
@@ -228,7 +248,8 @@ def test_stack_bad_first_access():
         StackOp(rw_counter=1, rw=RW.Read, call_id=1, stack_ptr=1023, value=RLC(4321 ,r).expr()),
     ]
     # fmt: on
-    verify(ops, randomness, success=False)
+    tables = Tables(mpt_table_from_ops(ops, randomness))
+    verify(ops, tables, randomness, success=False)
 
 
 def test_stack_bad_stack_ptr_range():
@@ -238,7 +259,8 @@ def test_stack_bad_stack_ptr_range():
         StackOp(rw_counter=1, rw=RW.Write, call_id=1, stack_ptr=1024, value=RLC(4321 ,r).expr()),
     ]
     # fmt: on
-    verify(ops, randomness, success=False)
+    tables = Tables(mpt_table_from_ops(ops, randomness))
+    verify(ops, tables, randomness, success=False)
 
 
 def test_stack_bad_stack_ptr_inc():
@@ -249,7 +271,8 @@ def test_stack_bad_stack_ptr_inc():
         StackOp(rw_counter=2, rw=RW.Write, call_id=1, stack_ptr=1023, value=RLC(4321 ,r).expr()),
     ]
     # fmt: on
-    verify(ops, randomness, success=False)
+    tables = Tables(mpt_table_from_ops(ops, randomness))
+    verify(ops, tables, randomness, success=False)
 
 
 def test_storage_bad_first_access():
@@ -259,7 +282,8 @@ def test_storage_bad_first_access():
         StorageOp(rw_counter=0, rw=RW.Read, addr=0x12345678, key=0x1516, value=RLC(789, r).expr()),
     ]
     # fmt: on
-    verify(ops, randomness, success=False)
+    tables = Tables(mpt_table_from_ops(ops, randomness))
+    verify(ops, tables, randomness, success=False)
 
     # fmt: off
     ops = [
@@ -267,7 +291,8 @@ def test_storage_bad_first_access():
         StorageOp(rw_counter=1, rw=RW.Write, addr=0x12345678, key=0x1516, value=RLC(789, r).expr()),
     ]
     # fmt: on
-    verify(ops, randomness, success=False)
+    tables = Tables(mpt_table_from_ops(ops, randomness))
+    verify(ops, tables, randomness, success=False)
 
 
 def test_account_bad_first_access():
@@ -277,7 +302,8 @@ def test_account_bad_first_access():
         AccountOp(rw_counter= 0, rw=RW.Read, addr=0x12345678, field_tag=AccountFieldTag.Nonce, value=FQ(0)),
     ]
     # fmt: on
-    verify(ops, randomness, success=False)
+    tables = Tables(mpt_table_from_ops(ops, randomness))
+    verify(ops, tables, randomness, success=False)
 
     # fmt: off
     ops = [
@@ -285,7 +311,8 @@ def test_account_bad_first_access():
         AccountOp(rw_counter=1, rw=RW.Write, addr=0x12345678, field_tag=AccountFieldTag.Nonce, value=FQ(0)),
     ]
     # fmt: on
-    verify(ops, randomness, success=False)
+    tables = Tables(mpt_table_from_ops(ops, randomness))
+    verify(ops, tables, randomness, success=False)
 
 
 def test_tx_log_bad():
@@ -298,7 +325,8 @@ def test_tx_log_bad():
         TxLogOp(rw_counter=3, rw=RW.Write, tx_id=1, log_id=0, field_tag=TxLogFieldTag.Topic, index=0, value=FQ(5)),
     ]
     # fmt: on
-    verify(ops, randomness, success=False)
+    tables = Tables(mpt_table_from_ops(ops, randomness))
+    verify(ops, tables, randomness, success=False)
 
     # fmt: off
     # topic index out of range >= 4
@@ -312,7 +340,8 @@ def test_tx_log_bad():
         TxLogOp(rw_counter=6, rw=RW.Write, tx_id=1, log_id=0, field_tag=TxLogFieldTag.Topic, index=4, value=FQ(5)),
     ]
     # fmt: on
-    verify(ops, randomness, success=False)
+    tables = Tables(mpt_table_from_ops(ops, randomness))
+    verify(ops, tables, randomness, success=False)
 
     # fmt: off
     # Data index is not increasing
@@ -323,7 +352,8 @@ def test_tx_log_bad():
         TxLogOp(rw_counter=3, rw=RW.Write, tx_id=1, log_id=0, field_tag=TxLogFieldTag.Data, index=0, value=FQ(255)),
     ]
     # fmt: on
-    verify(ops, randomness, success=False)
+    tables = Tables(mpt_table_from_ops(ops, randomness))
+    verify(ops, tables, randomness, success=False)
 
     # fmt: off
     # log id is decreasing
@@ -334,7 +364,8 @@ def test_tx_log_bad():
         TxLogOp(rw_counter=3, rw=RW.Write, tx_id=1, log_id=0, field_tag=TxLogFieldTag.Data, index=0, value=FQ(255)),
     ]
     # fmt: on
-    verify(ops, randomness, success=False)
+    tables = Tables(mpt_table_from_ops(ops, randomness))
+    verify(ops, tables, randomness, success=False)
 
     # fmt: off
     # TxLogFieldTag is decreasing
@@ -345,7 +376,8 @@ def test_tx_log_bad():
         TxLogOp(rw_counter=3, rw=RW.Write, tx_id=1, log_id=0, field_tag=TxLogFieldTag.Data, index=0, value=FQ(255)),
     ]
     # fmt: on
-    verify(ops, randomness, success=False)
+    tables = Tables(mpt_table_from_ops(ops, randomness))
+    verify(ops, tables, randomness, success=False)
 
     # fmt: off
     # when tx_id change, log_id is not reset
@@ -356,7 +388,8 @@ def test_tx_log_bad():
         TxLogOp(rw_counter=3, rw=RW.Write, tx_id=2, log_id=1, field_tag=TxLogFieldTag.Data, index=0, value=FQ(255)),
     ]
     # fmt: on
-    verify(ops, randomness, success=False)
+    tables = Tables(mpt_table_from_ops(ops, randomness))
+    verify(ops, tables, randomness, success=False)
 
 
 def test_tx_receipt_bad():
@@ -367,7 +400,8 @@ def test_tx_receipt_bad():
         TxReceiptOp(rw_counter=1, rw=RW.Read, tx_id=1, field_tag=TxReceiptFieldTag.PostStateOrStatus, value=FQ(3)),
     ]
     # fmt: on
-    verify(ops, randomness, success=False)
+    tables = Tables(mpt_table_from_ops(ops, randomness))
+    verify(ops, tables, randomness, success=False)
 
     # fmt: off
     # tx_id is decreasing when changes
@@ -377,7 +411,8 @@ def test_tx_receipt_bad():
         TxReceiptOp(rw_counter=2, rw=RW.Read, tx_id=1, field_tag=TxReceiptFieldTag.CumulativeGasUsed, value=FQ(200)),
     ]
     # fmt: on
-    verify(ops, randomness, success=False)
+    tables = Tables(mpt_table_from_ops(ops, randomness))
+    verify(ops, tables, randomness, success=False)
 
     # fmt: off
     # tx_id is not increasing by one
@@ -387,4 +422,5 @@ def test_tx_receipt_bad():
         TxReceiptOp(rw_counter=2, rw=RW.Read, tx_id=5, field_tag=TxReceiptFieldTag.CumulativeGasUsed, value=FQ(200)),
     ]
     # fmt: on
-    verify(ops, randomness, success=False)
+    tables = Tables(mpt_table_from_ops(ops, randomness))
+    verify(ops, tables, randomness, success=False)
