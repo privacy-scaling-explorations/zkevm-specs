@@ -104,38 +104,41 @@ def test_begin_tx(tx: Transaction, callee: Account, is_success: bool):
 
     bytecode_hash = RLC(callee.code_hash(), randomness)
 
+    # fmt: off
+    rw_dictionary = (
+        RWDictionary(1)
+        .call_context_read(1, CallContextFieldTag.TxId, tx.id)
+        .call_context_read(1, CallContextFieldTag.RwCounterEndOfReversion, 0 if is_success else rw_counter_end_of_reversion)
+        .call_context_read(1, CallContextFieldTag.IsPersistent, is_success)
+        .account_write(tx.caller_address, AccountFieldTag.Nonce, tx.nonce + 1, tx.nonce)
+        .tx_access_list_account_write(tx.id, tx.caller_address, True, False)
+        .tx_access_list_account_write(tx.id, tx.callee_address, True, False)
+        .account_write(tx.caller_address, AccountFieldTag.Balance, RLC(caller_balance, randomness), RLC(caller_balance_prev, randomness), rw_counter_of_reversion=None if is_success else rw_counter_end_of_reversion)
+        .account_write(tx.callee_address, AccountFieldTag.Balance, RLC(callee_balance, randomness), RLC(callee_balance_prev, randomness), rw_counter_of_reversion=None if is_success else rw_counter_end_of_reversion - 1)
+        .account_read(tx.callee_address, AccountFieldTag.CodeHash, bytecode_hash)
+    )
+    if callee.code_hash() != EMPTY_CODE_HASH:
+        rw_dictionary \
+        .call_context_read(1, CallContextFieldTag.Depth, 1) \
+        .call_context_read(1, CallContextFieldTag.CallerAddress, tx.caller_address) \
+        .call_context_read(1, CallContextFieldTag.CalleeAddress, tx.callee_address) \
+        .call_context_read(1, CallContextFieldTag.CallDataOffset, 0) \
+        .call_context_read(1, CallContextFieldTag.CallDataLength, len(tx.call_data)) \
+        .call_context_read(1, CallContextFieldTag.Value, RLC(tx.value, randomness)) \
+        .call_context_read(1, CallContextFieldTag.IsStatic, 0) \
+        .call_context_read(1, CallContextFieldTag.LastCalleeId, 0) \
+        .call_context_read(1, CallContextFieldTag.LastCalleeReturnDataOffset, 0) \
+        .call_context_read(1, CallContextFieldTag.LastCalleeReturnDataLength, 0) \
+        .call_context_read(1, CallContextFieldTag.IsRoot, True) \
+        .call_context_read(1, CallContextFieldTag.IsCreate, False) \
+        .call_context_read(1, CallContextFieldTag.CodeSource, bytecode_hash)
+    # fmt: on
+
     tables = Tables(
         block_table=set(Block().table_assignments(randomness)),
         tx_table=set(tx.table_assignments(randomness)),
         bytecode_table=set(callee.code.table_assignments(randomness)),
-        rw_table=set(
-            # fmt: off
-            RWDictionary(1)
-            .call_context_read(1, CallContextFieldTag.TxId, tx.id)
-            .call_context_read(1, CallContextFieldTag.RwCounterEndOfReversion, 0 if is_success else rw_counter_end_of_reversion)
-            .call_context_read(1, CallContextFieldTag.IsPersistent, is_success)
-            .account_write(tx.caller_address, AccountFieldTag.Nonce, tx.nonce + 1, tx.nonce)
-            .tx_access_list_account_write(tx.id, tx.caller_address, True, False)
-            .tx_access_list_account_write(tx.id, tx.callee_address, True, False)
-            .account_write(tx.caller_address, AccountFieldTag.Balance, RLC(caller_balance, randomness), RLC(caller_balance_prev, randomness), rw_counter_of_reversion=None if is_success else rw_counter_end_of_reversion)
-            .account_write(tx.callee_address, AccountFieldTag.Balance, RLC(callee_balance, randomness), RLC(callee_balance_prev, randomness), rw_counter_of_reversion=None if is_success else rw_counter_end_of_reversion - 1)
-            .account_read(tx.callee_address, AccountFieldTag.CodeHash, bytecode_hash)
-            .call_context_read(1, CallContextFieldTag.Depth, 1)
-            .call_context_read(1, CallContextFieldTag.CallerAddress, tx.caller_address)
-            .call_context_read(1, CallContextFieldTag.CalleeAddress, tx.callee_address)
-            .call_context_read(1, CallContextFieldTag.CallDataOffset, 0)
-            .call_context_read(1, CallContextFieldTag.CallDataLength, len(tx.call_data))
-            .call_context_read(1, CallContextFieldTag.Value, RLC(tx.value, randomness))
-            .call_context_read(1, CallContextFieldTag.IsStatic, 0)
-            .call_context_read(1, CallContextFieldTag.LastCalleeId, 0)
-            .call_context_read(1, CallContextFieldTag.LastCalleeReturnDataOffset, 0)
-            .call_context_read(1, CallContextFieldTag.LastCalleeReturnDataLength, 0)
-            .call_context_read(1, CallContextFieldTag.IsRoot, True)
-            .call_context_read(1, CallContextFieldTag.IsCreate, False)
-            .call_context_read(1, CallContextFieldTag.CodeSource, bytecode_hash)
-            .rws,
-            # fmt: on
-        ),
+        rw_table=set(rw_dictionary.rws),
     )
 
     verify_steps(
@@ -150,7 +153,7 @@ def test_begin_tx(tx: Transaction, callee: Account, is_success: bool):
                 execution_state=ExecutionState.EndTx
                 if callee.code_hash() == EMPTY_CODE_HASH
                 else ExecutionState.PUSH,
-                rw_counter=23,
+                rw_counter=rw_dictionary.rw_counter,
                 call_id=1,
                 is_root=True,
                 is_create=False,
@@ -158,7 +161,7 @@ def test_begin_tx(tx: Transaction, callee: Account, is_success: bool):
                 program_counter=0,
                 stack_pointer=1024,
                 gas_left=0,
-                state_write_counter=2,
+                reversible_write_counter=2,
             ),
         ],
         begin_with_first_step=True,

@@ -7,6 +7,7 @@ from zkevm_specs.evm import (
     Tables,
     AccountFieldTag,
     CallContextFieldTag,
+    TxReceiptFieldTag,
     Block,
     Transaction,
     RWDictionary,
@@ -19,35 +20,42 @@ TESTING_DATA = (
     # Tx with non-capped refund
     (
         Transaction(
-            caller_address=0xFE, callee_address=CALLEE_ADDRESS, gas=27000, gas_price=int(2e9)
+            id=1, caller_address=0xFE, callee_address=CALLEE_ADDRESS, gas=27000, gas_price=int(2e9)
         ),
         994,
         4800,
         False,
+        0,
     ),
     # Tx with capped refund
     (
         Transaction(
-            caller_address=0xFE, callee_address=CALLEE_ADDRESS, gas=65000, gas_price=int(2e9)
+            id=2, caller_address=0xFE, callee_address=CALLEE_ADDRESS, gas=65000, gas_price=int(2e9)
         ),
         3952,
         38400,
         False,
+        100,
     ),
     # Last tx
     (
         Transaction(
-            caller_address=0xFE, callee_address=CALLEE_ADDRESS, gas=21000, gas_price=int(2e9)
+            id=3, caller_address=0xFE, callee_address=CALLEE_ADDRESS, gas=21000, gas_price=int(2e9)
         ),
         0,
         0,
         True,
+        20000,
     ),
 )
 
 
-@pytest.mark.parametrize("tx, gas_left, refund, is_last_tx", TESTING_DATA)
-def test_end_tx(tx: Transaction, gas_left: int, refund: int, is_last_tx: bool):
+@pytest.mark.parametrize(
+    "tx, gas_left, refund, is_last_tx, current_cumulative_gas_used", TESTING_DATA
+)
+def test_end_tx(
+    tx: Transaction, gas_left: int, refund: int, is_last_tx: bool, current_cumulative_gas_used: int
+):
     randomness = rand_fq()
 
     block = Block()
@@ -61,13 +69,32 @@ def test_end_tx(tx: Transaction, gas_left: int, refund: int, is_last_tx: bool):
         # fmt: off
         RWDictionary(17)
             .call_context_read(1, CallContextFieldTag.TxId, tx.id)
+            .call_context_read(1, CallContextFieldTag.IsPersistent, 1)
             .tx_refund_read(tx.id, refund)
             .account_write(tx.caller_address, AccountFieldTag.Balance, RLC(caller_balance, randomness), RLC(caller_balance_prev, randomness))
             .account_write(block.coinbase, AccountFieldTag.Balance, RLC(coinbase_balance, randomness), RLC(coinbase_balance_prev, randomness))
+            .tx_receipt_read(tx.id, TxReceiptFieldTag.PostStateOrStatus, 1)
+            .tx_receipt_read(tx.id, TxReceiptFieldTag.LogLength, 0)
         # fmt: on
     )
+
+    # check it is first tx
+    is_first_tx = tx.id == 1
+    if is_first_tx:
+        assert current_cumulative_gas_used == 0
+        rw_dictionary.tx_receipt_read(tx.id, TxReceiptFieldTag.CumulativeGasUsed, tx.gas - gas_left)
+    else:
+        rw_dictionary.tx_receipt_read(
+            tx.id - 1, TxReceiptFieldTag.CumulativeGasUsed, current_cumulative_gas_used
+        )
+        rw_dictionary.tx_receipt_read(
+            tx.id,
+            TxReceiptFieldTag.CumulativeGasUsed,
+            tx.gas - gas_left + current_cumulative_gas_used,
+        )
+
     if not is_last_tx:
-        rw_dictionary.call_context_read(22, CallContextFieldTag.TxId, tx.id + 1)
+        rw_dictionary.call_context_read(27 - is_first_tx, CallContextFieldTag.TxId, tx.id + 1)
 
     tables = Tables(
         block_table=set(block.table_assignments(randomness)),
@@ -90,11 +117,12 @@ def test_end_tx(tx: Transaction, gas_left: int, refund: int, is_last_tx: bool):
                 program_counter=0,
                 stack_pointer=1024,
                 gas_left=gas_left,
-                state_write_counter=2,
+                reversible_write_counter=2,
             ),
             StepState(
                 execution_state=ExecutionState.EndBlock if is_last_tx else ExecutionState.BeginTx,
-                rw_counter=22 - is_last_tx,
+                rw_counter=27 - is_first_tx - is_last_tx,
+                call_id=1 if is_last_tx else 0,
             ),
         ],
     )

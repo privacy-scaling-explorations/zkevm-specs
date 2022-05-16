@@ -234,7 +234,7 @@ class CallContextFieldTag(IntEnum):
     StackPointer = auto()
     GasLeft = auto()
     MemorySize = auto()
-    StateWriteCounter = auto()
+    ReversibleWriteCounter = auto()
 
 
 class TxLogFieldTag(IntEnum):

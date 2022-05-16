@@ -39,7 +39,7 @@ class StepState:
     # The following fields could be further moved into rw_table if we find them
     # not often used.
     memory_size: FQ
-    state_write_counter: FQ
+    reversible_write_counter: FQ
 
     # log index of current tx/receipt, this field maybe moved if we find them
     # not often used.
@@ -60,7 +60,7 @@ class StepState:
         stack_pointer: int = 1024,
         gas_left: int = 0,
         memory_size: int = 0,
-        state_write_counter: int = 0,
+        reversible_write_counter: int = 0,
         log_id: int = 0,
         aux_data: Any = None,
     ) -> None:
@@ -74,7 +74,7 @@ class StepState:
         self.stack_pointer = FQ(stack_pointer)
         self.gas_left = FQ(gas_left)
         self.memory_size = FQ(memory_size)
-        self.state_write_counter = FQ(state_write_counter)
+        self.reversible_write_counter = FQ(reversible_write_counter)
         self.log_id = FQ(log_id)
         self.aux_data = aux_data
 
@@ -85,7 +85,7 @@ class CopyToMemoryAuxData:
     bytes_left: FQ
     src_addr_end: FQ
     from_tx: FQ
-    tx_id: FQ
+    src_id: FQ
 
     def __init__(
         self,
@@ -94,14 +94,14 @@ class CopyToMemoryAuxData:
         bytes_left: int,
         src_addr_end: int,
         from_tx: bool,
-        tx_id: int,
+        src_id: int,
     ):
         self.src_addr = FQ(src_addr)
         self.dst_addr = FQ(dst_addr)
         self.bytes_left = FQ(bytes_left)
         self.src_addr_end = FQ(src_addr_end)
         self.from_tx = FQ(from_tx)
-        self.tx_id = FQ(tx_id)
+        self.src_id = FQ(src_id)
 
 
 class CopyToLogAuxData:

@@ -45,10 +45,10 @@ denote `LOGN` where `N` in `[0,4]` meaning topic count.
    
    - stack_pointer + 2 + `N`
    - pc + 1
-   - state_write_counter + 1:
+   - reversible_write_counter + 1:
    - log_index + 1
    - memory size to expansion
-   - state_write_counter + 1
+   - reversible_write_counter + 1
    - gas - dynamic_gas
      （dynamic_gas = 375 * `N` + 8 * `msize` + memory_expansion_cost）
 

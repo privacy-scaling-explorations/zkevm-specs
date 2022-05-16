@@ -12,15 +12,14 @@ def calldataload(instruction: Instruction):
     # offset is the 64-bit offset to start reading 32-bytes from start of calldata.
     offset = instruction.rlc_to_fq(instruction.stack_pop(), n_bytes=8)
 
-    tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId, RW.Read)
-
     if instruction.curr.is_root:
-        calldata_length = instruction.tx_context_lookup(tx_id, TxContextFieldTag.CallDataLength)
+        src_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
+        calldata_length = instruction.call_context_lookup(CallContextFieldTag.CallDataLength)
         calldata_offset: Expression = FQ(0)
     else:
+        src_id = instruction.call_context_lookup(CallContextFieldTag.CallerId)
         calldata_length = instruction.call_context_lookup(CallContextFieldTag.CallDataLength)
         calldata_offset = instruction.call_context_lookup(CallContextFieldTag.CallDataOffset)
-        caller_id = instruction.call_context_lookup(CallContextFieldTag.CallerId)
 
     src_addr = offset + calldata_offset
     src_addr_end = calldata_length.expr() + calldata_offset.expr()
@@ -33,11 +32,11 @@ def calldataload(instruction: Instruction):
     for idx in range(N_BYTES_WORD):
         if buffer_reader.read_flag(idx) == FQ(1):
             if instruction.curr.is_root:
-                tx_byte = instruction.tx_calldata_lookup(tx_id, src_addr + idx)
+                tx_byte = instruction.tx_calldata_lookup(src_id, src_addr + idx)
                 buffer_reader.constrain_byte(idx, tx_byte)
                 calldata_word.append(tx_byte.expr().n)
             else:
-                mem_byte = instruction.memory_lookup(RW.Read, src_addr + idx, caller_id)
+                mem_byte = instruction.memory_lookup(RW.Read, src_addr + idx, src_id)
                 buffer_reader.constrain_byte(idx, mem_byte)
                 calldata_word.append(mem_byte.expr().n)
         else:

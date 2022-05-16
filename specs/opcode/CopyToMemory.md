@@ -38,10 +38,10 @@ Define two auxiliary variables:
 2. Lookups: nbytes_read + nbytes_written
    - from tx:
      - `nbytes_read` lookups from tx context table
-     - `nbytes_written` lookups from rw table (memory write)
+     - `nbytes_written` lookups from rw table (memory write to call_id)
    - from memory:
-     - `nbytes_read` lookups from rw table (memory read)
-     - `nbytes_written` lookups from rw table (memory write)
+     - `nbytes_read` lookups from rw table (memory read from caller_id)
+     - `nbytes_written` lookups from rw table (memory write to call_id)
 
 ## Exceptions
 

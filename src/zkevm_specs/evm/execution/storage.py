@@ -41,7 +41,7 @@ def sload(instruction: Instruction):
         rw_counter=Transition.delta(8),
         program_counter=Transition.delta(1),
         stack_pointer=Transition.delta(0),
-        state_write_counter=Transition.delta(1),
+        reversible_write_counter=Transition.delta(1),
         dynamic_gas_cost=dynamic_gas_cost,
     )
 
@@ -51,6 +51,11 @@ def sstore(instruction: Instruction):
     instruction.constrain_equal(opcode, Opcode.SSTORE)
 
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
+    # check not static call
+    instruction.constrain_equal(
+        FQ(0), instruction.call_context_lookup(CallContextFieldTag.IsStatic)
+    )
+
     reversion_info = instruction.reversion_info()
     callee_address = instruction.call_context_lookup(CallContextFieldTag.CalleeAddress)
 
@@ -130,9 +135,9 @@ def sstore(instruction: Instruction):
 
     instruction.step_state_transition_in_same_context(
         opcode,
-        rw_counter=Transition.delta(9),
+        rw_counter=Transition.delta(10),
         program_counter=Transition.delta(1),
         stack_pointer=Transition.delta(2),
-        state_write_counter=Transition.delta(3),
+        reversible_write_counter=Transition.delta(3),
         dynamic_gas_cost=dynamic_gas_cost,
     )
