@@ -15,7 +15,7 @@ Pop two EVM words `a` and `shift` from the stack, and push `b` to the stack, whe
 
 To prove the `SHR` opcode, we first construct a `ShrGadget` that proves `a >> shift = b` where `a, b, shift` are all 256-bit words.
 As usual, we use 32 cells to represent word `a` and `b`, where each cell holds a 8-bit value. Then split each word into four 64-bit limbs denoted by `a64s[idx]` and `b64s[idx]` where idx in `(0, 1, 2, 3)`.
-We put the lower `n` bits of a limb into the `lo` array, and put the higher `64 - n` bits into the `hi` array. During the SHR operation, the `lo` array will move to higher bits of the result, and the `hi` array will move to lower bits of the result.
+We put the lower `n` bits of a limb into the `lo` array, and put the higher `64 - n` bits into the `hi` array, where `n` is `shift % 64`. During the SHR operation, the `lo` array will move to higher bits of the result, and the `hi` array will move to lower bits of the result.
 
 The following figure illustrates how shift right works under the case of `shift < 64`.
 
