@@ -31,8 +31,6 @@ The following figure illustrates how shift right works under the case of `shift 
              +-------------------------------+------------------------
 ```
 
-#### Variable Definition
-
 More formally, the variables are defined as follows:
 
 $$
@@ -51,9 +49,7 @@ $$
 
 If $shift\ge 256$, `b64s` are all 0. Otherwise, `b64s` can be calculated by `a >> shf0` then split into four 64-bit limbs.
 
-#### Constraint Validation
-
-Then we could validate the below constraints:
+Now putting things together, the constraints can be constructed as follows:
 
 1. `a64s` and `b64s` constraints
 
