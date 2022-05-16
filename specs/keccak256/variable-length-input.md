@@ -75,7 +75,7 @@ We branch the constraints to apply by state_tag
 - Continue
   - if input_len === 136 * (perm_count + 1) absorb a full block of 0x80...0x01
     - next.input === 0 (since the input is the unpadded input)
-    - next.state_tag in (Continue, Finalize)
+    - next.state_tag === Finalize
   - Next row validity
     - next.acc_input === curr.acc_input * r**136 + next.input
     - next.perm_count === curr.perm_count + 1
@@ -192,17 +192,17 @@ We apply two different checks on the 0~134-th rows and the 135th row.
 1. For 0-th row (We use this row for initializing and copying)
    1. `input_len` is copied from the Lookup Region.
    2. `acc_len` is copied from a `(perm_count - 1) * 136` cell in some other region
-   3. `f_enable` is copied from some other region
+   3. `is_finalize` is copied from some other region
    4. `is_pad_zone === diff_is_zero`
-2. All checks below are only enabled when `f_enable === 1`
-3. For all rows
+2. For all rows
    1. If `is_pad_zone` then `byte === 0`. `curr.is_pad_zone * curr.byte === 0`
-4. For 0~134-th rows
+3. For 0~134-th rows
    1. `next.input_len === curr.input_len`
    2. `next.acc_len === curr.acc_len + 1`
    3. If `curr.input_len - curr.acc_len` is 0, pad `0x80`: `curr.padded_byte === curr.byte + curr.diff_is_zero * 0x80`
-   4. Set `is_pad_zone` to 1 if we entered. `next.is_pad_zone === curr.is_pad_zone + curr.diff_is_zero`
+4. For 1~135-th row
+   1. Set `is_pad_zone` to 1 if we entered. `curr.is_pad_zone === prev.is_pad_zone + curr.diff_is_zero`
 5. For the 135th row
-   1. This is the last byte, if `f_enable === 1` then we must be in a `Finalize` state_tag that needs to pad 0x01 here. It might be the case the 0x80 is also padded here, together with 0x01 we have 0x81. `curr.padded_byte === curr.diff_is_zero * 0x80 + 0x01`
+   1. If we are in the `Finalize`, pad 0x01 here. It might be the case the 0x80 is also padded here, together with 0x01 we have 0x81. `curr.padded_byte === curr.diff_is_zero * 0x80 + is_finalize`
 6. Use `byte_RLC` to running sum `byte`. The sum should be equal to `input` in the lookup region
 7. `padded_byte` are copied to a word builder gadget to build padded words, which would later be copied to the `Keccak-f` permutation
