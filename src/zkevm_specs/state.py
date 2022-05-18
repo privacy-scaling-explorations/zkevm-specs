@@ -70,7 +70,7 @@ class Row(NamedTuple):
                       FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,
                       FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ]
     value: FQ
-    auxs: Tuple[FQ, FQ]
+    auxs: Tuple[FQ]
     mpt_counter: FQ
     # fmt: on
 
@@ -165,6 +165,9 @@ def check_start(row: Row, row_prev: Row):
     # 0. rw_counter is 0
     assert row.rw_counter == 0
 
+    # 1. mpt_counter is 0
+    assert row.mpt_counter == 0
+
 
 @is_circuit_code
 def check_memory(row: Row, row_prev: Row):
@@ -222,25 +225,25 @@ def check_stack(row: Row, row_prev: Row):
 def check_storage(row: Row, row_prev: Row, tables: Tables):
     get_addr = lambda row: row.keys[2]
     get_storage_key = lambda row: row.keys[4]
-
-    # TODO: cold VS warm
-    # TODO: connection to MPT on first and last access for each (address, key)
+    get_committed_value = lambda row: row.auxs[0]
 
     # 0. Unused keys are 0
-    assert row.keys[1] == 0
     assert row.keys[3] == 0
 
-    # 1. First access for a set of all keys
-    #
-    # We add an extra write to set the value of the state in previous block, with rwc=0.
-    #
-    # When the set of all keys changes (first access of storage (address, key))
-    # - It must be a WRITE
-    if not all_keys_eq(row, row_prev):
-        assert row.is_write == 1 and row.rw_counter == 0
+    # 1. When keys don't change, committed_value must be kept equal
+    if all_keys_eq(row, row_prev):
+        assert get_committed_value(row) == get_committed_value(row_prev)
+
+    # TODO: The current spec does an MPT lookup for every storage update.  The
+    # next optimization consists on doing a single lookup merging all updates
+    # for a given key, using the first and last access values.
 
     # 2. MPT storage lookup with incremental counter
-    value_prev = row_prev.value if all_keys_eq(row, row_prev) else FQ(0)
+    #
+    # When the keys are equal in the previous row, the value_prev must be the
+    # value in previous row.  When the keys change, value_prev is loaded from
+    # committed_value, which holds the storage value before the tx began.
+    value_prev = row_prev.value if all_keys_eq(row, row_prev) else get_committed_value(row)
     tables.mpt_storage_lookup(
         row.mpt_counter, get_addr(row), get_storage_key(row), row.value, value_prev
     )
@@ -262,22 +265,26 @@ def check_call_context(row: Row, row_prev: Row):
 def check_account(row: Row, row_prev: Row, tables: Tables):
     get_addr = lambda row: row.keys[2]
     get_field_tag = lambda row: row.keys[3]
+    get_committed_value = lambda row: row.auxs[0]
 
     # 0. Unused keys are 0
     assert row.keys[1] == 0
     assert row.keys[4] == 0
 
-    # 1. First access for a set of all keys
-    #
-    # We add an extra write to setup the value of the previous block, with rwc=0.
-    #
-    # When the set of all keys changes (first access of storage (address, AccountFieldTag))
-    # - It must be a WRITE
-    if not all_keys_eq(row, row_prev):
-        assert row.is_write == 1 and row.rw_counter == 0
+    # 1. When keys don't change, committed_value must be kept equal
+    if all_keys_eq(row, row_prev):
+        assert get_committed_value(row) == get_committed_value(row_prev)
+
+    # TODO: The current spec does an MPT lookup for every storage update.  The
+    # next optimization consists on doing a single lookup merging all updates
+    # for a given key, using the first and last access values.
 
     # 2. MPT storage lookup with incremental counter
-    value_prev = row_prev.value if all_keys_eq(row, row_prev) else FQ(0)
+    #
+    # When the keys are equal in the previous row, the value_prev must be the
+    # value in previous row.  When the keys change, value_prev is loaded from
+    # committed_value, which holds the account value before the block began.
+    value_prev = row_prev.value if all_keys_eq(row, row_prev) else get_committed_value(row)
     tables.mpt_account_lookup(
         row.mpt_counter, get_field_tag(row), get_addr(row), row.value, value_prev
     )
@@ -296,6 +303,7 @@ def check_tx_refund(row: Row, row_prev: Row):
     assert row.keys[4] == 0
 
     # TODO: Missing constraints
+    # - When keys change, value must be 0
 
 
 @is_circuit_code
@@ -308,6 +316,7 @@ def check_tx_access_list_account(row: Row, row_prev: Row):
     assert row.keys[4] == 0
 
     # TODO: Missing constraints
+    # - When keys change, value must be 0
 
 
 @is_circuit_code
@@ -320,6 +329,7 @@ def check_tx_access_list_account_storage(row: Row, row_prev: Row):
     assert row.keys[3] == 0
 
     # TODO: Missing constraints
+    # - When keys change, value must be 0
 
 
 @is_circuit_code
@@ -332,6 +342,7 @@ def check_account_destructed(row: Row, row_prev: Row):
     assert row.keys[4] == 0
 
     # TODO: Missing constraints
+    # - When keys change, value must be 0
 
 
 @is_circuit_code
@@ -471,9 +482,17 @@ def check_state_row(row: Row, row_prev: Row, tables: Tables, randomness: FQ):
 
     # 7. Increment mpt_counter
     #
-    # When previous row is Storage or Account, increment the mpt_counter by one
-    if row_prev.tag() == Tag.Storage or row_prev.tag() == Tag.Account:
-        assert row.mpt_counter == row_prev.mpt_counter + 1
+    # When row is Storage or Account, increment the mpt_counter by
+    # one, otherwise maintain the same value
+    if row.tag() != Tag.Start:
+        if row.tag() == Tag.Storage or row.tag() == Tag.Account:
+            assert row.mpt_counter == row_prev.mpt_counter + 1
+        else:
+            assert row.mpt_counter == row_prev.mpt_counter
+
+    # 8. RWC !=0 except for Tag.Start
+    if row.tag() != Tag.Start:
+        assert row.rw_counter != 0
 
     #
     # Constraints specific to each Tag
@@ -521,7 +540,6 @@ class Operation(NamedTuple):
     key4: U256
     value: FQ
     aux0: FQ
-    aux1: FQ
 
 
 class StartOp(Operation):
@@ -533,7 +551,7 @@ class StartOp(Operation):
         # fmt: off
         return super().__new__(self, 0, 0,
                 U256(Tag.Start), U256(0), U256(0), U256(0), U256(0), # keys
-                FQ(0), FQ(0), FQ(0)) # values
+                FQ(0), FQ(0)) # values
         # fmt: on
 
 
@@ -551,7 +569,7 @@ class MemoryOp(Operation):
         # fmt: off
         return super().__new__(self, rw_counter, rw,
                 U256(Tag.Memory), U256(call_id), U256(mem_addr), U256(0), U256(0), # keys
-                FQ(value), FQ(0), FQ(0)) # values
+                FQ(value), FQ(0)) # values
         # fmt: on
 
 
@@ -564,7 +582,7 @@ class StackOp(Operation):
         # fmt: off
         return super().__new__(self, rw_counter, rw,
                 U256(Tag.Stack), U256(call_id), U256(stack_ptr), U256(0), U256(0), # keys
-                value, FQ(0), FQ(0)) # values
+                value, FQ(0)) # values
         # fmt: on
 
 
@@ -573,11 +591,20 @@ class StorageOp(Operation):
     Storage Operation
     """
 
-    def __new__(self, rw_counter: int, rw: RW, addr: U160, key: U256, value: FQ):
+    def __new__(
+        self,
+        rw_counter: int,
+        rw: RW,
+        tx_id: int,
+        addr: U160,
+        key: U256,
+        value: FQ,
+        committed_value: FQ,
+    ):
         # fmt: off
         return super().__new__(self, rw_counter, rw,
-                U256(Tag.Storage), U256(0), U256(addr), U256(0), U256(key), # keys
-                value, FQ(0), FQ(0)) # values
+                U256(Tag.Storage), U256(tx_id), U256(addr), U256(0), U256(key), # keys
+                value, committed_value) # values
         # fmt: on
 
 
@@ -592,7 +619,7 @@ class CallContextOp(Operation):
         # fmt: off
         return super().__new__(self, rw_counter, rw,
                 U256(Tag.CallContext), U256(call_id), U256(0), U256(field_tag), U256(0), # keys
-                value, FQ(0), FQ(0)) # values
+                value, FQ(0)) # values
         # fmt: on
 
 
@@ -601,11 +628,19 @@ class AccountOp(Operation):
     Account Operation
     """
 
-    def __new__(self, rw_counter: int, rw: RW, addr: U160, field_tag: AccountFieldTag, value: FQ):
+    def __new__(
+        self,
+        rw_counter: int,
+        rw: RW,
+        addr: U160,
+        field_tag: AccountFieldTag,
+        value: FQ,
+        committed_value: FQ,
+    ):
         # fmt: off
         return super().__new__(self, rw_counter, rw,
                 U256(Tag.Account), U256(0), U256(addr), U256(field_tag), U256(0), # keys
-                value, FQ(0), FQ(0)) # values
+                value, committed_value) # values
         # fmt: on
 
 
@@ -618,7 +653,7 @@ class TxRefundOp(Operation):
         # fmt: off
         return super().__new__(self, rw_counter, rw,
                 U256(Tag.TxRefund), U256(tx_id), U256(0), U256(0), U256(0), # keys
-                value, FQ(0), FQ(0)) # values
+                value, FQ(0)) # values
         # fmt: on
 
 
@@ -631,7 +666,7 @@ class TxAccessListAccountOp(Operation):
         # fmt: off
         return super().__new__(self, rw_counter, rw,
                 U256(Tag.TxAccessListAccount), U256(tx_id), U256(addr), U256(0), U256(0), # keys
-                value, FQ(0), FQ(0)) # values
+                value, FQ(0)) # values
         # fmt: on
 
 
@@ -645,7 +680,7 @@ class TxAccessListAccountStorageOp(Operation):
         return super().__new__(self, rw_counter, rw,
                 U256(Tag.TxAccessListAccountStorage),
                 U256(tx_id), U256(addr), U256(0), U256(key), # keys
-                value, FQ(0), FQ(0)) # values
+                value, FQ(0)) # values
         # fmt: on
 
 
@@ -658,7 +693,7 @@ class AccountDestructedOp(Operation):
         # fmt: off
         return super().__new__(self, rw_counter, rw,
                 U256(Tag.AccountDestructed), U256(0), U256(addr), U256(0), U256(0), # keys
-                value, FQ(0), FQ(0)) # values
+                value, FQ(0)) # values
         # fmt: on
 
 
@@ -680,7 +715,7 @@ class TxLogOp(Operation):
         # fmt: off
         return super().__new__(self, rw_counter, rw,
                 U256(Tag.TxLog),U256(tx_id), U256(log_id), U256(field_tag), U256(index), # keys
-                value, FQ(0), FQ(0)) # values
+                value, FQ(0)) # values
         # fmt: on
 
 
@@ -693,7 +728,7 @@ class TxReceiptOp(Operation):
         # fmt: off
         return super().__new__(self, rw_counter, rw,
                 U256(Tag.TxReceipt), U256(tx_id),  U256(0), U256(field_tag), U256(0), # keys
-                value, FQ(0), FQ(0)) # values
+                value, FQ(0)) # values
         # fmt: on
 
 
@@ -701,7 +736,7 @@ class Assigner:
     mpt_counter: FQ
 
     def __init__(self):
-        self.mpt_counter = FQ(1)
+        self.mpt_counter = FQ(0)
 
     def op2row(self, op: Operation, randomness: FQ) -> Row:
         rw_counter = FQ(op.rw_counter)
@@ -719,8 +754,6 @@ class Assigner:
         key4_bytes = tuple([FQ(x) for x in key4_rlc.le_bytes])
         value = FQ(op.value)
         aux0 = FQ(op.aux0)
-        aux1 = FQ(op.aux1)
-        mpt_counter = self.mpt_counter
 
         if key0 == FQ(Tag.Storage) or key0 == FQ(Tag.Account):
             self.mpt_counter += 1
@@ -729,8 +762,8 @@ class Assigner:
         return Row(rw_counter, is_write,
                 # keys
                 (key0, key1, key2, key3, key4), key2_limbs, key4_bytes, # type: ignore
-                value, (aux0, aux1), # values
-                mpt_counter)
+                value, (aux0,), # values
+                self.mpt_counter)
         # fmt: on
 
 
@@ -776,7 +809,7 @@ def mpt_table_from_ops(
 
     mpt_rows = []
     for (idx, row) in enumerate(rows):
-        value_prev = FQ(0)
+        value_prev = row.auxs[0]
         if idx > 0:
             row_prev = rows[idx - 1]
             if all_keys_eq(row, row_prev):

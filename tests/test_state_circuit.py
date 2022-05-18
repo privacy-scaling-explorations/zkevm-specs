@@ -7,6 +7,11 @@ from zkevm_specs.util import rand_fq, FQ, RLC
 randomness = rand_fq()
 r = randomness
 
+
+def rlc(v: int) -> FQ:
+    return RLC(v, r).expr()
+
+
 # Verify the state circuit with the given data
 def verify(
     ops_or_rows: Union[List[Operation], List[Row]],
@@ -43,21 +48,18 @@ def test_state_ok():
         MemoryOp(rw_counter=2, rw=RW.Write, call_id=1, mem_addr=0, value=42),
         MemoryOp(rw_counter=3, rw=RW.Read,  call_id=1, mem_addr=0, value=42),
 
-        StackOp(rw_counter=4, rw=RW.Write, call_id=1, stack_ptr=1022, value=RLC(4321 ,r).expr()),
-        StackOp(rw_counter=5, rw=RW.Write, call_id=1, stack_ptr=1023, value=RLC(533 ,r).expr()),
-        StackOp(rw_counter=6, rw=RW.Read,  call_id=1, stack_ptr=1023, value=RLC(533 ,r).expr()),
+        StackOp(rw_counter=4, rw=RW.Write, call_id=1, stack_ptr=1022, value=rlc(4321)),
+        StackOp(rw_counter=5, rw=RW.Write, call_id=1, stack_ptr=1023, value=rlc(533)),
+        StackOp(rw_counter=6, rw=RW.Read,  call_id=1, stack_ptr=1023, value=rlc(533)),
 
-        StorageOp(rw_counter=0, rw=RW.Write, addr=0x12345678, key=0x1516, value=RLC(789, r).expr()),
-        StorageOp(rw_counter=7, rw=RW.Read,  addr=0x12345678, key=0x1516, value=RLC(789, r).expr()),
-        StorageOp(rw_counter=0, rw=RW.Write, addr=0x12345678, key=0x4959, value=RLC(98765, r).expr()),
-        StorageOp(rw_counter=8, rw=RW.Write, addr=0x12345678, key=0x4959, value=RLC(38491, r).expr()),
+        StorageOp(rw_counter=7, rw=RW.Read,  tx_id=1, addr=0x12345678, key=0x1516, value=rlc(789), committed_value=rlc(789)),
+        StorageOp(rw_counter=8, rw=RW.Write, tx_id=1, addr=0x12345678, key=0x4959, value=rlc(38491), committed_value=rlc(98765)),
 
         CallContextOp(rw_counter= 9, rw=RW.Read, call_id=1, field_tag=CallContextFieldTag.IsStatic, value=FQ(0)),
         CallContextOp(rw_counter=10, rw=RW.Read, call_id=2, field_tag=CallContextFieldTag.IsStatic, value=FQ(0)),
 
-        AccountOp(rw_counter= 0, rw=RW.Write, addr=0x12345678, field_tag=AccountFieldTag.Nonce, value=FQ(0)),
-        AccountOp(rw_counter=12, rw=RW.Write, addr=0x12345678, field_tag=AccountFieldTag.Nonce, value=FQ(1)),
-        AccountOp(rw_counter=13, rw=RW.Read,  addr=0x12345678, field_tag=AccountFieldTag.Nonce, value=FQ(1)),
+        AccountOp(rw_counter=12, rw=RW.Write, addr=0x12345678, field_tag=AccountFieldTag.Nonce, value=FQ(1), committed_value=FQ(0)),
+        AccountOp(rw_counter=13, rw=RW.Read,  addr=0x12345678, field_tag=AccountFieldTag.Nonce, value=FQ(1), committed_value=FQ(0)),
 
         TxRefundOp(rw_counter=14, rw=RW.Write, tx_id=1, value=FQ(1)),
         TxRefundOp(rw_counter=15, rw=RW.Write, tx_id=1, value=FQ(1)),
@@ -101,6 +103,7 @@ def test_state_bad_key2():
     ]
     # fmt: on
     rows = assign_state_circuit(ops, r)
+    # key2 doesn't match its limbs
     rows[1] = rows[1]._replace(key2_limbs=(FQ(1),) * 10)
     tables = Tables(mpt_table_from_ops(ops, randomness))
     verify(rows, tables, randomness, success=False)
@@ -110,10 +113,11 @@ def test_state_bad_key4():
     # fmt: off
     ops = [
         StartOp(),
-        StorageOp(rw_counter=0, rw=RW.Write, addr=0x12345678, key=0x15161718, value=RLC(789, r).expr()),
+        StorageOp(rw_counter=1, rw=RW.Write, tx_id=1, addr=0x12345678, key=0x15161718, value=rlc(789), committed_value=rlc(789)),
     ]
     # fmt: on
     rows = assign_state_circuit(ops, r)
+    # key4 doesn't match its bytes
     rows[1] = rows[1]._replace(key4_bytes=(FQ(1),) * 10)
     tables = Tables(mpt_table_from_ops(ops, randomness))
     verify(rows, tables, randomness, success=False)
@@ -123,10 +127,11 @@ def test_state_bad_is_write():
     # fmt: off
     ops = [
         StartOp(),
-        StorageOp(rw_counter=0, rw=RW.Write, addr=0x12345678, key=0x15161718, value=RLC(789, r).expr()),
+        StorageOp(rw_counter=1, rw=RW.Write, tx_id=1, addr=0x12345678, key=0x15161718, value=rlc(789), committed_value=rlc(789)),
     ]
     # fmt: on
     rows = assign_state_circuit(ops, r)
+    # is_write not boolean
     rows[1] = rows[1]._replace(is_write=FQ(2))
     tables = Tables(mpt_table_from_ops(ops, randomness))
     verify(rows, tables, randomness, success=False)
@@ -136,8 +141,8 @@ def test_state_keys_non_lexicographic_order():
     # fmt: off
     ops = [
         StartOp(),
-        StorageOp(rw_counter=0, rw=RW.Write, addr=0x12345678, key=0x1112, value=RLC(98765, r).expr()),
-        StorageOp(rw_counter=0, rw=RW.Write, addr=0x12345678, key=0x1111, value=RLC(789, r).expr()),
+        StorageOp(rw_counter=1, rw=RW.Write, tx_id=1, addr=0x12345678, key=0x1112, value=rlc(98765), committed_value=rlc(98765)),
+        StorageOp(rw_counter=1, rw=RW.Write, tx_id=1, addr=0x12345678, key=0x1111, value=rlc(789), committed_value=rlc(98765)),
     ]
     # fmt: on
     tables = Tables(mpt_table_from_ops(ops, randomness))
@@ -146,8 +151,8 @@ def test_state_keys_non_lexicographic_order():
     # fmt: off
     ops = [
         StartOp(),
-        StorageOp(rw_counter=0, rw=RW.Write, addr=0x12345678, key=2 << 250, value=RLC(98765, r).expr()),
-        StorageOp(rw_counter=0, rw=RW.Write, addr=0x12345678, key=1 << 250, value=RLC(789, r).expr()),
+        StorageOp(rw_counter=1, rw=RW.Write, tx_id=1, addr=0x12345678, key=2 << 250, value=rlc(98765), committed_value=rlc(98765)),
+        StorageOp(rw_counter=1, rw=RW.Write, tx_id=1, addr=0x12345678, key=1 << 250, value=rlc(789), committed_value=rlc(98765)),
     ]
     # fmt: on
     tables = Tables(mpt_table_from_ops(ops, randomness))
@@ -156,8 +161,8 @@ def test_state_keys_non_lexicographic_order():
     # fmt: off
     ops = [
         StartOp(),
-        StorageOp(rw_counter=0, rw=RW.Write, addr=0x12345678, key=123, value=RLC(98765, r).expr()),
-        StorageOp(rw_counter=1, rw=RW.Write, addr=0x12345678, key=123, value=RLC(789, r).expr()),
+        StorageOp(rw_counter=1, rw=RW.Write, tx_id=1, addr=0x12345678, key=123, value=rlc(98765), committed_value=rlc(98765)),
+        StorageOp(rw_counter=1, rw=RW.Write, tx_id=1, addr=0x12345678, key=123, value=rlc(789), committed_value=rlc(98765)),
         MemoryOp(rw_counter=2, rw=RW.Read,  call_id=1, mem_addr=0, value=0),
     ]
     # fmt: on
@@ -177,6 +182,7 @@ def test_state_keys_non_lexicographic_order():
 
 def test_state_bad_rwc():
     # fmt: off
+    # rwc decreases
     ops = [
         StartOp(),
         MemoryOp(rw_counter=2, rw=RW.Read,  call_id=2, mem_addr=123, value=0),
@@ -189,6 +195,7 @@ def test_state_bad_rwc():
 
 def test_state_bad_read_consistency():
     # fmt: off
+    # Read a 0 after writing a 8
     ops = [
         StartOp(),
         MemoryOp(rw_counter=1, rw=RW.Read,  call_id=2, mem_addr=123, value=0),
@@ -208,6 +215,7 @@ def test_start_bad():
     ]
     # fmt: on
     rows = assign_state_circuit(ops, r)
+    # rw_counter is 1 on Tag.Start
     rows[0] = rows[0]._replace(rw_counter=FQ(1))
     tables = Tables(mpt_table_from_ops(ops, randomness))
     verify(rows, tables, randomness, success=False)
@@ -224,18 +232,21 @@ def test_first_memory_op_ok():
 
 
 def test_memory_bad_address():
+    # memory address too big
     ops = [StartOp(), first_memory_op(mem_addr=2**32)]
     tables = Tables(mpt_table_from_ops(ops, randomness))
     verify(ops, tables, randomness, success=False)
 
 
 def test_memory_bad_first_access():
+    # first access is a read but value != 0
     ops = [StartOp(), first_memory_op(rw=RW.Read)]
     tables = Tables(mpt_table_from_ops(ops, randomness))
     verify(ops, tables, randomness, success=False)
 
 
 def test_memory_bad_value_range():
+    # memory value too big
     ops = [StartOp(), first_memory_op(value=2**8)]
     tables = Tables(mpt_table_from_ops(ops, randomness))
     verify(ops, tables, randomness, success=False)
@@ -243,9 +254,10 @@ def test_memory_bad_value_range():
 
 def test_stack_bad_first_access():
     # fmt: off
+    # first stack operation is read
     ops = [
         StartOp(),
-        StackOp(rw_counter=1, rw=RW.Read, call_id=1, stack_ptr=1023, value=RLC(4321 ,r).expr()),
+        StackOp(rw_counter=1, rw=RW.Read, call_id=1, stack_ptr=1023, value=rlc(4321)),
     ]
     # fmt: on
     tables = Tables(mpt_table_from_ops(ops, randomness))
@@ -254,9 +266,10 @@ def test_stack_bad_first_access():
 
 def test_stack_bad_stack_ptr_range():
     # fmt: off
+    # stack pointer is too big
     ops = [
         StartOp(),
-        StackOp(rw_counter=1, rw=RW.Write, call_id=1, stack_ptr=1024, value=RLC(4321 ,r).expr()),
+        StackOp(rw_counter=1, rw=RW.Write, call_id=1, stack_ptr=1024, value=rlc(4321)),
     ]
     # fmt: on
     tables = Tables(mpt_table_from_ops(ops, randomness))
@@ -265,50 +278,11 @@ def test_stack_bad_stack_ptr_range():
 
 def test_stack_bad_stack_ptr_inc():
     # fmt: off
+    # stack pointer increases by 2
     ops = [
         StartOp(),
-        StackOp(rw_counter=1, rw=RW.Write, call_id=1, stack_ptr=1021, value=RLC(4321 ,r).expr()),
-        StackOp(rw_counter=2, rw=RW.Write, call_id=1, stack_ptr=1023, value=RLC(4321 ,r).expr()),
-    ]
-    # fmt: on
-    tables = Tables(mpt_table_from_ops(ops, randomness))
-    verify(ops, tables, randomness, success=False)
-
-
-def test_storage_bad_first_access():
-    # fmt: off
-    ops = [
-        StartOp(),
-        StorageOp(rw_counter=0, rw=RW.Read, addr=0x12345678, key=0x1516, value=RLC(789, r).expr()),
-    ]
-    # fmt: on
-    tables = Tables(mpt_table_from_ops(ops, randomness))
-    verify(ops, tables, randomness, success=False)
-
-    # fmt: off
-    ops = [
-        StartOp(),
-        StorageOp(rw_counter=1, rw=RW.Write, addr=0x12345678, key=0x1516, value=RLC(789, r).expr()),
-    ]
-    # fmt: on
-    tables = Tables(mpt_table_from_ops(ops, randomness))
-    verify(ops, tables, randomness, success=False)
-
-
-def test_account_bad_first_access():
-    # fmt: off
-    ops = [
-        StartOp(),
-        AccountOp(rw_counter= 0, rw=RW.Read, addr=0x12345678, field_tag=AccountFieldTag.Nonce, value=FQ(0)),
-    ]
-    # fmt: on
-    tables = Tables(mpt_table_from_ops(ops, randomness))
-    verify(ops, tables, randomness, success=False)
-
-    # fmt: off
-    ops = [
-        StartOp(),
-        AccountOp(rw_counter=1, rw=RW.Write, addr=0x12345678, field_tag=AccountFieldTag.Nonce, value=FQ(0)),
+        StackOp(rw_counter=1, rw=RW.Write, call_id=1, stack_ptr=1021, value=rlc(4321)),
+        StackOp(rw_counter=2, rw=RW.Write, call_id=1, stack_ptr=1023, value=rlc(4321)),
     ]
     # fmt: on
     tables = Tables(mpt_table_from_ops(ops, randomness))
@@ -424,3 +398,55 @@ def test_tx_receipt_bad():
     # fmt: on
     tables = Tables(mpt_table_from_ops(ops, randomness))
     verify(ops, tables, randomness, success=False)
+
+
+def test_rw_counter_zero_bad():
+    # fmt: off
+    # rw_counter is 0 but tag is not Start
+    ops = [
+        StartOp(),
+        MemoryOp(rw_counter=0, rw=RW.Read,  call_id=2, mem_addr=123, value=0),
+    ]
+    # fmt: on
+    tables = Tables(mpt_table_from_ops(ops, randomness))
+    verify(ops, tables, randomness, success=False)
+
+
+def test_storage_committed_value_bad():
+    # fmt: off
+    # Committed value changes but keys don't
+    ops = [
+        StartOp(),
+        StorageOp(rw_counter=1, rw=RW.Write, tx_id=1, addr=0x12345678, key=0x15161718, value=rlc(789), committed_value=rlc(789)),
+        StorageOp(rw_counter=2, rw=RW.Write, tx_id=1, addr=0x12345678, key=0x15161718, value=rlc(123), committed_value=rlc(123)),
+    ]
+    # fmt: on
+    tables = Tables(mpt_table_from_ops(ops, randomness))
+    verify(ops, tables, randomness, success=False)
+
+
+def test_mpt_counter_bad():
+    # fmt: off
+    ops = [
+        StartOp(),
+        StorageOp(rw_counter=1, rw=RW.Write, tx_id=1, addr=0x12345678, key=0x15161718, value=rlc(789), committed_value=rlc(789)),
+        StorageOp(rw_counter=2, rw=RW.Write, tx_id=1, addr=0x12345678, key=0x15161718, value=rlc(123), committed_value=rlc(789)),
+    ]
+    # fmt: on
+    rows = assign_state_circuit(ops, r)
+    # mpt_counter goes from 1 to 3
+    rows[2] = rows[2]._replace(mpt_counter=FQ(3))
+    tables = Tables(mpt_table_from_ops(ops, randomness))
+    verify(rows, tables, randomness, success=False)
+
+    # fmt: off
+    ops = [
+        StartOp(),
+        StackOp(rw_counter=1, rw=RW.Write, call_id=1, stack_ptr=1021, value=rlc(4321)),
+    ]
+    # fmt: on
+    rows = assign_state_circuit(ops, r)
+    # mpt_counter increases when tag is not Account or Storage
+    rows[1] = rows[1]._replace(mpt_counter=FQ(1))
+    tables = Tables(mpt_table_from_ops(ops, randomness))
+    verify(rows, tables, randomness, success=False)
