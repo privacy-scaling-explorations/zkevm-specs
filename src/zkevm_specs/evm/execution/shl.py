@@ -76,11 +76,13 @@ def check_witness(
         # `a64s[idx] == a64s_lo[idx] + a64s_hi[idx] * p_lo`
         instruction.constrain_equal(a64s[idx], a64s_lo[idx] + a64s_hi[idx] * p_lo)
 
-        # `a64s_lo[idx] < p_lo`
-        # TRICKY: `p_lo` could be equal to `1 << 64` (greater than 8 bytes) if `shf_mod64` is zero.
-        a64s_lo_lt_p_lo, _ = instruction.compare(a64s_lo[idx], p_lo, N_BYTES_U64 + 1)
-        assert p_lo.expr().n <= 256**8, f"p_lo is overflow: {p_lo}"
-        instruction.constrain_equal(a64s_lo_lt_p_lo, FQ(1))
+        # `a64s_hi[idx] < p_hi`
+        #
+        # TRICKY:
+        # Since `p_lo` could be equal to `1 << 64` that is greater than `N_BYTES_U64`(8 bytes) if
+        # `shf_mod64` is zero. Alternative to compare `a64s_hi[idx]` and `p_hi` here.
+        a64s_hi_lt_p_hi, _ = instruction.compare(a64s_hi[idx], p_hi, N_BYTES_U64)
+        instruction.constrain_equal(a64s_hi_lt_p_hi, FQ(1))
 
     # merge contraints
     shf_div64_eq0 = instruction.is_zero(shf_div64)
