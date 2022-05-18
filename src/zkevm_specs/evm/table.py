@@ -351,7 +351,6 @@ class RWTableRow(TableRow):
     value: Expression = field(default=FQ(0))
     value_prev: Expression = field(default=FQ(0))
     aux0: Expression = field(default=FQ(0))
-    aux1: Expression = field(default=FQ(0))
 
 
 @dataclass(frozen=True)
@@ -451,7 +450,6 @@ class Tables:
         value: Expression = None,
         value_prev: Expression = None,
         aux0: Expression = None,
-        aux1: Expression = None,
     ) -> RWTableRow:
         query = {
             "rw_counter": rw_counter,
@@ -464,7 +462,6 @@ class Tables:
             "value": value,
             "value_prev": value_prev,
             "aux0": aux0,
-            "aux1": aux1,
         }
         return lookup(RWTableRow, self.rw_table, query)
 
