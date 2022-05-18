@@ -18,6 +18,8 @@ from zkevm_specs.util import (
 )
 
 
+TESTING_MAX_RLC = (1 << 256) - 1
+
 TESTING_DATA = (
     (0xABCD << 240, 8),
     (0x1234 << 240, 7),
@@ -25,15 +27,15 @@ TESTING_DATA = (
     (0x4321 << 240, 0),
     (0xFFFF, 256),
     (0x12345, 256 + 8 + 1),
-    ((1 << 256) - 1, 63),
-    ((1 << 256) - 1, 128),
-    ((1 << 256) - 1, 129),
+    (TESTING_MAX_RLC, 63),
+    (TESTING_MAX_RLC, 128),
+    (TESTING_MAX_RLC, 129),
 )
 
 
 @pytest.mark.parametrize("value, shift", TESTING_DATA)
 def test_shl(value: U256, shift: int):
-    result = value << shift if shift <= 255 else 0
+    result = value << shift & TESTING_MAX_RLC if shift <= 255 else 0
 
     randomness = rand_fq()
     value = RLC(value, randomness)
