@@ -15,17 +15,19 @@ from .evm import (
     lookup,
 )
 
+MAX_RW_COUNTER = 2**32 - 1
 MAX_MEMORY_ADDRESS = 2**32 - 1
 MAX_KEY_DIFF = 2**32 - 1
 MAX_STACK_PTR = 1023
-MAX_KEY0 = 12  # Number of Tag variants
-MAX_KEY1 = 2**16 - 1  # Maximum number of calls in a block
-MAX_KEY2 = 2**160 - 1  # Ethereum Address size
-MAX_KEY3 = 24  # Max(# of CallContextFieldTag, # of AccountFieldTag) - 1
-KEY0_BITS = ceil(log(MAX_KEY0 + 1, 2))  # 4
-KEY1_BITS = ceil(log(MAX_KEY1 + 1, 2))  # 16
-KEY2_BITS = ceil(log(MAX_KEY2 + 1, 2))  # 160
-KEY3_BITS = ceil(log(MAX_KEY3 + 1, 2))  # 6
+MAX_TAG = 12  # Number of Tag variants
+MAX_ID = 2**28 - 1  # Maximum number of calls in a block
+MAX_ADDRESS = 2**160 - 1  # Ethereum Address size
+MAX_FIELD_TAG = 24  # Max(# of CallContextFieldTag, # of AccountFieldTag) - 1
+RW_COUNTER_BITS = ceil(log(MAX_RW_COUNTER + 1, 2))  # 32
+TAG_BITS = ceil(log(MAX_TAG + 1, 2))  # 4
+ID_BITS = ceil(log(MAX_ID + 1, 2))  # 28
+ADDRESS_BITS = ceil(log(MAX_ADDRESS + 1, 2))  # 160
+FIELD_TAG_BITS = ceil(log(MAX_FIELD_TAG + 1, 2))  # 5
 
 
 class Tag(IntEnum):
@@ -62,6 +64,12 @@ class Row(NamedTuple):
     # operation; the rest of they keys are used differently for each operation.
     # See the meaning of each key for each operation in ../../specs/tables.md
     # key2 is 160bit Address.  key4 is RLC encoded
+    # Key naming:
+    # - keys[0]: tag
+    # - keys[1]: id
+    # - keys[2]: address
+    # - keys[3]: field_tag
+    # - keys[4]: storage_key
     keys: Tuple[FQ, FQ, FQ, FQ, FQ]
     key2_limbs: Tuple[FQ, FQ, FQ, FQ, FQ, # key2 in Little-Endian (limbs in base 2**16)
                       FQ, FQ, FQ, FQ, FQ]
@@ -76,6 +84,24 @@ class Row(NamedTuple):
 
     def tag(self):
         return self.keys[0]
+
+    def id(self):
+        return self.keys[1]
+
+    def address(self):
+        return self.keys[2]
+
+    def address_limbs(self):
+        return self.key2_limbs
+
+    def field_tag(self):
+        return self.keys[3]
+
+    def storage_key(self):
+        return self.keys[4]
+
+    def storage_key_bytes(self):
+        return self.key4_bytes
 
 
 class Tables:
@@ -140,19 +166,19 @@ def all_keys_eq(row: Row, row_prev: Row) -> bool:
     return eq
 
 
-# Comparison gadget.  Returns:
-# - eq = (lhs == rhs)
-# - lt = (lhs < rhs)
-class ComparisonGadget:
-    eq: bool
-    lt: bool
+class LowerThanGadget:
+    lhs: List[FQ]  # Little-Endian list of left hand side limbs
+    rhs: List[FQ]  # Little-Endian list of right hand side limbs
 
-    def __init__(self, lhs: FQ, rhs: FQ):
-        self.eq = lhs.n == rhs.n
-        self.lt = lhs.n < rhs.n
+    def __init__(self, lhs: List[FQ], rhs: List[FQ]):
+        self.lhs = lhs
+        self.rhs = rhs
 
-    def __repr__(self):
-        return f"ComparisonGadget(eq: {self.eq}, lt: {self.lt})"
+    def verify(self):
+        lt = self.lhs[0].n < self.rhs[0].n
+        for i in range(1, len(self.lhs)):
+            lt = self.lhs[i].n < self.rhs[i].n or (self.lhs[i] == self.rhs[i] and lt)
+        assert lt
 
 
 @is_circuit_code
@@ -162,7 +188,7 @@ def assert_in_range(x: FQ, min_val: int, max_val: int) -> None:
 
 @is_circuit_code
 def check_start(row: Row, row_prev: Row):
-    # 0. rw_counter is 0
+    # 1.0. rw_counter is 0
     assert row.rw_counter == 0
 
     # 1. mpt_counter is 0
@@ -171,37 +197,37 @@ def check_start(row: Row, row_prev: Row):
 
 @is_circuit_code
 def check_memory(row: Row, row_prev: Row):
-    get_call_id = lambda row: row.keys[1]
-    get_memory_address = lambda row: row.keys[2]
+    get_call_id = lambda row: row.id()
+    get_memory_address = lambda row: row.address()
 
-    # 0. Unused keys are 0
-    assert row.keys[3] == 0
-    assert row.keys[4] == 0
+    # 2.0. Unused keys are 0
+    assert row.field_tag() == 0
+    assert row.storage_key() == 0
 
-    # 1. First access for a set of all keys
+    # 2.1. First access for a set of all keys
     #
     # When the set of all keys changes (first access of an address in a call)
     # - If READ, value must be 0
     if not all_keys_eq(row, row_prev) and row.is_write == 0:
         assert row.value == 0
 
-    # 2. mem_addr in range
+    # 2.2. mem_addr in range
     assert_in_range(get_memory_address(row), 0, MAX_MEMORY_ADDRESS)
 
-    # 3. value is a byte
+    # 2.3. value is a byte
     assert_in_range(row.value, 0, 2**8 - 1)
 
 
 @is_circuit_code
 def check_stack(row: Row, row_prev: Row):
-    get_call_id = lambda row: row.keys[1]
-    get_stack_ptr = lambda row: row.keys[2]
+    get_call_id = lambda row: row.id()
+    get_stack_ptr = lambda row: row.address()
 
-    # 0. Unused keys are 0
-    assert row.keys[3] == 0
-    assert row.keys[4] == 0
+    # 3.0. Unused keys are 0
+    assert row.field_tag() == 0
+    assert row.storage_key() == 0
 
-    # 1. First access for a set of all keys
+    # 3.1. First access for a set of all keys
     #
     # The first stack operation in a stack position is always a write (can't
     # read if it isn't written before)
@@ -211,11 +237,11 @@ def check_stack(row: Row, row_prev: Row):
     if not all_keys_eq(row, row_prev):
         assert row.is_write == 1
 
-    # 2. stack_ptr in range
+    # 3.2. stack_ptr in range
     stack_ptr = get_stack_ptr(row)
     assert_in_range(stack_ptr, 0, MAX_STACK_PTR)
 
-    # 3. stack_ptr only increases by 0 or 1
+    # 3.3. stack_ptr only increases by 0 or 1
     if row.tag() == row_prev.tag() and get_call_id(row) == get_call_id(row_prev):
         stack_ptr_diff = get_stack_ptr(row) - get_stack_ptr(row_prev)
         assert_in_range(stack_ptr_diff, 0, 1)
@@ -223,14 +249,14 @@ def check_stack(row: Row, row_prev: Row):
 
 @is_circuit_code
 def check_storage(row: Row, row_prev: Row, tables: Tables):
-    get_addr = lambda row: row.keys[2]
-    get_storage_key = lambda row: row.keys[4]
+    get_addr = lambda row: row.address()
+    get_storage_key = lambda row: row.storage_key()
     get_committed_value = lambda row: row.auxs[0]
 
-    # 0. Unused keys are 0
-    assert row.keys[3] == 0
+    # 4.0. Unused keys are 0
+    assert row.field_tag() == 0
 
-    # 1. When keys don't change, committed_value must be kept equal
+    # 4.1. When keys don't change, committed_value must be kept equal
     if all_keys_eq(row, row_prev):
         assert get_committed_value(row) == get_committed_value(row_prev)
 
@@ -238,7 +264,7 @@ def check_storage(row: Row, row_prev: Row, tables: Tables):
     # next optimization consists on doing a single lookup merging all updates
     # for a given key, using the first and last access values.
 
-    # 2. MPT storage lookup with incremental counter
+    # 4.2. MPT storage lookup with incremental counter
     #
     # When the keys are equal in the previous row, the value_prev must be the
     # value in previous row.  When the keys change, value_prev is loaded from
@@ -251,27 +277,27 @@ def check_storage(row: Row, row_prev: Row, tables: Tables):
 
 @is_circuit_code
 def check_call_context(row: Row, row_prev: Row):
-    get_call_id = lambda row: row.keys[1]
-    get_field_tag = lambda row: row.keys[3]
+    get_call_id = lambda row: row.id()
+    get_field_tag = lambda row: row.field_tag()
 
-    # 0. Unused keys are 0
-    assert row.keys[2] == 0
-    assert row.keys[4] == 0
+    # 5.0. Unused keys are 0
+    assert row.address() == 0
+    assert row.storage_key() == 0
 
     # TODO: Missing constraints
 
 
 @is_circuit_code
 def check_account(row: Row, row_prev: Row, tables: Tables):
-    get_addr = lambda row: row.keys[2]
-    get_field_tag = lambda row: row.keys[3]
+    get_addr = lambda row: row.address()
+    get_field_tag = lambda row: row.field_tag()
     get_committed_value = lambda row: row.auxs[0]
 
-    # 0. Unused keys are 0
-    assert row.keys[1] == 0
-    assert row.keys[4] == 0
+    # 6.0. Unused keys are 0
+    assert row.id() == 0
+    assert row.storage_key() == 0
 
-    # 1. When keys don't change, committed_value must be kept equal
+    # 6.1. When keys don't change, committed_value must be kept equal
     if all_keys_eq(row, row_prev):
         assert get_committed_value(row) == get_committed_value(row_prev)
 
@@ -279,7 +305,7 @@ def check_account(row: Row, row_prev: Row, tables: Tables):
     # next optimization consists on doing a single lookup merging all updates
     # for a given key, using the first and last access values.
 
-    # 2. MPT storage lookup with incremental counter
+    # 6.2. MPT storage lookup with incremental counter
     #
     # When the keys are equal in the previous row, the value_prev must be the
     # value in previous row.  When the keys change, value_prev is loaded from
@@ -295,12 +321,12 @@ def check_account(row: Row, row_prev: Row, tables: Tables):
 
 @is_circuit_code
 def check_tx_refund(row: Row, row_prev: Row):
-    get_tx_id = lambda row: row.keys[1]
+    get_tx_id = lambda row: row.id()
 
-    # 0. Unused keys are 0
-    assert row.keys[2] == 0
-    assert row.keys[3] == 0
-    assert row.keys[4] == 0
+    # 7.0. Unused keys are 0
+    assert row.address() == 0
+    assert row.field_tag() == 0
+    assert row.storage_key() == 0
 
     # TODO: Missing constraints
     # - When keys change, value must be 0
@@ -308,12 +334,12 @@ def check_tx_refund(row: Row, row_prev: Row):
 
 @is_circuit_code
 def check_tx_access_list_account(row: Row, row_prev: Row):
-    get_tx_id = lambda row: row.keys[1]
-    get_addr = lambda row: row.keys[2]
+    get_tx_id = lambda row: row.id()
+    get_addr = lambda row: row.address()
 
-    # 0. Unused keys are 0
-    assert row.keys[3] == 0
-    assert row.keys[4] == 0
+    # 9.0. Unused keys are 0
+    assert row.field_tag() == 0
+    assert row.storage_key() == 0
 
     # TODO: Missing constraints
     # - When keys change, value must be 0
@@ -321,12 +347,12 @@ def check_tx_access_list_account(row: Row, row_prev: Row):
 
 @is_circuit_code
 def check_tx_access_list_account_storage(row: Row, row_prev: Row):
-    get_tx_id = lambda row: row.keys[1]
-    get_addr = lambda row: row.keys[2]
-    get_storage_key = lambda row: row.keys[4]
+    get_tx_id = lambda row: row.id()
+    get_addr = lambda row: row.address()
+    get_storage_key = lambda row: row.storage_key()
 
-    # 0. Unused keys are 0
-    assert row.keys[3] == 0
+    # 8.0. Unused keys are 0
+    assert row.field_tag() == 0
 
     # TODO: Missing constraints
     # - When keys change, value must be 0
@@ -334,12 +360,12 @@ def check_tx_access_list_account_storage(row: Row, row_prev: Row):
 
 @is_circuit_code
 def check_account_destructed(row: Row, row_prev: Row):
-    get_addr = lambda row: row.keys[2]
+    get_addr = lambda row: row.address()
 
-    # 0. Unused keys are 0
-    assert row.keys[1] == 0
-    assert row.keys[3] == 0
-    assert row.keys[4] == 0
+    # 10.0. Unused keys are 0
+    assert row.id() == 0
+    assert row.field_tag() == 0
+    assert row.storage_key() == 0
 
     # TODO: Missing constraints
     # - When keys change, value must be 0
@@ -348,17 +374,17 @@ def check_account_destructed(row: Row, row_prev: Row):
 @is_circuit_code
 def check_tx_log(row: Row, row_prev: Row):
     # tx_id | log_id | field_tag | index | value
-    tx_id = row.keys[1]
-    pre_tx_id = row_prev.keys[1]
-    log_id = row.keys[2]
-    pre_field_tag = row_prev.keys[3]
-    field_tag = row.keys[3]
-    index = row.keys[4]
-    pre_index = row_prev.keys[4]
+    tx_id = row.id()
+    pre_tx_id = row_prev.id()
+    log_id = row.address()
+    pre_field_tag = row_prev.field_tag()
+    field_tag = row.field_tag()
+    index = row.storage_key()
+    pre_index = row_prev.storage_key()
 
-    # is_write is always true
+    # 12.0 is_write is always true
     assert row.is_write == 1
-    # reset log_id when tx_id increases
+    # 12.1 reset log_id when tx_id increases
     if row.tag() == row_prev.tag():
         if tx_id != pre_tx_id:
             assert tx_id == pre_tx_id + 1
@@ -383,24 +409,24 @@ def check_tx_log(row: Row, row_prev: Row):
 
 @is_circuit_code
 def check_tx_receipt(row: Row, row_prev: Row):
-    tx_id = row.keys[1]
-    pre_tx_id = row_prev.keys[1]
-    field_tag = row.keys[3]
-    # 0. Unused keys are 0
-    assert row.keys[2] == 0
-    assert row.keys[4] == 0
+    tx_id = row.id()
+    pre_tx_id = row_prev.id()
+    field_tag = row.field_tag()
+    # 11.0. Unused keys are 0
+    assert row.address() == 0
+    assert row.storage_key() == 0
 
-    # value for tag `PostStateOrStatus` is bool (0 or 1) according to EIP#658
+    # 11.1 value for tag `PostStateOrStatus` is bool (0 or 1) according to EIP#658
     if field_tag == U256(TxReceiptFieldTag.PostStateOrStatus):
         assert row.value in [0, 1]
 
-    # when tx id changes, must be increasing by one , the CumulativeGasUsed must be increasing as well
+    # 11.2 when tx id changes, must be increasing by one , the CumulativeGasUsed must be increasing as well
     if tx_id != pre_tx_id and row.tag() == row_prev.tag():
         assert tx_id == pre_tx_id + 1
         if field_tag == U256(TxReceiptFieldTag.CumulativeGasUsed):
             assert row.value.n > row_prev.value.n
 
-    # tx id starts with 1
+    # 11.3 tx id starts with 1
     if row.tag() != row_prev.tag():
         # first row the tx id is 1
         assert tx_id == FQ(1)
@@ -414,25 +440,27 @@ def check_state_row(row: Row, row_prev: Row, tables: Tables, randomness: FQ):
     # Constraints that affect all rows, no matter which Tag they use
     #
 
-    # 0. key0, key1, key3 are in the expected range
-    assert_in_range(row.keys[0], 1, MAX_KEY0)
-    assert_in_range(row.keys[1], 0, MAX_KEY1)
-    assert_in_range(row.keys[3], 0, MAX_KEY3)
+    # 0.0. tag, id, field_tag are in the expected range
+    assert_in_range(row.tag(), 1, MAX_TAG)
+    assert_in_range(row.id(), 0, MAX_ID)
+    # NOTE: In the implementation, the range check of field_tag is applied per
+    # target.
+    assert_in_range(row.field_tag(), 0, MAX_FIELD_TAG)
 
-    # 1. key2 is linear combination of 10 x 16bit limbs and also in range
-    for limb in row.key2_limbs:
+    # 0.1. address is linear combination of 10 x 16bit limbs and also in range
+    for limb in row.address_limbs():
         assert_in_range(limb, 0, 2**16 - 1)
-    assert row.keys[2] == linear_combine(row.key2_limbs, FQ(2**16))
+    assert row.address() == linear_combine(row.address_limbs(), FQ(2**16))
 
-    # 2. key4 is RLC encoded
-    for limb in row.key4_bytes:
+    # 0.2. address is RLC encoded
+    for limb in row.storage_key_bytes():
         assert_in_range(limb, 0, 2**8 - 1)
-    assert row.keys[4] == linear_combine(row.key4_bytes, randomness)
+    assert row.storage_key() == linear_combine(row.storage_key_bytes(), randomness)
 
-    # 3. is_write is boolean
+    # 0.3. is_write is boolean
     assert row.is_write in [0, 1]
 
-    # 4. Keys are sorted in lexicographic order for same Tag
+    # 0.4. Keys and RWC are sorted in lexicographic order for same Tag
     #
     # This check also ensures that Tag monotonically increases for all values
     # except for Start
@@ -440,39 +468,49 @@ def check_state_row(row: Row, row_prev: Row, tables: Tables, randomness: FQ):
     # When in two consecutive rows the keys are equal in a column:
     # - The corresponding keys in the following column must be increasing.
     #
-    # key4 is RLC encoded, so it doesn't keep the order.  We use the key4 bytes
-    # decomposition instead.  Since we will use a chain of comparison gadgets,
-    # we try to merge multiple keys together to reduce the number of required
-    # gadgets.
+    # address is RLC encoded, so it doesn't keep the order.  We use the address
+    # bytes decomposition instead.  Since we will use a chain of comparison
+    # gadgets, we try to merge multiple keys together to reduce the number of
+    # required gadgets.
 
-    # Assert that key0, key1, key2, key3, 4 bytes from key4 fit inside an element
-    assert KEY0_BITS + KEY1_BITS + KEY2_BITS + KEY3_BITS + 4 * 8 < log(FQ(-1).n + 1, 2)
+    # NOTE: the current implementation uses the following order: tag,
+    # field_tag, id, address, storage_key, rw_counter.  Some constraints of
+    # this spec require field_tag to come after id and address, so we keep the
+    # spec different from the implementation, and plan to update the
+    # implementation to follow the spec in the future.
 
-    def get_keys_compressed_in_order(row: Row) -> List[FQ]:
-        k0 = row.keys[0]
-        k0 = k0 * 2**KEY1_BITS + row.keys[1]
-        k0 = k0 * 2**KEY2_BITS + row.keys[2]
-        k0 = k0 * 2**KEY3_BITS + row.keys[3]
-        k0 = k0 * 2 ** (4 * 8) + linear_combine(row.key4_bytes[-4:], FQ(2**8))
-        k1 = linear_combine(row.key4_bytes[:-4], FQ(2**8))
-        return [k0, k1]
+    assert TAG_BITS + ID_BITS == 2 * 16
 
-    keys = get_keys_compressed_in_order(row)
-    keys_prev = get_keys_compressed_in_order(row_prev)
-    keys_eq = True
-    cmps = [ComparisonGadget(keys_prev[i], keys[i]) for i in range(len(keys))]
+    # Return a list of 16 bit limbs with all the keys and rw_counter used for
+    # the lexicographic ordering.  The field ordering is (from most significant
+    # to less significant):
+    # - tag
+    # - id
+    # - address
+    # - field_tag
+    # - storage_key
+    # - rw_counter
+    def keys_rwc_to_limbs_in_order(row: Row) -> List[FQ]:
+        v = row.tag().n
+        v = v * 2**ID_BITS + row.id().n  # 2 limbs
+        v = v * 2**ADDRESS_BITS + row.address().n  # + 10 limbs = 12 limbs
+        v = v * 2**16 + row.field_tag().n  # + 1 limb = 13 limbs
+        v = v * (2**32) + int.from_bytes(
+            map(lambda b: b.n, row.storage_key_bytes()), "little"
+        )  # + 16 limbs = 29 limbs
+        v = v * 2**RW_COUNTER_BITS + row.rw_counter.n  # + 2 limbs = 31 limbs
+        limbs = []
+        for i in range(31):
+            limbs.append(FQ(v & 0xFFFF))
+            v = v >> 16
+        return limbs
+
+    limbs_prev = keys_rwc_to_limbs_in_order(row_prev)
+    limbs = keys_rwc_to_limbs_in_order(row)
     if row.tag() != Tag.Start:
-        assert cmps[0].lt or (cmps[0].eq and cmps[1].lt) or (cmps[0].eq and cmps[1].eq)
+        LowerThanGadget(limbs_prev, limbs).verify()
 
-    # 5. RWC is monotonically strictly increasing for a set of all keys
-    #
-    # When tag is not Start and all the keys are equal in two consecutive a rows:
-    # - The corresponding rwc must be strictly increasing.
-    if row.tag() != Tag.Start and all_keys_eq(row, row_prev):
-        rw_diff = row.rw_counter - row_prev.rw_counter
-        assert_in_range(rw_diff, 1, MAX_KEY_DIFF)
-
-    # 6. Read consistency
+    # 0.5. Read consistency
     #
     # When a row is READ
     # AND When all the keys are equal in two consecutive a rows:
@@ -533,11 +571,11 @@ class Operation(NamedTuple):
 
     rw_counter: int
     rw: RW
-    key0: U256
-    key1: U256
-    key2: U256
-    key3: U256
-    key4: U256
+    tag: U256
+    id: U256
+    address: U256
+    field_tag: U256
+    storage_key: U256
     value: FQ
     aux0: FQ
 
@@ -741,27 +779,27 @@ class Assigner:
     def op2row(self, op: Operation, randomness: FQ) -> Row:
         rw_counter = FQ(op.rw_counter)
         is_write = FQ(0) if op.rw == RW.Read else FQ(1)
-        key0 = FQ(op.key0)
-        key1 = FQ(op.key1)
-        key2 = FQ(op.key2)
-        key2_bytes = op.key2.to_bytes(20, "little")
-        key2_limbs = tuple(
-            [FQ(key2_bytes[i] + 2**8 * key2_bytes[i + 1]) for i in range(0, 20, 2)]
+        tag = FQ(op.tag)
+        id = FQ(op.id)
+        address = FQ(op.address)
+        address_bytes = op.address.to_bytes(20, "little")
+        address_limbs = tuple(
+            [FQ(address_bytes[i] + 2**8 * address_bytes[i + 1]) for i in range(0, 20, 2)]
         )
-        key3 = FQ(op.key3)
-        key4_rlc = RLC(op.key4, randomness)
-        key4 = key4_rlc.expr()
-        key4_bytes = tuple([FQ(x) for x in key4_rlc.le_bytes])
+        field_tag = FQ(op.field_tag)
+        storage_key_rlc = RLC(op.storage_key, randomness)
+        storage_key = storage_key_rlc.expr()
+        storage_key_bytes = tuple([FQ(x) for x in storage_key_rlc.le_bytes])
         value = FQ(op.value)
         aux0 = FQ(op.aux0)
 
-        if key0 == FQ(Tag.Storage) or key0 == FQ(Tag.Account):
+        if tag == FQ(Tag.Storage) or tag == FQ(Tag.Account):
             self.mpt_counter += 1
 
         # fmt: off
         return Row(rw_counter, is_write,
                 # keys
-                (key0, key1, key2, key3, key4), key2_limbs, key4_bytes, # type: ignore
+                (tag, id, address, field_tag, storage_key), address_limbs, storage_key_bytes, # type: ignore
                 value, (aux0,), # values
                 self.mpt_counter)
         # fmt: on
