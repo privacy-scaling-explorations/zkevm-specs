@@ -817,3 +817,6 @@ class Instruction:
         gas_cost = word_size * GAS_COST_COPY + memory_expansion_gas_cost
         self.range_check(gas_cost, N_BYTES_GAS)
         return gas_cost
+
+    def pow2_lookup(self, value: Expression, value_pow: Expression):
+        self.fixed_lookup(FixedTableTag.Pow2, value, value_pow)
