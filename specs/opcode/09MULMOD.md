@@ -12,6 +12,8 @@ If `N` is 0:
 else:
 	compute `r= (a * b) mod N` and push `r` into the stack.
 
+*Note*
+All intermediate calculations of this operation are not subject to the 2^256 modulo.
 
 ### Circuit behavior
 
