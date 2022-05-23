@@ -57,63 +57,63 @@ Type sizes:
 - **TxReceipt -> CumulativeGasUsed**, 8 byte
 
 
-| 0 *rwc*  | 1 *isWrite* | 2 *Key0 (Tag)*             | 3 *Key1* | 4 *Key2* | 5 *Key3*                   | 6 *Key4*    | 7 *Value0* | 8 *Value1* | 9 *Aux0* | 10 *Aux1*       |
-| -------- | ----------- | -------------------------- | -------- | -------- | -------------------------- | ----------- | ---------  | ---------- | -------- | --------------- |
-|          |             | *RwTableTag*               |          |          |                            |             |            |            |          |                 |
-| $counter | true        | TxAccessListAccount        | $txID    | $address |                            |             | $value     | $valuePrev | 0        | 0               |
-| $counter | true        | TxAccessListAccountStorage | $txID    | $address |                            | $storageKey | $value     | $valuePrev |          | 0               |
-| $counter | $isWrite    | TxRefund                   | $txID    |          |                            |             | $value     | $valuePrev | 0        | 0               |
-|          |             |                            |          |          |                            |             |            |            |          |                 |
-|          |             |                            |          |          | *AccountFieldTag*          |             |            |            |          |                 |
-| $counter | $isWrite    | Account                    |          | $address | Nonce                      |             | $value     | $valuePrev | 0        | 0               |
-| $counter | $isWrite    | Account                    |          | $address | Balance                    |             | $value     | $valuePrev | 0        | 0               |
-| $counter | $isWrite    | Account                    |          | $address | CodeHash                   |             | $value     | $valuePrev | 0        | 0               |
-| $counter | true        | AccountDestructed          |          | $address |                            |             | $value     | $valuePrev | 0        | 0               |
-|          |             |                            |          |          |                            |             |            |            |          |                 |
-|          |             | *CallContext constant*     |          |          | *CallContextFieldTag* (ro) |             |            |            |          |                 |
-| $counter | false       | CallContext                | $callID  |          | RwCounterEndOfReversion    |             | $value     | 0          | 0        | 0               |
-| $counter | false       | CallContext                | $callID  |          | CallerId                   |             | $value     | 0          | 0        | 0               |
-| $counter | false       | CallContext                | $callID  |          | TxId                       |             | $value     | 0          | 0        | 0               |
-| $counter | false       | CallContext                | $callID  |          | Depth                      |             | $value     | 0          | 0        | 0               |
-| $counter | false       | CallContext                | $callID  |          | CallerAddress              |             | $value     | 0          | 0        | 0               |
-| $counter | false       | CallContext                | $callID  |          | CalleeAddress              |             | $value     | 0          | 0        | 0               |
-| $counter | false       | CallContext                | $callID  |          | CallDataOffset             |             | $value     | 0          | 0        | 0               |
-| $counter | false       | CallContext                | $callID  |          | CallDataLength             |             | $value     | 0          | 0        | 0               |
-| $counter | false       | CallContext                | $callID  |          | ReturnDataOffset           |             | $value     | 0          | 0        | 0               |
-| $counter | false       | CallContext                | $callID  |          | ReturnDataLength           |             | $value     | 0          | 0        | 0               |
-| $counter | false       | CallContext                | $callID  |          | Value                      |             | $value     | 0          | 0        | 0               |
-| $counter | false       | CallContext                | $callID  |          | IsSuccess                  |             | $value     | 0          | 0        | 0               |
-| $counter | false       | CallContext                | $callID  |          | IsPersistent               |             | $value     | 0          | 0        | 0               |
-| $counter | false       | CallContext                | $callID  |          | IsStatic                   |             | $value     | 0          | 0        | 0               |
-|          |             |                            |          |          |                            |             |            |            |          |                 |
-|          |             | *CallContext last callee*  |          |          | *CallContextFieldTag* (rw) |             |            |            |          |                 |
-| $counter | $isWrite    | CallContext                | $callID  |          | LastCalleeId               |             | $value     | 0          | 0        | 0               |
-| $counter | $isWrite    | CallContext                | $callID  |          | LastCalleeReturnDataOffset |             | $value     | 0          | 0        | 0               |
-| $counter | $isWrite    | CallContext                | $callID  |          | LastCalleeReturnDataLength |             | $value     | 0          | 0        | 0               |
-|          |             |                            |          |          |                            |             |            |            |          |                 |
-|          |             | *CallContext state*        |          |          | *CallContextFieldTag* (rw) |             |            |            |          |                 |
-| $counter | $isWrite    | CallContext                | $callID  |          | IsRoot                     |             | $value     | 0          | 0        | 0               |
-| $counter | $isWrite    | CallContext                | $callID  |          | IsCreate                   |             | $value     | 0          | 0        | 0               |
-| $counter | $isWrite    | CallContext                | $callID  |          | CodeSource                 |             | $value     | 0          | 0        | 0               |
-| $counter | $isWrite    | CallContext                | $callID  |          | ProgramCounter             |             | $value     | 0          | 0        | 0               |
-| $counter | $isWrite    | CallContext                | $callID  |          | StackPointer               |             | $value     | 0          | 0        | 0               |
-| $counter | $isWrite    | CallContext                | $callID  |          | GasLeft                    |             | $value     | 0          | 0        | 0               |
-| $counter | $isWrite    | CallContext                | $callID  |          | MemorySize                 |             | $value     | 0          | 0        | 0               |
-| $counter | $isWrite    | CallContext                | $callID  |          | ReversibleWriteCounter     |             | $value     | 0          | 0        | 0               |
-|          |             |                            |          |          |                            |             |            |            |          |                 |
-| $counter | $isWrite    | Stack                      | $callID  | $stackPointer  |                      |             | $value     | 0          | 0        | 0               |
-| $counter | $isWrite    | Memory                     | $callID  | $memoryAddress |                      |             | $value     | 0          | 0        | 0               |
-| $counter | $isWrite    | AccountStorage             |          | $address       |                      | $storageKey | $value     | $valuePrev | $txID    | $CommittedValue |
-|          |             |                            |          |             |                         |             |            |            |          |                 |
-| $counter | true        | TxLog                     |$txID      | $logID    |  Address                 |       0     | $value     | 0          | 0        | 0               |
-| $counter | true        | TxLog                     |$txID      | $logID    |  Topic                   | $topicIndex | $value     | 0          | 0        | 0               |
-| $counter | true        | TxLog                     |$txID      | $logID    |  Data                    | $byteIndex  | $value     | 0          | 0        | 0               |
-| $counter | true        | TxLog                     |$txID      | $logID    |  TopicLength            |       0     | $value     | 0          | 0        | 0               |
-| $counter | true        | TxLog                     |$txID      | $logID    |  DataLength             |       0     | $value     | 0          | 0        | 0               |
-|          |             |                            |          |           |                         |             |            |            |          |                 |
-| $counter | false       | TxReceipt                 |$txID      |   0       |  PostStateOrStatus      |       0     | $value     | 0          | 0        | 0               |
-| $counter | false       | TxReceipt                 |$txID      |   0       |  CumulativeGasUsed      |       0     | $value     | 0          | 0        | 0               |
-| $counter | false       | TxReceipt                 |$txID      |   0       |  LogLength              |       0     | $value     | 0          | 0        | 0               |
+| 0 *rwc*  | 1 *isWrite* | 2 *Key0 (Tag)*             | 3 *Key1* | 4 *Key2*       | 5 *Key3*                   | 6 *Key4*    | 7 *Value0* | 8 *Value1* | 9 *Aux0*        |
+| -------- | ----------- | -------------------------- | -------- | --------       | -------------------------- | ----------- | ---------  | ---------- | --------------- |
+|          |             | *RwTableTag*               |          |                |                            |             |            |            |                 |
+| $counter | true        | TxAccessListAccount        | $txID    | $address       |                            |             | $value     | $valuePrev | 0               |
+| $counter | true        | TxAccessListAccountStorage | $txID    | $address       |                            | $storageKey | $value     | $valuePrev | 0               |
+| $counter | $isWrite    | TxRefund                   | $txID    |                |                            |             | $value     | $valuePrev | 0               |
+|          |             |                            |          |                |                            |             |            |            |                 |
+|          |             |                            |          |                | *AccountFieldTag*          |             |            |            |                 |
+| $counter | $isWrite    | Account                    |          | $address       | Nonce                      |             | $value     | $valuePrev | $committedValue |
+| $counter | $isWrite    | Account                    |          | $address       | Balance                    |             | $value     | $valuePrev | $committedValue |
+| $counter | $isWrite    | Account                    |          | $address       | CodeHash                   |             | $value     | $valuePrev | $committedValue |
+| $counter | true        | AccountDestructed          |          | $address       |                            |             | $value     | $valuePrev | 0               |
+|          |             |                            |          |                |                            |             |            |            |                 |
+|          |             | *CallContext constant*     |          |                | *CallContextFieldTag* (ro) |             |            |            |                 |
+| $counter | false       | CallContext                | $callID  |                | RwCounterEndOfReversion    |             | $value     | 0          | 0               |
+| $counter | false       | CallContext                | $callID  |                | CallerId                   |             | $value     | 0          | 0               |
+| $counter | false       | CallContext                | $callID  |                | TxId                       |             | $value     | 0          | 0               |
+| $counter | false       | CallContext                | $callID  |                | Depth                      |             | $value     | 0          | 0               |
+| $counter | false       | CallContext                | $callID  |                | CallerAddress              |             | $value     | 0          | 0               |
+| $counter | false       | CallContext                | $callID  |                | CalleeAddress              |             | $value     | 0          | 0               |
+| $counter | false       | CallContext                | $callID  |                | CallDataOffset             |             | $value     | 0          | 0               |
+| $counter | false       | CallContext                | $callID  |                | CallDataLength             |             | $value     | 0          | 0               |
+| $counter | false       | CallContext                | $callID  |                | ReturnDataOffset           |             | $value     | 0          | 0               |
+| $counter | false       | CallContext                | $callID  |                | ReturnDataLength           |             | $value     | 0          | 0               |
+| $counter | false       | CallContext                | $callID  |                | Value                      |             | $value     | 0          | 0               |
+| $counter | false       | CallContext                | $callID  |                | IsSuccess                  |             | $value     | 0          | 0               |
+| $counter | false       | CallContext                | $callID  |                | IsPersistent               |             | $value     | 0          | 0               |
+| $counter | false       | CallContext                | $callID  |                | IsStatic                   |             | $value     | 0          | 0               |
+|          |             |                            |          |                |                            |             |            |            |                 |
+|          |             | *CallContext last callee*  |          |                | *CallContextFieldTag* (rw) |             |            |            |                 |
+| $counter | $isWrite    | CallContext                | $callID  |                | LastCalleeId               |             | $value     | 0          | 0               |
+| $counter | $isWrite    | CallContext                | $callID  |                | LastCalleeReturnDataOffset |             | $value     | 0          | 0               |
+| $counter | $isWrite    | CallContext                | $callID  |                | LastCalleeReturnDataLength |             | $value     | 0          | 0               |
+|          |             |                            |          |                |                            |             |            |            |                 |
+|          |             | *CallContext state*        |          |                | *CallContextFieldTag* (rw) |             |            |            |                 |
+| $counter | $isWrite    | CallContext                | $callID  |                | IsRoot                     |             | $value     | 0          | 0               |
+| $counter | $isWrite    | CallContext                | $callID  |                | IsCreate                   |             | $value     | 0          | 0               |
+| $counter | $isWrite    | CallContext                | $callID  |                | CodeSource                 |             | $value     | 0          | 0               |
+| $counter | $isWrite    | CallContext                | $callID  |                | ProgramCounter             |             | $value     | 0          | 0               |
+| $counter | $isWrite    | CallContext                | $callID  |                | StackPointer               |             | $value     | 0          | 0               |
+| $counter | $isWrite    | CallContext                | $callID  |                | GasLeft                    |             | $value     | 0          | 0               |
+| $counter | $isWrite    | CallContext                | $callID  |                | MemorySize                 |             | $value     | 0          | 0               |
+| $counter | $isWrite    | CallContext                | $callID  |                | ReversibleWriteCounter     |             | $value     | 0          | 0               |
+|          |             |                            |          |                |                            |             |            |            |                 |
+| $counter | $isWrite    | Stack                      | $callID  | $stackPointer  |                            |             | $value     | 0          | 0               |
+| $counter | $isWrite    | Memory                     | $callID  | $memoryAddress |                            |             | $value     | 0          | 0               |
+| $counter | $isWrite    | AccountStorage             | $txID    | $address       |                            | $storageKey | $value     | $valuePrev | $committedValue |
+|          |             |                            |          |                |                            |             |            |            |                 |
+| $counter | true        | TxLog                      | $txID    | $logID         | Address                    | 0           | $value     | 0          | 0               |
+| $counter | true        | TxLog                      | $txID    | $logID         | Topic                      | $topicIndex | $value     | 0          | 0               |
+| $counter | true        | TxLog                      | $txID    | $logID         | Data                       | $byteIndex  | $value     | 0          | 0               |
+| $counter | true        | TxLog                      | $txID    | $logID         | TopicLength                | 0           | $value     | 0          | 0               |
+| $counter | true        | TxLog                      | $txID    | $logID         | DataLength                 | 0           | $value     | 0          | 0               |
+|          |             |                            |          |                |                            |             |            |            |                 |
+| $counter | false       | TxReceipt                  | $txID    | 0              | PostStateOrStatus          | 0           | $value     | 0          | 0               |
+| $counter | false       | TxReceipt                  | $txID    | 0              | CumulativeGasUsed          | 0           | $value     | 0          | 0               |
+| $counter | false       | TxReceipt                  | $txID    | 0              | LogLength                  | 0           | $value     | 0          | 0               |
 
 ## `bytecode_table`
 

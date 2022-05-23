@@ -522,7 +522,6 @@ class Instruction:
         value: Expression = None,
         value_prev: Expression = None,
         aux0: Expression = None,
-        aux1: Expression = None,
         rw_counter: Expression = None,
     ) -> RWTableRow:
         if rw_counter is None:
@@ -540,7 +539,6 @@ class Instruction:
             value,
             value_prev,
             aux0,
-            aux1,
         )
 
     def state_write(
@@ -553,12 +551,11 @@ class Instruction:
         value: Expression = None,
         value_prev: Expression = None,
         aux0: Expression = None,
-        aux1: Expression = None,
         reversion_info: ReversionInfo = None,
     ) -> RWTableRow:
         assert tag.write_with_reversion()
 
-        row = self.rw_lookup(RW.Write, tag, key1, key2, key3, key4, value, value_prev, aux0, aux1)
+        row = self.rw_lookup(RW.Write, tag, key1, key2, key3, key4, value, value_prev, aux0)
 
         if reversion_info is not None and reversion_info.is_persistent == FQ(0):
             self.tables.rw_lookup(
@@ -573,7 +570,6 @@ class Instruction:
                 value=row.value_prev,
                 value_prev=row.value,
                 aux0=row.aux0,
-                aux1=row.aux1,
             )
 
         return row
@@ -645,7 +641,7 @@ class Instruction:
     def account_read(self, account_address: Expression, account_field_tag: AccountFieldTag) -> RLC:
         return cast_expr(
             self.rw_lookup(
-                RW.Read, RWTableTag.Account, account_address, FQ(account_field_tag)
+                RW.Read, RWTableTag.Account, key2=account_address, key3=FQ(account_field_tag)
             ).value,
             RLC,
         )
@@ -658,8 +654,8 @@ class Instruction:
     ) -> Tuple[Expression, Expression]:
         row = self.state_write(
             RWTableTag.Account,
-            account_address,
-            FQ(account_field_tag),
+            key2=account_address,
+            key3=FQ(account_field_tag),
             reversion_info=reversion_info,
         )
         return row.value, row.value_prev
@@ -700,9 +696,10 @@ class Instruction:
         row = self.rw_lookup(
             RW.Read,
             RWTableTag.AccountStorage,
+            tx_id,
             account_address,
-            storage_key,
-            aux0=tx_id,
+            key3=None,
+            key4=storage_key,
         )
         return cast_expr(row.value, RLC)
 
@@ -715,12 +712,13 @@ class Instruction:
     ) -> Tuple[RLC, RLC, RLC]:
         row = self.state_write(
             RWTableTag.AccountStorage,
+            tx_id,
             account_address,
-            storage_key,
-            aux0=tx_id,
+            key3=None,
+            key4=storage_key,
             reversion_info=reversion_info,
         )
-        return cast_expr(row.value, RLC), cast_expr(row.value_prev, RLC), cast_expr(row.aux1, RLC)
+        return cast_expr(row.value, RLC), cast_expr(row.value_prev, RLC), cast_expr(row.aux0, RLC)
 
     def add_account_to_access_list(
         self, tx_id: Expression, account_address: Expression, reversion_info: ReversionInfo = None
