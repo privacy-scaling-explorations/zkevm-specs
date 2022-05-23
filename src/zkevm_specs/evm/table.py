@@ -190,9 +190,9 @@ class RWTableTag(IntEnum):
 
 
 class AccountFieldTag(IntEnum):
-    Nonce = 1
-    Balance = 2
-    CodeHash = 4
+    Nonce = auto()
+    Balance = auto()
+    CodeHash = auto()
 
 
 class CallContextFieldTag(IntEnum):
