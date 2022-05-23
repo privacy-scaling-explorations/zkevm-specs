@@ -113,7 +113,7 @@ def test_end_tx(
                 call_id=1,
                 is_root=True,
                 is_create=False,
-                code_source=RLC(EMPTY_CODE_HASH, randomness),
+                code_hash=RLC(EMPTY_CODE_HASH, randomness),
                 program_counter=0,
                 stack_pointer=1024,
                 gas_left=gas_left,

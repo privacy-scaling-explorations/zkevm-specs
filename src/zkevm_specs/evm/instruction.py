@@ -164,7 +164,7 @@ class Instruction:
                 "call_id",
                 "is_root",
                 "is_create",
-                "code_source",
+                "code_hash",
                 "program_counter",
                 "stack_pointer",
                 "gas_left",
@@ -209,7 +209,7 @@ class Instruction:
         call_id: Transition,
         is_root: Transition,
         is_create: Transition,
-        code_source: Transition,
+        code_hash: Transition,
         gas_left: Transition,
         reversible_write_counter: Transition,
         log_id: Transition,
@@ -219,7 +219,7 @@ class Instruction:
             call_id=call_id,
             is_root=is_root,
             is_create=is_create,
-            code_source=code_source,
+            code_hash=code_hash,
             gas_left=gas_left,
             reversible_write_counter=reversible_write_counter,
             log_id=log_id,
@@ -257,7 +257,7 @@ class Instruction:
             call_id=Transition.same(),
             is_root=Transition.same(),
             is_create=Transition.same(),
-            code_source=Transition.same(),
+            code_hash=Transition.same(),
         )
 
     def sum(self, values: Sequence[IntOrFQ]) -> FQ:
@@ -509,7 +509,7 @@ class Instruction:
                 "The opcode source when is_root and is_create (root creation call) is not determined yet"
             )
         else:
-            return self.bytecode_lookup(self.curr.code_source, index, FQ(is_code)).expr()
+            return self.bytecode_lookup(self.curr.code_hash, index, FQ(is_code)).expr()
 
     def rw_lookup(
         self,

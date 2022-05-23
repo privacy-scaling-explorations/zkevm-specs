@@ -9,7 +9,7 @@ class StepState:
     Step state EVM circuit tracks step by step and used to ensure the
     execution trace is verified continuously and chronologically.
     It includes fields that are used from beginning to end like is_root,
-    is_create and code_source.
+    is_create and code_hash.
     It also includes call's mutable states which change almost every step like
     program_counter and stack_pointer.
     """
@@ -18,18 +18,15 @@ class StepState:
     rw_counter: FQ
     call_id: FQ
 
-    # The following 3 fields decide the opcode source. There are 2 possible
-    # cases:
-    # 1. Root creation call (is_root and is_create)
-    #   It was planned to set the code_source to tx_id, then lookup tx_table's
-    #   CallData field directly, but is still yet to be determined.
-    #   See the issue https://github.com/appliedzkp/zkevm-specs/issues/73 for
-    #   further discussion.
-    # 2. Deployed contract interaction or internal creation call
-    #   We set code_source to bytecode_hash and lookup bytecode_table.
     is_root: bool
     is_create: bool
-    code_source: RLC
+
+    # code_hash represents the bytecode hash of the bytecode. This is straightforward
+    # for a contract call that does not create a contract. For a creation call,
+    # we already populate the bytecode table with the contract creation code either
+    # from the tx calldata (in the case of a root call) or from the caller's memory
+    # (in the case of an internal call).
+    code_hash: RLC
 
     # The following fields change almost every step.
     program_counter: FQ
@@ -55,7 +52,7 @@ class StepState:
         call_id: int = 0,
         is_root: bool = False,
         is_create: bool = False,
-        code_source: RLC = RLC(0),
+        code_hash: RLC = RLC(0),
         program_counter: int = 0,
         stack_pointer: int = 1024,
         gas_left: int = 0,
@@ -69,7 +66,7 @@ class StepState:
         self.call_id = FQ(call_id)
         self.is_root = is_root
         self.is_create = is_create
-        self.code_source = code_source
+        self.code_hash = code_hash
         self.program_counter = FQ(program_counter)
         self.stack_pointer = FQ(stack_pointer)
         self.gas_left = FQ(gas_left)
@@ -131,7 +128,7 @@ class CopyCodeToMemoryAuxData:
     dst_addr: FQ
     bytes_left: FQ
     src_addr_end: FQ
-    code_source: RLC
+    code_hash: RLC
 
     def __init__(
         self,
@@ -139,10 +136,10 @@ class CopyCodeToMemoryAuxData:
         dst_addr: int,
         bytes_left: int,
         src_addr_end: int,
-        code_source: RLC,
+        code_hash: RLC,
     ):
         self.src_addr = FQ(src_addr)
         self.dst_addr = FQ(dst_addr)
         self.bytes_left = FQ(bytes_left)
         self.src_addr_end = FQ(src_addr_end)
-        self.code_source = code_source
+        self.code_hash = code_hash
