@@ -13,22 +13,15 @@ else
 
 ### Circuit behavior
 
-The AddModGadget takes argument of `a: [u8;32]`, `b: [u8;32]`, `n: [u8;32]` and keeps a cell for storing `minus_d :[u8;32]`
+The AddModGadget takes argument of `a: [u8;32]`, `b: [u8;32]`, `n: [u8;32]` and keeps a cell for storing `d :[u8;32]`
 
-- Check the equality `a + b + minus_d * n == r` (1)
-```
-	AddWordsGadget[
-		[ a , b , MulWordsGadget[minus_d,n] ] ,
-		r
-	]
-```
-
+- Check the equality `a + b == r + d * n` with carry check (1)
 - Check that `r<n` (2)
 
 To handle the case of `n==0` => `r==0`, if n is zero
 
-- witness `r <= a + b` to satisfy (1) 
-- deactivate (2)
+- witness `r ← (a + b) % 2^256` to satisfy &1 
+- deactivate &2
 
 ## Constraints
 
@@ -39,7 +32,7 @@ To handle the case of `n==0` => `r==0`, if n is zero
    - stack_pointer + 2
    - pc + 1
    - gas + 8
-3. Lookups: 3 busmapping lookups
+3. Lookups: 4 busmapping lookups
    - `a` is at the top of the stack
    - `b` is at the second position of the stack
    - `n` is at the third position of the stack

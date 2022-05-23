@@ -2,16 +2,12 @@ from ..instruction import Instruction, Transition
 from ..opcode import Opcode
 from zkevm_specs.util import FQ, RLC
 
+
 # Returns 1 when a is lower than b, 0 otherwise
 def lt_u256(instruction: Instruction, a: RLC, b: RLC) -> FQ:
     # decode RLC to bytes for a and b
-    a8s = a.le_bytes
-    b8s = b.le_bytes
-
-    a_lo = instruction.bytes_to_fq(a8s[:16])
-    a_hi = instruction.bytes_to_fq(a8s[16:])
-    b_lo = instruction.bytes_to_fq(b8s[:16])
-    b_hi = instruction.bytes_to_fq(b8s[16:])
+    a_lo, a_hi = instruction.word_to_lo_hi(a, True)
+    b_lo, b_hi = instruction.word_to_lo_hi(b, True)
 
     a_lt_b_lo, _ = instruction.compare(a_lo, b_lo, 16)
     a_lt_b_hi, a_eq_b_hi = instruction.compare(a_hi, b_hi, 16)
@@ -41,14 +37,14 @@ def addmod(instruction: Instruction):
         d = (a.int_value + b.int_value) // n.int_value
         r = pushed_r
 
-    minus_d = -d % (2**256)
+    assert (a.int_value + b.int_value) == (d * n.int_value) + r.int_value
 
-    # safety check
-    assert r.int_value == (a.int_value + b.int_value + (minus_d * n.int_value)) % (2**256)
+    # check a + b ≡ d * n + r, with carry
+    a_plus_b, left_carry = instruction.add_words([a, b])
 
-    # check (a + b) * ( -d * n ) == r
-    a_plus_b = instruction.add_words([a, b])
-    instruction.mul_add_words(RLC(minus_d), n, a_plus_b[0], r)
+    right_carry = instruction.mul_add_words(RLC(d), n, r, a_plus_b)
+
+    instruction.constrain_equal(left_carry, right_carry)
 
     # check that r<n iff n!=0
     n_is_zero = instruction.is_zero(n)

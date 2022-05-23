@@ -12,7 +12,12 @@ from zkevm_specs.evm import (
 )
 from zkevm_specs.util import rand_fq, RLC
 
+MAXU256 = (2**256) - 1
+
 TESTING_DATA = [
+    (MAXU256, MAXU256, MAXU256),
+    (MAXU256, 2, MAXU256),
+    (MAXU256, 2, 2),
     (6, 4, 10),
     (6, 7, 10),
     (6, 7, 0),
