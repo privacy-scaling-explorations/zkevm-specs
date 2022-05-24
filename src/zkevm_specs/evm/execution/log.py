@@ -68,6 +68,7 @@ def log(instruction: Instruction):
         instruction.constrain_equal(next_aux.bytes_left, msize)
         instruction.constrain_equal(next_aux.is_persistent, is_persistent)
         instruction.constrain_equal(next_aux.tx_id, tx_id)
+        instruction.constrain_zero(next_aux.data_start_index)
 
     # omit block number constraint even it is set within op code explicitly, because by default the circuit only handle
     # current block, otherwise, block context lookup is required.
