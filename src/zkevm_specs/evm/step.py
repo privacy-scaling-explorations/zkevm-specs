@@ -110,6 +110,7 @@ class CopyToLogAuxData:
     src_addr_end: FQ
     is_persistent: FQ
     tx_id: FQ
+    data_start_index: FQ
 
     def __init__(
         self,
@@ -118,12 +119,14 @@ class CopyToLogAuxData:
         src_addr_end: int,
         is_persistent: int,
         tx_id: int,
+        data_start_index: int,
     ):
         self.src_addr = FQ(src_addr)
         self.bytes_left = FQ(bytes_left)
         self.src_addr_end = FQ(src_addr_end)
         self.is_persistent = FQ(is_persistent)
         self.tx_id = FQ(tx_id)
+        self.data_start_index = FQ(data_start_index)
 
 
 class CopyCodeToMemoryAuxData:

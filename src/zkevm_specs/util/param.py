@@ -87,4 +87,4 @@ SSTORE_CLEARS_SCHEDULE = 4800
 
 # The max number of bytes that can be copied in a step limited by the number
 # of cells in a step
-MAX_COPY_BYTES = 71
+MAX_COPY_BYTES = 32

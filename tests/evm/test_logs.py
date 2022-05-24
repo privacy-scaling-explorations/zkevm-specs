@@ -70,6 +70,7 @@ def make_log_copy_step(
     src_addr: int,
     src_addr_end: int,
     bytes_left: int,
+    data_start_index: int,
     rw_dictionary: RWDictionary,
     program_counter: int,
     stack_pointer: int,
@@ -85,6 +86,7 @@ def make_log_copy_step(
         bytes_left=bytes_left,
         is_persistent=is_persistent,
         tx_id=TX_ID,
+        data_start_index=data_start_index,
     )
     step = StepState(
         execution_state=ExecutionState.CopyToLog,
@@ -104,7 +106,9 @@ def make_log_copy_step(
         if src_addr + i < src_addr_end:
             rw_dictionary.memory_read(CALL_ID, src_addr + i, FQ(byte))
             if is_persistent:
-                rw_dictionary.tx_log_write(TX_ID, log_id, TxLogFieldTag.Data, i, FQ(byte))
+                rw_dictionary.tx_log_write(
+                    TX_ID, log_id, TxLogFieldTag.Data, i + data_start_index, FQ(byte)
+                )
 
     return step
 
@@ -127,12 +131,14 @@ def make_log_copy_steps(
     buffer_map = dict(zip(range(buffer_addr, buffer_addr_end), buffer))
     steps = []
     bytes_left = length
+    data_start_index = 0
     while bytes_left > 0:
         new_step = make_log_copy_step(
             buffer_map,
             src_addr,
             buffer_addr_end,
             bytes_left,
+            data_start_index,
             rw_dictionary,
             program_counter,
             stack_pointer,
@@ -144,6 +150,7 @@ def make_log_copy_steps(
         )
         steps.append(new_step)
         src_addr += MAX_COPY_BYTES
+        data_start_index += MAX_COPY_BYTES
         bytes_left -= MAX_COPY_BYTES
     return steps
 
