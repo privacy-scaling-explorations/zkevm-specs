@@ -113,4 +113,5 @@ def begin_tx(instruction: Instruction):
                 code_source=Transition.to(code_hash),
                 gas_left=Transition.to(gas_left),
                 reversible_write_counter=Transition.to(2),
+                log_id=Transition.to(0),
             )
