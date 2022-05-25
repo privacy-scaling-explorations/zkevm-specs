@@ -238,7 +238,7 @@ def test_call(
         .call_context_read(24, CallContextFieldTag.LastCalleeReturnDataLength, 0) \
         .call_context_read(24, CallContextFieldTag.IsRoot, False) \
         .call_context_read(24, CallContextFieldTag.IsCreate, False) \
-        .call_context_read(24, CallContextFieldTag.CodeSource, callee_bytecode_hash)
+        .call_context_read(24, CallContextFieldTag.CodeHash, callee_bytecode_hash)
     # fmt: on
 
     tables = Tables(
@@ -263,7 +263,7 @@ def test_call(
                 call_id=1,
                 is_root=True,
                 is_create=False,
-                code_source=caller_bytecode_hash,
+                code_hash=caller_bytecode_hash,
                 program_counter=231,
                 stack_pointer=1017,
                 gas_left=caller_ctx.gas_left,
@@ -277,7 +277,7 @@ def test_call(
                     call_id=1,
                     is_root=True,
                     is_create=False,
-                    code_source=caller_bytecode_hash,
+                    code_hash=caller_bytecode_hash,
                     program_counter=232,
                     stack_pointer=1023,
                     gas_left=expected.caller_gas_left,
@@ -293,7 +293,7 @@ def test_call(
                     call_id=24,
                     is_root=False,
                     is_create=False,
-                    code_source=callee_bytecode_hash,
+                    code_hash=callee_bytecode_hash,
                     program_counter=0,
                     stack_pointer=1024,
                     gas_left=expected.callee_gas_left,

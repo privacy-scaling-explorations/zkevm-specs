@@ -76,7 +76,7 @@ def make_log_copy_step(
     stack_pointer: int,
     memory_size: int,
     gas_left: int,
-    code_source: RLC,
+    code_hash: RLC,
     log_id: int,
     is_persistent: bool,
 ) -> Tuple[StepState, Sequence[RW]]:
@@ -96,7 +96,7 @@ def make_log_copy_step(
         stack_pointer=stack_pointer,
         gas_left=gas_left,
         memory_size=memory_size,
-        code_source=code_source,
+        code_hash=code_hash,
         log_id=is_persistent,
         aux_data=aux_data,
     )
@@ -123,7 +123,7 @@ def make_log_copy_steps(
     stack_pointer: int,
     memory_size: int,
     gas_left: int,
-    code_source: RLC,
+    code_hash: RLC,
     log_id: int,
     is_persistent: bool,
 ) -> Sequence[StepState]:
@@ -144,7 +144,7 @@ def make_log_copy_steps(
             stack_pointer,
             memory_size,
             gas_left,
-            code_source,
+            code_hash,
             log_id,
             is_persistent,
         )
@@ -172,7 +172,7 @@ def test_logs(topics: list, mstart: U64, msize: U64, is_persistent: bool):
             call_id=CALL_ID,
             is_root=False,
             is_create=False,
-            code_source=bytecode_hash,
+            code_hash=bytecode_hash,
             program_counter=0,
             stack_pointer=1015,
             memory_size=mstart,
@@ -206,7 +206,7 @@ def test_logs(topics: list, mstart: U64, msize: U64, is_persistent: bool):
         memory_size=next_memory_size,
         stack_pointer=1015 + (2 + topic_count),
         gas_left=0,
-        code_source=bytecode_hash,
+        code_hash=bytecode_hash,
         log_id=1,
         is_persistent=is_persistent,
     )
@@ -219,7 +219,7 @@ def test_logs(topics: list, mstart: U64, msize: U64, is_persistent: bool):
             call_id=CALL_ID,
             is_root=False,
             is_create=False,
-            code_source=bytecode_hash,
+            code_hash=bytecode_hash,
             program_counter=1,
             stack_pointer=1015 + (2 + topic_count),
             memory_size=next_memory_size,
