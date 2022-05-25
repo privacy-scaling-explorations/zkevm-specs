@@ -25,7 +25,7 @@ def lt_u256(instruction: Instruction, a: RLC, b: RLC) -> FQ:
 
 def mulmod(instruction: Instruction):
 
-    const MOD = (2**256)
+    MOD = 2**256
     opcode = instruction.opcode_lookup(True)
     instruction.constrain_equal(opcode, Opcode.MULMOD)
 
@@ -41,16 +41,18 @@ def mulmod(instruction: Instruction):
         d = (a.int_value * b.int_value) // n.int_value
         r = pushed_r
 
-    minus_d = -d % MOD
 
-    # safety check
-    assert r.int_value == (a.int_value * b.int_value + (minus_d * n.int_value)) % MOD
+    # Safety check
+    assert (a.int_value * b.int_value) ==  d * n.int_value + r.int_value
 
-    # check (a * b) + ( -d * n ) == r
-    a_times_b = instruction.add_words([a, b])
-    instruction.mul_add_words(RLC(minus_d), n, a_times_b[0], r)
+    # Check (a * b) =  d * n + r
+    a_times_b = RLC((a.int_value * b.int_value) %MOD)
+    left_carry = instruction.mul_add_words(a , b, RLC(0), a_times_b)
+    right_carry = instruction.mul_add_words(RLC(d), n, r, a_times_b)
+    instruction.constrain_equal(left_carry, right_carry)
 
-    # check that r<n if n!=0
+
+    # Check that r<n if n!=0
     n_is_zero = instruction.is_zero(n)
     r_lt_n = lt_u256(instruction, r, n)
     instruction.constrain_zero(FQ(1) - (r_lt_n + n_is_zero))
