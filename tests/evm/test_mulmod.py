@@ -23,8 +23,8 @@ TESTING_DATA = [
     (MAXU256, 1, MAXU256),
     (MAXU256, 2, 2),
     (0, 0, 0),
-
 ]
+
 
 @pytest.mark.parametrize("a, b, n", TESTING_DATA)
 def test_mulmod(a: int, b: int, n: int):
