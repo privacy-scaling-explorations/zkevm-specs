@@ -60,7 +60,8 @@ def begin_tx(instruction: Instruction):
         # TODO: Verify created address
         # code_hash represents the contract creation code
         # 1. In the case of root call, code_hash is the hash of the tx calldata.
-        # 2. In the case of internal call, code_hash is the hash of the caller memory.
+        # 2. In the case of internal call, code_hash is the hash of the chunk of
+        #    caller memory corresponding to the contract init code.
         raise NotImplementedError
     elif tx_callee_address in list(PrecompiledAddress):
         # TODO: Handle precompile
