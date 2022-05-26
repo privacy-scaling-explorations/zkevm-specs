@@ -34,17 +34,16 @@ def addmod(instruction: Instruction):
         d = 0
         r = RLC((a.int_value + b.int_value) % (2**256))
     else:
-        d = (a.int_value + b.int_value) // n.int_value
+        d = ((a.int_value + b.int_value) // n.int_value) % (2**256)
         r = pushed_r
 
-    assert (a.int_value + b.int_value) == (d * n.int_value) + r.int_value
+    assert (a.int_value + b.int_value) % (2**256) == ((d * n.int_value) + r.int_value) % (
+        2**256
+    )
 
-    # check a + b ≡ d * n + r, with carry
-    a_plus_b, left_carry = instruction.add_words([a, b])
-
-    right_carry = instruction.mul_add_words(RLC(d), n, r, a_plus_b)
-
-    instruction.constrain_equal(left_carry, right_carry)
+    # check a + b ≡ d * n + r  (mod 256)
+    a_plus_b, _ = instruction.add_words([a, b])
+    instruction.mul_add_words(RLC(d), n, r, a_plus_b)
 
     # check that r<n iff n!=0
     n_is_zero = instruction.is_zero(n)

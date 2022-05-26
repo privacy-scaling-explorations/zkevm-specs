@@ -15,12 +15,14 @@ from zkevm_specs.util import rand_fq, RLC
 MAXU256 = (2**256) - 1
 
 TESTING_DATA = [
+    (MAXU256, MAXU256, 0),
+    (MAXU256, MAXU256, 1),
     (MAXU256, MAXU256, MAXU256),
-    (MAXU256, 2, MAXU256),
-    (MAXU256, 2, 2),
-    (6, 4, 10),
-    (6, 7, 10),
-    (6, 7, 0),
+    (MAXU256, 0, MAXU256),
+    (MAXU256, 1, MAXU256),
+    (MAXU256, 1, 1),
+    (MAXU256, 0, 0),
+    (0, 1, 0),
     (0, 0, 0),
 ]
 
