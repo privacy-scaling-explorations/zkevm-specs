@@ -36,20 +36,21 @@ def mulmod(instruction: Instruction):
     pushed_r = instruction.stack_push()
 
     if n.int_value == 0:
-        d = 0
+        k = 0
         r = RLC((a.int_value * b.int_value) % MOD)
     else:
-        d = (a.int_value * b.int_value) // n.int_value
+        k = (a.int_value * b.int_value) // n.int_value
         r = pushed_r
 
-    # Safety check
-    assert (a.int_value * b.int_value) == d * n.int_value + r.int_value
+    a_times_b = a.int_value * b.int_value
+    e = RLC(a_times_b % MOD)
+    d = RLC(a_times_b // MOD)
 
-    # Check (a * b) =  d * n + r
-    a_times_b = RLC((a.int_value * b.int_value) % MOD)
-    left_carry = instruction.mul_add_words(a, b, RLC(0), a_times_b)
-    right_carry = instruction.mul_add_words(RLC(d), n, r, a_times_b)
-    instruction.constrain_equal(left_carry, right_carry)
+    # Safety check
+    assert (a_times_b) == k * n.int_value + r.int_value
+
+    instruction.mul_add_words_512(a, b, RLC(0), d, e)
+    instruction.mul_add_words_512(RLC(k), n, r, d, e)
 
     # Check that r<n if n!=0
     n_is_zero = instruction.is_zero(n)
