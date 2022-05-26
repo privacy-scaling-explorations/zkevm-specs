@@ -60,7 +60,7 @@ def memory_copier_gas_cost(
 
 def make_copy_code_step(
     code: Bytecode,
-    code_source: RLC,
+    code_hash: RLC,
     buffer_map: Mapping[int, int],
     src_addr: int,
     dst_addr: int,
@@ -77,7 +77,7 @@ def make_copy_code_step(
         dst_addr=dst_addr,
         src_addr_end=src_addr_end,
         bytes_left=bytes_left,
-        code_source=RLC(code.hash(), randomness),
+        code_hash=RLC(code.hash(), randomness),
     )
     step = StepState(
         execution_state=ExecutionState.CopyCodeToMemory,
@@ -88,7 +88,7 @@ def make_copy_code_step(
         stack_pointer=stack_pointer,
         gas_left=0,
         memory_size=memory_size,
-        code_source=code_source,
+        code_hash=code_hash,
         aux_data=aux_data,
     )
 
@@ -101,7 +101,7 @@ def make_copy_code_step(
 
 def make_copy_code_steps(
     code: Bytecode,
-    code_source: RLC,
+    code_hash: RLC,
     src_addr: int,
     dst_addr: int,
     length: int,
@@ -117,7 +117,7 @@ def make_copy_code_steps(
     while bytes_left > 0:
         new_step = make_copy_code_step(
             code,
-            code_source,
+            code_hash,
             buffer_map,
             src_addr,
             dst_addr,
@@ -146,7 +146,7 @@ def test_codecopy(src_addr: U64, dst_addr: U64, length: U64):
 
     code = Bytecode().push32(length_rlc).push32(src_addr_rlc).push32(dst_addr_rlc).codecopy().stop()
 
-    code_source = RLC(code.hash(), randomness)
+    code_hash = RLC(code.hash(), randomness)
     next_memory_word_size = to_word_size(dst_addr + length)
 
     gas_cost_push32 = Opcode.PUSH32.constant_gas_cost()
@@ -173,7 +173,7 @@ def test_codecopy(src_addr: U64, dst_addr: U64, length: U64):
             rw_counter=1,
             call_id=CALL_ID,
             is_root=True,
-            code_source=code_source,
+            code_hash=code_hash,
             program_counter=0,
             stack_pointer=1024,
             gas_left=total_gas_cost,
@@ -183,7 +183,7 @@ def test_codecopy(src_addr: U64, dst_addr: U64, length: U64):
             rw_counter=2,
             call_id=CALL_ID,
             is_root=True,
-            code_source=code_source,
+            code_hash=code_hash,
             program_counter=33,
             stack_pointer=1023,
             gas_left=total_gas_cost - gas_cost_push32,
@@ -193,7 +193,7 @@ def test_codecopy(src_addr: U64, dst_addr: U64, length: U64):
             rw_counter=3,
             call_id=CALL_ID,
             is_root=True,
-            code_source=code_source,
+            code_hash=code_hash,
             program_counter=66,
             stack_pointer=1022,
             gas_left=total_gas_cost - 2 * gas_cost_push32,
@@ -203,7 +203,7 @@ def test_codecopy(src_addr: U64, dst_addr: U64, length: U64):
             rw_counter=4,
             call_id=CALL_ID,
             is_root=True,
-            code_source=code_source,
+            code_hash=code_hash,
             program_counter=99,
             stack_pointer=1021,
             gas_left=gas_cost_codecopy,
@@ -212,7 +212,7 @@ def test_codecopy(src_addr: U64, dst_addr: U64, length: U64):
 
     steps_internal = make_copy_code_steps(
         code,
-        code_source,
+        code_hash,
         src_addr,
         dst_addr,
         length,
@@ -234,7 +234,7 @@ def test_codecopy(src_addr: U64, dst_addr: U64, length: U64):
             rw_counter=rw_dictionary.rw_counter,
             call_id=CALL_ID,
             is_root=True,
-            code_source=code_source,
+            code_hash=code_hash,
             program_counter=100,
             stack_pointer=1024,
             memory_size=next_memory_word_size,
@@ -275,14 +275,14 @@ def test_copy_code_to_memory(src_addr: U64, dst_addr: U64, length: U64):
     )
 
     dummy_code = Bytecode().stop()
-    code_source = RLC(dummy_code.hash(), randomness)
+    code_hash = RLC(dummy_code.hash(), randomness)
 
     rw_dictionary = RWDictionary(1)
 
     next_memory_word_size = to_word_size(dst_addr + length)
     steps = make_copy_code_steps(
         code,
-        code_source,
+        code_hash,
         src_addr,
         dst_addr,
         length,
@@ -299,7 +299,7 @@ def test_copy_code_to_memory(src_addr: U64, dst_addr: U64, length: U64):
             call_id=CALL_ID,
             is_root=True,
             is_create=False,
-            code_source=code_source,
+            code_hash=code_hash,
             program_counter=0,
             stack_pointer=1024,
             memory_size=next_memory_word_size,

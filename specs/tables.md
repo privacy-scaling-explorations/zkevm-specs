@@ -94,7 +94,7 @@ Type sizes:
 |          |             | *CallContext state*        |          |                | *CallContextFieldTag* (rw) |             |            |            |                 |
 | $counter | $isWrite    | CallContext                | $callID  |                | IsRoot                     |             | $value     | 0          | 0               |
 | $counter | $isWrite    | CallContext                | $callID  |                | IsCreate                   |             | $value     | 0          | 0               |
-| $counter | $isWrite    | CallContext                | $callID  |                | CodeSource                 |             | $value     | 0          | 0               |
+| $counter | $isWrite    | CallContext                | $callID  |                | CodeHash                   |             | $value     | 0          | 0               |
 | $counter | $isWrite    | CallContext                | $callID  |                | ProgramCounter             |             | $value     | 0          | 0               |
 | $counter | $isWrite    | CallContext                | $callID  |                | StackPointer               |             | $value     | 0          | 0               |
 | $counter | $isWrite    | CallContext                | $callID  |                | GasLeft                    |             | $value     | 0          | 0               |
