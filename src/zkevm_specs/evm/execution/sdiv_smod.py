@@ -44,16 +44,19 @@ def check_witness(instruction: Instruction, a: RLC, b: RLC, c: RLC, d: RLC):
     overflow = instruction.mul_add_words(a_abs, b_abs, c_abs, d_abs)
     instruction.constrain_zero(overflow)
 
-    # Constrain sign(divisor) == sign(remainder) when quotient, divisor and
+    # Constrain sign(dividend) == sign(remainder) when quotient, divisor and
     # remainder are all non-zero.
     condition = (1 - a_is_zero) * (1 - b_is_zero) * (1 - c_is_zero)
-    instruction.constrain_equal(b_is_neg * condition, c_is_neg * condition)
+    instruction.constrain_equal(d_is_neg * condition, c_is_neg * condition)
+
+    # The dividend is signed overflow when `-(1 << 255) // -1 = (1 << 255)`.
+    d_is_signed_overflow = instruction.word_is_neg(d_abs)
 
     # Constrain sign(dividend) == sign(divisor) * sign(quotient) when both
-    # quotient and divisor are non-zero.
-    condition = (1 - a_is_zero) * (1 - b_is_zero)
+    # quotient and divisor are non-zero and dividend is not signed overflow.
+    condition = (1 - a_is_zero) * (1 - b_is_zero) * (1 - d_is_signed_overflow)
     instruction.constrain_equal(
-        d_is_neg * condition,
+        (1 - d_is_neg) * condition,
         ((a_is_neg * b_is_neg) + (1 - a_is_neg) * (1 - b_is_neg)) * condition,
     )
 
@@ -72,7 +75,11 @@ def gen_witness(instruction: Instruction, opcode: FQ, pop1: RLC, pop2: RLC, push
     pop2_is_neg = instruction.word_is_neg(pop2)
     pop2_is_zero = instruction.word_is_zero(pop2)
 
-    sdiv_remainder = RLC(pop1_abs.int_value - push_abs.int_value * pop2_abs.int_value)
+    # Avoid word overflow for SMOD.
+    sdiv_remainder_fq = instruction.select(
+        is_sdiv, FQ(abs(pop1_abs.int_value - push_abs.int_value * pop2_abs.int_value)), FQ(0)
+    )
+    sdiv_remainder = RLC(sdiv_remainder_fq.n)
     sdiv_remainder = instruction.select(
         pop1_is_neg, instruction.neg_word(sdiv_remainder), sdiv_remainder
     )

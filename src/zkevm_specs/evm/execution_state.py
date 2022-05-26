@@ -149,7 +149,7 @@ class ExecutionState(IntEnum):
         elif self == ExecutionState.MUL:
             return [Opcode.MUL, Opcode.DIV, Opcode.MOD]
         elif self == ExecutionState.SDIV:
-            return [Opcode.SDIV]
+            return [Opcode.SDIV, Opcode.SMOD]
         elif self == ExecutionState.SMOD:
             return [Opcode.SMOD]
         elif self == ExecutionState.ADDMOD:
