@@ -7,7 +7,7 @@ def codesize(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
     instruction.constrain_equal(opcode, Opcode.CODESIZE)
 
-    code_size = instruction.bytecode_length(instruction.curr.code_source)
+    code_size = instruction.bytecode_length(instruction.curr.code_hash)
 
     instruction.constrain_equal(
         instruction.rlc_to_fq(instruction.stack_push(), N_BYTES_U64),
