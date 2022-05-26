@@ -321,6 +321,10 @@ class Instruction:
             raise ConstraintUnsatFailure(f"Word {word} has too many bytes to fit {n_bytes} bytes")
         return self.bytes_to_fq(word.le_bytes[:n_bytes])
 
+    def word_is_neg(self, word: RLC) -> FQ:
+        assert len(word.le_bytes) == 32, "Expected word to contain 32 bytes"
+        return self.compare(FQ(127), FQ(word.le_bytes[31]), 1)[0]
+
     def word_is_zero(self, word: RLC) -> FQ:
         assert len(word.le_bytes) == 32, "Expected word to contain 32 bytes"
         return self.is_zero(self.sum(word.le_bytes))
@@ -360,19 +364,22 @@ class Instruction:
             raise ConstraintUnsatFailure(f"Value {value} has too many bytes to fit {n_bytes} bytes")
 
     def abs_word(self, x: RLC) -> RLC:
+        return self.select(self.word_is_neg(x), self.neg_word(x), x)
+
+    def neg_word(self, x: RLC) -> RLC:
         x_lo, x_hi = self.word_to_lo_hi(x)
         is_non_neg = FQ(x.le_bytes[31] < 128)
         is_zero = self.word_is_zero(x)
         is_lo_zero = self.is_zero(x_lo)
 
-        # `abs_lo = 2^128 - x_lo - [x_lo == 0] * 2^128` if x < 0, `abs_lo = x_lo` otherwise.
-        abs_lo = self.select(is_non_neg, x_lo, (1 << 128) - x_lo - is_lo_zero * (1 << 128))
+        # neg_lo = 2^128 - x_lo - [x_lo == 0] * 2^128
+        neg_lo = (1 << 128) - x_lo - is_lo_zero * (1 << 128)
 
-        # `abs_hi = 2^128 - x_hi + [x_lo == 0] - 1 - [x == 0] * 2^128` if x < 0, `abs_hi = x_hi` otherwise.
-        abs_hi = self.select(is_non_neg, x_hi, (1 << 128) - x_hi + is_lo_zero - 1 - is_zero * (1 << 128))
+        # neg_hi = 2^128 - x_hi + [x_lo == 0] - 1 - [x == 0] * 2^128
+        neg_hi = (1 << 128) - x_hi + is_lo_zero - 1 - is_zero * (1 << 128)
 
-        abs_bytes = abs_lo.n.to_bytes(16, "little") + abs_hi.n.to_bytes(16, "little")
-        return self.rlc_encode(abs_bytes)
+        neg_bytes = neg_lo.n.to_bytes(16, "little") + neg_hi.n.to_bytes(16, "little")
+        return self.rlc_encode(neg_bytes)
 
     def add_words(self, addends: Sequence[RLC]) -> Tuple[RLC, FQ]:
         addends_lo, addends_hi = list(zip(*map(self.word_to_lo_hi, addends)))
