@@ -11,6 +11,7 @@ from .copy_to_log import *
 
 # Opcode's successful cases
 from .add_sub import *
+from .addmod import *
 from .block_ctx import *
 from .call import *
 from .calldatasize import *
@@ -42,6 +43,7 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.CopyCodeToMemory: copy_code_to_memory,
     ExecutionState.CopyToMemory: copy_to_memory,
     ExecutionState.ADD: add_sub,
+    ExecutionState.ADDMOD: addmod,
     ExecutionState.MUL: mul_div_mod,
     ExecutionState.ORIGIN: origin,
     ExecutionState.CALLER: caller,
