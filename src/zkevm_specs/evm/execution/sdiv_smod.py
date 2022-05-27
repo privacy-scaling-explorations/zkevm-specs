@@ -76,10 +76,8 @@ def gen_witness(instruction: Instruction, opcode: FQ, pop1: RLC, pop2: RLC, push
     pop2_is_zero = instruction.word_is_zero(pop2)
 
     # Avoid word overflow for SMOD.
-    sdiv_remainder_fq = instruction.select(
-        is_sdiv, FQ(abs(pop1_abs.int_value - push_abs.int_value * pop2_abs.int_value)), FQ(0)
-    )
-    sdiv_remainder = RLC(sdiv_remainder_fq.n)
+    sdiv_remainder_int = abs(pop1_abs.int_value - push_abs.int_value * pop2_abs.int_value)
+    sdiv_remainder = RLC(sdiv_remainder_int) if sdiv_remainder_int < 1 << 256 else RLC(0)
     sdiv_remainder = instruction.select(
         pop1_is_neg, instruction.neg_word(sdiv_remainder), sdiv_remainder
     )
