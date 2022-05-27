@@ -52,7 +52,11 @@ def check_witness(
     condition = (1 - quotient_is_zero) * (1 - divisor_is_zero) * (1 - remainder_is_zero)
     instruction.constrain_equal(dividend_is_neg * condition, remainder_is_neg * condition)
 
-    # The dividend is signed overflow when `-(1 << 255) // -1 = (1 << 255)`.
+    # For a special `SDIV` test case, when input `diviend = -(1 << 255)` and
+    # `divisor = -1`, the quotient result should be `1 << 255`. But `U256` could
+    # only express `signed` value from `-(1 << 255)` to `(1 << 255) - 1`. So
+    # below constraint `sign(dividend) == sign(divisor) * sign(quotient)` cannot
+    # be applied for this case.
     dividend_is_signed_overflow = instruction.word_is_neg(dividend_abs)
 
     # Constrain sign(dividend) == sign(divisor) * sign(quotient) when both
