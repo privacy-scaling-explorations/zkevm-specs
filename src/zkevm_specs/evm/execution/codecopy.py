@@ -17,7 +17,7 @@ def codecopy(instruction: Instruction):
     memory_offset, size = instruction.memory_offset_and_length(memory_offset_word, size_word)
     code_offset = instruction.rlc_to_fq(code_offset_word, N_BYTES_MEMORY_ADDRESS)
 
-    code_size = instruction.bytecode_length(instruction.curr.code_source)
+    code_size = instruction.bytecode_length(instruction.curr.code_hash)
 
     next_memory_size, memory_expansion_gas_cost = instruction.memory_expansion_dynamic_length(
         memory_offset, size
@@ -35,7 +35,7 @@ def codecopy(instruction: Instruction):
         instruction.constrain_equal(next_aux.dst_addr, memory_offset)
         instruction.constrain_equal(next_aux.src_addr_end, code_size)
         instruction.constrain_equal(next_aux.bytes_left, size)
-        instruction.constrain_equal(next_aux.code_source, instruction.curr.code_source)
+        instruction.constrain_equal(next_aux.code_hash, instruction.curr.code_hash)
 
     instruction.step_state_transition_in_same_context(
         opcode,
