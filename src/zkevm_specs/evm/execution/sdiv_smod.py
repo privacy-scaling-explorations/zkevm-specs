@@ -10,8 +10,8 @@ def sdiv_smod(instruction: Instruction):
     pop2 = instruction.stack_pop()
     push = instruction.stack_push()
 
-    (a, b, c, d) = gen_witness(instruction, opcode, pop1, pop2, push)
-    check_witness(instruction, a, b, c, d)
+    (quotient, divisor, remainder, dividend) = gen_witness(instruction, opcode, pop1, pop2, push)
+    check_witness(instruction, quotient, divisor, remainder, dividend)
 
     instruction.step_state_transition_in_same_context(
         opcode,
@@ -21,43 +21,46 @@ def sdiv_smod(instruction: Instruction):
     )
 
 
-def check_witness(instruction: Instruction, a: RLC, b: RLC, c: RLC, d: RLC):
-    a_is_zero = instruction.word_is_zero(a)
-    b_is_zero = instruction.word_is_zero(b)
-    c_is_zero = instruction.word_is_zero(c)
+def check_witness(
+    instruction: Instruction, quotient: RLC, divisor: RLC, remainder: RLC, dividend: RLC
+):
+    quotient_is_zero = instruction.word_is_zero(quotient)
+    divisor_is_zero = instruction.word_is_zero(divisor)
+    remainder_is_zero = instruction.word_is_zero(remainder)
 
-    a_is_neg = instruction.word_is_neg(a)
-    b_is_neg = instruction.word_is_neg(b)
-    c_is_neg = instruction.word_is_neg(c)
-    d_is_neg = instruction.word_is_neg(d)
+    quotient_is_neg = instruction.word_is_neg(quotient)
+    divisor_is_neg = instruction.word_is_neg(divisor)
+    remainder_is_neg = instruction.word_is_neg(remainder)
+    dividend_is_neg = instruction.word_is_neg(dividend)
 
-    a_abs = instruction.abs_word(a)
-    b_abs = instruction.abs_word(b)
-    c_abs = instruction.abs_word(c)
-    d_abs = instruction.abs_word(d)
+    quotient_abs = instruction.abs_word(quotient)
+    divisor_abs = instruction.abs_word(divisor)
+    remainder_abs = instruction.abs_word(remainder)
+    dividend_abs = instruction.abs_word(dividend)
 
     # Constrain abs(remainder) < abs(divisor) when divisor != 0.
-    lt, _ = instruction.compare_word(c_abs, b_abs)
-    instruction.constrain_zero((1 - lt) * (1 - b_is_zero))
+    remainder_lt_divisor, _ = instruction.compare_word(remainder_abs, divisor_abs)
+    instruction.constrain_zero((1 - remainder_lt_divisor) * (1 - divisor_is_zero))
 
     # Constrain overflow == 0.
-    overflow = instruction.mul_add_words(a_abs, b_abs, c_abs, d_abs)
+    overflow = instruction.mul_add_words(quotient_abs, divisor_abs, remainder_abs, dividend_abs)
     instruction.constrain_zero(overflow)
 
     # Constrain sign(dividend) == sign(remainder) when quotient, divisor and
     # remainder are all non-zero.
-    condition = (1 - a_is_zero) * (1 - b_is_zero) * (1 - c_is_zero)
-    instruction.constrain_equal(d_is_neg * condition, c_is_neg * condition)
+    condition = (1 - quotient_is_zero) * (1 - divisor_is_zero) * (1 - remainder_is_zero)
+    instruction.constrain_equal(dividend_is_neg * condition, remainder_is_neg * condition)
 
     # The dividend is signed overflow when `-(1 << 255) // -1 = (1 << 255)`.
-    d_is_signed_overflow = instruction.word_is_neg(d_abs)
+    dividend_is_signed_overflow = instruction.word_is_neg(dividend_abs)
 
     # Constrain sign(dividend) == sign(divisor) * sign(quotient) when both
     # quotient and divisor are non-zero and dividend is not signed overflow.
-    condition = (1 - a_is_zero) * (1 - b_is_zero) * (1 - d_is_signed_overflow)
+    condition = (1 - quotient_is_zero) * (1 - divisor_is_zero) * (1 - dividend_is_signed_overflow)
     instruction.constrain_equal(
-        (1 - d_is_neg) * condition,
-        ((a_is_neg * b_is_neg) + (1 - a_is_neg) * (1 - b_is_neg)) * condition,
+        (1 - dividend_is_neg) * condition,
+        ((quotient_is_neg * divisor_is_neg) + (1 - quotient_is_neg) * (1 - divisor_is_neg))
+        * condition,
     )
 
 
