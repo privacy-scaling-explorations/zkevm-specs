@@ -20,6 +20,7 @@ TESTING_DATA = [
     (1, 1, 0),
     (0, 2, 3),
     (MAXU256, MAXU256, MAXU256),
+    (MAXU256, MAXU256, 1),
     (MAXU256, 1, MAXU256),
     (MAXU256, 2, 2),
     (0, 0, 0),
