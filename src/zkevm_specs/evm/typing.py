@@ -28,6 +28,7 @@ from .table import (
     RWTableTag,
     TxContextFieldTag,
     TxLogFieldTag,
+    TxReceiptFieldTag,
     TxTableRow,
 )
 from .opcode import get_push_size, Opcode
@@ -390,6 +391,22 @@ class RWDictionary:
             value=value,
         )
 
+    def tx_receipt_read(
+        self,
+        tx_id: IntOrFQ,
+        field_tag: TxReceiptFieldTag,
+        value: Union[int, FQ, RLC],
+    ) -> RWDictionary:
+        if isinstance(value, int):
+            value = FQ(value)
+        return self._append(
+            RW.Read,
+            RWTableTag.TxReceipt,
+            key1=FQ(tx_id),
+            key3=FQ(field_tag),
+            value=value,
+        )
+
     def tx_refund_read(self, tx_id: IntOrFQ, refund: IntOrFQ) -> RWDictionary:
         return self._append(
             RW.Read, RWTableTag.TxRefund, key1=FQ(tx_id), value=FQ(refund), value_prev=FQ(refund)
@@ -454,8 +471,8 @@ class RWDictionary:
         return self._append(
             RW.Read,
             RWTableTag.Account,
-            key1=FQ(account_address),
-            key2=FQ(field_tag),
+            key2=FQ(account_address),
+            key3=FQ(field_tag),
             value=value,
             value_prev=value,
         )
@@ -474,8 +491,8 @@ class RWDictionary:
             value_prev = FQ(value_prev)
         return self._state_write(
             RWTableTag.Account,
-            key1=FQ(account_address),
-            key2=FQ(field_tag),
+            key2=FQ(account_address),
+            key3=FQ(field_tag),
             value=value,
             value_prev=value_prev,
             rw_counter_of_reversion=rw_counter_of_reversion,
@@ -494,12 +511,12 @@ class RWDictionary:
         return self._append(
             RW.Read,
             RWTableTag.AccountStorage,
-            key1=FQ(account_address),
-            key2=storage_key,
+            key1=tx_id,
+            key2=FQ(account_address),
+            key4=storage_key,
             value=value,
             value_prev=value,
-            aux0=tx_id,
-            aux1=value_committed,
+            aux0=value_committed,
         )
 
     def account_storage_write(
@@ -516,12 +533,12 @@ class RWDictionary:
             tx_id = FQ(tx_id)
         return self._state_write(
             RWTableTag.AccountStorage,
-            key1=FQ(account_address),
-            key2=storage_key,
+            key1=tx_id,
+            key2=FQ(account_address),
+            key4=storage_key,
             value=value,
             value_prev=value_prev,
-            aux0=tx_id,
-            aux1=value_committed,
+            aux0=value_committed,
             rw_counter_of_reversion=rw_counter_of_reversion,
         )
 
@@ -531,10 +548,10 @@ class RWDictionary:
         key1: Expression = FQ(0),
         key2: Expression = FQ(0),
         key3: Expression = FQ(0),
+        key4: Expression = FQ(0),
         value: Expression = FQ(0),
         value_prev: Expression = FQ(0),
         aux0: Expression = FQ(0),
-        aux1: Expression = FQ(0),
         rw_counter_of_reversion: int = None,
     ) -> RWDictionary:
         self._append(
@@ -543,10 +560,10 @@ class RWDictionary:
             key1=key1,
             key2=key2,
             key3=key3,
+            key4=key4,
             value=value,
             value_prev=value_prev,
             aux0=aux0,
-            aux1=aux1,
         )
 
         if rw_counter_of_reversion is None:
@@ -558,10 +575,10 @@ class RWDictionary:
                 key1=key1,
                 key2=key2,
                 key3=key3,
+                key4=key4,
                 value=value_prev,
                 value_prev=value,
                 aux0=aux0,
-                aux1=aux1,
                 rw_counter=rw_counter_of_reversion,
             )
 
@@ -576,7 +593,6 @@ class RWDictionary:
         value: Expression = FQ(0),
         value_prev: Expression = FQ(0),
         aux0: Expression = FQ(0),
-        aux1: Expression = FQ(0),
         rw_counter: int = None,
     ) -> RWDictionary:
         if rw_counter is None:
@@ -595,7 +611,6 @@ class RWDictionary:
                 value,
                 value_prev,
                 aux0,
-                aux1,
             )
         )
 

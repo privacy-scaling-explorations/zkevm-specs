@@ -24,7 +24,10 @@ def copy_to_log(instruction: Instruction):
         # when is_persistent = false, only do memory_lookup, no tx_log_lookup
         if buffer_reader.has_data(i) == 1 and aux.is_persistent == 1:
             instruction.constrain_equal(
-                byte, instruction.tx_log_lookup(aux.tx_id, TxLogFieldTag.Data, i)
+                byte,
+                instruction.tx_log_lookup(
+                    aux.tx_id, TxLogFieldTag.Data, i + aux.data_start_index.n
+                ),
             )
 
     copied_bytes = buffer_reader.num_bytes()
@@ -41,6 +44,10 @@ def copy_to_log(instruction: Instruction):
         instruction.constrain_equal(next_aux.bytes_left + copied_bytes, aux.bytes_left)
         instruction.constrain_equal(next_aux.src_addr_end, aux.src_addr_end)
         instruction.constrain_equal(next_aux.is_persistent, aux.is_persistent)
+        instruction.constrain_equal(next_aux.tx_id, aux.tx_id)
+        instruction.constrain_equal(
+            next_aux.data_start_index, aux.data_start_index + MAX_COPY_BYTES
+        )
 
     instruction.constrain_step_state_transition(
         rw_counter=Transition.delta(instruction.rw_counter_offset),

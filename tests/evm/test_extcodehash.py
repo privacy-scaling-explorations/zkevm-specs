@@ -66,7 +66,7 @@ def test_extcodehash(
     call_id = 1
 
     rw_counter_end_of_reversion = 0 if is_persistent else 9
-    state_write_counter = 0
+    reversible_write_counter = 0
 
     rw_table = set(
         RWDictionary(1)
@@ -81,7 +81,7 @@ def test_extcodehash(
             address,
             True,
             is_warm,
-            rw_counter_of_reversion=rw_counter_end_of_reversion - state_write_counter,
+            rw_counter_of_reversion=rw_counter_end_of_reversion - reversible_write_counter,
         )
         .account_read(address, AccountFieldTag.Nonce, RLC(nonce, randomness))
         .account_read(address, AccountFieldTag.Balance, RLC(balance, randomness))
@@ -109,7 +109,7 @@ def test_extcodehash(
                 call_id=1,
                 is_root=True,
                 is_create=False,
-                code_source=bytecode_hash,
+                code_hash=bytecode_hash,
                 program_counter=0,
                 stack_pointer=1023,
                 gas_left=GAS_COST_WARM_ACCESS + (not is_warm) * EXTRA_GAS_COST_ACCOUNT_COLD_ACCESS,
@@ -120,7 +120,7 @@ def test_extcodehash(
                 call_id=1,
                 is_root=True,
                 is_create=False,
-                code_source=bytecode_hash,
+                code_hash=bytecode_hash,
                 program_counter=1,
                 stack_pointer=1023,
                 gas_left=0,

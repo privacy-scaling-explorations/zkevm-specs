@@ -67,8 +67,8 @@ def call(instruction: Instruction):
     is_reverted_by_caller = is_success.expr() == FQ(1) and reversion_info.is_persistent == FQ(0)
     if is_reverted_by_caller:
         # Propagate rw_counter_end_of_reversion when callee succeeds but one of callers revert at some point.
-        # Note that we subtract it with current caller's state_write_counter as callee's endpoint, where caller's
-        # state_write_counter here is added by 1 due to adding callee to access list
+        # Note that we subtract it with current caller's reversible_write_counter as callee's endpoint, where caller's
+        # reversible_write_counter here is added by 1 due to adding callee to access list
         instruction.constrain_equal(
             callee_reversion_info.rw_counter_end_of_reversion,
             reversion_info.rw_counter_of_reversion(),
@@ -137,12 +137,12 @@ def call(instruction: Instruction):
             stack_pointer=Transition.delta(6),
             gas_left=Transition.delta(has_value * GAS_STIPEND_CALL_WITH_VALUE - gas_cost),
             memory_size=Transition.to(next_memory_size),
-            state_write_counter=Transition.delta(3),
+            reversible_write_counter=Transition.delta(3),
             # Always stay same
             call_id=Transition.same(),
             is_root=Transition.same(),
             is_create=Transition.same(),
-            code_source=Transition.same(),
+            code_hash=Transition.same(),
         )
     else:
         # Save caller's call state
@@ -151,7 +151,10 @@ def call(instruction: Instruction):
             (CallContextFieldTag.StackPointer, instruction.curr.stack_pointer + 6),
             (CallContextFieldTag.GasLeft, instruction.curr.gas_left - gas_cost - callee_gas_left),
             (CallContextFieldTag.MemorySize, next_memory_size),
-            (CallContextFieldTag.StateWriteCounter, instruction.curr.state_write_counter + 1),
+            (
+                CallContextFieldTag.ReversibleWriteCounter,
+                instruction.curr.reversible_write_counter + 1,
+            ),
         ]:
             instruction.constrain_equal(
                 instruction.call_context_lookup(field_tag, RW.Write),
@@ -178,7 +181,7 @@ def call(instruction: Instruction):
             (CallContextFieldTag.LastCalleeReturnDataLength, FQ(0)),
             (CallContextFieldTag.IsRoot, FQ(False)),
             (CallContextFieldTag.IsCreate, FQ(False)),
-            (CallContextFieldTag.CodeSource, callee_code_hash.expr()),
+            (CallContextFieldTag.CodeHash, callee_code_hash.expr()),
         ]:
             instruction.constrain_equal(
                 instruction.call_context_lookup(field_tag, call_id=callee_call_id),
@@ -193,7 +196,8 @@ def call(instruction: Instruction):
             call_id=Transition.to(callee_call_id),
             is_root=Transition.to(False),
             is_create=Transition.to(False),
-            code_source=Transition.to(callee_code_hash),
+            code_hash=Transition.to(callee_code_hash),
             gas_left=Transition.to(callee_gas_left),
-            state_write_counter=Transition.to(2),
+            reversible_write_counter=Transition.to(2),
+            log_id=Transition.same(),
         )

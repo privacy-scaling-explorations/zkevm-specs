@@ -139,6 +139,7 @@ def test_sstore(
             # fmt: off
             RWDictionary(1)
             .call_context_read(1, CallContextFieldTag.TxId, tx.id)
+            .call_context_read(1, CallContextFieldTag.IsStatic, 0)
             .call_context_read(1, CallContextFieldTag.RwCounterEndOfReversion, 0 if is_success else 14)
             .call_context_read(1, CallContextFieldTag.IsPersistent, is_success)
             .call_context_read(1, CallContextFieldTag.CalleeAddress, tx.callee_address)
@@ -162,22 +163,22 @@ def test_sstore(
                 call_id=1,
                 is_root=True,
                 is_create=False,
-                code_source=bytecode_hash,
+                code_hash=bytecode_hash,
                 program_counter=66,
                 stack_pointer=1022,
-                state_write_counter=0,
+                reversible_write_counter=0,
                 gas_left=expected_gas_cost,
             ),
             StepState(
                 execution_state=ExecutionState.STOP if is_success else ExecutionState.REVERT,
-                rw_counter=10,
+                rw_counter=11,
                 call_id=1,
                 is_root=True,
                 is_create=False,
-                code_source=bytecode_hash,
+                code_hash=bytecode_hash,
                 program_counter=67,
                 stack_pointer=1024,
-                state_write_counter=3,
+                reversible_write_counter=3,
                 gas_left=0,
             ),
         ],

@@ -1,11 +1,12 @@
 from ...util import N_BYTES_GAS, MAX_REFUND_QUOTIENT_OF_GAS_USED, FQ, RLC, cast_expr
 from ..execution_state import ExecutionState
 from ..instruction import Instruction, Transition
-from ..table import BlockContextFieldTag, CallContextFieldTag, TxContextFieldTag
+from ..table import BlockContextFieldTag, CallContextFieldTag, TxContextFieldTag, TxReceiptFieldTag
 
 
 def end_tx(instruction: Instruction):
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
+    is_persistent = instruction.call_context_lookup(CallContextFieldTag.IsPersistent)
 
     # Handle gas refund (refund is capped to gas_used // MAX_REFUND_QUOTIENT_OF_GAS_USED in EIP 3529)
     tx_gas = instruction.tx_context_lookup(tx_id, TxContextFieldTag.Gas)
@@ -33,6 +34,29 @@ def end_tx(instruction: Instruction):
     coinbase = instruction.block_context_lookup(BlockContextFieldTag.Coinbase)
     instruction.add_balance(coinbase, [reward])
 
+    # constrain tx status matches with `PostStateOrStatus` of TxReceipt tag in RW
+    instruction.constrain_equal(
+        is_persistent, instruction.tx_receipt_lookup(tx_id, TxReceiptFieldTag.PostStateOrStatus)
+    )
+
+    # constrain log id matches with `LogLength` of TxReceipt tag in RW
+    log_id = instruction.tx_receipt_lookup(tx_id, TxReceiptFieldTag.LogLength)
+    instruction.constrain_equal(log_id, instruction.curr.log_id)
+
+    # constrain `CumulativeGasUsed` of TxReceipt tag in RW
+    is_first_tx = tx_id == 1
+    if is_first_tx:  # check if it is the first tx
+        current_cumulative_gas_used = FQ(0)
+    else:
+        current_cumulative_gas_used = instruction.tx_receipt_lookup(
+            tx_id - FQ(1), TxReceiptFieldTag.CumulativeGasUsed
+        ).expr()
+
+    instruction.constrain_equal(
+        current_cumulative_gas_used + gas_used,
+        instruction.tx_receipt_lookup(tx_id, TxReceiptFieldTag.CumulativeGasUsed),
+    )
+
     # When to next transaction
     if instruction.next.execution_state == ExecutionState.BeginTx:
         # Check next tx_id is increased by 1
@@ -43,11 +67,11 @@ def end_tx(instruction: Instruction):
             tx_id.expr() + 1,
         )
         # Do step state transition for rw_counter
-        instruction.constrain_step_state_transition(rw_counter=Transition.delta(5))
+        instruction.constrain_step_state_transition(rw_counter=Transition.delta(10 - is_first_tx))
 
     # When to end of block
     if instruction.next.execution_state == ExecutionState.EndBlock:
         # Do step state transition for rw_counter and call_id
         instruction.constrain_step_state_transition(
-            rw_counter=Transition.delta(4), call_id=Transition.same()
+            rw_counter=Transition.delta(9 - is_first_tx), call_id=Transition.same()
         )

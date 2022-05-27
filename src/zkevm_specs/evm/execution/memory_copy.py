@@ -48,9 +48,9 @@ def copy_to_memory(instruction: Instruction):
         call_id=Transition.same(),
         is_root=Transition.same(),
         is_create=Transition.same(),
-        code_source=Transition.same(),
+        code_hash=Transition.same(),
         program_counter=Transition.same(),
         stack_pointer=Transition.same(),
         memory_size=Transition.same(),
-        state_write_counter=Transition.same(),
+        reversible_write_counter=Transition.same(),
     )
