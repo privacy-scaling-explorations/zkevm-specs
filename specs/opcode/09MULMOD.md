@@ -21,24 +21,23 @@ The MulModGadget takes arguments:
  - `a: [u8;32]`
  - `b: [u8;32]`,
  - `N: [u8;32]`,
-and keeps a cell for storing `minus_d: [u8;32]`.
+and keeps 5 cells for storing `k1: [u8;32]`,  `k2: [u8;32]`, `a_reduced: [u8;32]` ,
+ `e: [u8;32]`, `d: [u8;32]`.
 
-- Check the equality ` a * b + minus_d * N  == r` (1)
-TODO: Check this
+- Check the equality ` k1 * N + a_reduced  == a ` (1)
+- Check the equality ` a_reduced * b = k2 * N + r` (2)
+
+
 ```
-	AddWordsGadget[
-		[ MulWordsGadget[a, b],
-		  MulWordsGadget[minus_d, N] ],
-		r,
-	]
+TODO: Circuit gadgets description
 ```
 
-- Check `r<n` (2)
+- Check `r<n` (3)
 
 To handle the case of `n==0` => `r==0`, if `N` is 0:
 
-- witness `r <= a + b` to satisfy (1)
-- deactivate (2)
+- witness `r <= a * b % 2^256` to satisfy (1)
+- deactivate (3)
 
 
 ## Constraints
