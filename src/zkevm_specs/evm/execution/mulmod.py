@@ -36,21 +36,29 @@ def mulmod(instruction: Instruction):
     pushed_r = instruction.stack_push()
 
     if n.int_value == 0:
-        k = 0
+        a_reduced = a.int_value
+        k1 = 0
         r = RLC((a.int_value * b.int_value) % MOD)
+        k2 = 0
     else:
-        k = (a.int_value * b.int_value) // n.int_value
+        a_reduced = a.int_value % n.int_value
+        k1 = a.int_value // n.int_value
         r = pushed_r
+        k2 = (a_reduced * b.int_value) // n.int_value
 
-    a_times_b = a.int_value * b.int_value
-    e = RLC(a_times_b % MOD)
-    d = RLC(a_times_b // MOD)
+    a_reduced_times_b = a_reduced * b.int_value
+    e = RLC(a_reduced_times_b % MOD)
+    d = RLC(a_reduced_times_b // MOD)
 
     # Safety check
-    assert (a_times_b) == k * n.int_value + r.int_value
+    assert (a_reduced_times_b) == k2 * n.int_value + r.int_value
 
-    instruction.mul_add_words_512(a, b, RLC(0), d, e)
-    instruction.mul_add_words_512(RLC(k), n, r, d, e)
+    # Reduction of first factor
+    instruction.mul_add_words(RLC(k1), n, RLC(a_reduced), a)
+
+    # Reduction of the product
+    instruction.mul_add_words_512(RLC(a_reduced), b, RLC(0), d, e)
+    instruction.mul_add_words_512(RLC(k2), n, r, d, e)
 
     # Check that r<n if n!=0
     n_is_zero = instruction.is_zero(n)
