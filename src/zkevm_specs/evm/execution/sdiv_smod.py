@@ -42,8 +42,9 @@ def check_witness(
     remainder_lt_divisor, _ = instruction.compare_word(remainder_abs, divisor_abs)
     instruction.constrain_zero((1 - remainder_lt_divisor) * (1 - divisor_is_zero))
 
-    # Constrain overflow == 0.
+    # Function `mul_add_words` constrains `|quotient| * |divisor| + |remainder| = |dividend|`.
     overflow = instruction.mul_add_words(quotient_abs, divisor_abs, remainder_abs, dividend_abs)
+    # Constrain overflow == 0.
     instruction.constrain_zero(overflow)
 
     # Constrain sign(dividend) == sign(remainder) when quotient, divisor and
