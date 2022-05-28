@@ -24,14 +24,14 @@ def sdiv_smod(instruction: Instruction):
 def check_witness(
     instruction: Instruction, quotient: RLC, divisor: RLC, remainder: RLC, dividend: RLC
 ):
-    quotient_is_zero = instruction.word_is_zero(quotient)
-    divisor_is_zero = instruction.word_is_zero(divisor)
-    remainder_is_zero = instruction.word_is_zero(remainder)
-
     quotient_is_neg = instruction.word_is_neg(quotient)
     divisor_is_neg = instruction.word_is_neg(divisor)
     remainder_is_neg = instruction.word_is_neg(remainder)
     dividend_is_neg = instruction.word_is_neg(dividend)
+
+    quotient_is_non_zero = 1 - instruction.word_is_zero(quotient)
+    divisor_is_non_zero = 1 - instruction.word_is_zero(divisor)
+    remainder_is_non_zero = 1 - instruction.word_is_zero(remainder)
 
     quotient_abs = instruction.abs_word(quotient)
     divisor_abs = instruction.abs_word(divisor)
@@ -40,7 +40,7 @@ def check_witness(
 
     # Constrain abs(remainder) < abs(divisor) when divisor != 0.
     remainder_lt_divisor, _ = instruction.compare_word(remainder_abs, divisor_abs)
-    instruction.constrain_zero((1 - remainder_lt_divisor) * (1 - divisor_is_zero))
+    instruction.constrain_zero((1 - remainder_lt_divisor) * divisor_is_non_zero)
 
     # Function `mul_add_words` constrains `|quotient| * |divisor| + |remainder| = |dividend|`.
     overflow = instruction.mul_add_words(quotient_abs, divisor_abs, remainder_abs, dividend_abs)
@@ -49,7 +49,7 @@ def check_witness(
 
     # Constrain sign(dividend) == sign(remainder) when quotient, divisor and
     # remainder are all non-zero.
-    condition = (1 - quotient_is_zero) * (1 - divisor_is_zero) * (1 - remainder_is_zero)
+    condition = quotient_is_non_zero * divisor_is_non_zero * remainder_is_non_zero
     instruction.constrain_equal(dividend_is_neg * condition, remainder_is_neg * condition)
 
     # For a special `SDIV` test case, when input `diviend = -(1 << 255)` and
@@ -61,7 +61,7 @@ def check_witness(
 
     # Constrain sign(dividend) == sign(divisor) * sign(quotient) when both
     # quotient and divisor are non-zero and dividend is not signed overflow.
-    condition = (1 - quotient_is_zero) * (1 - divisor_is_zero) * (1 - dividend_is_signed_overflow)
+    condition = quotient_is_non_zero * divisor_is_non_zero * (1 - dividend_is_signed_overflow)
     instruction.constrain_equal(
         (1 - dividend_is_neg) * condition,
         ((quotient_is_neg * divisor_is_neg) + (1 - quotient_is_neg) * (1 - divisor_is_neg))
