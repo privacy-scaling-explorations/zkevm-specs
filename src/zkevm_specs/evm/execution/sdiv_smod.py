@@ -38,28 +38,27 @@ def check_witness(
     remainder_abs = instruction.abs_word(remainder)
     dividend_abs = instruction.abs_word(dividend)
 
-    # Constrain abs(remainder) < abs(divisor) when divisor != 0.
-    remainder_lt_divisor, _ = instruction.compare_word(remainder_abs, divisor_abs)
-    instruction.constrain_zero((1 - remainder_lt_divisor) * divisor_is_non_zero)
-
     # Function `mul_add_words` constrains `|quotient| * |divisor| + |remainder| = |dividend|`.
     overflow = instruction.mul_add_words(quotient_abs, divisor_abs, remainder_abs, dividend_abs)
     # Constrain overflow == 0.
     instruction.constrain_zero(overflow)
+
+    # Constrain abs(remainder) < abs(divisor) when divisor != 0.
+    remainder_lt_divisor, _ = instruction.compare_word(remainder_abs, divisor_abs)
+    instruction.constrain_zero((1 - remainder_lt_divisor) * divisor_is_non_zero)
 
     # Constrain sign(dividend) == sign(remainder) when quotient, divisor and
     # remainder are all non-zero.
     condition = quotient_is_non_zero * divisor_is_non_zero * remainder_is_non_zero
     instruction.constrain_equal(dividend_is_neg * condition, remainder_is_neg * condition)
 
-    # For a special `SDIV` test case, when input `diviend = -(1 << 255)` and
-    # `divisor = -1`, the quotient result should be `1 << 255`. But `U256` could
-    # only express `signed` value from `-(1 << 255)` to `(1 << 255) - 1`. So
-    # below constraint `sign(dividend) == sign(divisor) * sign(quotient)` cannot
-    # be applied for this case.
+    # For a special `SDIV` case, when input `diviend = -(1 << 255)` and `divisor = -1`,
+    # the quotient result should be `1 << 255`. But a `signed` word could only express
+    # `signed` value from `-(1 << 255)` to `(1 << 255) - 1`. So below constraint
+    # `sign(dividend) == sign(divisor) ^ sign(quotient)` cannot be applied for this case.
     dividend_is_signed_overflow = instruction.word_is_neg(dividend_abs)
 
-    # Constrain sign(dividend) == sign(divisor) * sign(quotient) when both
+    # Constrain sign(dividend) == sign(divisor) ^ sign(quotient) when both
     # quotient and divisor are non-zero and dividend is not signed overflow.
     condition = quotient_is_non_zero * divisor_is_non_zero * (1 - dividend_is_signed_overflow)
     instruction.constrain_equal(
