@@ -142,7 +142,7 @@ def call(instruction: Instruction):
             call_id=Transition.same(),
             is_root=Transition.same(),
             is_create=Transition.same(),
-            code_source=Transition.same(),
+            code_hash=Transition.same(),
         )
     else:
         # Save caller's call state
@@ -181,7 +181,7 @@ def call(instruction: Instruction):
             (CallContextFieldTag.LastCalleeReturnDataLength, FQ(0)),
             (CallContextFieldTag.IsRoot, FQ(False)),
             (CallContextFieldTag.IsCreate, FQ(False)),
-            (CallContextFieldTag.CodeSource, callee_code_hash.expr()),
+            (CallContextFieldTag.CodeHash, callee_code_hash.expr()),
         ]:
             instruction.constrain_equal(
                 instruction.call_context_lookup(field_tag, call_id=callee_call_id),
@@ -196,7 +196,8 @@ def call(instruction: Instruction):
             call_id=Transition.to(callee_call_id),
             is_root=Transition.to(False),
             is_create=Transition.to(False),
-            code_source=Transition.to(callee_code_hash),
+            code_hash=Transition.to(callee_code_hash),
             gas_left=Transition.to(callee_gas_left),
             reversible_write_counter=Transition.to(2),
+            log_id=Transition.same(),
         )
