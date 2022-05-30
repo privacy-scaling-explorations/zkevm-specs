@@ -76,9 +76,13 @@ def test_calldatacopy(
     curr_mem_size = memory_word_size(0 if from_tx else call_data_offset + call_data_length)
     address = 0 if length == 0 else memory_offset + length
     next_mem_size, memory_gas_cost = memory_expansion(
-        curr_mem_size, memory_offset + length if length else 0)
-    gas = Opcode.CALLDATACOPY.constant_gas_cost() + memory_gas_cost + \
-        memory_word_size(length) * GAS_COST_COPY
+        curr_mem_size, memory_offset + length if length else 0
+    )
+    gas = (
+        Opcode.CALLDATACOPY.constant_gas_cost()
+        + memory_gas_cost
+        + memory_word_size(length) * GAS_COST_COPY
+    )
 
     if from_tx:
         tx = Transaction(id=TX_ID, gas=gas, call_data=call_data)
@@ -129,8 +133,12 @@ def test_calldatacopy(
             CALL_ID, CallContextFieldTag.CallDataOffset, call_data_offset
         )
 
-    src_data = dict([(call_data_offset + i, call_data[i])
-                     for i in range(data_offset, min(data_offset+length, len(call_data)))])
+    src_data = dict(
+        [
+            (call_data_offset + i, call_data[i])
+            for i in range(data_offset, min(data_offset + length, len(call_data)))
+        ]
+    )
     copy_circuit = CopyCircuit().copy(
         rw_dictionary,
         TX_ID if from_tx else CALLER_ID,

@@ -295,6 +295,7 @@ class CopyDataTypeTag(IntEnum):
     """
     Tag for CopyTable that specifies the type of data source.
     """
+
     Bytecode = auto()
     Memory = auto()
     TxCalldata = auto()
@@ -424,6 +425,7 @@ class CopyTableRow(TableRow):
     rwc_inc: FQ
     log_id: FQ = field(default=FQ(0))
 
+
 class Tables:
     """
     A collection of lookup tables used in EVM circuit.
@@ -442,7 +444,7 @@ class Tables:
         tx_table: Set[TxTableRow],
         bytecode_table: Set[BytecodeTableRow],
         rw_table: Union[Set[Sequence[Expression]], Set[RWTableRow]],
-        copy_circuit: Sequence[CopyTableRow] = None
+        copy_circuit: Sequence[CopyCircuitRow] = None,
     ) -> None:
         self.block_table = block_table
         self.tx_table = tx_table
@@ -454,7 +456,7 @@ class Tables:
         if copy_circuit is not None:
             self.copy_table = self._convert_copy_circuit_to_table(copy_circuit)
 
-    def _convert_copy_circuit_to_table(self, copy_circuit: Sequence[CopyTableRow]):
+    def _convert_copy_circuit_to_table(self, copy_circuit: Sequence[CopyCircuitRow]):
         rows = []
         for i, row in enumerate(copy_circuit):
             if row.q_first != 1:
@@ -462,19 +464,21 @@ class Tables:
             assert i + 1 < len(copy_circuit), "Not enough rows in copy circuit"
             next_row = copy_circuit[i + 1]
             assert next_row.q_step == 0, "Invalid copy circuit"
-            rows.append(CopyTableRow(
-                src_id = row.id,
-                src_type = row.tag,
-                dst_id = next_row.id,
-                dst_type = next_row.tag,
-                src_addr = row.addr,
-                src_addr_end = row.addr_end,
-                dst_addr = next_row.addr,
-                length = row.bytes_left,
-                rw_counter = row.rw_counter,
-                rwc_inc = row.rwc_inc_left,
-                log_id = next_row.log_id
-            ))
+            rows.append(
+                CopyTableRow(
+                    src_id=row.id,
+                    src_type=row.tag,
+                    dst_id=next_row.id,
+                    dst_type=next_row.tag,
+                    src_addr=row.addr,
+                    src_addr_end=row.addr_end,
+                    dst_addr=next_row.addr,
+                    length=row.bytes_left,
+                    rw_counter=row.rw_counter,
+                    rwc_inc=row.rwc_inc_left,
+                    log_id=next_row.log_id,
+                )
+            )
         return set(rows)
 
     def fixed_lookup(
@@ -561,7 +565,7 @@ class Tables:
         dst_type: Expression,
         src_addr: Expression,
         src_addr_end: Expression,
-        dst_addr: Exprssion,
+        dst_addr: Expression,
         length: Expression,
         rw_counter: Expression,
         log_id: Expression = None,
@@ -576,7 +580,7 @@ class Tables:
             "dst_addr": dst_addr,
             "length": length,
             "rw_counter": rw_counter,
-            "log_id": log_id
+            "log_id": log_id,
         }
         return _lookup(CopyTableRow, self.copy_table, query)
 

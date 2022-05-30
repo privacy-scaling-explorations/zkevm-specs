@@ -129,19 +129,20 @@ def make_log(
     is_persistent: bool,
 ):
     data = rand_bytes(msize)
-    (rw_dictionary
-        .stack_read(CALL_ID, stack_pointer, RLC(mstart, randomness))
-        .stack_read(CALL_ID, stack_pointer+1, RLC(msize, randomness))
+    (
+        rw_dictionary.stack_read(CALL_ID, stack_pointer, RLC(mstart, randomness))
+        .stack_read(CALL_ID, stack_pointer + 1, RLC(msize, randomness))
         .call_context_read(CALL_ID, CallContextFieldTag.TxId, TX_ID)
         .call_context_read(CALL_ID, CallContextFieldTag.IsStatic, 0)
         .call_context_read(CALL_ID, CallContextFieldTag.CalleeAddress, FQ(CALLEE_ADDRESS))
-        .call_context_read(CALL_ID, CallContextFieldTag.IsPersistent, is_persistent))
+        .call_context_read(CALL_ID, CallContextFieldTag.IsPersistent, is_persistent)
+    )
 
     if is_persistent:
         rw_dictionary.tx_log_write(TX_ID, log_id, TxLogFieldTag.Address, 0, FQ(CALLEE_ADDRESS))
 
     # append topic rows
-    construct_topic_rws(rw_dictionary, log_id, stack_pointer+2, topics, is_persistent, randomness)
+    construct_topic_rws(rw_dictionary, log_id, stack_pointer + 2, topics, is_persistent, randomness)
 
     # copy the log data
     src_data = dict([(mstart + i, byte) for (i, byte) in enumerate(data)])
@@ -191,7 +192,9 @@ def test_single_log(topics: list, mstart: U64, msize: U64, is_persistent: bool):
             log_id=0,
         )
     ]
-    sp = make_log(rw_dictionary, copy_circuit, randomness, 1015, 0, topics, mstart, msize, is_persistent)
+    sp = make_log(
+        rw_dictionary, copy_circuit, randomness, 1015, 0, topics, mstart, msize, is_persistent
+    )
 
     steps.append(
         StepState(
@@ -246,19 +249,21 @@ def test_multi_logs(log_entries):
     log_id = 0
     gas_left = total_gas
     for pc, (topics, mstart, msize, is_persistent) in enumerate(log_entries):
-        steps.append(StepState(
-            execution_state=ExecutionState.LOG,
-            rw_counter=rw_dictionary.rw_counter,
-            call_id=CALL_ID,
-            is_root=False,
-            is_create=False,
-            code_source=bytecode_hash,
-            program_counter=pc,
-            stack_pointer=stack_pointer,
-            memory_size=50,
-            gas_left=gas_left,
-            log_id=log_id,
-        ))
+        steps.append(
+            StepState(
+                execution_state=ExecutionState.LOG,
+                rw_counter=rw_dictionary.rw_counter,
+                call_id=CALL_ID,
+                is_root=False,
+                is_create=False,
+                code_source=bytecode_hash,
+                program_counter=pc,
+                stack_pointer=stack_pointer,
+                memory_size=50,
+                gas_left=gas_left,
+                log_id=log_id,
+            )
+        )
         stack_pointer = make_log(
             rw_dictionary,
             copy_circuit,

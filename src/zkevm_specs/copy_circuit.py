@@ -1,9 +1,21 @@
 from typing import Dict, Iterator, List, NewType, Optional, Sequence, Union, Mapping, Tuple
 
-from .util import FQ, Expression, ConstraintSystem, cast_expr, N_BYTES_MEMORY_ADDRESS
-from .evm import Tables, CopyDataTypeTag, CopyCircuitRow, RW, RWTableTag, FixedTableTag, CopyCircuit, TxContextFieldTag, BytecodeFieldTag, TxLogFieldTag
+from .util import FQ, Expression, ConstraintSystem, cast_expr, MAX_N_BYTES, N_BYTES_MEMORY_ADDRESS
+from .evm import (
+    Tables,
+    CopyDataTypeTag,
+    CopyCircuitRow,
+    RW,
+    RWTableTag,
+    FixedTableTag,
+    CopyCircuit,
+    TxContextFieldTag,
+    BytecodeFieldTag,
+    TxLogFieldTag,
+)
 
-def lt(self, lhs: Expression, rhs: Expression, n_bytes: int) -> FQ:
+
+def lt(lhs: Expression, rhs: Expression, n_bytes: int) -> FQ:
     assert n_bytes <= MAX_N_BYTES, "Too many bytes to composite an integer in field"
     assert lhs.expr().n < 256**n_bytes, f"lhs {lhs} exceeds the range of {n_bytes} bytes"
     assert rhs.expr().n < 256**n_bytes, f"rhs {rhs} exceeds the range of {n_bytes} bytes"
@@ -52,8 +64,9 @@ def verify_step(cs: ConstraintSystem, rows: Sequence[CopyCircuitRow], tables: Ta
         # value == 0 when is_pad == 1 for read
         cs.constrain_zero(rows[0].is_pad * rows[0].value)
         # is_pad == 1 - (src_addr < src_addr_end) for read row
-        cs.constrain_equal(1 - lt(rows[0].addr, rows[0].addr_end, N_BYTES_MEMORY_ADDRESS),
-                           rows[0].is_pad)
+        cs.constrain_equal(
+            1 - lt(rows[0].addr, rows[0].addr_end, N_BYTES_MEMORY_ADDRESS), rows[0].is_pad
+        )
         # is_pad == 0 for write row
         cs.constrain_zero(rows[1].is_pad)
 
@@ -79,7 +92,9 @@ def verify_copy_table(copy_circuit: CopyCircuit, tables: Tables):
             ).value
             cs.constrain_equal(cast_expr(val, FQ), row.value)
         if row.is_bytecode == 1 and row.is_pad == 0:
-            val = tables.bytecode_lookup(row.id, FQ(BytecodeFieldTag.Byte), row.addr, row.is_code).value
+            val = tables.bytecode_lookup(
+                row.id, FQ(BytecodeFieldTag.Byte), row.addr, row.is_code
+            ).value
             cs.constrain_equal(cast_expr(val, FQ), row.value)
         if row.is_tx_calldata == 1 and row.is_pad == 0:
             val = tables.tx_lookup(row.id, FQ(TxContextFieldTag.CallData), row.addr).value
@@ -92,6 +107,6 @@ def verify_copy_table(copy_circuit: CopyCircuit, tables: Tables):
                 row.id,
                 row.log_id,
                 FQ(TxLogFieldTag.Data),
-                row.addr
+                row.addr,
             ).value
             cs.constrain_equal(cast_expr(val, FQ), row.value)
