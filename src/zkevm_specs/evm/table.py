@@ -582,7 +582,7 @@ class Tables:
             "rw_counter": rw_counter,
             "log_id": log_id,
         }
-        return _lookup(CopyTableRow, self.copy_table, query)
+        return lookup(CopyTableRow, self.copy_table, query)
 
 
 T = TypeVar("T", bound=TableRow)
