@@ -32,7 +32,7 @@ and keeps 5 cells for storing `k1: [u8;32]`,  `k2: [u8;32]`, `a_reduced: [u8;32]
 TODO: Circuit gadgets description
 ```
 
-- Check `r<n` (3)
+- Check `r<N` (3)
 
 To handle the case of `n==0` => `r==0`, if `N` is 0:
 
