@@ -20,6 +20,7 @@ from .callvalue import *
 from .calldatacopy import *
 from .calldataload import *
 from .codecopy import *
+from .codesize import *
 from .gas import *
 from .iszero import *
 from .jump import *
@@ -53,6 +54,7 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.CALLDATALOAD: calldataload,
     ExecutionState.CALLDATASIZE: calldatasize,
     ExecutionState.CODECOPY: codecopy,
+    ExecutionState.CODESIZE: codesize,
     ExecutionState.BlockCtx: blockctx,
     ExecutionState.JUMP: jump,
     ExecutionState.JUMPI: jumpi,
