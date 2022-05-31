@@ -60,10 +60,11 @@ def mulmod(instruction: Instruction):
     instruction.mul_add_words_512(RLC(a_reduced), b, RLC(0), d, e)
     instruction.mul_add_words_512(RLC(k2), n, r, d, e)
 
-    # Check that r<n if n!=0
+    # Check that r<n  and a_reduced<n if n!=0
     n_is_zero = instruction.is_zero(n)
+    a_reduced_lt_n = lt_u256(instruction, RLC(a_reduced), n)
     r_lt_n = lt_u256(instruction, r, n)
-    instruction.constrain_zero(FQ(1) - (r_lt_n + n_is_zero))
+    instruction.constrain_zero(FQ(2) - (a_reduced_lt_n + r_lt_n + 2 * n_is_zero))
 
     assert pushed_r.int_value == r.int_value * (1 - n_is_zero)
 
