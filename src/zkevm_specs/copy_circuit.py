@@ -26,11 +26,16 @@ def verify_row(cs: ConstraintSystem, rows: Sequence[CopyCircuitRow]):
     cs.constrain_bool(rows[0].q_step)
     cs.constrain_bool(rows[0].q_first)
     cs.constrain_bool(rows[0].q_last)
+    # q_first == 0 when q_step == 0
+    cs.constrain_zero((1 - rows[0].q_step) * rows[0].q_first)
+    # q_last == 0 when q_step == 1
+    cs.constrain_zero(rows[0].q_step * rows[0].q_last)
     cs.constrain_equal(rows[0].is_memory, cs.is_zero(rows[0].tag - CopyDataTypeTag.Memory))
     cs.constrain_equal(rows[0].is_bytecode, cs.is_zero(rows[0].tag - CopyDataTypeTag.Bytecode))
     cs.constrain_equal(rows[0].is_tx_calldata, cs.is_zero(rows[0].tag - CopyDataTypeTag.TxCalldata))
     cs.constrain_equal(rows[0].is_tx_log, cs.is_zero(rows[0].tag - CopyDataTypeTag.TxLog))
 
+    # constrain the transition between two copy steps
     is_last_two_rows = rows[0].q_last + rows[1].q_last
     with cs.condition(1 - is_last_two_rows) as cs:
         # not last two rows
@@ -40,15 +45,15 @@ def verify_row(cs: ConstraintSystem, rows: Sequence[CopyCircuitRow]):
         cs.constrain_equal(rows[0].addr + 1, rows[2].addr)
         cs.constrain_equal(rows[0].addr_end, rows[2].addr_end)
 
+    # contrain the transition for `rw_counter` and `rwc_inc_left`
+    rw_diff = (1 - rows[0].is_pad) * (rows[0].is_memory + rows[0].is_tx_log)
     with cs.condition(1 - rows[0].q_last) as cs:
         # not last row
-        rw_diff = (1 - rows[0].is_pad) * (rows[0].is_memory + rows[0].is_tx_log)
         cs.constrain_equal(rows[0].rw_counter + rw_diff, rows[1].rw_counter)
         cs.constrain_equal(rows[0].rwc_inc_left - rw_diff, rows[1].rwc_inc_left)
-
     with cs.condition(rows[0].q_last) as cs:
         # rwc_inc_left == 1 for last row in the copy slot
-        cs.constrain_zero(rows[0].rwc_inc_left - 1)
+        cs.constrain_equal(rows[0].rwc_inc_left, rw_diff)
 
 
 def verify_step(cs: ConstraintSystem, rows: Sequence[CopyCircuitRow], tables: Tables):

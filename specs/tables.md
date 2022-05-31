@@ -271,3 +271,52 @@ Columns expressions in circuit:
 - Key: `key_rlc_mult`
 - ValuePrev: `is_nonce_mod * sel1 + is_balance_mod * sel2 + is_codehash_mod * sel2 + is_storage_mod * mult_diff`
 - ValueCur: `is_nonce_mod * s_mod_node_hash_rlc + is_balance_mod * c_mod_node_hash_rlc + is_codehash_mod * c_mod_node_hash_rlc + is_storage_mod * acc_c`
+
+## `copy_table`
+
+Proved by the copy circuit.
+
+The copy table consists of 14 columns, described as follows:
+
+- **q_step**: a boolean value to indicate a copy step, always alternating between 1 and 0, where 1 indicates a read op and 0 indicates a write op.
+- **q_first**: a boolean value to indicate the first row in a copy event.
+- **q_last**: a boolean value to indicate the last row in a copy event.
+- **ID**: could be `$txID`, `$callId`, $codeHash` (RLC encoded).
+- **LogID**: indicates the log id, only valid when `Type` is `TxLog`.
+- **Type**: indicates the type of data source, including `Memory`, `Bytecode`, `TxCalldata`, `TxLog`.
+- **Address**: indicates the address in the source data, could be memory address, byte index in the bytecode, tx call data, and tx log data.
+- **AddressEnd**: indicates the address boundary of the source data. Any data read from address beyond `AddressEnd` should be 0. So `AddressEnd` is only valid for read operations or `q_step` is 1.
+- **BytesLeft**: indicates the number of bytes left to be copied.
+- **Value**: indicates the value read or write from source or to the destination.
+- **Pad**: indicates if the value read from the source is padded. Only valid for read operations or `q_step` is 1.
+- **IsCode**: a boolean value to specify if the value is executable opcode or the data portion of PUSH* operations. Only valid when `Type` is `Bytecode`.
+- **RwCounter**: indicates the RW counter in the `rw_table`. Only valid when `Type` is  `Memory` or `TxLog`.
+- **RwcIncreaseLeft**: indicates the left RW counter increase in a copy event.
+
+
+Unlike other lookup tables, the copy table is a virtual table. The lookup entry is not a single row in the table, and not every row corresponds to a lookup entry.
+Instead, a lookup entry is constructed from the first two rows in each copy event as
+`(q_first, ID, Type, ID[1], Type[1], LogId[1], Address, AddressEnd, Address[1], BytesLeft, RwCounter, RwcIncreaseLeft)`, where `q_first` is 1 and `Column[1]` indicates the next row in the corresponding column.
+
+The table below lists all of copy pairs supported in the copy table:
+- Copy from Tx call data to memory (`CALLDATACOPY`).
+- Copy from caller/callee memory to callee/caller memory (`CALLDATACOPY`, `RETURN` (not create), `RETURNDATACOPY`).
+- Copy from bytecode to memory (`CODECOPY`, `EXTCODECOPY`).
+- Copy from memory to bytecode (`CREATE`, `CREATE2`, `RETURN` (create))
+
+| q_step | q_first | q_last | ID        | LogID  | Type       | Address        | AddressEnd     | BytesLeft  | Value  | IsCode  | Padding | RwCounter | RwcIncreaseLeft |
+|--------|---------|--------|-----------|--------|------------|----------------|----------------|------------|--------|---------|-----|-----------|-----------------|
+| 1      | 0/1     | 0      | $txID     | -      | TxCalldata | $byteIndex     | $cdLength      | $bytesLeft | $value | -       | 0/1 | -         | $rwcIncLeft     |
+| 0      | 0       | 0/1    | $callId   | -      | Memory     | $memoryAddress | -              | -          | $value | -       | 0   | $counter  | $rwcIncLeft     |
+|        |         |        |           |        |            |                |                |            |        |         |     |           |                 |
+| 1      | 0/1     | 0      | $callId   | -      | Memory     | $memoryAddress | $memoryAddress | $bytesLeft | $value | -       | 0/1 | $counter  | $rwcIncLeft     |
+| 0      | 0       | 0/1    | $callId   | -      | Memory     | $memoryAddress | -              | -          | $value | -       | 0   | $counter  | $rwcIncLeft     |
+|        |         |        |           |        |            |                |                |            |        |         |     |           |                 |
+| 1      | 0/1     | 0      | $codeHash | -      | Bytecode   | $byteIndex     | $codeLength    | $bytesLeft | $value | $isCode | 0/1 | -         | $rwcIncLeft     |
+| 0      | 0       | 0/1    | $callId   | -      | Memory     | $memoryAddress | -              | -          | $value | $isCode | 0   | $counter  | $rwcIncLeft     |
+|        |         |        |           |        |            |                |                |            |        |         |     |           |                 |
+| 1      | 0/1     | 0      | $callId   | -      | Memory     | $memoryAddress | $memoryAddress | $bytesLeft | $value | $isCode | 0/1 | $counter  | $rwcIncLeft     |
+| 0      | 0       | 0/1    | $codeHash | -      | Bytecode   | $byteIndex     | -              | -          | $value | $isCode | 0   | -         | $rwcIncLeft     |
+|        |         |        |           |        |            |                |                |            |        |         |     |           |                 |
+| 1      | 0/1     | 0      | $callId   | -      | Memory     | $memoryAddress | $memoryAddress | $bytesLeft | $value | -       | 0/1 | $counter  | $rwcIncLeft     |
+| 0      | 0       | 0/1    | $txId     | $logId | TxLog      | $byteIndex     | -              | -          | $value | -       | 0   | $counter  | $rwcIncLeft     |
