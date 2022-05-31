@@ -63,7 +63,7 @@ def make_copy_step(
     stack_pointer: int,
     memory_size: int,
     gas_left: int,
-    code_source: RLC,
+    code_hash: RLC,
 ) -> StepState:
     aux_data = CopyToMemoryAuxData(
         src_addr=src_addr,
@@ -82,7 +82,7 @@ def make_copy_step(
         stack_pointer=stack_pointer,
         gas_left=gas_left,
         memory_size=memory_size,
-        code_source=code_source,
+        code_hash=code_hash,
         aux_data=aux_data,
     )
 
@@ -108,7 +108,7 @@ def make_copy_steps(
     stack_pointer: int,
     memory_size: int,
     gas_left: int,
-    code_source: RLC,
+    code_hash: RLC,
 ) -> Sequence[StepState]:
     buffer_addr_end = buffer_addr + len(buffer)
     buffer_map = dict(zip(range(buffer_addr, buffer_addr_end), buffer))
@@ -127,7 +127,7 @@ def make_copy_steps(
             stack_pointer,
             memory_size,
             gas_left,
-            code_source,
+            code_hash,
         )
         steps.append(new_step)
         src_addr += MAX_N_BYTES_COPY_TO_MEMORY
@@ -193,7 +193,7 @@ def test_calldatacopy(
             call_id=CALL_ID,
             is_root=from_tx,
             is_create=False,
-            code_source=bytecode_hash,
+            code_hash=bytecode_hash,
             program_counter=99,
             stack_pointer=1021,
             memory_size=curr_memory_word_size,
@@ -232,7 +232,7 @@ def test_calldatacopy(
         memory_size=next_memory_word_size,
         stack_pointer=1024,
         gas_left=0,
-        code_source=bytecode_hash,
+        code_hash=bytecode_hash,
     )
     steps.extend(new_steps)
 
@@ -243,7 +243,7 @@ def test_calldatacopy(
             call_id=CALL_ID,
             is_root=from_tx,
             is_create=False,
-            code_source=bytecode_hash,
+            code_hash=bytecode_hash,
             program_counter=100,
             stack_pointer=1024,
             memory_size=next_memory_word_size,

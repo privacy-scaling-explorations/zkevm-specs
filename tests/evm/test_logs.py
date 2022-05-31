@@ -70,12 +70,13 @@ def make_log_copy_step(
     src_addr: int,
     src_addr_end: int,
     bytes_left: int,
+    data_start_index: int,
     rw_dictionary: RWDictionary,
     program_counter: int,
     stack_pointer: int,
     memory_size: int,
     gas_left: int,
-    code_source: RLC,
+    code_hash: RLC,
     log_id: int,
     is_persistent: bool,
 ) -> Tuple[StepState, Sequence[RW]]:
@@ -85,6 +86,7 @@ def make_log_copy_step(
         bytes_left=bytes_left,
         is_persistent=is_persistent,
         tx_id=TX_ID,
+        data_start_index=data_start_index,
     )
     step = StepState(
         execution_state=ExecutionState.CopyToLog,
@@ -94,7 +96,7 @@ def make_log_copy_step(
         stack_pointer=stack_pointer,
         gas_left=gas_left,
         memory_size=memory_size,
-        code_source=code_source,
+        code_hash=code_hash,
         log_id=is_persistent,
         aux_data=aux_data,
     )
@@ -104,7 +106,9 @@ def make_log_copy_step(
         if src_addr + i < src_addr_end:
             rw_dictionary.memory_read(CALL_ID, src_addr + i, FQ(byte))
             if is_persistent:
-                rw_dictionary.tx_log_write(TX_ID, log_id, TxLogFieldTag.Data, i, FQ(byte))
+                rw_dictionary.tx_log_write(
+                    TX_ID, log_id, TxLogFieldTag.Data, i + data_start_index, FQ(byte)
+                )
 
     return step
 
@@ -119,7 +123,7 @@ def make_log_copy_steps(
     stack_pointer: int,
     memory_size: int,
     gas_left: int,
-    code_source: RLC,
+    code_hash: RLC,
     log_id: int,
     is_persistent: bool,
 ) -> Sequence[StepState]:
@@ -127,23 +131,26 @@ def make_log_copy_steps(
     buffer_map = dict(zip(range(buffer_addr, buffer_addr_end), buffer))
     steps = []
     bytes_left = length
+    data_start_index = 0
     while bytes_left > 0:
         new_step = make_log_copy_step(
             buffer_map,
             src_addr,
             buffer_addr_end,
             bytes_left,
+            data_start_index,
             rw_dictionary,
             program_counter,
             stack_pointer,
             memory_size,
             gas_left,
-            code_source,
+            code_hash,
             log_id,
             is_persistent,
         )
         steps.append(new_step)
         src_addr += MAX_COPY_BYTES
+        data_start_index += MAX_COPY_BYTES
         bytes_left -= MAX_COPY_BYTES
     return steps
 
@@ -165,7 +172,7 @@ def test_logs(topics: list, mstart: U64, msize: U64, is_persistent: bool):
             call_id=CALL_ID,
             is_root=False,
             is_create=False,
-            code_source=bytecode_hash,
+            code_hash=bytecode_hash,
             program_counter=0,
             stack_pointer=1015,
             memory_size=mstart,
@@ -199,7 +206,7 @@ def test_logs(topics: list, mstart: U64, msize: U64, is_persistent: bool):
         memory_size=next_memory_size,
         stack_pointer=1015 + (2 + topic_count),
         gas_left=0,
-        code_source=bytecode_hash,
+        code_hash=bytecode_hash,
         log_id=1,
         is_persistent=is_persistent,
     )
@@ -212,7 +219,7 @@ def test_logs(topics: list, mstart: U64, msize: U64, is_persistent: bool):
             call_id=CALL_ID,
             is_root=False,
             is_create=False,
-            code_source=bytecode_hash,
+            code_hash=bytecode_hash,
             program_counter=1,
             stack_pointer=1015 + (2 + topic_count),
             memory_size=next_memory_size,
