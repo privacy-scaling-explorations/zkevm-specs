@@ -54,7 +54,8 @@ def mulmod(instruction: Instruction):
     assert (a_reduced_times_b) == k2 * n.int_value + r.int_value
 
     # Reduction of first factor
-    instruction.mul_add_words(RLC(k1), n, RLC(a_reduced), a)
+    has_overflow = instruction.mul_add_words(RLC(k1), n, RLC(a_reduced), a)
+    instruction.constrain_zero(has_overflow)
 
     # Reduction of the product
     instruction.mul_add_words_512(RLC(a_reduced), b, RLC(0), d, e)
