@@ -45,7 +45,7 @@ a64s_lo[idx] = a64s[idx] % p_lo
 a64s_hi[idx] = a64s[idx] / p_lo
 ```
 
-If `shift > 256`, `b64s` are all 0. Otherwise, `b64s` can be calculated by `a >> shf0` then split into four 64-bit limbs.
+If `shift >= 256`, `b64s` are all 0. Otherwise, `b64s` can be calculated by `a >> shf0` then split into four 64-bit limbs.
 
 Now putting things together, the constraints can be constructed as follows:
 
