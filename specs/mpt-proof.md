@@ -716,17 +716,17 @@ Also, when there is an even number of nibbles, `s_advices[0]` has to be `0`.
 
 ## Account leaf
 
-There are five rows for an account leaf:
+There are seven rows for an account leaf:
 
 ```
 Key S
+Key C
 Nonce balance S
 Nonce balance C
 Storage codehash S
 Storage codehash C
+Leaf in added branch
 ```
-
-There is only one key row, because the key is always the same for the two parallel proofs (TODO: support account creation, then the keys can be different).
 
 <p align="center">
   <img src="./img/address_rlc.png?raw=true" width="60%">
@@ -969,7 +969,7 @@ Branch 1 | Branch 1
 Leaf 1   | Leaf 2
 ```
 
-In this case, the leaf constraints are switched off for the placeholder leaf.
+In case of a placeholder leaf, the leaf constraints are switched off for the placeholder leaf.
 Instead, it is checked that there is an empty row in branch at `modified_node` position.
 
 <p align="center">
@@ -1008,6 +1008,7 @@ Thus, placeholder leaf is used just to not break the circuit layout.
 In the C proof, the hash of a leaf (the first leaf that is added to the trie)
 is checked to be the storage trie root. When the only leaf in the storage trie
 is deleted, the scenario is reversed: the placeholder is in the C proof.
+
 
 <p align="center">
   <img src="./img/one_leaf.png?raw=true" width="50%">
@@ -1114,6 +1115,23 @@ lookups where the attacker would avoid triggering all account proof related cons
 However, this is prevented by ensuring each storage proof has a corresponding account
 proof (by checking `address_rlc` starts with 0 value in the first level of the proof
 and can be changed only in `account leaf key` row).
+
+### Account create lookup
+
+Because MPT circuit allows only one change at a time, there are three lookups (`nonce`, `balance`,
+`codehash`) using the same `counter` needed for the account creation.
+
+```
+lookup(counter, address_rlc, nonce_prev, nonce_cur, is_nonce_mod)
+lookup(counter, address_rlc, balance_prev, balance_cur, is_balance_mod)
+lookup(counter, address_rlc, codehash_prev, codehash_cur, is_codehash_mod)
+```
+
+Default values are to be used for `nonce_prev, nonce_cur`, `balance_prev`, `balance_cur`, `codehash_prev`, `codehash_cur`. Note that `prev` values are not important, we do not need to prove the correct modification of the trie here, we just need a proof for an account with default values to exist in the trie. Thus, there are no constraints for `prev` values to be default values.
+
+Also, there are no constraints for `cur` values to be default values, because the
+correct values are implied by lookups - the lookups (default values passed by arguments)
+will fail if there are no correct values in the circuit.
 
 ## Helper techniques
 
