@@ -31,7 +31,7 @@ Now putting things together, the constraints can be constructed as follows:
 
 4. `dividend`, `divisor` and `quotient` signs:
 
-* `dividend_is_signed_overflow` is calculated for a special `SDIV` case, when input `diviend = -(1 << 255)` and `divisor = -1`, the quotient result should be `1 << 255`, which is overflow for a `signed` word. Since it could only express `signed` value from `-(1 << 255)` to `(1 << 255) - 1`.
+* `dividend_is_signed_overflow` is calculated for a special `SDIV` case, when input `dividend = -(1 << 255)` and `divisor = -1`, the quotient result should be `1 << 255`, which is overflow for a `signed` word. Since it could only express `signed` value from `-(1 << 255)` to `(1 << 255) - 1`.
 
 * Constrain `sign(dividend) == sign(divisor) ^ sign(quotient)` when both quotient and divisor are non-zero and dividend is not signed overflow.
 
