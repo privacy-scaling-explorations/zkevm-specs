@@ -26,6 +26,7 @@ class FixedTableTag(IntEnum):
     BitwiseOr = auto()  # lhs, rhs, lhs | rhs, 0
     BitwiseXor = auto()  # lhs, rhs, lhs ^ rhs, 0
     ResponsibleOpcode = auto()  # execution_state, opcode, aux
+    Pow2 = auto()  # value, value_pow
 
     def table_assignments(self) -> List[FixedTableRow]:
         if self == FixedTableTag.Range5:
@@ -68,6 +69,8 @@ class FixedTableTag(IntEnum):
                     execution_state.responsible_opcode(),
                 )
             ]
+        elif self == FixedTableTag.Pow2:
+            return [FixedTableRow(FQ(self), FQ(value), FQ(1 << value)) for value in range(65)]
         else:
             raise ValueError("Unreacheable")
 
