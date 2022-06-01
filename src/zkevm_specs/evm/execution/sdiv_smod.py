@@ -10,8 +10,8 @@ def sdiv_smod(instruction: Instruction):
     pop2 = instruction.stack_pop()
     push = instruction.stack_push()
 
-    (quotient, divisor, remainder, dividend) = gen_witness(instruction, opcode, pop1, pop2, push)
-    check_witness(instruction, quotient, divisor, remainder, dividend)
+    (quotient, divisor, remainder, dividend) = __gen_witness(instruction, opcode, pop1, pop2, push)
+    __check_witness(instruction, quotient, divisor, remainder, dividend)
 
     instruction.step_state_transition_in_same_context(
         opcode,
@@ -21,7 +21,7 @@ def sdiv_smod(instruction: Instruction):
     )
 
 
-def check_witness(
+def __check_witness(
     instruction: Instruction, quotient: RLC, divisor: RLC, remainder: RLC, dividend: RLC
 ):
     quotient_is_neg = instruction.word_is_neg(quotient)
@@ -68,7 +68,7 @@ def check_witness(
     )
 
 
-def gen_witness(instruction: Instruction, opcode: FQ, pop1: RLC, pop2: RLC, push: RLC):
+def __gen_witness(instruction: Instruction, opcode: FQ, pop1: RLC, pop2: RLC, push: RLC):
     # The opcode value for SDIV and SMOD are 5 and 7. When the opcode is SDIV,
     # `Opcode.SMOD - opcode` is 2. To make `is_sdiv` be either 0 or 1, we need
     # to divide the product by 2, which is equivalent to multiply it by

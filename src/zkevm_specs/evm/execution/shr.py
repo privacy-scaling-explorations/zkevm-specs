@@ -19,8 +19,8 @@ def shr(instruction: Instruction):
         shf_mod64,
         p_lo,
         p_hi,
-    ) = gen_witness(instruction, a, shift)
-    check_witness(
+    ) = __gen_witness(instruction, a, shift)
+    __check_witness(
         instruction,
         a,
         shift,
@@ -43,7 +43,7 @@ def shr(instruction: Instruction):
     )
 
 
-def check_witness(
+def __check_witness(
     instruction: Instruction,
     a: RLC,
     shift: RLC,
@@ -113,7 +113,7 @@ def check_witness(
     instruction.pow2_lookup(64 - shf_mod64, p_hi)
 
 
-def gen_witness(instruction: Instruction, a: RLC, shift: RLC):
+def __gen_witness(instruction: Instruction, a: RLC, shift: RLC):
     shf0 = instruction.bytes_to_fq(shift.le_bytes[:1])
     shf_div64 = FQ(shf0.n // 64)
     shf_mod64 = FQ(shf0.n % 64)
