@@ -131,7 +131,7 @@ def test_begin_tx(tx: Transaction, callee: Account, is_success: bool):
         .call_context_read(1, CallContextFieldTag.LastCalleeReturnDataLength, 0) \
         .call_context_read(1, CallContextFieldTag.IsRoot, True) \
         .call_context_read(1, CallContextFieldTag.IsCreate, False) \
-        .call_context_read(1, CallContextFieldTag.CodeSource, bytecode_hash)
+        .call_context_read(1, CallContextFieldTag.CodeHash, bytecode_hash)
     # fmt: on
 
     tables = Tables(
@@ -157,11 +157,11 @@ def test_begin_tx(tx: Transaction, callee: Account, is_success: bool):
                 call_id=1,
                 is_root=True,
                 is_create=False,
-                code_source=bytecode_hash,
+                code_hash=bytecode_hash,
                 program_counter=0,
                 stack_pointer=1024,
                 gas_left=0,
-                state_write_counter=2,
+                reversible_write_counter=2,
             ),
         ],
         begin_with_first_step=True,

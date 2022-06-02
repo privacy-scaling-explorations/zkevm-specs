@@ -33,6 +33,7 @@ from .table import (
     RW,
     RWTableTag,
     TxLogFieldTag,
+    TxReceiptFieldTag,
 )
 
 
@@ -71,21 +72,21 @@ class Transition:
 class ReversionInfo:
     rw_counter_end_of_reversion: FQ
     is_persistent: FQ
-    state_write_counter: FQ
+    reversible_write_counter: FQ
 
     def __init__(
         self,
         rw_counter_end_of_reversion: Expression,
         is_persistent: Expression,
-        state_write_counter: Expression,
+        reversible_write_counter: Expression,
     ) -> None:
         self.rw_counter_end_of_reversion = rw_counter_end_of_reversion.expr()
         self.is_persistent = is_persistent.expr()
-        self.state_write_counter = state_write_counter.expr()
+        self.reversible_write_counter = reversible_write_counter.expr()
 
     def rw_counter_of_reversion(self) -> FQ:
-        rw_counter_of_reversion = self.rw_counter_end_of_reversion - self.state_write_counter
-        self.state_write_counter += 1
+        rw_counter_of_reversion = self.rw_counter_end_of_reversion - self.reversible_write_counter
+        self.reversible_write_counter += 1
         return rw_counter_of_reversion
 
 
@@ -163,12 +164,12 @@ class Instruction:
                 "call_id",
                 "is_root",
                 "is_create",
-                "code_source",
+                "code_hash",
                 "program_counter",
                 "stack_pointer",
                 "gas_left",
                 "memory_size",
-                "state_write_counter",
+                "reversible_write_counter",
                 "log_id",
             ]
         )
@@ -208,18 +209,20 @@ class Instruction:
         call_id: Transition,
         is_root: Transition,
         is_create: Transition,
-        code_source: Transition,
+        code_hash: Transition,
         gas_left: Transition,
-        state_write_counter: Transition,
+        reversible_write_counter: Transition,
+        log_id: Transition,
     ):
         self.constrain_step_state_transition(
             rw_counter=rw_counter,
             call_id=call_id,
             is_root=is_root,
             is_create=is_create,
-            code_source=code_source,
+            code_hash=code_hash,
             gas_left=gas_left,
-            state_write_counter=state_write_counter,
+            reversible_write_counter=reversible_write_counter,
+            log_id=log_id,
             # Initailization unconditionally
             program_counter=Transition.to(0),
             stack_pointer=Transition.to(1024),
@@ -233,7 +236,7 @@ class Instruction:
         program_counter: Transition = Transition.same(),
         stack_pointer: Transition = Transition.same(),
         memory_size: Transition = Transition.same(),
-        state_write_counter: Transition = Transition.same(),
+        reversible_write_counter: Transition = Transition.same(),
         dynamic_gas_cost: IntOrFQ = 0,
         log_id: Transition = Transition.same(),
     ):
@@ -248,13 +251,13 @@ class Instruction:
             stack_pointer=stack_pointer,
             gas_left=Transition.delta(-gas_cost),
             memory_size=memory_size,
-            state_write_counter=state_write_counter,
+            reversible_write_counter=reversible_write_counter,
             log_id=log_id,
             # Always stay same
             call_id=Transition.same(),
             is_root=Transition.same(),
             is_create=Transition.same(),
-            code_source=Transition.same(),
+            code_hash=Transition.same(),
         )
 
     def sum(self, values: Sequence[IntOrFQ]) -> FQ:
@@ -322,17 +325,26 @@ class Instruction:
         assert len(word.le_bytes) == 32, "Expected word to contain 32 bytes"
         return self.is_zero(self.sum(word.le_bytes))
 
-    def word_to_lo_hi(self, word: RLC) -> Tuple[FQ, FQ]:
+    def word_to_lo_hi(self, word: RLC, constrained=False) -> Tuple[FQ, FQ]:
         assert len(word.le_bytes) == 32, "Expected word to contain 32 bytes"
-        return self.bytes_to_fq(word.le_bytes[:16]), self.bytes_to_fq(word.le_bytes[16:])
+        return self.bytes_to_fq(word.le_bytes[:16], constrained), self.bytes_to_fq(
+            word.le_bytes[16:], constrained
+        )
 
     def word_to_64s(self, word: RLC) -> Tuple[FQ, ...]:
         assert len(word.le_bytes) == 32, "Expected word to contain 32 bytes"
         return tuple(self.bytes_to_fq(word.le_bytes[8 * i : 8 * (i + 1)]) for i in range(4))
 
-    def bytes_to_fq(self, value: bytes) -> FQ:
+    def bytes_to_fq(self, value: bytes, constrained=False) -> FQ:
         assert len(value) <= MAX_N_BYTES, "Too many bytes to composite an integer in field"
-        return FQ(int.from_bytes(value, "little"))
+
+        fq = FQ(int.from_bytes(value, "little"))
+
+        if constrained:
+            expr = sum(list(map(lambda x: (256 ** x[0]) * x[1], enumerate(list(value)))))
+            self.constrain_equal(fq, FQ(expr))
+
+        return fq
 
     def rlc_encode(self, value: Union[FQ, int, bytes], n_bytes: int = None) -> RLC:
         if isinstance(value, FQ):
@@ -461,6 +473,22 @@ class Instruction:
         ).value
         return value
 
+    # look up TxReceipt fields (PostStateOrStatus, CumulativeGasUsed, LogLength)
+    def tx_receipt_lookup(
+        self,
+        tx_id: Expression,
+        field_tag: TxReceiptFieldTag,
+    ) -> Expression:
+        value = self.rw_lookup(
+            RW.Read,
+            RWTableTag.TxReceipt,
+            key1=tx_id,
+            key2=FQ(0),
+            key3=FQ(field_tag),
+            key4=FQ(0),
+        ).value
+        return value
+
     def bytecode_lookup(
         self, bytecode_hash: Expression, index: Expression, is_code: Expression = None
     ) -> Expression:
@@ -490,7 +518,7 @@ class Instruction:
                 "The opcode source when is_root and is_create (root creation call) is not determined yet"
             )
         else:
-            return self.bytecode_lookup(self.curr.code_source, index, FQ(is_code)).expr()
+            return self.bytecode_lookup(self.curr.code_hash, index, FQ(is_code)).expr()
 
     def rw_lookup(
         self,
@@ -503,7 +531,6 @@ class Instruction:
         value: Expression = None,
         value_prev: Expression = None,
         aux0: Expression = None,
-        aux1: Expression = None,
         rw_counter: Expression = None,
     ) -> RWTableRow:
         if rw_counter is None:
@@ -521,7 +548,6 @@ class Instruction:
             value,
             value_prev,
             aux0,
-            aux1,
         )
 
     def state_write(
@@ -534,12 +560,11 @@ class Instruction:
         value: Expression = None,
         value_prev: Expression = None,
         aux0: Expression = None,
-        aux1: Expression = None,
         reversion_info: ReversionInfo = None,
     ) -> RWTableRow:
         assert tag.write_with_reversion()
 
-        row = self.rw_lookup(RW.Write, tag, key1, key2, key3, key4, value, value_prev, aux0, aux1)
+        row = self.rw_lookup(RW.Write, tag, key1, key2, key3, key4, value, value_prev, aux0)
 
         if reversion_info is not None and reversion_info.is_persistent == FQ(0):
             self.tables.rw_lookup(
@@ -554,7 +579,6 @@ class Instruction:
                 value=row.value_prev,
                 value_prev=row.value,
                 aux0=row.aux0,
-                aux1=row.aux1,
             )
 
         return row
@@ -577,7 +601,7 @@ class Instruction:
         return ReversionInfo(
             rw_counter_end_of_reversion,
             is_persistent,
-            self.curr.state_write_counter if call_id is None else FQ(0),
+            self.curr.reversible_write_counter if call_id is None else FQ(0),
         )
 
     def stack_pop(self) -> RLC:
@@ -626,7 +650,7 @@ class Instruction:
     def account_read(self, account_address: Expression, account_field_tag: AccountFieldTag) -> RLC:
         return cast_expr(
             self.rw_lookup(
-                RW.Read, RWTableTag.Account, account_address, FQ(account_field_tag)
+                RW.Read, RWTableTag.Account, key2=account_address, key3=FQ(account_field_tag)
             ).value,
             RLC,
         )
@@ -639,8 +663,8 @@ class Instruction:
     ) -> Tuple[Expression, Expression]:
         row = self.state_write(
             RWTableTag.Account,
-            account_address,
-            FQ(account_field_tag),
+            key2=account_address,
+            key3=FQ(account_field_tag),
             reversion_info=reversion_info,
         )
         return row.value, row.value_prev
@@ -681,9 +705,10 @@ class Instruction:
         row = self.rw_lookup(
             RW.Read,
             RWTableTag.AccountStorage,
+            tx_id,
             account_address,
-            storage_key,
-            aux0=tx_id,
+            key3=None,
+            key4=storage_key,
         )
         return cast_expr(row.value, RLC)
 
@@ -696,12 +721,13 @@ class Instruction:
     ) -> Tuple[RLC, RLC, RLC]:
         row = self.state_write(
             RWTableTag.AccountStorage,
+            tx_id,
             account_address,
-            storage_key,
-            aux0=tx_id,
+            key3=None,
+            key4=storage_key,
             reversion_info=reversion_info,
         )
-        return cast_expr(row.value, RLC), cast_expr(row.value_prev, RLC), cast_expr(row.aux1, RLC)
+        return cast_expr(row.value, RLC), cast_expr(row.value_prev, RLC), cast_expr(row.aux0, RLC)
 
     def add_account_to_access_list(
         self, tx_id: Expression, account_address: Expression, reversion_info: ReversionInfo = None
@@ -817,3 +843,6 @@ class Instruction:
         gas_cost = word_size * GAS_COST_COPY + memory_expansion_gas_cost
         self.range_check(gas_cost, N_BYTES_GAS)
         return gas_cost
+
+    def pow2_lookup(self, value: Expression, value_pow: Expression):
+        self.fixed_lookup(FixedTableTag.Pow2, value, value_pow)

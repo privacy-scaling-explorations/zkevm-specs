@@ -23,8 +23,8 @@
        - 2 stack operations
        - 1 storage reads
        - 1 access_list write
-     - `SSTORE`: +9
-       - 4 call_context read
+     - `SSTORE`: +10
+       - 5 call_context read
        - 2 stack operations
        - 1 storage reads/writes
        - 1 access_list write
@@ -33,7 +33,7 @@
      - `SLOAD`: remains the same
      - `SSTORE`: -2
    - pc + 1
-   - state_write_counter
+   - reversible_write_counter
      - `SLOAD`: +1 (access_list)
      - `SSTORE`: +3 (for storage, access_list & gas_refund respectively)
    - gas:
@@ -79,9 +79,10 @@
        - `value` is pushed on top of the stack
      - storage: The 32 bytes of `value` are read from storage at `key`
      - access_list: Write as `true` for `key`
-   - `SSTORE`: 9 busmapping lookups
+   - `SSTORE`: 10 busmapping lookups
      - call_context:
        - `tx_id`: Read the `tx_id` for this tx.
+       - `is_static`: Read the call's property `is_static`
        - `rw_counter_end_of_reversion`: Read the `rw_counter_end` if this tx get reverted.
        - `is_persistent`: Read if this tx will be reverted.
        - `callee_address`: Read the `callee_address` of this call.

@@ -58,7 +58,10 @@ def begin_tx(instruction: Instruction):
 
     if tx_is_create == 1:
         # TODO: Verify created address
-        # TODO: Decide what code_source should be (tx_id or hash of creation code)
+        # code_hash represents the contract creation code
+        # 1. In the case of root call, code_hash is the hash of the tx calldata.
+        # 2. In the case of internal call, code_hash is the hash of the chunk of
+        #    caller memory corresponding to the contract init code.
         raise NotImplementedError
     elif tx_callee_address in list(PrecompiledAddress):
         # TODO: Handle precompile
@@ -99,7 +102,7 @@ def begin_tx(instruction: Instruction):
                 (CallContextFieldTag.LastCalleeReturnDataLength, FQ(0)),
                 (CallContextFieldTag.IsRoot, FQ(True)),
                 (CallContextFieldTag.IsCreate, FQ(False)),
-                (CallContextFieldTag.CodeSource, code_hash),
+                (CallContextFieldTag.CodeHash, code_hash),
             ]:
                 instruction.constrain_equal(
                     instruction.call_context_lookup(tag, call_id=call_id), value
@@ -110,7 +113,8 @@ def begin_tx(instruction: Instruction):
                 call_id=Transition.to(call_id),
                 is_root=Transition.to(True),
                 is_create=Transition.to(False),
-                code_source=Transition.to(code_hash),
+                code_hash=Transition.to(code_hash),
                 gas_left=Transition.to(gas_left),
-                state_write_counter=Transition.to(2),
+                reversible_write_counter=Transition.to(2),
+                log_id=Transition.to(0),
             )

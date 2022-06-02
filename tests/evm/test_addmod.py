@@ -4,36 +4,43 @@ from typing import Optional
 from zkevm_specs.evm import (
     ExecutionState,
     StepState,
-    Opcode,
     verify_steps,
     Tables,
     Block,
     Bytecode,
     RWDictionary,
 )
-from zkevm_specs.util import rand_fq, rand_word, RLC
-from common import generate_nasty_tests
+from zkevm_specs.util import rand_fq, RLC
 
+MAXU256 = (2**256) - 1
 
 TESTING_DATA = [
-    (Opcode.ADD, 0x030201, 0x060504),
-    (Opcode.SUB, 0x090705, 0x060504),
-    (Opcode.ADD, rand_word(), rand_word()),
-    (Opcode.SUB, rand_word(), rand_word()),
+    (MAXU256, MAXU256, 0),
+    (MAXU256, MAXU256, 1),
+    (MAXU256, MAXU256, MAXU256),
+    (MAXU256, 0, MAXU256),
+    (MAXU256, 1, MAXU256),
+    (MAXU256, 1, 1),
+    (MAXU256, 0, 0),
+    (0, 1, 0),
+    (0, 0, 0),
 ]
 
-generate_nasty_tests(TESTING_DATA, (Opcode.ADD, Opcode.SUB))
 
-
-@pytest.mark.parametrize("opcode, a, b", TESTING_DATA)
-def test_add_sub(opcode: Opcode, a: int, b: int):
+@pytest.mark.parametrize("a, b, n", TESTING_DATA)
+def test_addmod(a: int, b: int, n: int):
     randomness = rand_fq()
 
-    c = RLC((a + b if opcode == Opcode.ADD else a - b) % 2**256, randomness)
+    if n == 0:
+        r = RLC(0, randomness)
+    else:
+        r = RLC((a + b) % n, randomness)
+
     a = RLC(a, randomness)
     b = RLC(b, randomness)
+    n = RLC(n, randomness)
 
-    bytecode = Bytecode().add(a, b) if opcode == Opcode.ADD else Bytecode().sub(a, b)
+    bytecode = Bytecode().addmod(a, b, n).stop()
     bytecode_hash = RLC(bytecode.hash(), randomness)
 
     tables = Tables(
@@ -42,9 +49,10 @@ def test_add_sub(opcode: Opcode, a: int, b: int):
         bytecode_table=set(bytecode.table_assignments(randomness)),
         rw_table=set(
             RWDictionary(9)
-            .stack_read(1, 1022, a)
-            .stack_read(1, 1023, b)
-            .stack_write(1, 1023, c)
+            .stack_read(1, 1021, a)
+            .stack_read(1, 1022, b)
+            .stack_read(1, 1023, n)
+            .stack_write(1, 1023, r)
             .rws
         ),
     )
@@ -54,24 +62,24 @@ def test_add_sub(opcode: Opcode, a: int, b: int):
         tables=tables,
         steps=[
             StepState(
-                execution_state=ExecutionState.ADD,
+                execution_state=ExecutionState.ADDMOD,
                 rw_counter=9,
                 call_id=1,
                 is_root=True,
                 is_create=False,
                 code_hash=bytecode_hash,
-                program_counter=66,
-                stack_pointer=1022,
-                gas_left=3,
+                program_counter=99,
+                stack_pointer=1021,
+                gas_left=8,
             ),
             StepState(
                 execution_state=ExecutionState.STOP,
-                rw_counter=12,
+                rw_counter=13,
                 call_id=1,
                 is_root=True,
                 is_create=False,
                 code_hash=bytecode_hash,
-                program_counter=67,
+                program_counter=100,
                 stack_pointer=1023,
                 gas_left=0,
             ),

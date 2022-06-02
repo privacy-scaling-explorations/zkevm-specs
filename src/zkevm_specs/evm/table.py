@@ -26,6 +26,7 @@ class FixedTableTag(IntEnum):
     BitwiseOr = auto()  # lhs, rhs, lhs | rhs, 0
     BitwiseXor = auto()  # lhs, rhs, lhs ^ rhs, 0
     ResponsibleOpcode = auto()  # execution_state, opcode, aux
+    Pow2 = auto()  # value, value_pow
 
     def table_assignments(self) -> List[FixedTableRow]:
         if self == FixedTableTag.Range5:
@@ -68,6 +69,8 @@ class FixedTableTag(IntEnum):
                     execution_state.responsible_opcode(),
                 )
             ]
+        elif self == FixedTableTag.Pow2:
+            return [FixedTableRow(FQ(self), FQ(value), FQ(1 << value)) for value in range(65)]
         else:
             raise ValueError("Unreacheable")
 
@@ -144,6 +147,17 @@ class RW(IntEnum):
     Write = 1
 
 
+class MPTTableTag(IntEnum):
+    """
+    Tag for MPTTable lookup
+    """
+
+    Nonce = 1
+    Balance = 2
+    CodeHash = 4
+    Storage = 8
+
+
 class RWTableTag(IntEnum):
     """
     Tag for RWTable lookup, where the RWTable an advice-column table built by
@@ -212,7 +226,7 @@ class CallContextFieldTag(IntEnum):
     IsStatic = auto()  # to know if state modification is within static call or not
     IsRoot = auto()
     IsCreate = auto()
-    CodeSource = auto()
+    CodeHash = auto()
 
     # The following are read-only data inside a call like previous section for
     # opcode RETURNDATASIZE and RETURNDATACOPY, except they will be updated when
@@ -231,7 +245,7 @@ class CallContextFieldTag(IntEnum):
     StackPointer = auto()
     GasLeft = auto()
     MemorySize = auto()
-    StateWriteCounter = auto()
+    ReversibleWriteCounter = auto()
 
 
 class TxLogFieldTag(IntEnum):
@@ -340,7 +354,16 @@ class RWTableRow(TableRow):
     value: Expression = field(default=FQ(0))
     value_prev: Expression = field(default=FQ(0))
     aux0: Expression = field(default=FQ(0))
-    aux1: Expression = field(default=FQ(0))
+
+
+@dataclass(frozen=True)
+class MPTTableRow(TableRow):
+    counter: Expression
+    target: Expression  # MPTTableTag
+    address: Expression
+    key: Expression
+    value: Expression
+    value_prev: Expression
 
 
 class Tables:
@@ -391,7 +414,7 @@ class Tables:
         self, field_tag: Expression, block_number: Expression = FQ(0)
     ) -> BlockTableRow:
         query = {"field_tag": field_tag, "block_number_or_zero": block_number}
-        return _lookup(BlockTableRow, self.block_table, query)
+        return lookup(BlockTableRow, self.block_table, query)
 
     def tx_lookup(
         self, tx_id: Expression, field_tag: Expression, call_data_index: Expression = FQ(0)
@@ -401,7 +424,7 @@ class Tables:
             "field_tag": field_tag,
             "call_data_index_or_zero": call_data_index,
         }
-        return _lookup(TxTableRow, self.tx_table, query)
+        return lookup(TxTableRow, self.tx_table, query)
 
     def bytecode_lookup(
         self,
@@ -416,7 +439,7 @@ class Tables:
             "index": index,
             "is_code": is_code,
         }
-        return _lookup(BytecodeTableRow, self.bytecode_table, query)
+        return lookup(BytecodeTableRow, self.bytecode_table, query)
 
     def rw_lookup(
         self,
@@ -430,7 +453,6 @@ class Tables:
         value: Expression = None,
         value_prev: Expression = None,
         aux0: Expression = None,
-        aux1: Expression = None,
     ) -> RWTableRow:
         query = {
             "rw_counter": rw_counter,
@@ -443,15 +465,14 @@ class Tables:
             "value": value,
             "value_prev": value_prev,
             "aux0": aux0,
-            "aux1": aux1,
         }
-        return _lookup(RWTableRow, self.rw_table, query)
+        return lookup(RWTableRow, self.rw_table, query)
 
 
 T = TypeVar("T", bound=TableRow)
 
 
-def _lookup(
+def lookup(
     table_cls: Type[T],
     table: Set[T],
     query: Mapping[str, Optional[Expression]],
