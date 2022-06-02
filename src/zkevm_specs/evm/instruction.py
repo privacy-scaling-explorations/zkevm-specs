@@ -451,14 +451,14 @@ class Instruction:
 
     # look up tx log fields (Data, Address, Topic),
     def tx_log_lookup(
-        self, tx_id: Expression, field_tag: TxLogFieldTag, index: int = 0
+        self, tx_id: Expression, log_id: Expression, field_tag: TxLogFieldTag, index: int = 0
     ) -> Expression:
         # evm only write tx log
         value = self.rw_lookup(
             RW.Write,
             RWTableTag.TxLog,
             key1=tx_id,
-            key2=self.curr.log_id,
+            key2=log_id,
             key3=FQ(field_tag),
             key4=FQ(index),
         ).value
