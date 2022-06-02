@@ -26,7 +26,10 @@ def copy_to_log(instruction: Instruction):
             instruction.constrain_equal(
                 byte,
                 instruction.tx_log_lookup(
-                    aux.tx_id, TxLogFieldTag.Data, i + aux.data_start_index.n
+                    aux.tx_id,
+                    instruction.curr.log_id,
+                    TxLogFieldTag.Data,
+                    i + aux.data_start_index.n,
                 ),
             )
 
