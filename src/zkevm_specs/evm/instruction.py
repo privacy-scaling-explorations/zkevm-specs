@@ -329,17 +329,26 @@ class Instruction:
         assert len(word.le_bytes) == 32, "Expected word to contain 32 bytes"
         return self.is_zero(self.sum(word.le_bytes))
 
-    def word_to_lo_hi(self, word: RLC) -> Tuple[FQ, FQ]:
+    def word_to_lo_hi(self, word: RLC, constrained=False) -> Tuple[FQ, FQ]:
         assert len(word.le_bytes) == 32, "Expected word to contain 32 bytes"
-        return self.bytes_to_fq(word.le_bytes[:16]), self.bytes_to_fq(word.le_bytes[16:])
+        return self.bytes_to_fq(word.le_bytes[:16], constrained), self.bytes_to_fq(
+            word.le_bytes[16:], constrained
+        )
 
     def word_to_64s(self, word: RLC) -> Tuple[FQ, ...]:
         assert len(word.le_bytes) == 32, "Expected word to contain 32 bytes"
         return tuple(self.bytes_to_fq(word.le_bytes[8 * i : 8 * (i + 1)]) for i in range(4))
 
-    def bytes_to_fq(self, value: bytes) -> FQ:
+    def bytes_to_fq(self, value: bytes, constrained=False) -> FQ:
         assert len(value) <= MAX_N_BYTES, "Too many bytes to composite an integer in field"
-        return FQ(int.from_bytes(value, "little"))
+
+        fq = FQ(int.from_bytes(value, "little"))
+
+        if constrained:
+            expr = sum(list(map(lambda x: (256 ** x[0]) * x[1], enumerate(list(value)))))
+            self.constrain_equal(fq, FQ(expr))
+
+        return fq
 
     def rlc_encode(self, value: Union[FQ, int, bytes], n_bytes: int = None) -> RLC:
         if isinstance(value, FQ):
@@ -473,14 +482,14 @@ class Instruction:
 
     # look up tx log fields (Data, Address, Topic),
     def tx_log_lookup(
-        self, tx_id: Expression, field_tag: TxLogFieldTag, index: int = 0
+        self, tx_id: Expression, log_id: Expression, field_tag: TxLogFieldTag, index: int = 0
     ) -> Expression:
         # evm only write tx log
         value = self.rw_lookup(
             RW.Write,
             RWTableTag.TxLog,
             key1=tx_id,
-            key2=self.curr.log_id,
+            key2=log_id,
             key3=FQ(field_tag),
             key4=FQ(index),
         ).value
