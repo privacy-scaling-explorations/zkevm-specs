@@ -33,21 +33,26 @@ TESTING_DATA = (
     (TESTING_MAX_NEGATIVE, 255),
     (TESTING_MAX_NEGATIVE, 256),
     (TESTING_MAX_NEGATIVE, 300),
+    (TESTING_MAX_NEGATIVE, TESTING_MAX_NEGATIVE),
+    (TESTING_MAX_NEGATIVE, TESTING_MAX_POSITIVE),
     (TESTING_MAX_POSITIVE, 63),
     (TESTING_MAX_POSITIVE, 128),
     (TESTING_MAX_POSITIVE, 129),
     (TESTING_MAX_POSITIVE, 255),
     (TESTING_MAX_POSITIVE, 256),
     (TESTING_MAX_POSITIVE, 300),
+    (TESTING_MAX_POSITIVE, TESTING_MAX_NEGATIVE),
+    (TESTING_MAX_POSITIVE, TESTING_MAX_POSITIVE),
 )
 
 
 @pytest.mark.parametrize("value, shift", TESTING_DATA)
 def test_sar(value: U256, shift: int):
     if is_neg(value):
-        result = get_neg(get_abs(value) >> shift) if shift < 256 else TESTING_MAX_NEGATIVE
+        result_abs = get_abs(value) >> shift
+        result = get_neg(result_abs) if result_abs != 0 else TESTING_MAX_NEGATIVE
     else:
-        result = value >> shift if shift < 256 else 0
+        result = value >> shift
 
     randomness = rand_fq()
     value = RLC(value, randomness)
