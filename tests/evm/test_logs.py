@@ -161,7 +161,7 @@ def test_logs(topics: list, mstart: U64, msize: U64, is_persistent: bool):
     data = rand_bytes(msize)
     topic_count = len(topics)
     next_memory_size, memory_expansion_cost = memory_expansion(mstart, msize)
-    dynamic_gas = GAS_COST_LOG * topic_count + 8 * msize + memory_expansion_cost
+    dynamic_gas = GAS_COST_LOG + GAS_COST_LOG * topic_count + 8 * msize + memory_expansion_cost
     bytecode = bytecodes[topic_count]
     bytecode_hash = RLC(bytecode.hash(), randomness)
     tx = Transaction(id=TX_ID, gas=dynamic_gas)
@@ -192,7 +192,7 @@ def test_logs(topics: list, mstart: U64, msize: U64, is_persistent: bool):
     )
 
     if is_persistent:
-        rw_dictionary.tx_log_write(TX_ID, 0, TxLogFieldTag.Address, 0, FQ(CALLEE_ADDRESS))
+        rw_dictionary.tx_log_write(TX_ID, 1, TxLogFieldTag.Address, 0, FQ(CALLEE_ADDRESS))
 
     # append topic rows
     construct_topic_rws(rw_dictionary, 1017, topics, is_persistent, randomness)
@@ -252,7 +252,7 @@ def construct_topic_rws(
         rw_dictionary.stack_read(CALL_ID, sp, RLC(topics[i], randomness, 32))
         if is_persistent:
             rw_dictionary.tx_log_write(
-                TX_ID, 0, TxLogFieldTag.Topic, i, RLC(topics[i], randomness, 32)
+                TX_ID, 1, TxLogFieldTag.Topic, i, RLC(topics[i], randomness, 32)
             )
 
         sp += 1
