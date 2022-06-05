@@ -1,6 +1,6 @@
 # Zkevm Specifications
 
-[![Python package](https://github.com/appliedzkp/zkevm-specs/actions/workflows/python-package.yml/badge.svg)](https://github.com/appliedzkp/zkevm-specs/actions/workflows/python-package.yml)
+[![Python package](https://github.com/privacy-scaling-explorations/zkevm-specs/actions/workflows/python-package.yml/badge.svg)](https://github.com/privacy-scaling-explorations/zkevm-specs/actions/workflows/python-package.yml)
 
 The project aims to define a validity snark proof for Ethereum transactions.
 
@@ -26,4 +26,4 @@ make test
 
 ## Implementations
 
-See [appliedzkp/zkevm-circuits](https://github.com/appliedzkp/zkevm-circuits)
+See [privacy-scaling-explorations/zkevm-circuits](https://github.com/privacy-scaling-explorations/zkevm-circuits)
