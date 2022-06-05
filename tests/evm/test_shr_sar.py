@@ -1,46 +1,54 @@
 import pytest
-
 from zkevm_specs.evm import (
-    ExecutionState,
-    StepState,
-    verify_steps,
-    Tables,
     Block,
     Bytecode,
+    ExecutionState,
+    Opcode,
     RWDictionary,
+    StepState,
+    Tables,
+    verify_steps,
 )
-from zkevm_specs.util import (
-    rand_fq,
-    rand_range,
-    rand_word,
-    RLC,
-    U256,
-)
+from zkevm_specs.util import rand_fq, RLC, U256
+from common import generate_nasty_tests
+
+TESTING_MAX_NEGATIVE = (1 << 256) - 1  # -1
+TESTING_MAX_POSITIVE = (1 << 255) - 1
+TESTING_NEGATIVE_SIGN = 1 << 255
+
+TESTING_DATA = [
+    (Opcode.SHR, 0x1234, 8),
+    (Opcode.SHR, 0x5678, 17),
+    (Opcode.SHR, 0xABCD, 0),
+    (Opcode.SHR, 0xFFFF, 256),
+    (Opcode.SHR, TESTING_NEGATIVE_SIGN + 0x1234, 8),
+    (Opcode.SHR, TESTING_NEGATIVE_SIGN + 0x5678, 17),
+    (Opcode.SHR, TESTING_NEGATIVE_SIGN + 0xABCD, 0),
+    (Opcode.SHR, TESTING_NEGATIVE_SIGN + 0xFFFF, 256),
+    (Opcode.SHR, TESTING_MAX_NEGATIVE, 129),
+    (Opcode.SHR, TESTING_MAX_NEGATIVE, 300),
+    (Opcode.SHR, TESTING_MAX_NEGATIVE, TESTING_MAX_NEGATIVE),
+    (Opcode.SHR, TESTING_MAX_NEGATIVE, TESTING_MAX_POSITIVE),
+    (Opcode.SHR, TESTING_MAX_POSITIVE, 129),
+    (Opcode.SHR, TESTING_MAX_POSITIVE, 300),
+    (Opcode.SHR, TESTING_MAX_POSITIVE, TESTING_MAX_NEGATIVE),
+    (Opcode.SHR, TESTING_MAX_POSITIVE, TESTING_MAX_POSITIVE),
+]
+
+generate_nasty_tests(TESTING_DATA, (Opcode.SHR, Opcode.SAR))
 
 
-TESTING_DATA = (
-    (0xABCD, 8),
-    (0x1234, 7),
-    (0x8765, 17),
-    (0x4321, 0),
-    (0xFFFF, 256),
-    (0x12345, 256 + 8 + 1),
-    ((1 << 256) - 1, 63),
-    ((1 << 256) - 1, 128),
-    ((1 << 256) - 1, 129),
-)
-
-
-@pytest.mark.parametrize("value, shift", TESTING_DATA)
-def test_shr(value: U256, shift: int):
-    result = value >> shift if shift <= 255 else 0
+@pytest.mark.parametrize("opcode, value, shift", TESTING_DATA)
+def test_shr_sar(opcode: Opcode, value: U256, shift: int):
+    is_sar = opcode == Opcode.SAR
+    result = get_neg(-(-get_abs(value) >> shift)) if is_sar and is_neg(value) else value >> shift
 
     randomness = rand_fq()
     value = RLC(value, randomness)
     shift = RLC(shift, randomness)
     result = RLC(result, randomness)
 
-    bytecode = Bytecode().push32(value).push32(shift).shr().stop()
+    bytecode = Bytecode().sar(value, shift) if is_sar else Bytecode().shr(value, shift)
     bytecode_hash = RLC(bytecode.hash(), randomness)
 
     tables = Tables(
@@ -84,3 +92,15 @@ def test_shr(value: U256, shift: int):
             ),
         ],
     )
+
+
+def get_abs(value: int) -> int:
+    return get_neg(value) if is_neg(value) else value
+
+
+def get_neg(value: int) -> int:
+    return 0 if value == 0 else TESTING_MAX_NEGATIVE - value + 1
+
+
+def is_neg(value: int) -> bool:
+    return TESTING_NEGATIVE_SIGN & value != 0
