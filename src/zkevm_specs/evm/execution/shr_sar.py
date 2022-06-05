@@ -117,7 +117,7 @@ def __check_witness(
     )
     instruction.constrain_equal(
         b64s[3],
-        a64s_hi[3] * shf_div64_eq0 + is_neg * MAX_U64 * (1 - shf_div64_eq0),
+        (a64s_hi[3] + p_top) * shf_div64_eq0 + is_neg * MAX_U64 * (1 - shf_div64_eq0),
     )
 
     # shift constraint
