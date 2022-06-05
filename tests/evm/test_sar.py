@@ -54,8 +54,8 @@ TESTING_DATA = (
 def test_sar(value: U256, shift: int):
     result = get_neg(-(-get_abs(value) >> shift)) if is_neg(value) else value >> shift
 
-    print(f'result = {result}')
-    print(f'-get_abs(value) = {-get_abs(value)}')
+    print(f"result = {result}")
+    print(f"-get_abs(value) = {-get_abs(value)}")
 
     randomness = rand_fq()
     value = RLC(value, randomness)

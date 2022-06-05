@@ -81,7 +81,7 @@ def __check_witness(
     for idx in range(4):
         offset = idx * N_BYTES_U64
         instruction.constrain_equal(
-            b64s[idx] * shf_lt256 + a_is_neg * (1 - shf_lt256) * 0xffffffffffffffff,
+            b64s[idx] * shf_lt256 + a_is_neg * (1 - shf_lt256) * 0xFFFFFFFFFFFFFFFF,
             instruction.bytes_to_fq(b.le_bytes[offset : offset + N_BYTES_U64]),
         )
 
@@ -97,28 +97,35 @@ def __check_witness(
     shf_div64_eq1 = instruction.is_zero(shf_div64 - 1)
     shf_div64_eq2 = instruction.is_zero(shf_div64 - 2)
     shf_div64_eq3 = instruction.is_zero(shf_div64 - 3)
-    hi_hi = a_is_neg * (0xffffffffffffffff - p_hi + 1)
+    p_top = a_is_neg * (0xFFFFFFFFFFFFFFFF - p_hi + 1)
     instruction.constrain_equal(
-    b64s[0],
-    (a64s_hi[0] + a64s_lo[1] * p_hi) * shf_div64_eq0
-    + (a64s_hi[1] + a64s_lo[2] * p_hi) * shf_div64_eq1
-    + (a64s_hi[2] + a64s_lo[3] * p_hi) * shf_div64_eq2
-    + (a64s_hi[3] + hi_hi) * shf_div64_eq3
-    + a_is_neg * 0xffffffffffffffff * (1 - shf_div64_eq0 - shf_div64_eq1 - shf_div64_eq2 - shf_div64_eq3),
+        b64s[0],
+        (a64s_hi[0] + a64s_lo[1] * p_hi) * shf_div64_eq0
+        + (a64s_hi[1] + a64s_lo[2] * p_hi) * shf_div64_eq1
+        + (a64s_hi[2] + a64s_lo[3] * p_hi) * shf_div64_eq2
+        + (a64s_hi[3] + p_top) * shf_div64_eq3
+        + a_is_neg
+        * 0xFFFFFFFFFFFFFFFF
+        * (1 - shf_div64_eq0 - shf_div64_eq1 - shf_div64_eq2 - shf_div64_eq3),
     )
     instruction.constrain_equal(
-    b64s[1],
-    (a64s_hi[1] + a64s_lo[2] * p_hi) * shf_div64_eq0
-    + (a64s_hi[2] + a64s_lo[3] * p_hi) * shf_div64_eq1
-    + (a64s_hi[3] + hi_hi) * shf_div64_eq2
-    + a_is_neg * 0xffffffffffffffff * (1 - shf_div64_eq0 - shf_div64_eq1 - shf_div64_eq2),
+        b64s[1],
+        (a64s_hi[1] + a64s_lo[2] * p_hi) * shf_div64_eq0
+        + (a64s_hi[2] + a64s_lo[3] * p_hi) * shf_div64_eq1
+        + (a64s_hi[3] + p_top) * shf_div64_eq2
+        + a_is_neg * 0xFFFFFFFFFFFFFFFF * (1 - shf_div64_eq0 - shf_div64_eq1 - shf_div64_eq2),
     )
     instruction.constrain_equal(
-    b64s[2], (a64s_hi[2] + a64s_lo[3] * p_hi) * shf_div64_eq0 + (a64s_hi[3] + hi_hi) * shf_div64_eq1
-    + a_is_neg * 0xffffffffffffffff * (1 - shf_div64_eq0 - shf_div64_eq1),
+        b64s[2],
+        (a64s_hi[2] + a64s_lo[3] * p_hi) * shf_div64_eq0
+        + (a64s_hi[3] + p_top) * shf_div64_eq1
+        + a_is_neg * 0xFFFFFFFFFFFFFFFF * (1 - shf_div64_eq0 - shf_div64_eq1),
     )
     # gupeng
-    instruction.constrain_equal(b64s[3], (a64s_hi[3] + hi_hi) *shf_div64_eq0 + a_is_neg * 0xffffffffffffffff * (1 - shf_div64_eq0))
+    instruction.constrain_equal(
+        b64s[3],
+        (a64s_hi[3] + p_top) * shf_div64_eq0 + a_is_neg * 0xFFFFFFFFFFFFFFFF * (1 - shf_div64_eq0),
+    )
 
     # shift constraint
     instruction.constrain_equal(
