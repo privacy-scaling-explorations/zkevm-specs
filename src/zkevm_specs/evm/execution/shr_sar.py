@@ -132,7 +132,7 @@ def __check_witness(
 
 
 def __gen_witness(instruction: Instruction, opcode: FQ, a: RLC, shift: RLC):
-    # Opcode of SHR and SAR are 0x1C and 0x1D. Return 1 for SAR and 0 for SHR.
+    # Opcode of SHR and SAR are 0x1C and 0x1D. Result is 1 for SAR and 0 for SHR.
     is_sar = opcode - Opcode.SHR
 
     is_neg = is_sar * instruction.word_is_neg(a)
@@ -145,6 +145,8 @@ def __gen_witness(instruction: Instruction, opcode: FQ, a: RLC, shift: RLC):
     p_top = FQ(is_neg * (MAX_U64 - p_hi + 1))
 
     a64s = instruction.word_to_64s(a)
+    # Each of the four `a64s` limbs is split into two parts (`a64s_lo` and `a64s_hi`)
+    # at position `shf_mod64`. `a64s_lo` is the lower `shf_mod64` bits.
     a64s_lo = [FQ(0)] * 4
     a64s_hi = [FQ(0)] * 4
     for idx in range(4):
