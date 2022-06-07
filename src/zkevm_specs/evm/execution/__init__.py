@@ -36,7 +36,7 @@ from .selfbalance import *
 from .extcodehash import *
 from .log import *
 from .shr import *
-from .sdiv_smod import *
+from .sdiv_smod import sdiv_smod
 
 
 EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
