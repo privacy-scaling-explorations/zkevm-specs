@@ -10,8 +10,8 @@ def sdiv_smod(instruction: Instruction):
     pop2 = instruction.stack_pop()
     push = instruction.stack_push()
 
-    (quotient, divisor, remainder, dividend) = __gen_witness(instruction, opcode, pop1, pop2, push)
-    __check_witness(instruction, quotient, divisor, remainder, dividend)
+    (quotient, divisor, remainder, dividend) = gen_witness(instruction, opcode, pop1, pop2, push)
+    check_witness(instruction, quotient, divisor, remainder, dividend)
 
     instruction.step_state_transition_in_same_context(
         opcode,

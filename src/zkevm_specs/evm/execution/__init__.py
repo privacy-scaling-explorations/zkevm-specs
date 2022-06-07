@@ -35,7 +35,7 @@ from .storage import *
 from .selfbalance import *
 from .extcodehash import *
 from .log import *
-from .shr import *
+from .shr import shr
 from .sdiv_smod import sdiv_smod
 
 

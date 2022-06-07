@@ -81,7 +81,7 @@ def test_sdiv_smod(opcode: Opcode, a: int, b: int):
         tables=tables,
         steps=[
             StepState(
-                execution_state=ExecutionState.SDIV,
+                execution_state=ExecutionState.SDIV_SMOD,
                 rw_counter=9,
                 call_id=1,
                 is_root=True,

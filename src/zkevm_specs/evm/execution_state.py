@@ -27,8 +27,7 @@ class ExecutionState(IntEnum):
     STOP = auto()
     ADD = auto()  # ADD, SUB
     MUL = auto()  # MUL, DIV, MOD
-    SDIV = auto()
-    SMOD = auto()
+    SDIV_SMOD = auto()
     ADDMOD = auto()
     MULMOD = auto()
     EXP = auto()
@@ -148,10 +147,8 @@ class ExecutionState(IntEnum):
             ]
         elif self == ExecutionState.MUL:
             return [Opcode.MUL, Opcode.DIV, Opcode.MOD]
-        elif self == ExecutionState.SDIV:
+        elif self == ExecutionState.SDIV_SMOD:
             return [Opcode.SDIV, Opcode.SMOD]
-        elif self == ExecutionState.SMOD:
-            return [Opcode.SMOD]
         elif self == ExecutionState.ADDMOD:
             return [Opcode.ADDMOD]
         elif self == ExecutionState.MULMOD:
