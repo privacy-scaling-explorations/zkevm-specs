@@ -21,7 +21,7 @@ def sdiv_smod(instruction: Instruction):
     )
 
 
-def __check_witness(
+def check_witness(
     instruction: Instruction, quotient: RLC, divisor: RLC, remainder: RLC, dividend: RLC
 ):
     quotient_is_neg = instruction.word_is_neg(quotient)
