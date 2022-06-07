@@ -72,5 +72,5 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.CALL: call,
     ExecutionState.ISZERO: iszero,
     ExecutionState.SHR: shr,
-    ExecutionState.SDIV: sdiv_smod,
+    ExecutionState.SDIV_SMOD: sdiv_smod,
 }
