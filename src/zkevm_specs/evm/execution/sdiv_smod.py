@@ -68,7 +68,7 @@ def check_witness(
     )
 
 
-def __gen_witness(instruction: Instruction, opcode: FQ, pop1: RLC, pop2: RLC, push: RLC):
+def gen_witness(instruction: Instruction, opcode: FQ, pop1: RLC, pop2: RLC, push: RLC):
     # The opcode value for SDIV and SMOD are 5 and 7. When the opcode is SDIV,
     # `Opcode.SMOD - opcode` is 2. To make `is_sdiv` be either 0 or 1, we need
     # to divide the product by 2, which is equivalent to multiply it by
