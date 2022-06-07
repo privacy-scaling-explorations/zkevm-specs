@@ -50,7 +50,7 @@ Details:
 - **Memory -> value, valuePrev**: 1 byte
 - **storageKey**: field size, RLC encoded (Random Linear Combination).
 - **TxLog Address column**:  Packs 2 values:
-    - **TxLog -> logID**: 64 bits, starts at 1 (corresponds to `logIndex + 1`), it is unique per tx/receipt.
+    - **TxLog -> logID**: 32 bits, starts at 1 (corresponds to `logIndex + 1`), it is unique per tx/receipt.
     - **TxReceipt -> topicIndex, byteIndex**: 32 bits, indicates order in tx log topics or data.
 - **TxLog -> Topic -> value**: field size, RLC encoded (Random Linear Combination).
 - **TxLog -> Data -> value**: 1 byte
