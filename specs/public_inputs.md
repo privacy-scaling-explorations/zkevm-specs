@@ -113,7 +113,7 @@ synchronize the State Trie.
 
 ## Data to synchronize the State Trie
 
-In order to synchronize the State Trie after a new block (assuming we have the sate
+In order to synchronize the State Trie after a new block (assuming we have the state
 of the previous block), we need the at least the following data:
 
 - For each tx
@@ -139,11 +139,11 @@ inferred from the State Trie of the previous block.
 
 ## Data to calculate a new block
 
-In order to calculate a new block (assuming we have the sate of the previous
+In order to calculate a new block (assuming we have the state of the previous
 block), we need at least the following data:
 
 - A way to prove that block[-1].Root (calculated from the known State Trie) is
-  included in block[-1..-257].Hash
+  included in block[-1].Hash
     - A simple way to resolve this is by publishing the StateRoot with each
       proof (liked via public input)
     - Another way to resolve this is by publishing all block fields, so that a
@@ -204,7 +204,7 @@ As a shortcut, for 1 and 2 we do:
 
 Point 2 requires:
 - A. `Aggregation0` must have `rand` and `commitment(public_input_circuit:advice_raw_public_inputs)` as public input
-- B. `public_input_circuit` must have "rand" as public input
+- B. `public_input_circuit` must have `rand` as public input
 
 Notes:
 - [1] `Aggregation0` circuit is the top level aggregation circuit which is verified in an L1 contract.
