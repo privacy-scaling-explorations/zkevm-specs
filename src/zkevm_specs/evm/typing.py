@@ -212,6 +212,16 @@ class Transaction:
         )
 
 
+def init_is_code(code: bytearray) -> MutableSequence[bool]:
+    is_codes = []
+    push_data_left = 0
+    for idx in range(0, len(code)):
+        is_code = push_data_left == 0
+        push_data_left = get_push_size(code[idx]) if is_code else push_data_left - 1
+        is_codes.append(is_code)
+    return is_codes
+
+
 class Bytecode:
     code: bytearray
     is_code: MutableSequence[bool]
@@ -220,7 +230,7 @@ class Bytecode:
         self, code: Optional[bytearray] = None, is_code: Optional[MutableSequence[bool]] = None
     ) -> None:
         self.code = bytearray() if code is None else code
-        self.is_code = [] if is_code is None else is_code
+        self.is_code = init_is_code(self.code) if is_code is None else is_code
 
     def __getattr__(self, name: str):
         def method(*args) -> Bytecode:
