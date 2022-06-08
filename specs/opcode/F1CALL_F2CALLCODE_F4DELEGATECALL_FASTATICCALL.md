@@ -4,7 +4,9 @@
 
 ### EVM behavior
 
-The `CALL` opcode transfer specified amount of ether to callee and creates a new call context and switch to it. This is done by popping serveral words from stack:
+The `CALL` opcode transfer specified amount of ether to callee and creates a new call context and switch to it. 
+The `CALLCODE` opcode creates a new call context as if calling itself, but with the code of the given account.
+This is done by popping serveral words from stack:
 
 1. `gas` - The amount of gas caller want to give to callee (capped by rule in EIP150)
 2. `callee_address` - The ether recipient whose code is to be executed (by taking the 20 LSB of popped word)
@@ -48,7 +50,7 @@ next.memory_size := max(
 memory_expansion_gas_cost := calc_memory_cost(next.memory_size) - memory_cost(curr.memory_size)
 ```
 
-The `gas_cost` is calculated like this:
+for `CALL`, the `gas_cost` is calculated like this:
 
 ```
 GAS_COST_WARM_ACCESS := 100
@@ -62,6 +64,18 @@ gas_cost = (
     + memory_expansion_gas_cost
 )
 ```
+For `CALLCODE`, the `gas_cost` is calculated like this:
+
+```
+GAS_COST_WARM_ACCESS := 100
+GAS_COST_ACCOUNT_COLD_ACCESS := 2600
+GAS_COST_CALL_WITH_VALUE := 9000
+gas_cost = (
+    GAS_COST_WARM_ACCESS
+    + GAS_COST_WARM_ACCESS if is_warm_access else GAS_COST_ACCOUNT_COLD_ACCESS
+    + has_value * GAS_COST_CALL_WITH_VALUE
+    + memory_expansion_gas_cost
+)
 
 The `callee_gas_left` for new context by rule in EIP150 is calculated like this:
 
@@ -72,7 +86,7 @@ callee_gas_left := min(gas_available - floor(gas_available / 64), gas)
 
 After switching call context, it does:
 
-1. Transfer `value`
+1. Check `value` for `CALLCODE`, check and transfer `value` for `CALL`
 2. Execution
    1. If `callee_address` is a precompiled, it runs the pre-defined handler
    2. Otherwise, it takes callee's code for execution
@@ -93,4 +107,4 @@ In the end of execution, the terminating `ExecutionState` like `RETURN`, `REVERT
 
 ## Code
 
-Please refer to `src/zkevm_specs/evm/execution/call.py`.
+Please refer to `src/zkevm_specs/evm/execution/call_ctx.py`.
