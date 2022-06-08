@@ -373,11 +373,22 @@ class Instruction:
             raise ConstraintUnsatFailure(f"Value {value} has too many bytes to fit {n_bytes} bytes")
 
     def abs_word(self, x: RLC) -> RLC:
-        return self.select(self.word_is_neg(x), self.neg_word(x), x)
+        is_neg = self.word_is_neg(x)
+        is_zero = self.word_is_zero(x)
+        x_abs = self.select(is_neg, self.neg_word(x), x)
+        x_abs_lo, x_abs_hi = self.word_to_lo_hi(x_abs)
+        x_lo, x_hi = self.word_to_lo_hi(x)
+        is_lo_zero = self.is_zero(x_lo)
+
+        self.constrain_zero((x_abs_lo + x_lo - (1 << 128) * (1 - is_lo_zero)) * is_neg)
+        self.constrain_zero(
+            (x_abs_hi + x_hi + 1 - is_lo_zero - (1 << 128) * (1 - is_zero)) * is_neg
+        )
+
+        return x_abs
 
     def neg_word(self, x: RLC) -> RLC:
         x_lo, x_hi = self.word_to_lo_hi(x)
-        is_non_neg = FQ(x.le_bytes[31] < 128)
         is_zero = self.word_is_zero(x)
         is_lo_zero = self.is_zero(x_lo)
 
