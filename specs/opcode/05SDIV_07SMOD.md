@@ -6,8 +6,13 @@
 
 Pop two EVM words `a` and `b` from the stack, and push `c` to the stack. All `a`, `b` and `c` are considered as `signed` values, and `a_abs`, `b_abs` and `c_abs` are absolute values of `a`, `b` and `c`.
 
-- for opcode `SDIV`, compute `c_abs = a_abs // b_abs` and `sign(c) = sign(a) ^ sign(b)` when `b != 0`, otherwise `c = 0`.
-- for opcode `SMOD`, compute `c_abs = a_abs % b_abs` and `sign(c) = sign(a)` when `b != 0`, otherwise `c = 0`.
+- For opcode `SDIV`
+  - `c = 0` when `b == 0`.
+  - `c = -(1 << 255)` when `a == -(1 << 255)` and `b == -1`.
+  - For other cases, compute `c_abs = a_abs // b_abs`,  and `sign(c) = sign(a // b)`.
+- For opcode `SMOD`
+  - `c = 0` when `b == 0`.
+  - For other cases, compute `c_abs = a_abs % b_abs` and `sign(c) = sign(a)`.
 
 ### Circuit behavior
 
