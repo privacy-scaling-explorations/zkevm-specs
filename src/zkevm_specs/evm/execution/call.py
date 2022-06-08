@@ -87,7 +87,7 @@ def call(instruction: Instruction):
     # Check is_static for staticcall
     elif opcode == Opcode.STATICCALL:
         instruction.constrain_equal(is_static, FQ(1))
-    
+
     # Check can transfer value for call/callcode
     if opcode == Opcode.CALL:
         # Verify transfer
@@ -212,7 +212,7 @@ def call(instruction: Instruction):
                 instruction.call_context_lookup(field_tag, call_id=callee_call_id),
                 expected_value,
             )
-        
+
         # gas stipend if value is not zero for call/callcode
         if opcode == Opcode.CALL or opcode == Opcode.CALLCODE:
             instruction.constrain_equal(
