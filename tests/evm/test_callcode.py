@@ -252,7 +252,7 @@ def test_callcode(
         tables=tables,
         steps=[
             StepState(
-                execution_state=ExecutionState.CALLCODE,
+                execution_state=ExecutionState.CALLCtx,
                 rw_counter=24,
                 call_id=1,
                 is_root=True,

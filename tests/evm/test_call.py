@@ -258,7 +258,7 @@ def test_call(
         tables=tables,
         steps=[
             StepState(
-                execution_state=ExecutionState.CALL,
+                execution_state=ExecutionState.CALLCtx,
                 rw_counter=24,
                 call_id=1,
                 is_root=True,

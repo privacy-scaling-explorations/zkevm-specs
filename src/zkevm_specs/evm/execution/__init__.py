@@ -13,8 +13,7 @@ from .copy_to_log import *
 from .add_sub import *
 from .addmod import *
 from .block_ctx import *
-from .call import *
-from .callcode import *
+from .call_ctx import *
 from .calldatasize import *
 from .caller import *
 from .callvalue import *
@@ -69,8 +68,7 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.EXTCODEHASH: extcodehash,
     ExecutionState.CopyToLog: copy_to_log,
     ExecutionState.LOG: log,
-    ExecutionState.CALL: call,
-    ExecutionState.CALLCODE: callcode,
+    ExecutionState.CALLCtx: call_ctx,
     ExecutionState.ISZERO: iszero,
     ExecutionState.SHR: shr,
 }
