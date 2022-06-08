@@ -374,16 +374,20 @@ class Instruction:
 
     def abs_word(self, x: RLC) -> RLC:
         is_neg = self.word_is_neg(x)
-        is_zero = self.word_is_zero(x)
         x_abs = self.select(is_neg, self.neg_word(x), x)
         x_abs_lo, x_abs_hi = self.word_to_lo_hi(x_abs)
         x_lo, x_hi = self.word_to_lo_hi(x)
-        is_lo_zero = self.is_zero(x_lo)
 
-        self.constrain_zero((x_abs_lo + x_lo - (1 << 128) * (1 - is_lo_zero)) * is_neg)
-        self.constrain_zero(
-            (x_abs_hi + x_hi + 1 - is_lo_zero - (1 << 128) * (1 - is_zero)) * is_neg
+        # Check if `x == -(1 << 255)`, since `abs(-(1 << 255))` should be equal to `-(1 << 255)`.
+        is_overflow = self.is_equal(FQ(x.le_bytes[31]), FQ(128)) * self.is_zero(
+            self.sum(x.le_bytes[:31])
         )
+
+        # Both `x_lo` and `x_abs_lo` are zero if overflow.
+        self.constrain_zero((x_abs_lo + x_lo - (1 << 128) * (1 - is_overflow)) * is_neg)
+
+        # Both `x_hi` and `x_abs_hi` are `1 << 127` if overflow.
+        self.constrain_zero((x_abs_hi + x_hi + 1 - is_overflow - (1 << 128)) * is_neg)
 
         return x_abs
 
