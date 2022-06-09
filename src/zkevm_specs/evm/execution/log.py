@@ -30,7 +30,9 @@ def log(instruction: Instruction):
     if instruction.is_zero(is_persistent) == 0:
         instruction.constrain_equal(
             contract_address,
-            instruction.tx_log_lookup(tx_id=tx_id, field_tag=TxLogFieldTag.Address),
+            instruction.tx_log_lookup(
+                tx_id=tx_id, log_id=instruction.curr.log_id + 1, field_tag=TxLogFieldTag.Address
+            ),
         )
 
     # constrain topics in stack & logs
@@ -44,7 +46,10 @@ def log(instruction: Instruction):
                 instruction.constrain_equal(
                     topic.expr(),
                     instruction.tx_log_lookup(
-                        tx_id=tx_id, field_tag=TxLogFieldTag.Topic, index=i
+                        tx_id=tx_id,
+                        log_id=instruction.curr.log_id + 1,
+                        field_tag=TxLogFieldTag.Topic,
+                        index=i,
                     ).expr(),
                 )
 
@@ -76,7 +81,9 @@ def log(instruction: Instruction):
     next_memory_size, memory_expansion_gas = instruction.memory_expansion_dynamic_length(
         mstart, msize
     )
-    dynamic_gas = GAS_COST_LOG * (opcode - Opcode.LOG0) + 8 * msize + memory_expansion_gas
+    dynamic_gas = (
+        GAS_COST_LOG + GAS_COST_LOG * (opcode - Opcode.LOG0) + 8 * msize + memory_expansion_gas
+    )
 
     assert isinstance(is_persistent, FQ)
     instruction.step_state_transition_in_same_context(
