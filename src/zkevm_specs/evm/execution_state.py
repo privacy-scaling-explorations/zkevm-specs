@@ -26,7 +26,7 @@ class ExecutionState(IntEnum):
     # Opcode's successful cases
     STOP = auto()
     ADD = auto()  # ADD, SUB
-    MUL = auto()  # MUL, DIV, MOD
+    MUL_DIV_MOD_SHL_SHR = auto()  # MUL, DIV, MOD, SHL, SHR
     SDIV = auto()
     SMOD = auto()
     ADDMOD = auto()
@@ -145,8 +145,8 @@ class ExecutionState(IntEnum):
                 Opcode.ADD,
                 Opcode.SUB,
             ]
-        elif self == ExecutionState.MUL:
-            return [Opcode.MUL, Opcode.DIV, Opcode.MOD]
+        elif self == ExecutionState.MUL_DIV_MOD_SHL_SHR:
+            return [Opcode.MUL, Opcode.DIV, Opcode.MOD, Opcode.SHL, Opcode.SHR]
         elif self == ExecutionState.SDIV:
             return [Opcode.SDIV]
         elif self == ExecutionState.SMOD:

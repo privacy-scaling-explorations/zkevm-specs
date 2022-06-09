@@ -25,7 +25,6 @@ from .gas import *
 from .iszero import *
 from .jump import *
 from .jumpi import *
-from .mul_div_mod import *
 from .origin import *
 from .push import *
 from .slt_sgt import *
@@ -35,7 +34,7 @@ from .storage import *
 from .selfbalance import *
 from .extcodehash import *
 from .log import *
-from .shl_shr import *
+from .mul_div_mod_shl_shr import mul_div_mod_shl_shr
 
 
 EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
@@ -46,7 +45,6 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.CopyToMemory: copy_to_memory,
     ExecutionState.ADD: add_sub,
     ExecutionState.ADDMOD: addmod,
-    ExecutionState.MUL: mul_div_mod,
     ExecutionState.ORIGIN: origin,
     ExecutionState.CALLER: caller,
     ExecutionState.CALLVALUE: callvalue,
@@ -70,5 +68,5 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.LOG: log,
     ExecutionState.CALL: call,
     ExecutionState.ISZERO: iszero,
-    ExecutionState.SHL_SHR: shl_shr,
+    ExecutionState.MUL_DIV_MOD_SHL_SHR: mul_div_mod_shl_shr,
 }
