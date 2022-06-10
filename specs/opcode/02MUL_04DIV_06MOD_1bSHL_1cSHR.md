@@ -1,4 +1,4 @@
-# MUL, DIV, and MOD opcodes
+# MUL, DIV, MOD, SHL and SHR opcodes
 
 ## Procedure
 
@@ -9,10 +9,12 @@ Pop two EVM words `a` and `b` from the stack, and push `c` to the stack, where `
 - for opcode `MUL`, compute `c = (a * b) % 2^256`
 - for opcode `DIV`, compute `c = a // b` when `b != 0` otherwise `c = 0`
 - for opcode `MOD`, compute `c = a mod b` when `b != 0` otherwise `c = 0`
+- for opcode `SHL`, `b` is a number of bits to shift to the left, compute `c = (a * 2^b) % 2^256` when `b < 256` otherwise `c = 0`
+- for opcode `SHR`, `b` is a number of bits to shift to the right, compute `c = a // 2^b` when `b < 256` otherwise `c = 0`
 
 ### Circuit behavior
 
-To prove the `MUL/DIV/MOD` opcode, we first construct a `MulAddWordsGadget` that proves `a * b + c = d (mod 2^256)` where `a, b, c, d` are all 256-bit words.
+To prove the `MUL/DIV/MOD/SHL/SHR` opcode, we first construct a `MulAddWordsGadget` that proves `quotient * divisor + remainder = dividend (mod 2^256)` where `quotient, divisor, remainder, dividend` are all 256-bit words. Rename `quotient, divisor, remander, dividend` to `a, b, c, d` for simple as below.
 As usual, we use 32 cells to represent each word shown as the table below, where
 each cell holds a 8-bit value.
 
@@ -60,20 +62,20 @@ $$
 overflow = carry_{hi} + A_1B_3 + A_2B_2 + A_3B_1 + A_2B_3 + A_3B_2 + A_3B_3
 $$
 
-Now back to the opcode circuit for `MUL`, `DIV`, and `MOD`, we first construct
-the `MulAddWordsGadget` with four EVM words `a, b, c, d`.
+Now back to the opcode circuit for `MUL`, `DIV`, `MOD`, `SHL` and `SHR`, we first construct the `MulAddWordsGadget` with four EVM words `quotient, divisor, remainder, dividend`.
 Based on different opcode cases, we constrain the stack pops and pushes as follows
 
-- for `MUL`, two stack pops are `a` and `b`, and the stack push is `d`
-- for `DIV`, two stack pops are `d` and `b`, and the stack push is `a` if `b != 0`; otherwise 0.
-- for `MOD`, two stack pops are `d` and `b`, and the stack push is `c` if `b != 0`; otherwise 0.
+- for `MUL`, two stack pops are `quotient` and `divisor`, and the stack push is `dividend`.
+- for `DIV`, two stack pops are `dividend` and `divisor`, and the stack push is `quotient` if `divisor != 0`; otherwise 0.
+- for `MOD`, two stack pops are `dividend` and `divisor`, and the stack push is `remainder` if `divisor != 0`; otherwise 0.
+- for `SHL`, two stack pops are `quotient` and `shift` when `divisor = 2^shift`, and the stack push is `dividend` if `shift < 256`; otherwise 0.
+- for `SHR`, two stack pops are `dividend` and `shift` when `divisor = 2^shift`, and the stack push is `quotient` if `shift < 256`; otherwise 0.
 
 The opcode circuit also adds extra constraints for different opcodes:
 
-- if the opcode is `MUL`, constrain `c == 0`.
-- if the opcode is not `MUL`,
-  - use a `LtWordGadget` to constrain `c < b` when `b != 0`
-  - constrain `overflow == 0`
+- use a `LtWordGadget` to constrain `remainder < divisor` when `divisor != 0`.
+- if the opcode is `MUL` or `SHL`, constrain `remainder == 0`.
+- if the opcode is `DIV`, `MOD` or `SHR`, constrain `overflow == 0`.
 
 ## Constraints
 
@@ -81,21 +83,26 @@ The opcode circuit also adds extra constraints for different opcodes:
    1. opId === OpcodeId(0x02) for `MUL`
    2. opId === OpcodeId(0x04) for `DIV`
    3. opId === OpcodeId(0x06) for `MOD`
+   3. opId === OpcodeId(0x1b) for `SHL`
+   3. opId === OpcodeId(0x1c) for `SHR`
 2. state transition:
    - gc + 3
    - stack_pointer + 1
    - pc + 1
-   - gas + 5
+   - gas
+      - when opcode is `MUL`, `DIV` or `MOD`, gas + 5.
+      - when opcode is `SHL` or `SHR`, gas + 3.
 3. Lookups: 3 busmapping lookups
-   - top of the stack :
-      - when it's `MUL`, `a` is at the top of the stack
-      - when it's `DIV`, `d` is at the top of the stack.
-      - when it's `MOD`, `d` is at the top of the stack.
-   - `b` is at the second position of the stack
+   - top of the stack
+      - when opcode is `MUL` or `SHL`, `quotient` is at the top of the stack.
+      - when opcode is `DIV`, `MOD` or `SHR`, `dividend` is at the top of the stack.
+   - second position of the stack
+      - when opcode is `MUL`, `DIV` or `MOD`, `divisor` is at the second position of the stack.
+      - when opcode is `SHL` or `SHR`, `shift` is at the second position of the stack when `divisor = 2^shift`.
    - new top of the stack
-      - when it's `MUL`, `d` is at the new top of the stack
-      - when it's `DIV`, `a` is at the new top of the stack when `b != 0`, otherwise 0
-      - when it's `MOD`, `c` is at the new top of the stack when `b != 0`, otherwise 0
+      - when opcode is `MUL` or `SHL`, `dividend` is at the new top of the stack.
+      - when opcode is `DIV` or `SHR`, `quotient` is at the new top of the stack if `divisor != 0` otherwise 0.
+      - when opcode is `MOD`, `remainder` is at the new top of the stack if `divisor != 0`, otherwise 0.
 
 ## Exceptions
 
@@ -104,4 +111,4 @@ The opcode circuit also adds extra constraints for different opcodes:
 
 ## Code
 
-See `src/zkevm_specs/evm/execution/mul_div_mod.py`
+See `src/zkevm_specs/evm/execution/mul_div_mod_shl_shr.py`

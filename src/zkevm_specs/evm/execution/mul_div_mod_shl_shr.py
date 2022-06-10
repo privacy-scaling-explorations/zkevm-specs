@@ -64,9 +64,9 @@ def check_witness(
     remainder_is_zero = instruction.word_is_zero(remainder)
     instruction.constrain_zero((is_mul + is_shl) * (1 - remainder_is_zero))
 
-    # Constrain is_overflow == 0 for DIV, MOD and SHR.
-    is_overflow = instruction.mul_add_words(quotient, divisor, remainder, dividend)
-    instruction.constrain_zero((is_div + is_mod + is_shr) * is_overflow)
+    # Constrain overflow == 0 for DIV, MOD and SHR.
+    overflow = instruction.mul_add_words(quotient, divisor, remainder, dividend)
+    instruction.constrain_zero((is_div + is_mod + is_shr) * overflow)
 
 
 def gen_witness(instruction: Instruction, opcode: FQ, pop1: RLC, pop2: RLC, push: RLC):
