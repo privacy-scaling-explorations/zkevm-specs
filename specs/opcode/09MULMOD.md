@@ -20,24 +20,34 @@ All intermediate calculations of this operation are not subject to the 2^256 mod
 The MulModGadget takes arguments:
  - `a: [u8;32]`
  - `b: [u8;32]`,
+ - `r: [u8;32]`,
  - `N: [u8;32]`,
-and keeps 5 cells for storing `k1: [u8;32]`,  `k2: [u8;32]`, `a_reduced: [u8;32]` ,
- `e: [u8;32]`, `d: [u8;32]`.
+and keeps 5 words for storing:
+ - `a_reduced: [u8;32]` ,
+ - `k: [u8;32]`,
+ - `e: [u8;32]`,
+ - `d: [u8;32]`
+ - `zero: [u8;32]`.
 
-- Check the equality ` k1 * N + a_reduced  == a ` (1)
-- Check the equality ` a_reduced * b = k2 * N + r` (2)
 
+ Witness `a_reduced ←  a` if `n!=0` else `a_reduced ← 0`
+ Witness `(e, d) ← ( (a_reduced * b) % 2^256, (a_reduced * b ) // 2^256)`
+ Witness `(r, k) ← ( (a_reduced * b) % N, (a_reduced * b ) // N)`
 
-```
-TODO: Circuit gadgets description
-```
+ 1. Check `a_reduced = a mod N`.
+	which uses `ModGadget` that in turn checks:
+	- Check the equality ` j * N + a_reduced  == a `
+	- Check (`a_reduced = 0` and `N == 0`) or `a_reduced < N`
 
-- Check `r<N` (3)
+ 2. Check `r = a * b mod N`
+	which uses 2 `MulAddWords512Gadget` to check:
+	` a_reduced * b = k * N + r`  in 2 steps
+		- `a_reduced * b + zero == d * 2^256 + e`
+		- `k * N + r == d * 2^256 + e`
 
-To handle the case of `n==0` => `r==0`, if `N` is 0:
+	1 `IsZeroGadget` and 1 `LtWordsGadget` that check:
+	`(r == 0 and N == 0)` or `(r < N)`
 
-- witness `r <= a * b % 2^256` to satisfy (1)
-- deactivate (3)
 
 
 ## Constraints
