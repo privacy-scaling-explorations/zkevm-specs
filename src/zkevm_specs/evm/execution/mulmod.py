@@ -15,16 +15,16 @@ def mod(instruction: Instruction, a: RLC, n: RLC, r: RLC):
         k = 0
     else:
         a_or_zero = a.int_value
-        k = a.int_value / n.int_value
+        k = a.int_value // n.int_value
 
     instruction.mul_add_words(RLC(k), n, r, RLC(a_or_zero))
-    eq = instruction.is_equal(a, a_or_zero)
+    eq = instruction.is_equal(a, RLC(a_or_zero))
     cmp = instruction.compare_word(r, n)
     n_is_zero = instruction.is_zero(n)
     # a_or_zero = a if n!=0 else a_or_zero = 0
-    instruction.constraint_zero((FQ(1) - eq) * (FQ(1) - n_is_zero))
+    instruction.constrain_zero((FQ(1) - eq) * (FQ(1) - n_is_zero))
     # r<n or n==0
-    instruction.constraint_zero(FQ(1) - cmp[0] - n_is_zero)
+    instruction.constrain_zero(FQ(1) - cmp[0] - n_is_zero)
 
 
 def mulmod(instruction: Instruction):
@@ -53,16 +53,16 @@ def mulmod(instruction: Instruction):
     assert (a_reduced_times_b) == k * n.int_value + r.int_value
 
     # Reduction of first factor
-    instruction.mod(a, n, RLC(a_reduced))
+    mod(instruction, a, n, RLC(a_reduced))
 
     # Reduction of the product
     instruction.mul_add_words_512(RLC(a_reduced), b, RLC(0), d, e)
-    instruction.mul_add_words_512(RLC(k2), n, r, d, e)
+    instruction.mul_add_words_512(RLC(k), n, r, d, e)
 
     # Check that r<n  and a_reduced<n if n!=0
     n_is_zero = instruction.is_zero(n)
     cmp = instruction.compare_word(r, n)
-    instruction.constraint_zero(FQ(1) - cmp[0] - n_is_zero)
+    instruction.constrain_zero(FQ(1) - cmp[0] - n_is_zero)
 
     instruction.step_state_transition_in_same_context(
         opcode,
