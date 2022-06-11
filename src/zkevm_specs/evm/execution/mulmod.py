@@ -11,18 +11,19 @@ def mod(instruction: Instruction, a: RLC, n: RLC, r: RLC):
       - r = 0  if n == 0
     """
     if n.int_value == 0:
-        a_or_zero = 0
+        a_or_zero = RLC(0)
         k = 0
     else:
-        a_or_zero = a.int_value
+        a_or_zero = a
         k = a.int_value // n.int_value
 
-    instruction.mul_add_words(RLC(k), n, r, RLC(a_or_zero))
-    eq = instruction.is_equal(a, RLC(a_or_zero))
+    instruction.mul_add_words(RLC(k), n, r, a_or_zero)
+    eq = instruction.is_equal(a, a_or_zero)
     cmp = instruction.compare_word(r, n)
     n_is_zero = instruction.is_zero(n)
+    a_or_is_zero = instruction.is_zero(a_or_zero)
     # a_or_zero = a if n!=0 else a_or_zero = 0
-    instruction.constrain_zero((FQ(1) - eq) * (FQ(1) - n_is_zero))
+    instruction.constrain_zero((FQ(1) - eq) * (FQ(1) - n_is_zero * a_or_is_zero))
     # r<n or n==0
     instruction.constrain_zero(FQ(1) - cmp[0] - n_is_zero)
 
