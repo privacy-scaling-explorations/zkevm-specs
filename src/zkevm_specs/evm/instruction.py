@@ -504,6 +504,16 @@ class Instruction:
         self.constrain_equal(t4 + t5 * (2**64) + carry_1, d_lo + carry_2 * (2**128))
         self.constrain_equal(t6 + carry_2, d_hi)
 
+    def mod_words(self, a: RLC, n: RLC, r: RLC):
+        """
+        The function constraints r = a mod n,  where a, n, r a re 256-bit words.
+        This in turn constraints:
+          - k * n + r = a  if n != 0
+          - r = 0  if n == 0
+        """
+
+        a_or_zero = a if n.is_zero() else 0
+
     def fixed_lookup(
         self,
         tag: FixedTableTag,
