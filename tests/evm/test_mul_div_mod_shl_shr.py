@@ -32,24 +32,24 @@ TESTING_DATA = [
     (Opcode.MOD, 0xABCD << 240, 0x1234 << 240),
     (Opcode.MOD, TESTING_MAX_RLC, 0x1234),
     (Opcode.MOD, TESTING_MAX_RLC, 0),
-    (Opcode.SHL, 0xABCD << 240, 8),
-    (Opcode.SHL, 0x1234 << 240, 7),
-    (Opcode.SHL, 0x8765 << 240, 17),
-    (Opcode.SHL, 0x4321 << 240, 0),
-    (Opcode.SHL, 0xFFFF, 256),
-    (Opcode.SHL, 0x12345, 256 + 8 + 1),
-    (Opcode.SHL, TESTING_MAX_RLC, 63),
-    (Opcode.SHL, TESTING_MAX_RLC, 128),
-    (Opcode.SHL, TESTING_MAX_RLC, 129),
-    (Opcode.SHR, 0xABCD, 8),
-    (Opcode.SHR, 0x1234, 7),
-    (Opcode.SHR, 0x8765, 17),
-    (Opcode.SHR, 0x4321, 0),
-    (Opcode.SHR, 0xFFFF, 256),
-    (Opcode.SHR, 0x12345, 256 + 8 + 1),
-    (Opcode.SHR, (1 << 256) - 1, 63),
-    (Opcode.SHR, (1 << 256) - 1, 128),
-    (Opcode.SHR, (1 << 256) - 1, 129),
+    (Opcode.SHL, 8, 0xABCD << 240),
+    (Opcode.SHL, 7, 0x1234 << 240),
+    (Opcode.SHL, 17, 0x8765 << 240),
+    (Opcode.SHL, 0, 0x4321 << 240),
+    (Opcode.SHL, 256, 0xFFFF),
+    (Opcode.SHL, 256 + 8 + 1, 0x12345),
+    (Opcode.SHL, 63, TESTING_MAX_RLC),
+    (Opcode.SHL, 128, TESTING_MAX_RLC),
+    (Opcode.SHL, 129, TESTING_MAX_RLC),
+    (Opcode.SHR, 8, 0xABCD),
+    (Opcode.SHR, 7, 0x1234),
+    (Opcode.SHR, 17, 0x8765),
+    (Opcode.SHR, 0, 0x4321),
+    (Opcode.SHR, 256, 0xFFFF),
+    (Opcode.SHR, 256 + 8 + 1, 0x12345),
+    (Opcode.SHR, 63, (1 << 256) - 1),
+    (Opcode.SHR, 128, (1 << 256) - 1),
+    (Opcode.SHR, 129, (1 << 256) - 1),
     (Opcode.MUL, rand_word(), rand_word()),
     (Opcode.DIV, rand_word(), rand_word()),
     (Opcode.MOD, rand_word(), rand_word()),
@@ -75,11 +75,11 @@ def test_mul_div_mod_shl_shr(opcode: Opcode, a: int, b: int):
         bytecode = Bytecode().mod(a, b)
         used_gas = 5
     elif opcode == Opcode.SHL:
-        c = a << b & TESTING_MAX_RLC if b <= 255 else 0
+        c = b << a & TESTING_MAX_RLC if a <= 255 else 0
         bytecode = Bytecode().shl(a, b)
         used_gas = 3
     else:  # SHR
-        c = a >> b if b <= 255 else 0
+        c = b >> a if a <= 255 else 0
         bytecode = Bytecode().shr(a, b)
         used_gas = 3
 

@@ -76,13 +76,14 @@ def gen_witness(instruction: Instruction, opcode: FQ, pop1: RLC, pop2: RLC, push
     is_shl = instruction.is_equal(opcode, Opcode.SHL)
     is_shr = instruction.is_equal(opcode, Opcode.SHR)
 
-    # The second pop is `shift` value only for SHL and SHR.
-    shf0 = instruction.bytes_to_fq(pop2.le_bytes[:1])
-    shf_lt256 = instruction.is_zero(instruction.sum(pop2.le_bytes[1:]))
+    shf0 = instruction.bytes_to_fq(pop1.le_bytes[:1])
+    shf_lt256 = instruction.is_zero(instruction.sum(pop1.le_bytes[1:]))
     shift_divisor = instruction.select(shf_lt256, RLC(1 << shf0.n), RLC(0))
 
     dividend = RLC(
-        (is_mul.n + is_shl.n) * push.int_value + (is_div.n + is_mod.n + is_shr.n) * pop1.int_value
+        (is_mul.n + is_shl.n) * push.int_value
+        + (is_div.n + is_mod.n) * pop1.int_value
+        + is_shr.n * pop2.int_value
     )
     divisor = RLC(
         (is_mul.n + is_div.n + is_mod.n) * pop2.int_value
@@ -94,7 +95,8 @@ def gen_witness(instruction: Instruction, opcode: FQ, pop1: RLC, pop2: RLC, push
     non_zero_divisor = instruction.select(divisor_is_zero, RLC(1), divisor)
 
     quotient = RLC(
-        (is_mul.n + is_shl.n) * pop1.int_value
+        is_mul.n * pop1.int_value
+        + is_shl.n * pop2.int_value
         + (is_div.n + is_shr.n) * push.int_value
         + is_mod.n
         * instruction.select(
