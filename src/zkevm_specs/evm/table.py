@@ -76,10 +76,17 @@ class FixedTableTag(IntEnum):
             return [
                 FixedTableRow(FQ(self), FQ(src_type), FQ(dst_type), FQ(0))
                 for src_type, dst_type in [
+                    # calldatacopy (internal)
                     (CopyDataTypeTag.Memory, CopyDataTypeTag.Memory),
+                    # calldatacopy (root)
                     (CopyDataTypeTag.TxCalldata, CopyDataTypeTag.Memory),
+                    # create/create2 (root)
+                    (CopyDataTypeTag.TxCalldata, CopyDataTypeTag.Bytecode),
+                    # return/create/create2 (internal)
                     (CopyDataTypeTag.Memory, CopyDataTypeTag.Bytecode),
+                    # codecopy/extcodecopy
                     (CopyDataTypeTag.Bytecode, CopyDataTypeTag.Memory),
+                    # log
                     (CopyDataTypeTag.Memory, CopyDataTypeTag.TxLog),
                 ]
             ]
