@@ -377,6 +377,9 @@ def check_tx_log(row: Row, row_prev: Row):
     tx_id = row.id()
     pre_tx_id = row_prev.id()
     log_id = row.address()
+    prev_log_id = row_prev.address()
+    prev_tag = row_prev.tag()
+    tag = row.tag()
     pre_field_tag = row_prev.field_tag()
     field_tag = row.field_tag()
     index = row.storage_key()
@@ -388,23 +391,33 @@ def check_tx_log(row: Row, row_prev: Row):
     if row.tag() == row_prev.tag():
         if tx_id != pre_tx_id:
             assert tx_id == pre_tx_id + 1
-            assert log_id == 0
+            # in RW table, log_id starts with 1
+            assert log_id == 1
+            # first field_tag is Address when tx changes
+            assert row.field_tag() == TxLogFieldTag.Address
         else:
             # increase log_id when tag changes to Address, make sure tag can only increase(Non-Decreasing),
-            # when log_index stays same,
+            # when log_id stays same,
             if pre_field_tag == U256(TxLogFieldTag.Address):
                 assert (field_tag - pre_field_tag).n > 0
-            # make sure if tag Data appear, data_index can only increase by one when tag stays same.
-            # make sure if tag Topic appear, topic_index in range [0,4),can only increase by one when tag stays same.
+            # index is zero for address
+            if field_tag == U256(TxLogFieldTag.Address):
+                assert index == 0
+
+            # increase log_id when field tag changes to Address within same tx
+            if tag == prev_tag and field_tag == U256(TxLogFieldTag.Address):
+                assert log_id == prev_log_id + 1
+
+            # within same tx, log_id will not change if field_tag != Address
+            if tag == prev_tag and field_tag != U256(TxLogFieldTag.Address):
+                assert log_id == prev_log_id
+            # if tag Data appear, data_index can only increase by one when tag stays same.
+            # if tag Topic appear, topic_index in range [0,4),can only increase by one when tag stays same.
             if field_tag == U256(TxLogFieldTag.Topic):
                 assert_in_range(index, 0, 3)
-            if field_tag not in [U256(TxLogFieldTag.Topic), U256(TxLogFieldTag.Data)]:
-                assert index == 0
-            elif pre_field_tag == field_tag:
-                assert index == pre_index + 1
 
-    # make sure if log set is not empty within receipt/tx, tx must be successful status because failed execution will revert the log data,
-    # in other words, logs section must be empty list for failed tx
+            if tag == prev_tag and pre_field_tag == field_tag:
+                assert index == pre_index + 1
 
 
 @is_circuit_code

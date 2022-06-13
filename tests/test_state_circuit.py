@@ -72,18 +72,18 @@ def test_state_ok():
 
         AccountDestructedOp(rw_counter=20, rw=RW.Read, addr=0x12345678, value=FQ(1)),
         AccountDestructedOp(rw_counter=21, rw=RW.Read, addr=0x12345678, value=FQ(1)),
-        TxLogOp(rw_counter=22, rw=RW.Write, tx_id=1, log_id=0, field_tag=TxLogFieldTag.Address, index=0, value=FQ(124)),
-        TxLogOp(rw_counter=23, rw=RW.Write, tx_id=1, log_id=0, field_tag=TxLogFieldTag.Topic, index=0, value=FQ(10)),
-        TxLogOp(rw_counter=24, rw=RW.Write, tx_id=1, log_id=0, field_tag=TxLogFieldTag.Topic, index=1,  value=FQ(5)),
-        TxLogOp(rw_counter=25, rw=RW.Write, tx_id=1, log_id=0, field_tag=TxLogFieldTag.Topic, index=2,  value=FQ(200)),
-        TxLogOp(rw_counter=26, rw=RW.Write, tx_id=1, log_id=0, field_tag=TxLogFieldTag.Topic, index=3,  value=FQ(278)),
-        TxLogOp(rw_counter=27, rw=RW.Write, tx_id=1, log_id=0, field_tag=TxLogFieldTag.Data,  index=0,  value=FQ(10)),
-        TxLogOp(rw_counter=28, rw=RW.Write, tx_id=1, log_id=0, field_tag=TxLogFieldTag.Data,  index=1,  value=FQ(255)),
-        TxLogOp(rw_counter=29, rw=RW.Write, tx_id=1, log_id=1, field_tag=TxLogFieldTag.Address, index=0,  value=FQ(255)),
-        TxLogOp(rw_counter=30, rw=RW.Write, tx_id=1, log_id=1, field_tag=TxLogFieldTag.Data, index=0,  value=FQ(88)),
-        TxLogOp(rw_counter=31, rw=RW.Write, tx_id=2, log_id=0, field_tag=TxLogFieldTag.Address, index=0,  value=FQ(210)),
-        TxLogOp(rw_counter=32, rw=RW.Write, tx_id=2, log_id=0, field_tag=TxLogFieldTag.Topic, index=0,  value=FQ(255)),
-        TxLogOp(rw_counter=33, rw=RW.Write, tx_id=2, log_id=0, field_tag=TxLogFieldTag.Data, index=0,  value=FQ(10)),
+        TxLogOp(rw_counter=22, rw=RW.Write, tx_id=1, log_id=1, field_tag=TxLogFieldTag.Address, index=0, value=FQ(124)),
+        TxLogOp(rw_counter=23, rw=RW.Write, tx_id=1, log_id=1, field_tag=TxLogFieldTag.Topic, index=0, value=FQ(10)),
+        TxLogOp(rw_counter=24, rw=RW.Write, tx_id=1, log_id=1, field_tag=TxLogFieldTag.Topic, index=1,  value=FQ(5)),
+        TxLogOp(rw_counter=25, rw=RW.Write, tx_id=1, log_id=1, field_tag=TxLogFieldTag.Topic, index=2,  value=FQ(200)),
+        TxLogOp(rw_counter=26, rw=RW.Write, tx_id=1, log_id=1, field_tag=TxLogFieldTag.Topic, index=3,  value=FQ(278)),
+        TxLogOp(rw_counter=27, rw=RW.Write, tx_id=1, log_id=1, field_tag=TxLogFieldTag.Data,  index=0,  value=FQ(10)),
+        TxLogOp(rw_counter=28, rw=RW.Write, tx_id=1, log_id=1, field_tag=TxLogFieldTag.Data,  index=1,  value=FQ(255)),
+        TxLogOp(rw_counter=29, rw=RW.Write, tx_id=1, log_id=2, field_tag=TxLogFieldTag.Address, index=0,  value=FQ(255)),
+        TxLogOp(rw_counter=30, rw=RW.Write, tx_id=1, log_id=2, field_tag=TxLogFieldTag.Data, index=0,  value=FQ(88)),
+        TxLogOp(rw_counter=31, rw=RW.Write, tx_id=2, log_id=1, field_tag=TxLogFieldTag.Address, index=0,  value=FQ(210)),
+        TxLogOp(rw_counter=32, rw=RW.Write, tx_id=2, log_id=1, field_tag=TxLogFieldTag.Topic, index=0,  value=FQ(255)),
+        TxLogOp(rw_counter=33, rw=RW.Write, tx_id=2, log_id=1, field_tag=TxLogFieldTag.Data, index=0,  value=FQ(10)),
 
         TxReceiptOp(rw_counter=34, rw=RW.Read, tx_id=1, field_tag=TxReceiptFieldTag.PostStateOrStatus, value=FQ(1)),
         TxReceiptOp(rw_counter=35, rw=RW.Read, tx_id=1, field_tag=TxReceiptFieldTag.CumulativeGasUsed, value=FQ(200)),
@@ -294,9 +294,9 @@ def test_tx_log_bad():
     # topic index is not increasing
     ops = [
         StartOp(),
-        TxLogOp(rw_counter=1, rw=RW.Write, tx_id=1, log_id=0, field_tag=TxLogFieldTag.Address, index=0, value=FQ(124)),
-        TxLogOp(rw_counter=2, rw=RW.Write, tx_id=1, log_id=0, field_tag=TxLogFieldTag.Topic, index=0, value=FQ(10)),
-        TxLogOp(rw_counter=3, rw=RW.Write, tx_id=1, log_id=0, field_tag=TxLogFieldTag.Topic, index=0, value=FQ(5)),
+        TxLogOp(rw_counter=1, rw=RW.Write, tx_id=1, log_id=1, field_tag=TxLogFieldTag.Address, index=0, value=FQ(124)),
+        TxLogOp(rw_counter=2, rw=RW.Write, tx_id=1, log_id=1, field_tag=TxLogFieldTag.Topic, index=0, value=FQ(10)),
+        TxLogOp(rw_counter=3, rw=RW.Write, tx_id=1, log_id=1, field_tag=TxLogFieldTag.Topic, index=0, value=FQ(5)),
     ]
     # fmt: on
     tables = Tables(mpt_table_from_ops(ops, randomness))
@@ -306,12 +306,12 @@ def test_tx_log_bad():
     # topic index out of range >= 4
     ops = [
         StartOp(),
-        TxLogOp(rw_counter=1, rw=RW.Write, tx_id=1, log_id=0, field_tag=TxLogFieldTag.Address, index=0, value=FQ(124)),
-        TxLogOp(rw_counter=2, rw=RW.Write, tx_id=1, log_id=0, field_tag=TxLogFieldTag.Topic, index=0, value=FQ(10)),
-        TxLogOp(rw_counter=3, rw=RW.Write, tx_id=1, log_id=0, field_tag=TxLogFieldTag.Topic, index=1, value=FQ(5)),
-        TxLogOp(rw_counter=4, rw=RW.Write, tx_id=1, log_id=0, field_tag=TxLogFieldTag.Topic, index=2, value=FQ(5)),
-        TxLogOp(rw_counter=5, rw=RW.Write, tx_id=1, log_id=0, field_tag=TxLogFieldTag.Topic, index=3, value=FQ(5)),
-        TxLogOp(rw_counter=6, rw=RW.Write, tx_id=1, log_id=0, field_tag=TxLogFieldTag.Topic, index=4, value=FQ(5)),
+        TxLogOp(rw_counter=1, rw=RW.Write, tx_id=1, log_id=1, field_tag=TxLogFieldTag.Address, index=0, value=FQ(124)),
+        TxLogOp(rw_counter=2, rw=RW.Write, tx_id=1, log_id=1, field_tag=TxLogFieldTag.Topic, index=0, value=FQ(10)),
+        TxLogOp(rw_counter=3, rw=RW.Write, tx_id=1, log_id=1, field_tag=TxLogFieldTag.Topic, index=1, value=FQ(5)),
+        TxLogOp(rw_counter=4, rw=RW.Write, tx_id=1, log_id=1, field_tag=TxLogFieldTag.Topic, index=2, value=FQ(5)),
+        TxLogOp(rw_counter=5, rw=RW.Write, tx_id=1, log_id=1, field_tag=TxLogFieldTag.Topic, index=3, value=FQ(5)),
+        TxLogOp(rw_counter=6, rw=RW.Write, tx_id=1, log_id=1, field_tag=TxLogFieldTag.Topic, index=4, value=FQ(5)),
     ]
     # fmt: on
     tables = Tables(mpt_table_from_ops(ops, randomness))
@@ -321,9 +321,9 @@ def test_tx_log_bad():
     # Data index is not increasing
     ops = [
         StartOp(),
-        TxLogOp(rw_counter=1, rw=RW.Write, tx_id=1, log_id=0, field_tag=TxLogFieldTag.Address, index=0, value=FQ(124)),
-        TxLogOp(rw_counter=2, rw=RW.Write, tx_id=1, log_id=0, field_tag=TxLogFieldTag.Data, index=0, value=FQ(10)),
-        TxLogOp(rw_counter=3, rw=RW.Write, tx_id=1, log_id=0, field_tag=TxLogFieldTag.Data, index=0, value=FQ(255)),
+        TxLogOp(rw_counter=1, rw=RW.Write, tx_id=1, log_id=1, field_tag=TxLogFieldTag.Address, index=0, value=FQ(124)),
+        TxLogOp(rw_counter=2, rw=RW.Write, tx_id=1, log_id=1, field_tag=TxLogFieldTag.Data, index=0, value=FQ(10)),
+        TxLogOp(rw_counter=3, rw=RW.Write, tx_id=1, log_id=1, field_tag=TxLogFieldTag.Data, index=0, value=FQ(255)),
     ]
     # fmt: on
     tables = Tables(mpt_table_from_ops(ops, randomness))
@@ -333,9 +333,9 @@ def test_tx_log_bad():
     # log id is decreasing
     ops = [
         StartOp(),
-        TxLogOp(rw_counter=1, rw=RW.Write, tx_id=1, log_id=1, field_tag=TxLogFieldTag.Address, index=0, value=FQ(124)),
-        TxLogOp(rw_counter=2, rw=RW.Write, tx_id=1, log_id=0, field_tag=TxLogFieldTag.Data, index=0, value=FQ(10)),
-        TxLogOp(rw_counter=3, rw=RW.Write, tx_id=1, log_id=0, field_tag=TxLogFieldTag.Data, index=0, value=FQ(255)),
+        TxLogOp(rw_counter=1, rw=RW.Write, tx_id=1, log_id=2, field_tag=TxLogFieldTag.Address, index=0, value=FQ(124)),
+        TxLogOp(rw_counter=2, rw=RW.Write, tx_id=1, log_id=1, field_tag=TxLogFieldTag.Data, index=0, value=FQ(10)),
+        TxLogOp(rw_counter=3, rw=RW.Write, tx_id=1, log_id=1, field_tag=TxLogFieldTag.Data, index=0, value=FQ(255)),
     ]
     # fmt: on
     tables = Tables(mpt_table_from_ops(ops, randomness))
@@ -345,9 +345,9 @@ def test_tx_log_bad():
     # TxLogFieldTag is decreasing
     ops = [
         StartOp(),
-        TxLogOp(rw_counter=2, rw=RW.Write, tx_id=1, log_id=0, field_tag=TxLogFieldTag.Data, index=0, value=FQ(10)),
-        TxLogOp(rw_counter=1, rw=RW.Write, tx_id=1, log_id=1, field_tag=TxLogFieldTag.Address, index=0, value=FQ(124)),
-        TxLogOp(rw_counter=3, rw=RW.Write, tx_id=1, log_id=0, field_tag=TxLogFieldTag.Data, index=0, value=FQ(255)),
+        TxLogOp(rw_counter=2, rw=RW.Write, tx_id=1, log_id=1, field_tag=TxLogFieldTag.Data, index=0, value=FQ(10)),
+        TxLogOp(rw_counter=1, rw=RW.Write, tx_id=1, log_id=2, field_tag=TxLogFieldTag.Address, index=0, value=FQ(124)),
+        TxLogOp(rw_counter=3, rw=RW.Write, tx_id=1, log_id=1, field_tag=TxLogFieldTag.Data, index=0, value=FQ(255)),
     ]
     # fmt: on
     tables = Tables(mpt_table_from_ops(ops, randomness))
@@ -357,9 +357,9 @@ def test_tx_log_bad():
     # when tx_id change, log_id is not reset
     ops = [
         StartOp(),
-        TxLogOp(rw_counter=2, rw=RW.Write, tx_id=1, log_id=0, field_tag=TxLogFieldTag.Data, index=0, value=FQ(10)),
-        TxLogOp(rw_counter=1, rw=RW.Write, tx_id=1, log_id=1, field_tag=TxLogFieldTag.Address, index=0, value=FQ(124)),
-        TxLogOp(rw_counter=3, rw=RW.Write, tx_id=2, log_id=1, field_tag=TxLogFieldTag.Data, index=0, value=FQ(255)),
+        TxLogOp(rw_counter=2, rw=RW.Write, tx_id=1, log_id=1, field_tag=TxLogFieldTag.Data, index=0, value=FQ(10)),
+        TxLogOp(rw_counter=1, rw=RW.Write, tx_id=1, log_id=2, field_tag=TxLogFieldTag.Address, index=0, value=FQ(124)),
+        TxLogOp(rw_counter=3, rw=RW.Write, tx_id=2, log_id=2, field_tag=TxLogFieldTag.Data, index=0, value=FQ(255)),
     ]
     # fmt: on
     tables = Tables(mpt_table_from_ops(ops, randomness))
