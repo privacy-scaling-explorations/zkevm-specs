@@ -73,7 +73,7 @@ def log(instruction: Instruction):
             FQ(0),
             msize,
             instruction.curr.rw_counter + instruction.rw_counter_offset,
-            log_id=instruction.curr.log_id,
+            log_id=instruction.curr.log_id + 1,
         )
     else:
         copy_rwc_inc = FQ(0)
@@ -85,7 +85,10 @@ def log(instruction: Instruction):
         mstart, msize
     )
     dynamic_gas = (
-        GAS_COST_LOG + GAS_COST_LOG * (opcode - Opcode.LOG0) + GAS_COST_LOGDATA * msize + memory_expansion_gas
+        GAS_COST_LOG
+        + GAS_COST_LOG * (opcode - Opcode.LOG0)
+        + GAS_COST_LOGDATA * msize
+        + memory_expansion_gas
     )
 
     assert isinstance(is_persistent, FQ)

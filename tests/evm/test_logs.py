@@ -176,7 +176,9 @@ def test_single_log(topics: list, mstart: U64, msize: U64, is_persistent: bool):
     copy_circuit = CopyCircuit()
 
     next_memory_size, memory_expansion_cost = memory_expansion(0, mstart + msize)
-    dynamic_gas = GAS_COST_LOG + GAS_COST_LOG * len(topics) + GAS_COST_LOGDATA * msize + memory_expansion_cost
+    dynamic_gas = (
+        GAS_COST_LOG + GAS_COST_LOG * len(topics) + GAS_COST_LOGDATA * msize + memory_expansion_cost
+    )
     steps = [
         StepState(
             execution_state=ExecutionState.LOG,
@@ -193,7 +195,7 @@ def test_single_log(topics: list, mstart: U64, msize: U64, is_persistent: bool):
         )
     ]
     sp = make_log(
-        rw_dictionary, copy_circuit, randomness, 1015, 0, topics, mstart, msize, is_persistent
+        rw_dictionary, copy_circuit, randomness, 1015, 1, topics, mstart, msize, is_persistent
     )
 
     steps.append(
@@ -269,14 +271,14 @@ def test_multi_logs(log_entries):
             copy_circuit,
             randomness,
             stack_pointer,
-            log_id,
+            log_id + 1,
             topics,
             mstart,
             msize,
             is_persistent,
         )
         log_id += is_persistent
-        gas_left -= GAS_COST_LOG * len(topics) + 8 * msize
+        gas_left -= GAS_COST_LOG + GAS_COST_LOG * len(topics) + GAS_COST_LOGDATA * msize
 
     steps.append(
         StepState(
