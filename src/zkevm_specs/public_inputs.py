@@ -5,6 +5,11 @@ from math import log, ceil
 from functools import reduce
 
 from .util import FQ, RLC, U64, U160, U256, Expression
+from .util import (
+    PUBLIC_INPUTS_BLOCK_LEN as BLOCK_LEN,
+    PUBLIC_INPUTS_EXTRA_LEN as EXTRA_LEN,
+    PUBLIC_INPUTS_TX_LEN as TX_LEN,
+)
 from .encoding import U8, is_circuit_code
 from .tx import Tag as TxTag
 from .evm import (
@@ -18,10 +23,6 @@ from .evm import (
     BlockContextFieldTag as BlockTag,
     lookup,
 )
-
-BLOCK_LEN = 7 + 256  # Length of block public data
-EXTRA_LEN = 3  # Length of fields that don't belong to any table
-TX_LEN = 11  # Length of tx public data (without calldata)
 
 
 @dataclass
