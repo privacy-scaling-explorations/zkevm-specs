@@ -70,11 +70,11 @@ def check_witness(
 
 
 def gen_witness(instruction: Instruction, opcode: FQ, pop1: RLC, pop2: RLC, push: RLC):
-    is_mul = instruction.is_equal(opcode, Opcode.MUL)
-    is_div = instruction.is_equal(opcode, Opcode.DIV)
-    is_mod = instruction.is_equal(opcode, Opcode.MOD)
-    is_shl = instruction.is_equal(opcode, Opcode.SHL)
-    is_shr = instruction.is_equal(opcode, Opcode.SHR)
+    is_mul = is_op_mul(opcode)
+    is_div = is_op_div(opcode)
+    is_mod = is_op_mod(opcode)
+    is_shl = is_op_shl(opcode)
+    is_shr = is_op_shr(opcode)
 
     shf0 = instruction.bytes_to_fq(pop1.le_bytes[:1])
     shf_lt256 = instruction.is_zero(instruction.sum(pop1.le_bytes[1:]))
@@ -120,4 +120,60 @@ def gen_witness(instruction: Instruction, opcode: FQ, pop1: RLC, pop2: RLC, push
         divisor,
         quotient,
         remainder,
+    )
+
+
+# The opcode value for MUL, DIV, MOD, SHL and SHR are 2, 4, 6, 0x1b and 0x1c.
+# When the opcode is MUL, the result of below formula is 5200:
+# (DIV - opcode) * (MOD- opcode) * (SHL - opcode) * (SHR - opcode)
+# To make `is_mul` be either 0 or 1, the result needs to be divided by 5200,
+# which is equivalent to multiply it by inversion of 5200.
+# And calculate `is_div`, `is_mod`, `is_shl` and `is_shr` respectively.
+def is_op_mul(opcode: FQ) -> FQ:
+    return (
+        (Opcode.DIV - opcode)
+        * (Opcode.MOD - opcode)
+        * (Opcode.SHL - opcode)
+        * (Opcode.SHR - opcode)
+        * FQ(5200).inv()
+    )
+
+
+def is_op_div(opcode: FQ) -> FQ:
+    return (
+        (opcode - Opcode.MUL)
+        * (Opcode.MOD - opcode)
+        * (Opcode.SHL - opcode)
+        * (Opcode.SHR - opcode)
+        * FQ(2208).inv()
+    )
+
+
+def is_op_mod(opcode: FQ) -> FQ:
+    return (
+        (opcode - Opcode.MUL)
+        * (opcode - Opcode.DIV)
+        * (Opcode.SHL - opcode)
+        * (Opcode.SHR - opcode)
+        * FQ(3696).inv()
+    )
+
+
+def is_op_shl(opcode: FQ) -> FQ:
+    return (
+        (opcode - Opcode.MUL)
+        * (opcode - Opcode.DIV)
+        * (opcode - Opcode.MOD)
+        * (Opcode.SHR - opcode)
+        * FQ(12075).inv()
+    )
+
+
+def is_op_shr(opcode: FQ) -> FQ:
+    return (
+        (opcode - Opcode.MUL)
+        * (opcode - Opcode.DIV)
+        * (opcode - Opcode.MOD)
+        * (opcode - Opcode.SHL)
+        * FQ(13728).inv()
     )
