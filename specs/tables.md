@@ -12,15 +12,16 @@ Proved by the tx circuit.
 | ---    | ---                 | ---        | ---     |
 |        | *TxContextFieldTag* |            |         |
 | $TxID  | Nonce               | 0          | $value  |
-| $TxID  | Gas                 | 0          | $value  |
+| $TxID  | GasLo               | 0          | $value  |
+| $TxID  | GasHi               | 0          | $value  |
 | $TxID  | GasPrice            | 0          | $value  |
-| $TxID  | GasTipCap           | 0          | $value  |
-| $TxID  | GasFeeCap           | 0          | $value  |
 | $TxID  | CallerAddress       | 0          | $value  |
 | $TxID  | CalleeAddress       | 0          | $value  |
 | $TxID  | IsCreate            | 0          | $value  |
 | $TxID  | Value               | 0          | $value  |
 | $TxID  | CallDataLength      | 0          | $value  |
+| $TxID  | TxSignHashLo        | 0          | $value  |
+| $TxID  | TxSignHashHi        | 0          | $value  |
 | $TxID  | CallData            | $ByteIndex | $value  |
 
 ## `rw_table`
@@ -123,19 +124,19 @@ NOTE: `kN` means `keyN`
 
 Proved by the bytecode circuit.
 
-> - **tag**: Tag whether the row represents the bytecode length or a byte in
+> - **Tag**: Tag whether the row represents the bytecode length or a byte in
 >   the bytecode.
 
 > - **isCode**: A boolean value to specify if the value is executable opcode or
 >   the data portion of PUSH\* operations.
 
-| 0 codeHash | 1 tag              | 2 index | 3 isCode | 4 value |
-| ---        | ---                | ---     | ---      | ---     |
-|            | *BytecodeFieldTag* |         |          |         |
-| $codeHash  | Length             | 0       | 0        | $value  |
-| $codeHash  | Byte               | $index  | $isCode  | $value  |
-| ...        | ...                | ...     | ...      | ...     |
-| $codeHash  | Byte               | $index  | $isCode  | $value  |
+| 0 CodeHashLo | 1 CodeHashHi | 2 Tag              | 3 Index | 4 IsCode | 5 Value |
+| ---          | ---          | ---                | ---     | ---      | ---     |
+|              |              | *BytecodeFieldTag* |         |          |         |
+| $codeHashLo  | $codeHashHi  | Length             | 0       | 0        | $value  |
+| $codeHashLo  | $codeHashHi  | Byte               | $index  | $isCode  | $value  |
+| ...          | ...          | ...                | ...     | ...      | ...     |
+| $codeHashLo  | $codeHashHi  | Byte               | $index  | $isCode  | $value  |
 
 In the case of an account without code, it can still have a row in the bytecode circuit to represent the `BytecodeFieldTag::Length` tag, with a `value = 0` and `codeHash = EMPTY_CODE_HASH`.
 
@@ -154,10 +155,13 @@ __Hence the addition inside of the block_table.__
 | GasLimit               | 0      | $value  |
 | BlockNumber            | 0      | $value  |
 | Time                   | 0      | $value  |
-| Difficulty             | 0      | $value  |
-| BaseFee                | 0      | $value  |
+| DifficultyLo           | 0      | $value  |
+| DifficultyHi           | 0      | $value  |
+| BaseFeeLo              | 0      | $value  |
+| BaseFeeHi              | 0      | $value  |
 | ChainID                | 0      | $value  |
-| BlockHash              | 0..256 | $value  |
+| BlockHashLo            | 0..256 | $value  |
+| BlockHashHi            | 0..256 | $value  |
 
 ## `fixed`
 
@@ -191,78 +195,18 @@ __Hence the addition inside of the block_table.__
 
 Provided by the MPT (Merkle Patricia Trie) circuit.
 
-The current MPT circuit design exposes one big table where different targets require different lookups as described below.
-From this table, the following columns contain values using the RLC encoding:
-- Address
-- Key
-- ValuePrev
-- ValueCur
-
-### Nonce update
-
-| Enable | Counter  | Address | ValuePrev  | ValueCur  |
-| ------ | -------- | ------- | ---------- | --------- |
-| 1      | $counter | $addr   | $noncePrev | $nonceCur |
-
-Column names in circuit:
-- Enable: `is_nonce_mod`
-- Counter: `counter`
-- Address: `address_rlc`
-- ValuePrev: `sel1`
-- ValueCur: `s_mod_node_hash_rlc`
-
-### Balance update
-
-| Enable | Counter  | Address | ValuePrev    | ValueCur    |
-| ------ | -------- | ------- | ------------ | ----------- |
-| 1      | $counter | $addr   | $balancePrev | $balanceCur |
-
-Column names in circuit:
-- Enable: `is_balance_mod`
-- Counter: `counter`
-- Address: `address_rlc`
-- ValuePrev: `sel2`
-- ValueCur: `c_mod_node_hash_rlc`
-
-### CodeHash update
-
-| Enable | Counter  | Address | ValuePrev     | ValueCur     |
-| ------ | -------- | ------- | ------------- | ------------ |
-| 1      | $counter | $addr   | $codeHashPrev | $codeHashCur |
-
-Column names in circuit:
-- Enable: `is_codehash_mod`
-- Counter: `counter`
-- Address: `address_rlc`
-- ValuePrev: `sel2`
-- ValueCur: `c_mod_node_hash_rlc`
-
-### Storage update
-
-| Enable | Counter  | Address | Key  | ValuePrev  | ValueCur  |
-| ------ | -------- | ------- | ---- | ---------- | --------- |
-| 1      | $counter | $addr   | $key | $valuePrev | $valueCur |
-
-Column names in circuit:
-- Enable: `is_storage_mod`
-- Counter: `counter`
-- Address: `address_rlc`
-- Key: `key_rlc_mult`
-- ValuePrev: `mult_diff`
-- ValueCur: `acc_c`
-
-### Unified table proposal
-
-We can compress the 4 tables into one at the expense of adding new columns in the MPT circuit.  We still need to analyze the tradeoff of adding columns to the circuit VS merging all the lookups into one.
-
 A unified MPT table would look like this:
 
-| Target   | Counter  | Address | Key  | ValuePrev     | ValueCur     |
-| -------- | -------- | ------- | ---- | ------------- | ------------ |
-| Nonce    | $counter | $addr   | 0    | $noncePrev    | $nonceCur    |
-| Balance  | $counter | $addr   | 0    | $balancePrev  | $balanceCur  |
-| CodeHash | $counter | $addr   | 0    | $codeHashPrev | $codeHashCur |
-| Storage  | $counter | $addr   | $key | $valuePrev    | $valueCur    |
+| Target     | Counter  | Address | KeyLo  | KeyHi  | ValuePrev     | ValueCur     |
+| --------   | -------- | ------- | ----   | ----   | ------------- | ------------ |
+| NonceLo    | $counter | $addr   | 0      | 0      | $noncePrev    | $nonceCur    |
+| NonceHi    | $counter | $addr   | 0      | 0      | $noncePrev    | $nonceCur    |
+| BalanceLo  | $counter | $addr   | 0      | 0      | $balancePrev  | $balanceCur  |
+| BalanceHi  | $counter | $addr   | 0      | 0      | $balancePrev  | $balanceCur  |
+| CodeHashLo | $counter | $addr   | 0      | 0      | $codeHashPrev | $codeHashCur |
+| CodeHashHi | $counter | $addr   | 0      | 0      | $codeHashPrev | $codeHashCur |
+| StorageLo  | $counter | $addr   | $keyLo | $keyHi | $valuePrev    | $valueCur    |
+| StorageHi  | $counter | $addr   | $keyLo | $keyHi | $valuePrev    | $valueCur    |
 
 Columns expressions in circuit:
 - Target: `1 * is_nonce_mod + 2 * is_balance_mod + 4 * is_codehash_mod + 8 * is_storage_mod`
@@ -271,3 +215,13 @@ Columns expressions in circuit:
 - Key: `key_rlc_mult`
 - ValuePrev: `is_nonce_mod * sel1 + is_balance_mod * sel2 + is_codehash_mod * sel2 + is_storage_mod * mult_diff`
 - ValueCur: `is_nonce_mod * s_mod_node_hash_rlc + is_balance_mod * c_mod_node_hash_rlc + is_codehash_mod * c_mod_node_hash_rlc + is_storage_mod * acc_c`
+
+## `keccak_table`
+
+Provided by the Keccak circuit.
+
+| Enable | InputRLC  | InputLen  | Hash    |
+| ---    | ---       | ---       | ---     |
+| 0      | 0         | 0         | 0       |
+| Lo     | $inputRLC | $inputLen | $hashLo |
+| Hi     | $inputRLC | $inputLen | $hashHi |
