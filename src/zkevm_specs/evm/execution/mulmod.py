@@ -60,7 +60,7 @@ def mulmod(instruction: Instruction):
     instruction.mul_add_words_512(RLC(a_reduced), b, RLC(0), d, e)
     instruction.mul_add_words_512(RLC(k), n, r, d, e)
 
-    # Check that r<n  and a_reduced<n if n!=0
+    # Check that r<n if n!=0
     n_is_zero = instruction.is_zero(n)
     cmp = instruction.compare_word(r, n)
     instruction.constrain_zero(FQ(1) - cmp[0] - n_is_zero)
