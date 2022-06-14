@@ -49,6 +49,15 @@ and keeps 5 words for storing:
 	`(r == 0 and N == 0)` or `(r < N)`
 
 
+#### Note
+
+The first step on the computation, reducing `a` mod `N`, is taken in order
+to prevent overflow in the factor `k`, which could happen for high values
+of `a` and `b` and low `N`. This steps ensures:
+
+$$
+k \leq \frac{(a \text{ mod } n) \cdot b }{n } \leq \frac{ (n-1) \cdot b}{n} < b \leq MAXU256
+$$
 
 ## Constraints
 
