@@ -9,6 +9,7 @@ from zkevm_specs.evm import (
     Block,
     Bytecode,
 )
+from zkevm_specs.evm.execution.sdiv_smod import get_abs, get_neg, is_neg
 from zkevm_specs.util import rand_fq, rand_word, RLC
 from common import generate_nasty_tests
 
@@ -104,15 +105,3 @@ def test_sdiv_smod(opcode: Opcode, a: int, b: int):
             ),
         ],
     )
-
-
-def get_abs(x: int) -> int:
-    return get_neg(x) if is_neg(x) else x
-
-
-def get_neg(x: int) -> int:
-    return 0 if x == 0 else (1 << 256) - x
-
-
-def is_neg(x: int) -> bool:
-    return 1 << 255 & x != 0

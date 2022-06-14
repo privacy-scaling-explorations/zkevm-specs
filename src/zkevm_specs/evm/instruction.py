@@ -354,6 +354,11 @@ class Instruction:
         self.constrain_equal(t4 + t5 * (2**64) + carry_1, d_lo + carry_2 * (2**128))
         self.constrain_equal(t6 + carry_2, d_hi)
 
+    def word_is_equal(self, lhs: RLC, rhs: RLC) -> FQ:
+        assert len(lhs.le_bytes) == 32, "Expected word to contain 32 bytes"
+        assert len(rhs.le_bytes) == 32, "Expected word to contain 32 bytes"
+        return self.compare_word(lhs, rhs)[1]
+
     def word_is_neg(self, word: RLC) -> FQ:
         assert len(word.le_bytes) == 32, "Expected word to contain 32 bytes"
         return self.compare(FQ(127), FQ(word.le_bytes[31]), 1)[0]
