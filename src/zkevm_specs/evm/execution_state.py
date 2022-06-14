@@ -39,7 +39,6 @@ class ExecutionState(IntEnum):
     BITWISE = auto()  # AND, OR, XOR
     NOT = auto()
     BYTE = auto()
-    SHL_SHR = auto()
     SAR = auto()
     SHA3 = auto()
     ADDRESS = auto()
@@ -182,8 +181,6 @@ class ExecutionState(IntEnum):
             return [Opcode.NOT]
         elif self == ExecutionState.BYTE:
             return [Opcode.BYTE]
-        elif self == ExecutionState.SHL_SHR:
-            return [Opcode.SHL, Opcode.SHR]
         elif self == ExecutionState.SAR:
             return [Opcode.SAR]
         elif self == ExecutionState.SHA3:

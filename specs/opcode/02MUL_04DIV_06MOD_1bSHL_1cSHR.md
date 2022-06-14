@@ -14,7 +14,7 @@ Pop two EVM words `a` and `b` from the stack, and push `c` to the stack, where `
 
 ### Circuit behavior
 
-To prove the `MUL/DIV/MOD/SHL/SHR` opcode, we first construct a `MulAddWordsGadget` that proves `quotient * divisor + remainder = dividend (mod 2^256)` where `quotient, divisor, remainder, dividend` are all 256-bit words. Rename `quotient, divisor, remander, dividend` to `a, b, c, d` for simple as below.
+To prove the `MUL/DIV/MOD/SHL/SHR` opcode, we first construct a `MulAddWordsGadget` that proves `quotient * divisor + remainder = dividend (mod 2^256)` where `quotient, divisor, remainder, dividend` are all 256-bit words. Consider `quotient, divisor, remander, dividend` as `a, b, c, d` in `MulAddWordsGaget`.
 As usual, we use 32 cells to represent each word shown as the table below, where
 each cell holds a 8-bit value.
 
@@ -66,10 +66,10 @@ Now back to the opcode circuit for `MUL`, `DIV`, `MOD`, `SHL` and `SHR`, we firs
 Based on different opcode cases, we constrain the stack pops and pushes as follows
 
 - for `MUL`, two stack pops are `quotient` and `divisor`, and the stack push is `dividend`.
-- for `DIV`, two stack pops are `dividend` and `divisor`, and the stack push is `quotient` if `divisor != 0`; otherwise 0.
-- for `MOD`, two stack pops are `dividend` and `divisor`, and the stack push is `remainder` if `divisor != 0`; otherwise 0.
-- for `SHL`, two stack pops are `quotient` and `shift` when `divisor = 2^shift`, and the stack push is `dividend` if `shift < 256`; otherwise 0.
-- for `SHR`, two stack pops are `dividend` and `shift` when `divisor = 2^shift`, and the stack push is `quotient` if `shift < 256`; otherwise 0.
+- for `DIV`, two stack pops are `dividend` and `divisor`, and the stack push is `quotient` if `divisor != 0` and 0 otherwise.
+- for `MOD`, two stack pops are `dividend` and `divisor`, and the stack push is `remainder` if `divisor != 0` and 0 otherwise.
+- for `SHL`, two stack pops are `quotient` and `shift` when `divisor = 2^shift` if `shift < 256` and 0 otherwise. The stack push is `dividend` if `shift < 256` and 0 otherwise.
+- for `SHR`, two stack pops are `dividend` and `shift` when `divisor = 2^shift` if `shift < 256` and 0 otherwise. The stack push is `quotient` if `shift < 256` and 0 otherwise.
 
 The opcode circuit also adds extra constraints for different opcodes:
 

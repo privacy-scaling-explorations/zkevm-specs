@@ -14,33 +14,33 @@ from zkevm_specs.util import rand_fq, rand_word, RLC
 from common import generate_nasty_tests
 
 
-TESTING_MAX_RLC = (1 << 256) - 1
+MAX_WORD = (1 << 256) - 1
 
 TESTING_DATA = [
     (Opcode.MUL, 0xABCD, 0x1234),
     (Opcode.MUL, 0xABCD, 0x1234 << 240),
     (Opcode.MUL, 0xABCD << 240, 0x1234 << 240),
-    (Opcode.MUL, TESTING_MAX_RLC, 0x1234),
-    (Opcode.MUL, TESTING_MAX_RLC, 0),
+    (Opcode.MUL, MAX_WORD, 0x1234),
+    (Opcode.MUL, MAX_WORD, 0),
     (Opcode.DIV, 0xABCD, 0x1234),
     (Opcode.DIV, 0xABCD, 0x1234 << 240),
     (Opcode.DIV, 0xABCD << 240, 0x1234 << 240),
-    (Opcode.DIV, TESTING_MAX_RLC, 0x1234),
-    (Opcode.DIV, TESTING_MAX_RLC, 0),
+    (Opcode.DIV, MAX_WORD, 0x1234),
+    (Opcode.DIV, MAX_WORD, 0),
     (Opcode.MOD, 0xABCD, 0x1234),
     (Opcode.MOD, 0xABCD, 0x1234 << 240),
     (Opcode.MOD, 0xABCD << 240, 0x1234 << 240),
-    (Opcode.MOD, TESTING_MAX_RLC, 0x1234),
-    (Opcode.MOD, TESTING_MAX_RLC, 0),
+    (Opcode.MOD, MAX_WORD, 0x1234),
+    (Opcode.MOD, MAX_WORD, 0),
     (Opcode.SHL, 8, 0xABCD << 240),
     (Opcode.SHL, 7, 0x1234 << 240),
     (Opcode.SHL, 17, 0x8765 << 240),
     (Opcode.SHL, 0, 0x4321 << 240),
     (Opcode.SHL, 256, 0xFFFF),
     (Opcode.SHL, 256 + 8 + 1, 0x12345),
-    (Opcode.SHL, 63, TESTING_MAX_RLC),
-    (Opcode.SHL, 128, TESTING_MAX_RLC),
-    (Opcode.SHL, 129, TESTING_MAX_RLC),
+    (Opcode.SHL, 63, MAX_WORD),
+    (Opcode.SHL, 128, MAX_WORD),
+    (Opcode.SHL, 129, MAX_WORD),
     (Opcode.SHR, 8, 0xABCD),
     (Opcode.SHR, 7, 0x1234),
     (Opcode.SHR, 17, 0x8765),
@@ -63,7 +63,7 @@ generate_nasty_tests(TESTING_DATA, (Opcode.MUL, Opcode.DIV, Opcode.MOD, Opcode.S
 @pytest.mark.parametrize("opcode, a, b", TESTING_DATA)
 def test_mul_div_mod_shl_shr(opcode: Opcode, a: int, b: int):
     if opcode == Opcode.MUL:
-        c = a * b & TESTING_MAX_RLC
+        c = a * b & MAX_WORD
         bytecode = Bytecode().mul(a, b)
         used_gas = 5
     elif opcode == Opcode.DIV:
@@ -75,7 +75,7 @@ def test_mul_div_mod_shl_shr(opcode: Opcode, a: int, b: int):
         bytecode = Bytecode().mod(a, b)
         used_gas = 5
     elif opcode == Opcode.SHL:
-        c = b << a & TESTING_MAX_RLC if a <= 255 else 0
+        c = b << a & MAX_WORD if a <= 255 else 0
         bytecode = Bytecode().shl(a, b)
         used_gas = 3
     else:  # SHR
