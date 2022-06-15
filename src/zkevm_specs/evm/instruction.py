@@ -386,9 +386,7 @@ class Instruction:
     def abs_word(self, x: RLC) -> Tuple[RLC, FQ]:
         is_neg = self.word_is_neg(x)
         is_zero = self.word_is_zero(x)
-        x_abs = self.select(
-            is_neg, self.rlc_encode((1 - is_zero.n) * (1 << 256) - x.int_value, 32), x
-        )
+        x_abs = x if is_neg == 0 else self.rlc_encode((1 - is_zero.n) * (1 << 256) - x.int_value, 32)
 
         # Check sign overflow if `x == -(1 << 255)`, since `abs(-(1 << 255))`
         # should be equal to `-(1 << 255)`.
