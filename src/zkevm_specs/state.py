@@ -375,42 +375,40 @@ def check_account_destructed(row: Row, row_prev: Row):
 def check_tx_log(row: Row, row_prev: Row):
     # tx_id | log_id | field_tag | index | value
     tx_id = row.id()
-    pre_tx_id = row_prev.id()
+    prev_tx_id = row_prev.id()
     log_id = row.address()
     prev_log_id = row_prev.address()
     prev_tag = row_prev.tag()
     tag = row.tag()
-    pre_field_tag = row_prev.field_tag()
+    prev_field_tag = row_prev.field_tag()
     field_tag = row.field_tag()
     index = row.storage_key()
-    pre_index = row_prev.storage_key()
+    prev_index = row_prev.storage_key()
 
     # 12.0 is_write is always true
     assert row.is_write == 1
     # 12.1 reset log_id when tx_id increases
     if row.tag() == row_prev.tag():
-        if tx_id != pre_tx_id:
-            assert tx_id == pre_tx_id + 1
-            # in RW table, log_id starts with 1 per tx, zero log_id means no any log step executed,
-            # hence no any log entry inserts into rw table.
+        if tx_id != prev_tx_id:
+            assert tx_id == prev_tx_id + 1
+            # in RW table, log_id starts with 1 in tx, zero log_id means no log step executed,
+            # hence no log entry inserted into rw table
             assert log_id == 1
             # first field_tag is Address when tx changes
             assert row.field_tag() == TxLogFieldTag.Address
         else:
-            # increase log_id when tag changes to Address, make sure tag can only increase(Non-Decreasing),
-            # when log_id stays same,
-            if pre_field_tag == U256(TxLogFieldTag.Address):
-                assert (field_tag - pre_field_tag).n > 0
+            if log_id == prev_log_id and prev_field_tag == U256(TxLogFieldTag.Address):
+                assert (field_tag - prev_field_tag).n > 0
             # index is zero for address
             if field_tag == U256(TxLogFieldTag.Address):
                 assert index == 0
 
             # increase log_id when field tag changes to Address within same tx
-            if tag == prev_tag and field_tag == U256(TxLogFieldTag.Address):
+            if field_tag == U256(TxLogFieldTag.Address):
                 assert log_id == prev_log_id + 1
 
             # within same tx, log_id will not change if field_tag != Address
-            if tag == prev_tag and field_tag != U256(TxLogFieldTag.Address):
+            if field_tag != U256(TxLogFieldTag.Address):
                 assert log_id == prev_log_id
             # if tag Data appear, data_index can only increase by one when tag stays same.
             # if tag Topic appear, topic_index needs to be in range [0,4) and it can only increase by one
@@ -418,8 +416,8 @@ def check_tx_log(row: Row, row_prev: Row):
             if field_tag == U256(TxLogFieldTag.Topic):
                 assert_in_range(index, 0, 3)
 
-            if tag == prev_tag and pre_field_tag == field_tag:
-                assert index == pre_index + 1
+            if prev_field_tag == field_tag:
+                assert index == prev_index + 1
 
 
 @is_circuit_code
