@@ -410,38 +410,41 @@ class Instruction:
         except OverflowError:
             raise ConstraintUnsatFailure(f"Value {value} has too many bytes to fit {n_bytes} bytes")
 
-    def abs_word(self, x: RLC) -> RLC:
-        is_neg = self.word_is_neg(x)
-        x_abs = self.select(is_neg, self.neg_word(x), x)
-        x_abs_lo, x_abs_hi = self.word_to_lo_hi(x_abs)
-        x_lo, x_hi = self.word_to_lo_hi(x)
+    def constrain_abs_word(self, x: RLC, x_abs: RLC, x_is_neg: FQ):
+        expected_abs, expected_is_neg = self.abs_word(x)
+        self.constrain_equal(self.word_is_equal(x_abs, expected_abs), FQ(1))
+        self.constrain_equal(x_is_neg, expected_is_neg)
 
-        # Check if `x == -(1 << 255)`, since `abs(-(1 << 255))` should be equal to `-(1 << 255)`.
+    # Return a tuple of `abs(x)` and `x_is_neg`.
+    def abs_word(self, x: RLC) -> Tuple[RLC, FQ]:
+        is_neg = self.word_is_neg(x)
+        is_zero = self.word_is_zero(x)
+        x_abs = self.select(
+            is_neg, self.rlc_encode((1 - is_zero.n) * (1 << 256) - x.int_value, 32), x
+        )
+
+        # Check sign overflow if `x == -(1 << 255)`, since `abs(-(1 << 255))`
+        # should be equal to `-(1 << 255)`.
         is_overflow = self.is_equal(FQ(x.le_bytes[31]), FQ(128)) * self.is_zero(
             self.sum(x.le_bytes[:31])
         )
 
-        # Both `x_lo` and `x_abs_lo` are zero if overflow.
+        x_abs_lo, x_abs_hi = self.word_to_lo_hi(x_abs)
+        x_lo, x_hi = self.word_to_lo_hi(x)
+
+        # Constrain `x_abs_lo == x_lo` and `x_abs_hi == x_hi` if non negative.
+        self.constrain_zero((x_abs_lo - x_lo) * (1 - is_neg))
+        self.constrain_zero((x_abs_hi - x_hi) * (1 - is_neg))
+
+        # When negative, contrain `x_abs_lo + x_lo == 2^128` if x is not
+        # overflow, otherwise `x_abs_lo + x_lo == 0`.
         self.constrain_zero((x_abs_lo + x_lo - (1 << 128) * (1 - is_overflow)) * is_neg)
 
-        # Both `x_hi` and `x_abs_hi` are `1 << 127` if overflow.
+        # When negative, contrain `x_abs_hi + x_hi == 2^128 - 1` if x is not
+        # overflow, otherwise `x_abs_lo + x_lo == 2^128`.
         self.constrain_zero((x_abs_hi + x_hi + 1 - is_overflow - (1 << 128)) * is_neg)
 
-        return x_abs
-
-    def neg_word(self, x: RLC) -> RLC:
-        x_lo, x_hi = self.word_to_lo_hi(x)
-        is_zero = self.word_is_zero(x)
-        is_lo_zero = self.is_zero(x_lo)
-
-        # neg_lo = 2^128 - x_lo - [x_lo == 0] * 2^128
-        neg_lo = (1 << 128) - x_lo - is_lo_zero * (1 << 128)
-
-        # neg_hi = 2^128 - x_hi + [x_lo == 0] - 1 - [x == 0] * 2^128
-        neg_hi = (1 << 128) - x_hi + is_lo_zero - 1 - is_zero * (1 << 128)
-
-        neg_bytes = neg_lo.n.to_bytes(16, "little") + neg_hi.n.to_bytes(16, "little")
-        return self.rlc_encode(neg_bytes)
+        return x_abs, is_neg
 
     def add_words(self, addends: Sequence[RLC]) -> Tuple[RLC, FQ]:
         addends_lo, addends_hi = list(zip(*map(self.word_to_lo_hi, addends)))

@@ -19,7 +19,7 @@ def sdiv_smod(instruction: Instruction):
         divisor_abs,
         remainder_abs,
         dividend_abs,
-    ) = gen_witness(instruction, opcode, pop1, pop2, push)
+    ) = gen_witness(opcode, pop1, pop2, push)
     check_witness(
         instruction,
         quotient,
@@ -60,19 +60,11 @@ def check_witness(
     divisor_is_non_zero = 1 - instruction.word_is_zero(divisor)
     remainder_is_non_zero = 1 - instruction.word_is_zero(remainder)
 
-    # Constrain the ABS values of quotient, divisor, remainder and dividend.
-    instruction.constrain_equal(
-        FQ(1), instruction.word_is_equal(quotient_abs, instruction.abs_word(quotient))
-    )
-    instruction.constrain_equal(
-        FQ(1), instruction.word_is_equal(divisor_abs, instruction.abs_word(divisor))
-    )
-    instruction.constrain_equal(
-        FQ(1), instruction.word_is_equal(remainder_abs, instruction.abs_word(remainder))
-    )
-    instruction.constrain_equal(
-        FQ(1), instruction.word_is_equal(dividend_abs, instruction.abs_word(dividend))
-    )
+    # Constrain the ABS words of quotient, divisor, remainder and dividend.
+    instruction.constrain_abs_word(quotient, quotient_abs, quotient_is_neg)
+    instruction.constrain_abs_word(divisor, divisor_abs, divisor_is_neg)
+    instruction.constrain_abs_word(remainder, remainder_abs, remainder_is_neg)
+    instruction.constrain_abs_word(dividend, dividend_abs, dividend_is_neg)
 
     # Function `mul_add_words` constrains `|quotient| * |divisor| + |remainder| = |dividend|`.
     overflow = instruction.mul_add_words(quotient_abs, divisor_abs, remainder_abs, dividend_abs)
@@ -104,7 +96,7 @@ def check_witness(
     )
 
 
-def gen_witness(instruction: Instruction, opcode: FQ, pop1: RLC, pop2: RLC, push: RLC):
+def gen_witness(opcode: FQ, pop1: RLC, pop2: RLC, push: RLC):
     # The opcode value for SDIV and SMOD are 5 and 7. When the opcode is SDIV,
     # `Opcode.SMOD - opcode` is 2. To make `is_sdiv` be either 0 or 1, we need
     # to divide the product by 2, which is equivalent to multiply it by
@@ -114,31 +106,27 @@ def gen_witness(instruction: Instruction, opcode: FQ, pop1: RLC, pop2: RLC, push
     pop1_abs = get_abs(pop1.int_value)
     pop2_abs = get_abs(pop2.int_value)
     push_abs = get_abs(push.int_value)
-    pop1_is_neg = instruction.word_is_neg(pop1)
-    pop2_is_neg = instruction.word_is_neg(pop2)
-    pop2_is_zero = instruction.word_is_zero(pop2)
+    pop1_is_neg = is_neg(pop1.int_value)
+    pop2_is_neg = is_neg(pop2.int_value)
 
-    # Avoid word overflow for SMOD.
-    sdiv_remainder_int = abs(pop1_abs - push_abs * pop2_abs)
-    sdiv_remainder_int = sdiv_remainder_int if sdiv_remainder_int < 1 << 256 else 0
-    sdiv_remainder = instruction.select(
-        pop1_is_neg, RLC(get_neg(sdiv_remainder_int)), RLC(sdiv_remainder_int)
-    )
-    smod_remainder = instruction.select(pop2_is_zero, pop1, push)
-
-    # Avoid dividing by zero.
-    pop2_abs = instruction.select(pop2_is_zero, RLC(1), RLC(pop2_abs)).int_value
-    smod_quotient = instruction.select(pop2_is_zero, RLC(0), RLC(pop1_abs // pop2_abs))
-    smod_quotient = instruction.select(
-        instruction.is_equal(pop1_is_neg, pop2_is_neg),
-        smod_quotient,
-        RLC(get_neg(smod_quotient.int_value)),
-    )
-
-    quotient = instruction.select(is_sdiv, push, smod_quotient)
-    divisor = pop2
-    remainder = instruction.select(is_sdiv, sdiv_remainder, smod_remainder)
-    dividend = pop1
+    if is_sdiv == 1:
+        quotient = push
+        divisor = pop2
+        if pop1_is_neg == 0:
+            remainder = RLC(pop1_abs - push_abs * pop2_abs)
+        else:
+            remainder = RLC(get_neg(pop1_abs - push_abs * pop2_abs))
+        dividend = pop1
+    else:
+        if pop2.int_value == 0:
+            quotient = RLC(0)
+        elif pop1_is_neg == pop2_is_neg:
+            quotient = RLC(pop1_abs // pop2_abs)
+        else:
+            quotient = RLC(get_neg(pop1_abs // pop2_abs))
+        divisor = pop2
+        remainder = pop1 if pop2.int_value == 0 else push
+        dividend = pop1
 
     quotient_abs = RLC(get_abs(quotient.int_value))
     divisor_abs = RLC(get_abs(divisor.int_value))
