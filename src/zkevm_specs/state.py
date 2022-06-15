@@ -391,7 +391,8 @@ def check_tx_log(row: Row, row_prev: Row):
     if row.tag() == row_prev.tag():
         if tx_id != pre_tx_id:
             assert tx_id == pre_tx_id + 1
-            # in RW table, log_id starts with 1
+            # in RW table, log_id starts with 1 per tx, zero log_id means no any log step executed,
+            # hence no any log entry inserts into rw table.
             assert log_id == 1
             # first field_tag is Address when tx changes
             assert row.field_tag() == TxLogFieldTag.Address
@@ -412,7 +413,8 @@ def check_tx_log(row: Row, row_prev: Row):
             if tag == prev_tag and field_tag != U256(TxLogFieldTag.Address):
                 assert log_id == prev_log_id
             # if tag Data appear, data_index can only increase by one when tag stays same.
-            # if tag Topic appear, topic_index in range [0,4),can only increase by one when tag stays same.
+            # if tag Topic appear, topic_index needs to be in range [0,4) and it can only increase by one
+            # when tag stays same.
             if field_tag == U256(TxLogFieldTag.Topic):
                 assert_in_range(index, 0, 3)
 
