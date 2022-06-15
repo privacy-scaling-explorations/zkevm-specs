@@ -321,39 +321,6 @@ class Instruction:
             raise ConstraintUnsatFailure(f"Word {word} has too many bytes to fit {n_bytes} bytes")
         return self.bytes_to_fq(word.le_bytes[:n_bytes])
 
-    def mul_add_words_512(self, a: RLC, b: RLC, c: RLC, d: RLC, e: RLC):
-        """
-        The function constrains a * b + c == d * 2**256 + e, where a, b, c, d are 256-bit words.
-        """
-        a64s = self.word_to_64s(a)
-        b64s = self.word_to_64s(b)
-        c_lo, c_hi = self.word_to_lo_hi(c)
-        d_lo, d_hi = self.word_to_lo_hi(d)
-        e_lo, e_hi = self.word_to_lo_hi(e)
-
-        t0 = a64s[0] * b64s[0]
-        t1 = a64s[0] * b64s[1] + a64s[1] * b64s[0]
-        t2 = a64s[0] * b64s[2] + a64s[1] * b64s[1] + a64s[2] * b64s[0]
-        t3 = a64s[0] * b64s[3] + a64s[1] * b64s[2] + a64s[2] * b64s[1] + a64s[3] * b64s[0]
-
-        t4 = a64s[1] * b64s[3] + a64s[2] * b64s[2] + a64s[3] * b64s[1]
-        t5 = a64s[2] * b64s[3] + a64s[3] * b64s[2]
-        t6 = a64s[3] * b64s[3]
-
-        carry_0 = (t0 + t1 * (2**64) + c_lo - e_lo) / (2**128)
-        carry_1 = (t2 + t3 * (2**64) + c_hi + carry_0 - e_hi) / (2**128)
-        carry_2 = (t4 + t5 * (2**64) + carry_1 - d_lo) / (2**128)
-
-        # range check for carries
-        self.range_check(carry_0, 9)
-        self.range_check(carry_1, 9)
-        self.range_check(carry_2, 9)
-
-        self.constrain_equal(t0 + t1 * (2**64) + c_lo, e_lo + carry_0 * (2**128))
-        self.constrain_equal(t2 + t3 * (2**64) + c_hi + carry_0, e_hi + carry_1 * (2**128))
-        self.constrain_equal(t4 + t5 * (2**64) + carry_1, d_lo + carry_2 * (2**128))
-        self.constrain_equal(t6 + carry_2, d_hi)
-
     def word_is_equal(self, lhs: RLC, rhs: RLC) -> FQ:
         assert len(lhs.le_bytes) == 32, "Expected word to contain 32 bytes"
         assert len(rhs.le_bytes) == 32, "Expected word to contain 32 bytes"
@@ -515,6 +482,39 @@ class Instruction:
         self.constrain_equal(t2 + t3 * (2**64) + c_hi + carry_lo, d_hi + carry_hi * (2**128))
 
         return overflow
+
+    def mul_add_words_512(self, a: RLC, b: RLC, c: RLC, d: RLC, e: RLC):
+        """
+        The function constrains a * b + c == d * 2**256 + e, where a, b, c, d are 256-bit words.
+        """
+        a64s = self.word_to_64s(a)
+        b64s = self.word_to_64s(b)
+        c_lo, c_hi = self.word_to_lo_hi(c)
+        d_lo, d_hi = self.word_to_lo_hi(d)
+        e_lo, e_hi = self.word_to_lo_hi(e)
+
+        t0 = a64s[0] * b64s[0]
+        t1 = a64s[0] * b64s[1] + a64s[1] * b64s[0]
+        t2 = a64s[0] * b64s[2] + a64s[1] * b64s[1] + a64s[2] * b64s[0]
+        t3 = a64s[0] * b64s[3] + a64s[1] * b64s[2] + a64s[2] * b64s[1] + a64s[3] * b64s[0]
+
+        t4 = a64s[1] * b64s[3] + a64s[2] * b64s[2] + a64s[3] * b64s[1]
+        t5 = a64s[2] * b64s[3] + a64s[3] * b64s[2]
+        t6 = a64s[3] * b64s[3]
+
+        carry_0 = (t0 + t1 * (2**64) + c_lo - e_lo) / (2**128)
+        carry_1 = (t2 + t3 * (2**64) + c_hi + carry_0 - e_hi) / (2**128)
+        carry_2 = (t4 + t5 * (2**64) + carry_1 - d_lo) / (2**128)
+
+        # range check for carries
+        self.range_check(carry_0, 9)
+        self.range_check(carry_1, 9)
+        self.range_check(carry_2, 9)
+
+        self.constrain_equal(t0 + t1 * (2**64) + c_lo, e_lo + carry_0 * (2**128))
+        self.constrain_equal(t2 + t3 * (2**64) + c_hi + carry_0, e_hi + carry_1 * (2**128))
+        self.constrain_equal(t4 + t5 * (2**64) + carry_1, d_lo + carry_2 * (2**128))
+        self.constrain_equal(t6 + carry_2, d_hi)
 
     def fixed_lookup(
         self,
