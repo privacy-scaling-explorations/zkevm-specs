@@ -15,10 +15,6 @@ def sdiv_smod(instruction: Instruction):
         divisor,
         remainder,
         dividend,
-        quotient_abs,
-        divisor_abs,
-        remainder_abs,
-        dividend_abs,
     ) = gen_witness(opcode, pop1, pop2, push)
     check_witness(
         instruction,
@@ -26,10 +22,6 @@ def sdiv_smod(instruction: Instruction):
         divisor,
         remainder,
         dividend,
-        quotient_abs,
-        divisor_abs,
-        remainder_abs,
-        dividend_abs,
     )
 
     instruction.step_state_transition_in_same_context(
@@ -46,25 +38,17 @@ def check_witness(
     divisor: RLC,
     remainder: RLC,
     dividend: RLC,
-    quotient_abs: RLC,
-    divisor_abs: RLC,
-    remainder_abs: RLC,
-    dividend_abs: RLC,
 ):
-    quotient_is_neg = instruction.word_is_neg(quotient)
-    divisor_is_neg = instruction.word_is_neg(divisor)
-    remainder_is_neg = instruction.word_is_neg(remainder)
-    dividend_is_neg = instruction.word_is_neg(dividend)
+    quotient_abs, quotient_is_neg = instruction.abs_word(quotient)
+    divisor_abs, divisor_is_neg = instruction.abs_word(divisor)
+    remainder_abs, remainder_is_neg = instruction.abs_word(remainder)
+    dividend_abs, dividend_is_neg = instruction.abs_word(dividend)
 
     quotient_is_non_zero = 1 - instruction.word_is_zero(quotient)
     divisor_is_non_zero = 1 - instruction.word_is_zero(divisor)
     remainder_is_non_zero = 1 - instruction.word_is_zero(remainder)
 
     # Constrain the ABS words of quotient, divisor, remainder and dividend.
-    instruction.constrain_abs_word(quotient, quotient_abs, quotient_is_neg)
-    instruction.constrain_abs_word(divisor, divisor_abs, divisor_is_neg)
-    instruction.constrain_abs_word(remainder, remainder_abs, remainder_is_neg)
-    instruction.constrain_abs_word(dividend, dividend_abs, dividend_is_neg)
 
     # Function `mul_add_words` constrains `|quotient| * |divisor| + |remainder| = |dividend|`.
     overflow = instruction.mul_add_words(quotient_abs, divisor_abs, remainder_abs, dividend_abs)
@@ -128,20 +112,11 @@ def gen_witness(opcode: FQ, pop1: RLC, pop2: RLC, push: RLC):
         remainder = pop1 if pop2.int_value == 0 else push
         dividend = pop1
 
-    quotient_abs = RLC(get_abs(quotient.int_value))
-    divisor_abs = RLC(get_abs(divisor.int_value))
-    remainder_abs = RLC(get_abs(remainder.int_value))
-    dividend_abs = RLC(get_abs(dividend.int_value))
-
     return (
         quotient,
         divisor,
         remainder,
         dividend,
-        quotient_abs,
-        divisor_abs,
-        remainder_abs,
-        dividend_abs,
     )
 
 

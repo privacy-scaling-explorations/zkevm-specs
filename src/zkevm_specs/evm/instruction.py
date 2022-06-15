@@ -377,16 +377,14 @@ class Instruction:
         except OverflowError:
             raise ConstraintUnsatFailure(f"Value {value} has too many bytes to fit {n_bytes} bytes")
 
-    def constrain_abs_word(self, x: RLC, x_abs: RLC, x_is_neg: FQ):
-        expected_abs, expected_is_neg = self.abs_word(x)
-        self.constrain_equal(self.word_is_equal(x_abs, expected_abs), FQ(1))
-        self.constrain_equal(x_is_neg, expected_is_neg)
-
-    # Return a tuple of `abs(x)` and `x_is_neg`.
+    # Return a tuple of `abs(x)` and `x_is_neg`. For a special case when
+    # `x = -(1 << 255)`, this function returns the ABS value of `-(1 << 255)`,
+    # since it is sign overflow.
     def abs_word(self, x: RLC) -> Tuple[RLC, FQ]:
         is_neg = self.word_is_neg(x)
-        is_zero = self.word_is_zero(x)
-        x_abs = x if is_neg == 0 else self.rlc_encode((1 - is_zero.n) * (1 << 256) - x.int_value, 32)
+
+        # Generate the witness `x_abs`.
+        x_abs = x if is_neg == 0 else self.rlc_encode((1 << 256) - x.int_value, 32)
 
         # Check sign overflow if `x == -(1 << 255)`, since `abs(-(1 << 255))`
         # should be equal to `-(1 << 255)`.
