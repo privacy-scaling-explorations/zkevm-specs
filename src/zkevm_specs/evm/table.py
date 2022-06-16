@@ -70,7 +70,7 @@ class FixedTableTag(IntEnum):
                 )
             ]
         elif self == FixedTableTag.Pow2:
-            return [FixedTableRow(FQ(self), FQ(value), FQ(1 << value)) for value in range(65)]
+            return [FixedTableRow(FQ(self), FQ(value), FQ(1 << value)) for value in range(128)]
         else:
             raise ValueError("Unreacheable")
 

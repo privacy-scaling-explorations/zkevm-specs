@@ -17,11 +17,14 @@ def mul_div_mod_shl_shr(instruction: Instruction):
         is_mod,
         is_shl,
         is_shr,
+        shf_lo,
+        shf_hi,
         dividend,
         divisor,
         quotient,
         remainder,
-    ) = gen_witness(instruction, opcode, pop1, pop2, push)
+        shift,
+    ) = gen_witness(opcode, pop1, pop2, push)
     check_witness(
         instruction,
         is_mul,
@@ -29,10 +32,16 @@ def mul_div_mod_shl_shr(instruction: Instruction):
         is_mod,
         is_shl,
         is_shr,
+        shf_lo,
+        shf_hi,
         dividend,
         divisor,
         quotient,
         remainder,
+        shift,
+        pop1,
+        pop2,
+        push,
     )
 
     instruction.step_state_transition_in_same_context(
@@ -50,11 +59,44 @@ def check_witness(
     is_mod: FQ,
     is_shl: FQ,
     is_shr: FQ,
+    shf_lo: FQ,
+    shf_hi: FQ,
     dividend: RLC,
     divisor: RLC,
     quotient: RLC,
     remainder: RLC,
+    shift: RLC,
+    pop1: RLC,
+    pop2: RLC,
+    push: RLC,
 ):
+    divisor_is_zero = instruction.word_is_zero(divisor)
+
+    # Based on different opcode cases, constrain stack pops and pushes as:
+    # - for `MUL`, two pops are quotient and divisor, and push is dividend.
+    # - for `DIV`, two pops are dividend and divisor, and push is quotient.
+    # - for `MOD`, two pops are dividend and divisor, and push is remainder.
+    # - for `SHL`, two pops are shift and quotient, and push is dividend.
+    # - for `SHR`, two pops are shift and dividend, and push is quotient.
+    instruction.constrain_equal(
+        pop1.expr(),
+        is_mul * quotient.expr()
+        + (is_div + is_mod) * dividend.expr()
+        + (is_shl + is_shr) * shift.expr(),
+    )
+    instruction.constrain_equal(
+        pop2.expr(),
+        (is_mul + is_div + is_mod) * divisor.expr()
+        + is_shl * quotient.expr()
+        + is_shr * dividend.expr(),
+    )
+    instruction.constrain_equal(
+        push.expr(),
+        (is_mul + is_shl) * dividend.expr()
+        + (is_div + is_shr) * quotient.expr() * (1 - divisor_is_zero)
+        + is_mod * remainder.expr() * (1 - divisor_is_zero),
+    )
+
     # Constrain remainder < divisor when divisor != 0.
     divisor_is_zero = instruction.word_is_zero(divisor)
     remainder_lt_divisor, _ = instruction.compare_word(remainder, divisor)
@@ -68,47 +110,71 @@ def check_witness(
     overflow = instruction.mul_add_words(quotient, divisor, remainder, dividend)
     instruction.constrain_zero((is_div + is_mod + is_shr) * overflow)
 
+    # Constrain pop1 == pop1.cells[0] when divisor != 0 for opcode SHL and SHR.
+    instruction.constrain_zero(
+        (is_shl + is_shr) * (1 - divisor_is_zero) * (pop1.expr() - pop1.le_bytes[0]),
+    )
 
-def gen_witness(instruction: Instruction, opcode: FQ, pop1: RLC, pop2: RLC, push: RLC):
+    # For opcode SHL and SHR, Constrain `divisor_lo == 2^shf_lo` when
+    # `divisor_lo != 0`, and `divisor_hi == 2^shf_hi` when `divisor_hi != 0`.
+    divisor_lo = instruction.bytes_to_fq(divisor.le_bytes[:16])
+    divisor_hi = instruction.bytes_to_fq(divisor.le_bytes[16:])
+    divisor_lo_is_zero = instruction.is_zero(divisor_lo)
+    divisor_hi_is_zero = instruction.is_zero(divisor_hi)
+    is_divisor_lo_valid = (is_shl + is_shr) * (1 - divisor_lo_is_zero)
+    is_divisor_hi_valid = (is_shl + is_shr) * (1 - divisor_hi_is_zero)
+    instruction.pow2_lookup(
+        instruction.select(is_divisor_lo_valid, shf_lo, FQ(0)),
+        instruction.select(is_divisor_lo_valid, divisor_lo, FQ(1)),
+    )
+    instruction.pow2_lookup(
+        instruction.select(is_divisor_hi_valid, shf_hi, FQ(0)),
+        instruction.select(is_divisor_hi_valid, divisor_hi, FQ(1)),
+    )
+
+
+def gen_witness(opcode: FQ, pop1: RLC, pop2: RLC, push: RLC):
     is_mul = is_op_mul(opcode)
     is_div = is_op_div(opcode)
     is_mod = is_op_mod(opcode)
     is_shl = is_op_shl(opcode)
     is_shr = is_op_shr(opcode)
 
-    shf0 = instruction.bytes_to_fq(pop1.le_bytes[:1])
-    shf_lt256 = instruction.is_zero(instruction.sum(pop1.le_bytes[1:]))
-    shift_divisor = instruction.select(shf_lt256, RLC(1 << shf0.n), RLC(0))
+    # Get the first byte of shift value for opcode SHL and SHR. And split it by
+    # 128 to avoid overflow.
+    shf0 = pop1.le_bytes[0]
+    shf_lo, shf_hi = (FQ(shf0), FQ(0)) if shf0 < 128 else (FQ(0), FQ(shf0 - 128))
 
-    dividend = RLC(
-        (is_mul.n + is_shl.n) * push.int_value
-        + (is_div.n + is_mod.n) * pop1.int_value
-        + is_shr.n * pop2.int_value
-    )
-    divisor = RLC(
-        (is_mul.n + is_div.n + is_mod.n) * pop2.int_value
-        + (is_shl.n + is_shr.n) * shift_divisor.int_value
-    )
-
-    # Avoid dividing by zero.
-    divisor_is_zero = instruction.word_is_zero(divisor)
-    non_zero_divisor = instruction.select(divisor_is_zero, RLC(1), divisor)
-
-    quotient = RLC(
-        is_mul.n * pop1.int_value
-        + is_shl.n * pop2.int_value
-        + (is_div.n + is_shr.n) * push.int_value
-        + is_mod.n
-        * instruction.select(
-            divisor_is_zero,
-            RLC(0),
-            RLC((dividend.int_value - push.int_value) // non_zero_divisor.int_value),
-        ).int_value
-    )
-    remainder = RLC(
-        (is_div.n + is_shr.n) * (dividend.int_value - divisor.int_value * quotient.int_value)
-        + is_mod.n * instruction.select(divisor_is_zero, dividend, push).int_value
-    )
+    if is_mul.n == 1:
+        quotient = pop1
+        divisor = pop2
+        remainder = RLC(0)
+        dividend = push
+        shift = RLC(0)
+    elif is_div.n == 1:
+        quotient = push
+        divisor = pop2
+        remainder = RLC(pop1.int_value - push.int_value * pop2.int_value)
+        dividend = pop1
+        shift = RLC(0)
+    elif is_mod.n == 1:
+        quotient = RLC(0) if pop2.int_value == 0 else RLC(pop1.int_value // pop2.int_value)
+        divisor = pop2
+        remainder = pop1 if pop2.int_value == 0 else push
+        dividend = pop1
+        shift = RLC(0)
+    elif is_shl.n == 1:
+        divisor = RLC(1 << shf0) if shf0 == pop1.int_value else RLC(0)
+        quotient = pop2
+        remainder = RLC(0)
+        dividend = push
+        shift = pop1
+    else:  # SHR
+        divisor = RLC(1 << shf0) if shf0 == pop1.int_value else RLC(0)
+        quotient = push
+        remainder = RLC(pop2.int_value - push.int_value * divisor.int_value)
+        dividend = pop2
+        shift = pop1
 
     return (
         is_mul,
@@ -116,10 +182,13 @@ def gen_witness(instruction: Instruction, opcode: FQ, pop1: RLC, pop2: RLC, push
         is_mod,
         is_shl,
         is_shr,
+        shf_lo,
+        shf_hi,
         dividend,
         divisor,
         quotient,
         remainder,
+        shift,
     )
 
 
