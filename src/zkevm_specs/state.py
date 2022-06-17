@@ -399,9 +399,6 @@ def check_tx_log(row: Row, row_prev: Row):
         else:
             if log_id == prev_log_id and prev_field_tag == U256(TxLogFieldTag.Address):
                 assert (field_tag - prev_field_tag).n > 0
-            # index is zero for address
-            if field_tag == U256(TxLogFieldTag.Address):
-                assert index == 0
 
             # increase log_id when field tag changes to Address within same tx
             if field_tag == U256(TxLogFieldTag.Address):
@@ -410,14 +407,16 @@ def check_tx_log(row: Row, row_prev: Row):
             # within same tx, log_id will not change if field_tag != Address
             if field_tag != U256(TxLogFieldTag.Address):
                 assert log_id == prev_log_id
-            # if tag Data appear, data_index can only increase by one when tag stays same.
-            # if tag Topic appear, topic_index needs to be in range [0,4) and it can only increase by one
-            # when tag stays same.
-            if field_tag == U256(TxLogFieldTag.Topic):
-                assert_in_range(index, 0, 3)
-
+            # index can only increase by one when field tag stays same.
             if prev_field_tag == field_tag:
                 assert index == prev_index + 1
+
+    # if tag Topic appear, topic_index needs to be in range [0,4)
+    if field_tag == U256(TxLogFieldTag.Topic):
+        assert_in_range(index, 0, 3)
+    # index is zero for Address
+    if field_tag == U256(TxLogFieldTag.Address):
+        assert index == 0
 
 
 @is_circuit_code
