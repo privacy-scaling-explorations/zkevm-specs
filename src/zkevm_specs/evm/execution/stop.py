@@ -8,7 +8,7 @@ def stop(instruction: Instruction):
     # Note when transition to STOP, program_counter can only be increased by 1,
     # (JUMP* will always transit to JUMPDEST, then to STOP if any) so when opcode
     # fetching is out of range, the program_counter must be equal to code_length.
-    code_length = instruction.bytecode_length(instruction.curr.code_source)
+    code_length = instruction.bytecode_length(instruction.curr.code_hash)
     is_out_of_range = instruction.is_equal(code_length, instruction.curr.program_counter)
     if is_out_of_range == FQ(0):
         instruction.responsible_opcode_lookup(instruction.opcode_lookup(True))

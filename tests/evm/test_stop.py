@@ -59,7 +59,7 @@ def test_stop_is_root(tx: Transaction, bytecode: Bytecode):
                 call_id=1,
                 is_root=True,
                 is_create=False,
-                code_source=bytecode_hash,
+                code_hash=bytecode_hash,
                 program_counter=2,
                 stack_pointer=1023,
                 gas_left=0,
@@ -120,7 +120,7 @@ def test_stop_not_root(caller_ctx: CallContext, callee_bytecode: Bytecode):
             .call_context_read(24, CallContextFieldTag.CallerId, 1)
             .call_context_read(1, CallContextFieldTag.IsRoot, caller_ctx.is_root)
             .call_context_read(1, CallContextFieldTag.IsCreate, caller_ctx.is_create)
-            .call_context_read(1, CallContextFieldTag.CodeSource, caller_bytecode_hash)
+            .call_context_read(1, CallContextFieldTag.CodeHash, caller_bytecode_hash)
             .call_context_read(1, CallContextFieldTag.ProgramCounter, caller_ctx.program_counter)
             .call_context_read(1, CallContextFieldTag.StackPointer, caller_ctx.stack_pointer)
             .call_context_read(1, CallContextFieldTag.GasLeft, caller_ctx.gas_left)
@@ -144,7 +144,7 @@ def test_stop_not_root(caller_ctx: CallContext, callee_bytecode: Bytecode):
                 call_id=24,
                 is_root=False,
                 is_create=False,
-                code_source=callee_bytecode_hash,
+                code_hash=callee_bytecode_hash,
                 program_counter=2,
                 stack_pointer=1023,
                 gas_left=callee_gas_left,
@@ -156,7 +156,7 @@ def test_stop_not_root(caller_ctx: CallContext, callee_bytecode: Bytecode):
                 call_id=1,
                 is_root=caller_ctx.is_root,
                 is_create=caller_ctx.is_create,
-                code_source=caller_bytecode_hash,
+                code_hash=caller_bytecode_hash,
                 program_counter=caller_ctx.program_counter,
                 stack_pointer=caller_ctx.stack_pointer,
                 gas_left=caller_ctx.gas_left + callee_gas_left,

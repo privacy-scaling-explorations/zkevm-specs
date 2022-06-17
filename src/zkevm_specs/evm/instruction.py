@@ -241,7 +241,7 @@ class Instruction:
         [
             caller_is_root,
             caller_is_create,
-            caller_code_source,
+            caller_code_hash,
             caller_program_counter,
             caller_stack_pointer,
             caller_gas_left,
@@ -252,7 +252,7 @@ class Instruction:
             for field_tag in [
                 CallContextFieldTag.IsRoot,
                 CallContextFieldTag.IsCreate,
-                CallContextFieldTag.CodeSource,
+                CallContextFieldTag.CodeHash,
                 CallContextFieldTag.ProgramCounter,
                 CallContextFieldTag.StackPointer,
                 CallContextFieldTag.GasLeft,
@@ -290,7 +290,7 @@ class Instruction:
             call_id=Transition.to(caller_id),
             is_root=Transition.to(caller_is_root),
             is_create=Transition.to(caller_is_create),
-            code_source=Transition.to(caller_code_source),
+            code_hash=Transition.to(caller_code_hash),
             program_counter=Transition.to(caller_program_counter),
             stack_pointer=Transition.to(caller_stack_pointer),
             # Pays back gas_left to caller
