@@ -17,22 +17,6 @@ TESTING_MAX_POSITIVE = (1 << 255) - 1
 TESTING_NEGATIVE_SIGN = 1 << 255
 
 TESTING_DATA = [
-    (Opcode.SHR, 0x1234, 8),
-    (Opcode.SHR, 0x5678, 17),
-    (Opcode.SHR, 0xABCD, 0),
-    (Opcode.SHR, 0xFFFF, 256),
-    (Opcode.SHR, TESTING_NEGATIVE_SIGN + 0x1234, 8),
-    (Opcode.SHR, TESTING_NEGATIVE_SIGN + 0x5678, 17),
-    (Opcode.SHR, TESTING_NEGATIVE_SIGN + 0xABCD, 0),
-    (Opcode.SHR, TESTING_NEGATIVE_SIGN + 0xFFFF, 256),
-    (Opcode.SHR, TESTING_MAX_NEGATIVE, 129),
-    (Opcode.SHR, TESTING_MAX_NEGATIVE, 300),
-    (Opcode.SHR, TESTING_MAX_NEGATIVE, TESTING_MAX_NEGATIVE),
-    (Opcode.SHR, TESTING_MAX_NEGATIVE, TESTING_MAX_POSITIVE),
-    (Opcode.SHR, TESTING_MAX_POSITIVE, 129),
-    (Opcode.SHR, TESTING_MAX_POSITIVE, 300),
-    (Opcode.SHR, TESTING_MAX_POSITIVE, TESTING_MAX_NEGATIVE),
-    (Opcode.SHR, TESTING_MAX_POSITIVE, TESTING_MAX_POSITIVE),
     (Opcode.SAR, 0x1234, 8),
     (Opcode.SAR, 0x5678, 17),
     (Opcode.SAR, 0xABCD, 0),
@@ -50,8 +34,6 @@ TESTING_DATA = [
     (Opcode.SAR, TESTING_MAX_POSITIVE, TESTING_MAX_NEGATIVE),
     (Opcode.SAR, TESTING_MAX_POSITIVE, TESTING_MAX_POSITIVE),
 ]
-
-generate_nasty_tests(TESTING_DATA, (Opcode.SHR, Opcode.SAR))
 
 
 @pytest.mark.parametrize("opcode, value, shift", TESTING_DATA)
@@ -85,7 +67,7 @@ def test_shr_sar(opcode: Opcode, value: U256, shift: int):
         tables=tables,
         steps=[
             StepState(
-                execution_state=ExecutionState.SHR,
+                execution_state=ExecutionState.SAR,
                 rw_counter=9,
                 call_id=1,
                 is_root=True,

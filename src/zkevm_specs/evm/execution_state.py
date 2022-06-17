@@ -186,7 +186,9 @@ class ExecutionState(IntEnum):
         elif self == ExecutionState.SHL:
             return [Opcode.SHL]
         elif self == ExecutionState.SHR:
-            return [Opcode.SHR, Opcode.SAR]
+            return [Opcode.SHR]
+        elif self == ExecutionState.SAR:
+            return [Opcode.SAR]
         elif self == ExecutionState.SHA3:
             return [Opcode.SHA3]
         elif self == ExecutionState.ADDRESS:

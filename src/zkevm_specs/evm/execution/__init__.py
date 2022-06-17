@@ -35,7 +35,8 @@ from .storage import *
 from .selfbalance import *
 from .extcodehash import *
 from .log import *
-from .shr_sar import *
+from .shr import *
+from .sar import *
 
 
 EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
@@ -70,5 +71,6 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.LOG: log,
     ExecutionState.CALL: call,
     ExecutionState.ISZERO: iszero,
-    ExecutionState.SHR: shr_sar,
+    ExecutionState.SHR: shr,
+    ExecutionState.SAR: sar,
 }
