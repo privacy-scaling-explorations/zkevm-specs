@@ -877,5 +877,5 @@ class Instruction:
         self.range_check(gas_cost, N_BYTES_GAS)
         return gas_cost
 
-    def pow2_lookup(self, value: Expression, value_pow: Expression):
-        self.fixed_lookup(FixedTableTag.Pow2, value, value_pow)
+    def pow2_lookup(self, value: Expression, pow_lo128: Expression, pow_hi128: Expression):
+        self.fixed_lookup(FixedTableTag.Pow2, value, pow_lo128, pow_hi128)

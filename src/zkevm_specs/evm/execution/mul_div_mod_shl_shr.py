@@ -17,8 +17,7 @@ def mul_div_mod_shl_shr(instruction: Instruction):
         is_mod,
         is_shl,
         is_shr,
-        shf_lo,
-        shf_hi,
+        shf0,
         dividend,
         divisor,
         quotient,
@@ -32,8 +31,7 @@ def mul_div_mod_shl_shr(instruction: Instruction):
         is_mod,
         is_shl,
         is_shr,
-        shf_lo,
-        shf_hi,
+        shf0,
         dividend,
         divisor,
         quotient,
@@ -59,8 +57,7 @@ def check_witness(
     is_mod: FQ,
     is_shl: FQ,
     is_shr: FQ,
-    shf_lo: FQ,
-    shf_hi: FQ,
+    shf0: FQ,
     dividend: RLC,
     divisor: RLC,
     quotient: RLC,
@@ -115,22 +112,12 @@ def check_witness(
         (is_shl + is_shr) * (1 - divisor_is_zero) * (pop1.expr() - pop1.le_bytes[0]),
     )
 
-    # For opcode SHL and SHR, Constrain `divisor_lo == 2^shf_lo` when
-    # `divisor_lo != 0`, and `divisor_hi == 2^shf_hi` when `divisor_hi != 0`.
+    # For opcode SHL and SHR, constrain `divisor_lo == 2^shf0` when
+    # `shf0 < 128`, and `divisor_hi == 2^(128 - shf0)` otherwise.
     divisor_lo = instruction.bytes_to_fq(divisor.le_bytes[:16])
     divisor_hi = instruction.bytes_to_fq(divisor.le_bytes[16:])
-    divisor_lo_is_zero = instruction.is_zero(divisor_lo)
-    divisor_hi_is_zero = instruction.is_zero(divisor_hi)
-    is_divisor_lo_valid = (is_shl + is_shr) * (1 - divisor_lo_is_zero)
-    is_divisor_hi_valid = (is_shl + is_shr) * (1 - divisor_hi_is_zero)
-    instruction.pow2_lookup(
-        instruction.select(is_divisor_lo_valid, shf_lo, FQ(0)),
-        instruction.select(is_divisor_lo_valid, divisor_lo, FQ(1)),
-    )
-    instruction.pow2_lookup(
-        instruction.select(is_divisor_hi_valid, shf_hi, FQ(0)),
-        instruction.select(is_divisor_hi_valid, divisor_hi, FQ(1)),
-    )
+    if (is_shl + is_shr) * (1 - divisor_is_zero) == 1:
+        instruction.pow2_lookup(shf0, divisor_lo, divisor_hi)
 
 
 def gen_witness(opcode: FQ, pop1: RLC, pop2: RLC, push: RLC):
@@ -140,10 +127,8 @@ def gen_witness(opcode: FQ, pop1: RLC, pop2: RLC, push: RLC):
     is_shl = is_op_shl(opcode)
     is_shr = is_op_shr(opcode)
 
-    # Get the first byte of shift value for opcode SHL and SHR. And split it by
-    # 128 to avoid overflow.
+    # Get the first byte of shift value only for opcode SHL and SHR.
     shf0 = pop1.le_bytes[0]
-    shf_lo, shf_hi = (FQ(shf0), FQ(0)) if shf0 < 128 else (FQ(0), FQ(shf0 - 128))
 
     if is_mul.n == 1:
         quotient = pop1
@@ -182,8 +167,7 @@ def gen_witness(opcode: FQ, pop1: RLC, pop2: RLC, push: RLC):
         is_mod,
         is_shl,
         is_shr,
-        shf_lo,
-        shf_hi,
+        shf0,
         dividend,
         divisor,
         quotient,
