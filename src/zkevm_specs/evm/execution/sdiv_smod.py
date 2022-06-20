@@ -56,8 +56,8 @@ def check_witness(
     instruction.constrain_zero(overflow)
 
     # Constrain abs(remainder) < abs(divisor) when divisor != 0.
-    remainder_lt_divisor, _ = instruction.compare_word(remainder_abs, divisor_abs)
-    instruction.constrain_zero((1 - remainder_lt_divisor) * divisor_is_non_zero)
+    remainder_abs_lt_divisor_abs, _ = instruction.compare_word(remainder_abs, divisor_abs)
+    instruction.constrain_zero((1 - remainder_abs_lt_divisor_abs) * divisor_is_non_zero)
 
     # Constrain sign(dividend) == sign(remainder) when quotient, divisor and
     # remainder are all non-zero.
