@@ -381,12 +381,6 @@ class Instruction:
         # Generate the witness `x_abs`.
         x_abs = x if is_neg == 0 else self.rlc_encode((1 << 256) - x.int_value, 32)
 
-        # Check sign overflow if `x == -(1 << 255)`, since `abs(-(1 << 255))`
-        # should be equal to `-(1 << 255)`.
-        is_overflow = self.is_equal(FQ(x.le_bytes[31]), FQ(128)) * self.is_zero(
-            self.sum(x.le_bytes[:31])
-        )
-
         x_abs_lo, x_abs_hi = self.word_to_lo_hi(x_abs)
         x_lo, x_hi = self.word_to_lo_hi(x)
 
@@ -394,13 +388,16 @@ class Instruction:
         self.constrain_zero((x_abs_lo - x_lo) * (1 - is_neg))
         self.constrain_zero((x_abs_hi - x_hi) * (1 - is_neg))
 
-        # When negative, constrain `x_abs_lo + x_lo == 2^128` if x is not
-        # overflow, otherwise `x_abs_lo + x_lo == 0`.
-        self.constrain_zero((x_abs_lo + x_lo - (1 << 128) * (1 - is_overflow)) * is_neg)
+        # When `is_neg`, contrain `x + x_abs == 1 << 256`. Even if
+        # `x = -(1 << 255)` that is signed overflow, and
+        # `abs(-(1 << 255) = -(1 << 255)`.
+        carry_lo, remainder_lo = divmod(x_lo.n + x_abs_lo.n, 1 << 128)
+        carry_hi, remainder_hi = divmod(x_hi.n + x_abs_hi.n + carry_lo, 1 << 128)
 
-        # When negative, constrain `x_abs_hi + x_hi == 2^128 - 1` if x is not
-        # overflow, otherwise `x_abs_lo + x_lo == 2^128`.
-        self.constrain_zero((x_abs_hi + x_hi + 1 - is_overflow - (1 << 128)) * is_neg)
+        # When `is_neg`, constrain both low and high remainders are zero, and
+        # `carry_hi == 1`. Since the final result is `1 << 256`.
+        self.constrain_zero(FQ(remainder_lo + remainder_hi) * is_neg)
+        self.constrain_zero(FQ(1 - carry_hi) * is_neg)
 
         return x_abs, is_neg
 
