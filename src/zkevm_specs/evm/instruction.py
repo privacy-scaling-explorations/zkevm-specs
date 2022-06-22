@@ -391,8 +391,8 @@ class Instruction:
         # When `is_neg`, contrain `x + x_abs == 1 << 256`. Even if
         # `x = -(1 << 255)` that is signed overflow, and
         # `abs(-(1 << 255) = -(1 << 255)`.
-        carry_lo, remainder_lo = divmod(x_lo.n + x_abs_lo.n, 1 << 128)
-        carry_hi, remainder_hi = divmod(x_hi.n + x_abs_hi.n + carry_lo, 1 << 128)
+        carry_lo, sum_lo = divmod(x_lo.n + x_abs_lo.n, 1 << 128)
+        carry_hi, sum_hi = divmod(x_hi.n + x_abs_hi.n + carry_lo, 1 << 128)
 
         # When `is_neg`, constrain both low and high remainders are zero, and
         # `carry_hi == 1`. Since the final result is `1 << 256`.
