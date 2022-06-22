@@ -396,7 +396,7 @@ class Instruction:
 
         # When `is_neg`, constrain both low and high remainders are zero, and
         # `carry_hi == 1`. Since the final result is `1 << 256`.
-        self.constrain_zero(FQ(remainder_lo + remainder_hi) * is_neg)
+        self.constrain_zero(FQ(sum_lo + sum_hi) * is_neg)
         self.constrain_zero(FQ(1 - carry_hi) * is_neg)
 
         return x_abs, is_neg
