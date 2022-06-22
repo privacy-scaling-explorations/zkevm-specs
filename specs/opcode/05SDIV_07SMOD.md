@@ -24,21 +24,21 @@ Now putting things together, the constraints can be constructed as follows:
 
 1. `MulAddWordsGadget` overflow:
 
-* It should always be zero.
+   It should always be zero.
 
 2. `divisor` and `remainder` absolute values:
 
-* Constrain `abs(remainder) < abs(divisor)` when divisor != 0.
+   Constrain `abs(remainder) < abs(divisor)` when divisor != 0.
 
 3. `dividend` and `remainder` signs:
 
-* Constrain `sign(dividend) == sign(remainder)` when quotient, divisor and remainder are all non-zero.
+   Constrain `sign(dividend) == sign(remainder)` when quotient, divisor and remainder are all non-zero.
 
 4. `dividend`, `divisor` and `quotient` signs:
 
-* `dividend_is_signed_overflow` is calculated for a special `SDIV` case, when input `dividend = -(1 << 255)` and `divisor = -1`, the quotient result should be `1 << 255`, which is overflow for a `signed` word. Since it could only express `signed` value from `-(1 << 255)` to `(1 << 255) - 1`.
+   `dividend_is_signed_overflow` is calculated for a special `SDIV` case, when input `dividend = -(1 << 255)` and `divisor = -1`, the quotient result should be `1 << 255`, which is overflow for a `signed` word. Since it could only express `signed` value from `-(1 << 255)` to `(1 << 255) - 1`.
 
-* Constrain `sign(dividend) == sign(divisor) ^ sign(quotient)` when both quotient and divisor are non-zero and dividend is not signed overflow.
+   Constrain `sign(dividend) == sign(divisor) ^ sign(quotient)` when both quotient and divisor are non-zero and dividend is not signed overflow.
 
 ## Constraints
 
