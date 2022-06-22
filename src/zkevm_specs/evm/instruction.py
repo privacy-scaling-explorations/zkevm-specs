@@ -321,11 +321,6 @@ class Instruction:
             raise ConstraintUnsatFailure(f"Word {word} has too many bytes to fit {n_bytes} bytes")
         return self.bytes_to_fq(word.le_bytes[:n_bytes])
 
-    def word_is_equal(self, lhs: RLC, rhs: RLC) -> FQ:
-        assert len(lhs.le_bytes) == 32, "Expected word to contain 32 bytes"
-        assert len(rhs.le_bytes) == 32, "Expected word to contain 32 bytes"
-        return self.compare_word(lhs, rhs)[1]
-
     def word_is_neg(self, word: RLC) -> FQ:
         assert len(word.le_bytes) == 32, "Expected word to contain 32 bytes"
         return self.compare(FQ(127), FQ(word.le_bytes[31]), 1)[0]

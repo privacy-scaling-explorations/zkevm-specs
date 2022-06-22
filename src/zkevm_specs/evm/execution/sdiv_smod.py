@@ -48,8 +48,6 @@ def check_witness(
     divisor_is_non_zero = 1 - instruction.word_is_zero(divisor)
     remainder_is_non_zero = 1 - instruction.word_is_zero(remainder)
 
-    # Constrain the ABS words of quotient, divisor, remainder and dividend.
-
     # Function `mul_add_words` constrains `|quotient| * |divisor| + |remainder| = |dividend|`.
     overflow = instruction.mul_add_words(quotient_abs, divisor_abs, remainder_abs, dividend_abs)
     # Constrain overflow == 0.
@@ -74,7 +72,8 @@ def check_witness(
     # quotient and divisor are non-zero and dividend is not signed overflow.
     condition = quotient_is_non_zero * divisor_is_non_zero * (1 - dividend_is_signed_overflow)
     instruction.constrain_zero(
-        (quotient_is_neg + divisor_is_neg - 2 * quotient_is_neg * divisor_is_neg - dividend_is_neg) * condition,
+        (quotient_is_neg + divisor_is_neg - 2 * quotient_is_neg * divisor_is_neg - dividend_is_neg)
+        * condition,
     )
 
 
