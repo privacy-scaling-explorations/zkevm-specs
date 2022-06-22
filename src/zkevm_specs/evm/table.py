@@ -399,13 +399,13 @@ class MPTTableRow(TableRow):
 @dataclass
 class CopyCircuitRow(TableRow):
     q_step: FQ
-    q_first: FQ
-    q_last: FQ
+    is_first: FQ
+    is_last: FQ
     id: FQ  # one of call_id, bytecode_hash, tx_id
     log_id: FQ  # only used in TxLog
     tag: FQ  # CopyDataTypeTag
     addr: FQ
-    addr_end: FQ
+    src_addr_boundary: FQ
     bytes_left: FQ
     value: FQ
     is_code: FQ
@@ -425,7 +425,7 @@ class CopyTableRow(TableRow):
     dst_id: FQ
     dst_type: FQ
     src_addr: FQ
-    src_addr_end: FQ
+    src_addr_boundary: FQ
     dst_addr: FQ
     length: FQ
     rw_counter: FQ
@@ -466,7 +466,7 @@ class Tables:
     def _convert_copy_circuit_to_table(self, copy_circuit: Sequence[CopyCircuitRow]):
         rows = []
         for i, row in enumerate(copy_circuit):
-            if row.q_first != 1:
+            if row.is_first != 1:
                 continue
             assert i + 1 < len(copy_circuit), "Not enough rows in copy circuit"
             next_row = copy_circuit[i + 1]
@@ -478,7 +478,7 @@ class Tables:
                     dst_id=next_row.id,
                     dst_type=next_row.tag,
                     src_addr=row.addr,
-                    src_addr_end=row.addr_end,
+                    src_addr_boundary=row.src_addr_boundary,
                     dst_addr=next_row.addr,
                     length=row.bytes_left,
                     rw_counter=row.rw_counter,
@@ -571,7 +571,7 @@ class Tables:
         dst_id: Expression,
         dst_type: Expression,
         src_addr: Expression,
-        src_addr_end: Expression,
+        src_addr_boundary: Expression,
         dst_addr: Expression,
         length: Expression,
         rw_counter: Expression,
@@ -583,7 +583,7 @@ class Tables:
             "dst_id": dst_id,
             "dst_type": dst_type,
             "src_addr": src_addr,
-            "src_addr_end": src_addr_end,
+            "src_addr_boundary": src_addr_boundary,
             "dst_addr": dst_addr,
             "length": length,
             "rw_counter": rw_counter,

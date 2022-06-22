@@ -278,10 +278,10 @@ Proved by the copy circuit.
 
 The copy table consists of 14 columns, described as follows:
 
-- **q_step**: a boolean value to indicate a copy step, always alternating between 1 and 0, where 1 indicates a read op and 0 indicates a write op.
-- **q_first**: a boolean value to indicate the first row in a copy event.
-- **q_last**: a boolean value to indicate the last row in a copy event.
-- **ID**: could be `$txID`, `$callId`, $codeHash` (RLC encoded).
+- **q_step**: a fixed column for boolean value to indicate a copy step, always alternating between 1 and 0, where 1 indicates a read op and 0 indicates a write op.
+- **is_first**: a boolean value to indicate the first row in a copy event.
+- **is_last**: a boolean value to indicate the last row in a copy event.
+- **ID**: could be `$txID`, `$callId`, `$codeHash` (RLC encoded).
 - **LogID**: indicates the log id, only valid when `Type` is `TxLog`.
 - **Type**: indicates the type of data source, including `Memory`, `Bytecode`, `TxCalldata`, `TxLog`.
 - **Address**: indicates the address in the source data, could be memory address, byte index in the bytecode, tx call data, and tx log data.
@@ -296,15 +296,16 @@ The copy table consists of 14 columns, described as follows:
 
 Unlike other lookup tables, the copy table is a virtual table. The lookup entry is not a single row in the table, and not every row corresponds to a lookup entry.
 Instead, a lookup entry is constructed from the first two rows in each copy event as
-`(q_first, ID, Type, ID[1], Type[1], LogId[1], Address, AddressEnd, Address[1], BytesLeft, RwCounter, RwcIncreaseLeft)`, where `q_first` is 1 and `Column[1]` indicates the next row in the corresponding column.
+`(is_first, ID, Type, ID[1], Type[1], LogId[1], Address, AddressEnd, Address[1], BytesLeft, RwCounter, RwcIncreaseLeft)`, where `is_first` is 1 and `Column[1]` indicates the next row in the corresponding column.
 
 The table below lists all of copy pairs supported in the copy table:
 - Copy from Tx call data to memory (`CALLDATACOPY`).
-- Copy from caller/callee memory to callee/caller memory (`CALLDATACOPY`, `RETURN` (not create), `RETURNDATACOPY`).
+- Copy from caller/callee memory to callee/caller memory (`CALLDATACOPY`, `RETURN` (not create), `RETURNDATACOPY`, `REVERT`).
 - Copy from bytecode to memory (`CODECOPY`, `EXTCODECOPY`).
 - Copy from memory to bytecode (`CREATE`, `CREATE2`, `RETURN` (create))
+- Copy from memory to TxLog in the `rw_table` (`LOGX`)
 
-| q_step | q_first | q_last | ID        | LogID  | Type       | Address        | AddressEnd     | BytesLeft  | Value  | IsCode  | Padding | RwCounter | RwcIncreaseLeft |
+| q_step | is_first | is_last | ID        | LogID  | Type       | Address        | AddressEnd     | BytesLeft  | Value  | IsCode  | Padding | RwCounter | RwcIncreaseLeft |
 |--------|---------|--------|-----------|--------|------------|----------------|----------------|------------|--------|---------|-----|-----------|-----------------|
 | 1      | 0/1     | 0      | $txID     | -      | TxCalldata | $byteIndex     | $cdLength      | $bytesLeft | $value | -       | 0/1 | -         | $rwcIncLeft     |
 | 0      | 0       | 0/1    | $callId   | -      | Memory     | $memoryAddress | -              | -          | $value | -       | 0   | $counter  | $rwcIncLeft     |

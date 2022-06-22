@@ -5,7 +5,6 @@ from zkevm_specs.evm import (
     Opcode,
     ExecutionState,
     StepState,
-    CopyToMemoryAuxData,
     verify_steps,
     Tables,
     RWTableTag,

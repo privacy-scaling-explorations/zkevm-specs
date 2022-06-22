@@ -6,7 +6,6 @@ from zkevm_specs.evm import (
     AccountFieldTag,
     Bytecode,
     CallContextFieldTag,
-    CopyCodeToMemoryAuxData,
     ExecutionState,
     Opcode,
     RW,
