@@ -73,10 +73,8 @@ def check_witness(
     # Constrain sign(dividend) == sign(divisor) ^ sign(quotient) when both
     # quotient and divisor are non-zero and dividend is not signed overflow.
     condition = quotient_is_non_zero * divisor_is_non_zero * (1 - dividend_is_signed_overflow)
-    instruction.constrain_equal(
-        (1 - dividend_is_neg) * condition,
-        ((quotient_is_neg * divisor_is_neg) + (1 - quotient_is_neg) * (1 - divisor_is_neg))
-        * condition,
+    instruction.constrain_zero(
+        (quotient_is_neg + divisor_is_neg - 2 * quotient_is_neg * divisor_is_neg - dividend_is_neg) * condition,
     )
 
 
