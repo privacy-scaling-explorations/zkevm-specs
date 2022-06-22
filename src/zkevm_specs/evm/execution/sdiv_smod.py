@@ -62,7 +62,7 @@ def check_witness(
     # Constrain sign(dividend) == sign(remainder) when quotient, divisor and
     # remainder are all non-zero.
     condition = quotient_is_non_zero * divisor_is_non_zero * remainder_is_non_zero
-    instruction.constrain_equal(dividend_is_neg * condition, remainder_is_neg * condition)
+    instruction.constrain_zero((dividend_is_neg - remainder_is_neg) * condition)
 
     # For a special `SDIV` case, when input `dividend = -(1 << 255)` and `divisor = -1`,
     # the quotient result should be `1 << 255`. But a `signed` word could only express
