@@ -399,7 +399,7 @@ class Instruction:
         self.constrain_zero((x_abs_lo + x_lo - (1 << 128) * (1 - is_overflow)) * is_neg)
 
         # When negative, constrain `x_abs_hi + x_hi == 2^128 - 1` if x is not
-        # overflow, otherwise `x_abs_lo + x_lo == 2^128`.
+        # overflow, otherwise `x_abs_hi + x_hi == 2^128`.
         self.constrain_zero((x_abs_hi + x_hi + 1 - is_overflow - (1 << 128)) * is_neg)
 
         return x_abs, is_neg
