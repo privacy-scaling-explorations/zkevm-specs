@@ -373,8 +373,8 @@ class Instruction:
             raise ConstraintUnsatFailure(f"Value {value} has too many bytes to fit {n_bytes} bytes")
 
     # Return a tuple of `abs(x)` and `x_is_neg`. For a special case when
-    # `x = -(1 << 255)`, this function returns the ABS value of `-(1 << 255)`,
-    # since it is sign overflow.
+    # `x = -(1 << 255)`, this function returns the same value of `-(1 << 255)`,
+    # since it is signed overflow.
     def abs_word(self, x: RLC) -> Tuple[RLC, FQ]:
         is_neg = self.word_is_neg(x)
 
