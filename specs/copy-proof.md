@@ -38,7 +38,7 @@ Second, the circuit adds the constraints for every copy step in the circuit, whe
 
 - Look up the copy type pair `(Type, Type[1])` in a fixed table to make sure it's a valid copy step.
 - Constrain the transition for `BytesLeft`
-    - when it's not the last step (`is_last[1] != 1`), increase by 1 in the next step
+    - when it's not the last step (`is_last[1] != 1`), decrease by 1 in the next step
     - otherwise, equals to 1.
 - Constrain the write value equals to read value: `Value[1] == Value`
 - Constrain `Value == 0` when `Padding == 1`.

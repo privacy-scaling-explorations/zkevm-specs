@@ -52,7 +52,7 @@ def verify_row(cs: ConstraintSystem, rows: Sequence[CopyCircuitRow]):
         cs.constrain_equal(rows[0].rwc_inc_left - rw_diff, rows[1].rwc_inc_left)
     with cs.condition(rows[0].is_last) as cs:
         # rwc_inc_left == 1 for last row in the copy slot
-        cs.constrain_equal(rows[0].rwc_inc_left, rw_diff)
+        cs.constrain_equal(rows[0].rwc_inc_left, FQ(1))
 
 
 def verify_step(cs: ConstraintSystem, rows: Sequence[CopyCircuitRow]):
