@@ -376,14 +376,6 @@ def check_tx_log(row: Row, row_prev: Row):
     # tx_id | log_id | field_tag | index | value
     tx_id = row.id()
     prev_tx_id = row_prev.id()
-    log_id = row.address()
-    prev_log_id = row_prev.address()
-    prev_tag = row_prev.tag()
-    tag = row.tag()
-    prev_field_tag = row_prev.field_tag()
-    field_tag = row.field_tag()
-    index = row.storage_key()
-    prev_index = row_prev.storage_key()
 
     # 12.0 is_write is always true
     assert row.is_write == 1
@@ -391,32 +383,8 @@ def check_tx_log(row: Row, row_prev: Row):
     if row.tag() == row_prev.tag():
         if tx_id != prev_tx_id:
             assert tx_id == prev_tx_id + 1
-            # in RW table, log_id starts with 1 in tx, zero log_id means no log step executed,
-            # hence no log entry inserted into rw table
-            assert log_id == 1
-            # first field_tag is Address when tx changes
-            assert row.field_tag() == TxLogFieldTag.Address
-        else:
-            if log_id == prev_log_id and prev_field_tag == U256(TxLogFieldTag.Address):
-                assert (field_tag - prev_field_tag).n > 0
-
-            # increase log_id when field tag changes to Address within same tx
-            if field_tag == U256(TxLogFieldTag.Address):
-                assert log_id == prev_log_id + 1
-
-            # within same tx, log_id will not change if field_tag != Address
-            if field_tag != U256(TxLogFieldTag.Address):
-                assert log_id == prev_log_id
-            # index can only increase by one when field tag stays same.
-            if prev_field_tag == field_tag:
-                assert index == prev_index + 1
-
-    # if tag Topic appear, topic_index needs to be in range [0,4)
-    if field_tag == U256(TxLogFieldTag.Topic):
-        assert_in_range(index, 0, 3)
-    # index is zero for Address
-    if field_tag == U256(TxLogFieldTag.Address):
-        assert index == 0
+            # commented  field_tag-specific constraints as issue
+            # https://github.com/privacy-scaling-explorations/zkevm-specs/issues/221
 
 
 @is_circuit_code
