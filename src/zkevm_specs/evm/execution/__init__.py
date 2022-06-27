@@ -37,6 +37,7 @@ from .shr import shr
 from .bitwise import not_opcode
 from .sdiv_smod import sdiv_smod
 from .stop import stop
+from .return_ import *
 
 
 EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
@@ -73,4 +74,5 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.SHR: shr,
     ExecutionState.SDIV_SMOD: sdiv_smod,
     ExecutionState.STOP: stop,
+    ExecutionState.RETURN: return_,
 }
