@@ -394,6 +394,14 @@ class Instruction:
         carry_lo, sum_lo = divmod(x_lo.n + x_abs_lo.n, 1 << 128)
         carry_hi, sum_hi = divmod(x_hi.n + x_abs_hi.n + carry_lo, 1 << 128)
 
+        # Contrain `sum([x_lo, x_abs_lo]) == sum_lo + carry_lo * 2^128`.
+        self.constrain_zero(FQ(sum_lo) + FQ(carry_lo) * FQ(1 << 128) - self.sum([x_lo, x_abs_lo]))
+
+        # Contrain `sum([x_hi, x_abs_hi]) + carry_lo == sum_hi + carry_hi * 2^128`.
+        self.constrain_zero(
+            FQ(sum_hi) + FQ(carry_hi) * FQ(1 << 128) - FQ(carry_lo) - self.sum([x_hi, x_abs_hi])
+        )
+
         # When `is_neg`, constrain both low and high remainders are zero, and
         # `carry_hi == 1`. Since the final result is `1 << 256`.
         self.constrain_zero(FQ(sum_lo + sum_hi) * is_neg)
