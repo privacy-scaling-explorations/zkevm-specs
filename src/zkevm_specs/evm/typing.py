@@ -386,7 +386,7 @@ class RWDictionary:
             RWTableTag.TxLog,
             key1=FQ(tx_id),
             key2=FQ(index + int(field_tag) << 32 + log_id << 48),
-            key3=FQ(field_tag),
+            key3=FQ(0),
             key4=FQ(0),
             value=value,
         )
