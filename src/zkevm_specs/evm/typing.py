@@ -205,7 +205,7 @@ class Bytecode:
 
     def __getattr__(self, name: str):
         if name.startswith("bitwise_"):
-            name = name[len("bitwise_"):]
+            name = name[len("bitwise_") :]
 
         def method(*args) -> Bytecode:
             try:

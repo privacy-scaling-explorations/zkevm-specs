@@ -12,7 +12,6 @@ from zkevm_specs.evm import (
     RWDictionary,
 )
 from zkevm_specs.util import rand_fq, rand_word, RLC
-from common import generate_nasty_tests
 
 
 NOT_TESTING_DATA = [
@@ -39,12 +38,7 @@ def test_not(a: int):
         block_table=set(Block().table_assignments(randomness)),
         tx_table=set(),
         bytecode_table=set(bytecode.table_assignments(randomness)),
-        rw_table=set(
-            RWDictionary(9)
-            .stack_read(1, 1023, a)
-            .stack_write(1, 1023, b)
-            .rws
-        ),
+        rw_table=set(RWDictionary(9).stack_read(1, 1023, a).stack_write(1, 1023, b).rws),
     )
 
     verify_steps(
