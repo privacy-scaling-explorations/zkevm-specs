@@ -379,12 +379,9 @@ def check_tx_log(row: Row, row_prev: Row):
 
     # 12.0 is_write is always true
     assert row.is_write == 1
-    # 12.1 tx_id change must be increasing
-    if row.tag() == row_prev.tag():
-        if tx_id != prev_tx_id:
-            assert tx_id == prev_tx_id + 1
-            # removed field_tag-specific constraints as issue
-            # https://github.com/privacy-scaling-explorations/zkevm-specs/issues/221
+
+    # removed field_tag-specific constraints as issue
+    # https://github.com/privacy-scaling-explorations/zkevm-specs/issues/221
 
 
 @is_circuit_code
