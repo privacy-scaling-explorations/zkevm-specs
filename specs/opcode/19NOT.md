@@ -28,4 +28,4 @@ We prove that `a = NOT b` by showing that the byte-wise relation
 
 ## Code
 
-See `src/zkevm_specs/opcode/bitwise.py`
+See `src/zkevm_specs/evm/execution/bitwise.py`
