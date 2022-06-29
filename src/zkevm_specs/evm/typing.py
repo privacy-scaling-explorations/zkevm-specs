@@ -204,9 +204,6 @@ class Bytecode:
         self.code = bytearray() if code is None else code
 
     def __getattr__(self, name: str):
-        if name.startswith("bitwise_"):
-            name = name[len("bitwise_") :]
-
         def method(*args) -> Bytecode:
             try:
                 opcode = Opcode[name.removesuffix("_").upper()]

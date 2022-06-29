@@ -31,7 +31,7 @@ def test_not(a: int):
     b = RLC(a ^ ((1 << 256) - 1), randomness)
     a = RLC(a, randomness)
 
-    bytecode = Bytecode().bitwise_not(a)
+    bytecode = Bytecode().not_(a)
     bytecode_hash = RLC(bytecode.hash(), randomness)
 
     tables = Tables(

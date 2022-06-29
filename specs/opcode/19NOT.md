@@ -16,7 +16,7 @@ We prove that `a = NOT b` by showing that the byte-wise relation
    - stack_pointer unchanged
    - pc + 1
    - gas + 3
-3. Lookups: 34 busmapping lookups
+3. Lookups: 2 busmapping lookups and 32 fixed table lookups
    - `a` is at the top of the stack
    - `b`, the result, is at the new top of the stack
    - Apply the lookup to 32 tuples of `a, b` chunks, `(a[i], b[i]), i = 0..32`.
