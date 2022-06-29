@@ -42,7 +42,7 @@ def verify_row(cs: ConstraintSystem, rows: Sequence[CopyCircuitRow]):
         cs.constrain_equal(rows[0].log_id, rows[2].log_id)
         cs.constrain_equal(rows[0].tag, rows[2].tag)
         cs.constrain_equal(rows[0].addr + 1, rows[2].addr)
-        cs.constrain_equal(rows[0].src_addr_boundary, rows[2].src_addr_boundary)
+        cs.constrain_equal(rows[0].src_addr_end, rows[2].src_addr_end)
 
     # contrain the transition for `rw_counter` and `rwc_inc_left`
     rw_diff = (1 - rows[0].is_pad) * (rows[0].is_memory + rows[0].is_tx_log)
@@ -65,9 +65,9 @@ def verify_step(cs: ConstraintSystem, rows: Sequence[CopyCircuitRow]):
         cs.constrain_equal(rows[0].value, rows[1].value)
         # value == 0 when is_pad == 1 for read
         cs.constrain_zero(rows[0].is_pad * rows[0].value)
-        # is_pad == 1 - (src_addr < src_addr_boundary) for read row
+        # is_pad == 1 - (src_addr < src_addr_end) for read row
         cs.constrain_equal(
-            1 - lt(rows[0].addr, rows[0].src_addr_boundary, N_BYTES_MEMORY_ADDRESS), rows[0].is_pad
+            1 - lt(rows[0].addr, rows[0].src_addr_end, N_BYTES_MEMORY_ADDRESS), rows[0].is_pad
         )
         # is_pad == 0 for write row
         cs.constrain_zero(rows[1].is_pad)

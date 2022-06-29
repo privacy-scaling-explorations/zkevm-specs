@@ -405,7 +405,7 @@ class CopyCircuitRow(TableRow):
     log_id: FQ  # only used in TxLog
     tag: FQ  # CopyDataTypeTag
     addr: FQ
-    src_addr_boundary: FQ
+    src_addr_end: FQ
     bytes_left: FQ
     value: FQ
     is_code: FQ
@@ -425,7 +425,7 @@ class CopyTableRow(TableRow):
     dst_id: FQ
     dst_type: FQ
     src_addr: FQ
-    src_addr_boundary: FQ
+    src_addr_end: FQ
     dst_addr: FQ
     length: FQ
     rw_counter: FQ
@@ -478,7 +478,7 @@ class Tables:
                     dst_id=next_row.id,
                     dst_type=next_row.tag,
                     src_addr=row.addr,
-                    src_addr_boundary=row.src_addr_boundary,
+                    src_addr_end=row.src_addr_end,
                     dst_addr=next_row.addr,
                     length=row.bytes_left,
                     rw_counter=row.rw_counter,
@@ -571,7 +571,7 @@ class Tables:
         dst_id: Expression,
         dst_type: Expression,
         src_addr: Expression,
-        src_addr_boundary: Expression,
+        src_addr_end: Expression,
         dst_addr: Expression,
         length: Expression,
         rw_counter: Expression,
@@ -583,7 +583,7 @@ class Tables:
             "dst_id": dst_id,
             "dst_type": dst_type,
             "src_addr": src_addr,
-            "src_addr_boundary": src_addr_boundary,
+            "src_addr_end": src_addr_end,
             "dst_addr": dst_addr,
             "length": length,
             "rw_counter": rw_counter,

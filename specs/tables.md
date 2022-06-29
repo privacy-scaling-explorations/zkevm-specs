@@ -285,13 +285,13 @@ The copy table consists of 14 columns, described as follows:
 - **LogID**: indicates the log id, only valid when `Type` is `TxLog`.
 - **Type**: indicates the type of data source, including `Memory`, `Bytecode`, `TxCalldata`, `TxLog`.
 - **Address**: indicates the address in the source data, could be memory address, byte index in the bytecode, tx call data, and tx log data.
-- **AddressEnd**: indicates the address boundary of the source data. Any data read from address beyond `AddressEnd` should be 0. So `AddressEnd` is only valid for read operations or `q_step` is 1.
+- **AddressEnd**: indicates the address boundary of the source data. Any data read from address greater than or equal to `AddressEnd` should be 0. Note `AddressEnd` is only valid for read operations or `q_step` is 1.
 - **BytesLeft**: indicates the number of bytes left to be copied.
 - **Value**: indicates the value read or write from source or to the destination.
 - **Pad**: indicates if the value read from the source is padded. Only valid for read operations or `q_step` is 1.
-- **IsCode**: a boolean value to specify if the value is executable opcode or the data portion of PUSH* operations. Only valid when `Type` is `Bytecode`.
-- **RwCounter**: indicates the RW counter in the `rw_table`. Only valid when `Type` is  `Memory` or `TxLog`.
-- **RwcIncreaseLeft**: indicates the left RW counter increase in a copy event.
+- **IsCode**: a boolean value to indicate if the `Value` is an executable opcode or the data portion of `PUSH*` operations. Only valid when `Type` is `Bytecode`.
+- **RwCounter**: indicates the current RW counter at this row. This value will be used in the lookup to the `rw_table` when `Type` is  `Memory` or `TxLog`.
+- **RwcIncreaseLeft**: indicates how much the RW counter will increase in a copy event.
 
 
 Unlike other lookup tables, the copy table is a virtual table. The lookup entry is not a single row in the table, and not every row corresponds to a lookup entry.

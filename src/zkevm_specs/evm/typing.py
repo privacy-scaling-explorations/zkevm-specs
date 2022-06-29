@@ -669,7 +669,7 @@ class CopyCircuit:
         dst_id: IntOrFQ,
         dst_type: CopyDataTypeTag,
         src_addr: IntOrFQ,
-        src_addr_boundary: IntOrFQ,
+        src_addr_end: IntOrFQ,
         dst_addr: IntOrFQ,
         copy_length: IntOrFQ,
         src_data: Mapping[IntOrFQ, Union[IntOrFQ, Tuple[IntOrFQ, IntOrFQ]]],
@@ -677,9 +677,9 @@ class CopyCircuit:
     ):
         new_rows: List[CopyCircuitRow] = []
         for i in range(int(copy_length)):
-            if int(src_addr + i) < int(src_addr_boundary):
+            if int(src_addr + i) < int(src_addr_end):
                 is_pad = False
-                assert src_addr in src_data, f"Cannot find data at the offset {src_addr}"
+                assert src_addr+i in src_data, f"Cannot find data at the offset {src_addr+i}"
                 value = src_data[src_addr + i]
                 if src_type == CopyDataTypeTag.Bytecode:
                     value = cast(Tuple[IntOrFQ, IntOrFQ], value)
@@ -707,7 +707,7 @@ class CopyCircuit:
                 value,
                 is_code,
                 is_pad,
-                src_addr_boundary=src_addr_boundary,
+                src_addr_end=src_addr_end,
                 bytes_left=copy_length - i,
             )
 
@@ -747,7 +747,7 @@ class CopyCircuit:
         value: IntOrFQ,
         is_code: IntOrFQ,
         is_pad: bool,
-        src_addr_boundary: IntOrFQ = FQ(0),
+        src_addr_end: IntOrFQ = FQ(0),
         bytes_left: IntOrFQ = FQ(0),
         log_id: IntOrFQ = FQ(0),
     ):
@@ -773,7 +773,7 @@ class CopyCircuit:
                 log_id=FQ(log_id),
                 tag=FQ(tag),
                 addr=FQ(addr),
-                src_addr_boundary=FQ(src_addr_boundary),
+                src_addr_end=FQ(src_addr_end),
                 bytes_left=FQ(bytes_left),
                 value=FQ(value),
                 is_code=FQ(is_code),

@@ -22,10 +22,10 @@ def calldataload(instruction: Instruction):
         calldata_offset = instruction.call_context_lookup(CallContextFieldTag.CallDataOffset)
 
     src_addr = offset + calldata_offset
-    src_addr_boundary = calldata_length.expr() + calldata_offset.expr()
+    src_addr_end = calldata_length.expr() + calldata_offset.expr()
 
     buffer_reader = BufferReaderGadget(
-        instruction, N_BYTES_WORD, src_addr, src_addr_boundary, FQ(N_BYTES_WORD)
+        instruction, N_BYTES_WORD, src_addr, src_addr_end, FQ(N_BYTES_WORD)
     )
 
     calldata_word = []
