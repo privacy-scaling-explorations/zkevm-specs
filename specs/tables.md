@@ -156,8 +156,8 @@ __Hence the addition inside of the block_table.__
 | Time                   | 0      | $value  |
 | Difficulty             | 0      | $value  |
 | BaseFee                | 0      | $value  |
-| BlockHash              | 0..256 | $value  |
 | ChainID                | 0      | $value  |
+| BlockHash              | 0..256 | $value  |
 
 ## `fixed`
 
