@@ -3,9 +3,9 @@
 
 ## Quick recap
 
-- We have to validate the change of two storage proofs, from proof S(tate) to proof C(changed)
+- We validate the change of two storage proofs, from proof S(tate) to proof C(changed), where only one modification is done.
 - Each proof consists in: path-to-acount-leaf + accout-leaf + path-to-storage + storage-leaf
-- path-to-xxxx are a list of circuit-branche. Each circuit-branch has a set of rows: init, 16 nodes and two "optional MPT extension" after it. So a branch and its optional following extension are considered together.
+- path-to-xxxx are a list of circuit-branch. Each circuit-branch has a set of rows: init, 16 nodes and two "optional MPT extension" after it. So a branch and its optional following extension are considered together.
 - Checking keccak hashes are done by doing lookup into a RLP => Keccak table
 - Mainly we needs to prove the following constrains
   - Hash of a branch is in the parent (see _Checking branch hash in a parent_)
