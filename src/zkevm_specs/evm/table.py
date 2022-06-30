@@ -27,7 +27,6 @@ class FixedTableTag(IntEnum):
     BitwiseXor = auto()  # lhs, rhs, lhs ^ rhs, 0
     ResponsibleOpcode = auto()  # execution_state, opcode, aux
     Pow2 = auto()  # value, value_pow
-    CopyPairs = auto()
 
     def table_assignments(self) -> List[FixedTableRow]:
         if self == FixedTableTag.Range5:
@@ -72,24 +71,6 @@ class FixedTableTag(IntEnum):
             ]
         elif self == FixedTableTag.Pow2:
             return [FixedTableRow(FQ(self), FQ(value), FQ(1 << value)) for value in range(65)]
-        elif self == FixedTableTag.CopyPairs:
-            return [
-                FixedTableRow(FQ(self), FQ(src_type), FQ(dst_type), FQ(0))
-                for src_type, dst_type in [
-                    # calldatacopy (internal)
-                    (CopyDataTypeTag.Memory, CopyDataTypeTag.Memory),
-                    # calldatacopy (root)
-                    (CopyDataTypeTag.TxCalldata, CopyDataTypeTag.Memory),
-                    # create/create2 (root)
-                    (CopyDataTypeTag.TxCalldata, CopyDataTypeTag.Bytecode),
-                    # return/create/create2 (internal)
-                    (CopyDataTypeTag.Memory, CopyDataTypeTag.Bytecode),
-                    # codecopy/extcodecopy
-                    (CopyDataTypeTag.Bytecode, CopyDataTypeTag.Memory),
-                    # log
-                    (CopyDataTypeTag.Memory, CopyDataTypeTag.TxLog),
-                ]
-            ]
         else:
             raise ValueError("Unreacheable")
 
