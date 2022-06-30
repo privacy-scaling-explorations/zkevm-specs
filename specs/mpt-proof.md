@@ -3,7 +3,7 @@
 
 ## Quick recap
 
-- We validate the change of two storage proofs, from proof S(tate) to proof C(changed), where only one modification is done.
+- We validate the change of two storage proofs, from proof S(tate) to proof C(changed), where only one modification (`is_nonce_mod` or `is_balance_mod` or `is_codehash_mod` or `is_storage_mod` )  
 - Each proof consists in: path-to-acount-leaf + accout-leaf + path-to-storage + storage-leaf
 - path-to-xxxx are a list of circuit-branch. Each circuit-branch has a set of rows: init, 16 nodes and two "optional MPT extension" after it. So a branch and its optional following extension are considered together.
 - Checking keccak hashes are done by doing lookup into a RLP => Keccak table
