@@ -39,7 +39,6 @@ def verify_row(cs: ConstraintSystem, rows: Sequence[CopyCircuitRow]):
     with cs.condition(1 - is_last_two_rows) as cs:
         # not last two rows
         cs.constrain_equal(rows[0].id, rows[2].id)
-        cs.constrain_equal(rows[0].log_id, rows[2].log_id)
         cs.constrain_equal(rows[0].tag, rows[2].tag)
         cs.constrain_equal(rows[0].addr + 1, rows[2].addr)
         cs.constrain_equal(rows[0].src_addr_end, rows[2].src_addr_end)
@@ -106,9 +105,7 @@ def verify_copy_table(copy_circuit: CopyCircuit, tables: Tables):
                 row.rw_counter,
                 FQ(RW.Write),
                 FQ(RWTableTag.TxLog),
-                row.id,
-                row.log_id,
-                FQ(TxLogFieldTag.Data),
+                row.id, # tx_id
                 row.addr,
             ).value
             cs.constrain_equal(cast_expr(val, FQ), row.value)

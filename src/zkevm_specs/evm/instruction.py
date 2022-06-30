@@ -613,7 +613,7 @@ class Instruction:
             RW.Write,
             RWTableTag.TxLog,
             key1=tx_id,
-            key2=FQ(index + int(field_tag) << 32 + log_id.expr().n << 48),
+            key2=FQ(index + (int(field_tag) << 32) + (log_id.expr().n << 48)),
             key3=FQ(0),
             key4=FQ(0),
         ).value

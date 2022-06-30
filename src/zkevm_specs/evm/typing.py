@@ -418,7 +418,7 @@ class RWDictionary:
             RW.Write,
             RWTableTag.TxLog,
             key1=FQ(tx_id),
-            key2=FQ(index + int(field_tag) << 32 + log_id << 48),
+            key2=FQ(index + (int(field_tag) << 32) + (log_id << 48)),
             key3=FQ(0),
             key4=FQ(0),
             value=value,
@@ -656,7 +656,7 @@ class CopyCircuit:
 
     def __init__(self) -> None:
         self.rows = []
-        self.pad_rows = [CopyCircuitRow(FQ(1), *[FQ(0)] * 17), CopyCircuitRow(*[FQ(0)] * 18)]
+        self.pad_rows = [CopyCircuitRow(FQ(1), *[FQ(0)] * 16), CopyCircuitRow(*[FQ(0)] * 17)]
 
     def table(self) -> Sequence[CopyCircuitRow]:
         return self.rows + self.pad_rows
@@ -764,13 +764,13 @@ class CopyCircuit:
         elif is_tx_log:
             assert is_write
             rw_dict.tx_log_write(id, log_id, TxLogFieldTag.Data, addr, value)
+            addr += (int(TxLogFieldTag.Data) << 32) + (FQ(log_id).n << 48)
         rows.append(
             CopyCircuitRow(
                 q_step=FQ(not is_write),
                 is_first=FQ(is_first),
                 is_last=FQ(is_last),
                 id=FQ(id),
-                log_id=FQ(log_id),
                 tag=FQ(tag),
                 addr=FQ(addr),
                 src_addr_end=FQ(src_addr_end),

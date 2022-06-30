@@ -402,7 +402,6 @@ class CopyCircuitRow(TableRow):
     is_first: FQ
     is_last: FQ
     id: FQ  # one of call_id, bytecode_hash, tx_id
-    log_id: FQ  # only used in TxLog
     tag: FQ  # CopyDataTypeTag
     addr: FQ
     src_addr_end: FQ
@@ -430,7 +429,6 @@ class CopyTableRow(TableRow):
     length: FQ
     rw_counter: FQ
     rwc_inc: FQ
-    log_id: FQ = field(default=FQ(0))
 
 
 class Tables:
@@ -483,7 +481,6 @@ class Tables:
                     length=row.bytes_left,
                     rw_counter=row.rw_counter,
                     rwc_inc=row.rwc_inc_left,
-                    log_id=next_row.log_id,
                 )
             )
         return set(rows)
@@ -577,6 +574,9 @@ class Tables:
         rw_counter: Expression,
         log_id: Expression = None,
     ) -> CopyTableRow:
+        if dst_type == CopyDataTypeTag.TxLog:
+            assert log_id is not None
+            dst_addr += (int(TxLogFieldTag.Data) << 32) + (log_id.expr().n << 48)
         query = {
             "src_id": src_id,
             "src_type": src_type,
@@ -587,7 +587,6 @@ class Tables:
             "dst_addr": dst_addr,
             "length": length,
             "rw_counter": rw_counter,
-            "log_id": log_id,
         }
         return lookup(CopyTableRow, self.copy_table, query)
 
