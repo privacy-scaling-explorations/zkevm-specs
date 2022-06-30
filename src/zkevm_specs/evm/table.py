@@ -576,7 +576,7 @@ class Tables:
     ) -> CopyTableRow:
         if dst_type == CopyDataTypeTag.TxLog:
             assert log_id is not None
-            dst_addr += (int(TxLogFieldTag.Data) << 32) + (log_id.expr().n << 48)
+            dst_addr = dst_addr + FQ(int(TxLogFieldTag.Data) << 32) + FQ(log_id.expr().n << 48)
         query = {
             "src_id": src_id,
             "src_type": src_type,

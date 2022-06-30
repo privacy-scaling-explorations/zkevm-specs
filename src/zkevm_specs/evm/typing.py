@@ -409,7 +409,7 @@ class RWDictionary:
         tx_id: IntOrFQ,
         log_id: int,
         field_tag: TxLogFieldTag,
-        index: int,
+        index: IntOrFQ,
         value: Union[int, FQ, RLC],
     ) -> RWDictionary:
         if isinstance(value, int):
@@ -673,7 +673,7 @@ class CopyCircuit:
         dst_addr: IntOrFQ,
         copy_length: IntOrFQ,
         src_data: Mapping[IntOrFQ, Union[IntOrFQ, Tuple[IntOrFQ, IntOrFQ]]],
-        log_id: IntOrFQ = FQ(0),
+        log_id: int = 0,
     ):
         new_rows: List[CopyCircuitRow] = []
         for i in range(int(copy_length)):
@@ -749,7 +749,7 @@ class CopyCircuit:
         is_pad: bool,
         src_addr_end: IntOrFQ = FQ(0),
         bytes_left: IntOrFQ = FQ(0),
-        log_id: IntOrFQ = FQ(0),
+        log_id: int = 0,
     ):
         is_memory = tag == CopyDataTypeTag.Memory
         is_bytecode = tag == CopyDataTypeTag.Bytecode
@@ -764,7 +764,7 @@ class CopyCircuit:
         elif is_tx_log:
             assert is_write
             rw_dict.tx_log_write(id, log_id, TxLogFieldTag.Data, addr, value)
-            addr += (int(TxLogFieldTag.Data) << 32) + (FQ(log_id).n << 48)
+            addr += (int(TxLogFieldTag.Data) << 32) + (log_id << 48)
         rows.append(
             CopyCircuitRow(
                 q_step=FQ(not is_write),
