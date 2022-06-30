@@ -1,5 +1,4 @@
 from .add_sub import *
-from .bitwise import *
 from .byte import *
 from .comparator import *
 from .lt_gt import *

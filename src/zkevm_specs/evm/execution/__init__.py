@@ -35,6 +35,7 @@ from .storage import *
 from .selfbalance import *
 from .extcodehash import *
 from .log import *
+from .bitwise import not_opcode
 from .mul_div_mod_shl_shr import mul_div_mod_shl_shr
 
 
@@ -47,6 +48,7 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.ADD: add_sub,
     ExecutionState.ADDMOD: addmod,
     ExecutionState.MULMOD: mulmod,
+    ExecutionState.NOT: not_opcode,
     ExecutionState.ORIGIN: origin,
     ExecutionState.CALLER: caller,
     ExecutionState.CALLVALUE: callvalue,

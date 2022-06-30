@@ -117,8 +117,8 @@ class BlockContextFieldTag(IntEnum):
     Timestamp = auto()
     Difficulty = auto()
     BaseFee = auto()
-    HistoryHash = auto()
     ChainId = auto()
+    HistoryHash = auto()
 
 
 class TxContextFieldTag(IntEnum):
