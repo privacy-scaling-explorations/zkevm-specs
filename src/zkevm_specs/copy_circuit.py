@@ -105,7 +105,7 @@ def verify_copy_table(copy_circuit: CopyCircuit, tables: Tables):
                 row.rw_counter,
                 FQ(RW.Write),
                 FQ(RWTableTag.TxLog),
-                row.id, # tx_id
+                row.id,  # tx_id
                 row.addr,
             ).value
             cs.constrain_equal(cast_expr(val, FQ), row.value)
