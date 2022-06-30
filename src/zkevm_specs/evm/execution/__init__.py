@@ -39,7 +39,7 @@ from .log import *
 from .shr import shr
 from .bitwise import not_opcode
 from .sdiv_smod import sdiv_smod
-from .stop import *
+from .stop import stop
 
 
 EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
