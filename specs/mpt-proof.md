@@ -1,5 +1,33 @@
 # Merkle Patricia Trie (MPT) Proof
 
+
+## Quick recap
+
+- We have to validate the change of two storage proofs, from proof S(tate) to proof C(changed)
+- Each proof consists in: path-to-acount-leaf + accout-leaf + path-to-storage + storage-leaf
+- path-to-xxxx are a list of circuit-branche. Each circuit-branch has a set of rows: init, 16 nodes and two "optional MPT extension" after it. So a branch and its optional following extension are considered together.
+- Checking keccak hashes are done by doing lookup into a RLP => Keccak table
+- Mainly we needs to prove the following constrains
+  - Hash of a branch is in the parent (see _Checking branch hash in a parent_)
+     - Compute branch-leaf RLC ( see _Compute branch RLC_ )
+     - Check branch-leaf length is correct ( see _Branch length corresponds to the RLP meta bytes_ )
+     - In the case that branch contains an extension, check also extension is in the parent ( see _Checking extension node hash in a parent_)
+  - Merkle path to account-leaf is correct
+      - Merkle path for the account address is keccak(address)
+      - Compute address RLC incrementally in each node ( see _Address and Key in branch nodes_)  
+      - Compute extension RLC ( see _Extension node rows_ , `key_rlc` 4 branching computation ) 
+  - account-leaf hash is correct
+     - Compute account-leaf RLC ( see _Account leaf_ )
+  - Merkle path to storage-leaf is correct ( see _Key RLC in storage leaf_ )
+  - storage-leaf hash is correct ( see _Leaf RLC_ ) with 4 options
+- The following lookups can be done:
+  - for nonce [`counter`,`address_rlc`,`nonce_s_rlc`, `nonce_c_rlc`, `is_nonce_mod`]
+  - for balance [`counter`,`address_rlc`,`balance_s_rlc`,`balance_c_rlc`,`is_balance_mod`]
+  - for codehash [`counter`,`address_rlc, `codehash_s_rlc`, `codehash_c_rlc`, `is_codehash_mod`]
+  - for storage [`counter`,`address_rlc`, `key_rlc`, `value_s_rlc`,`value_c_rlc`, `is_storage_mod`]
+
+## Intro
+
 MPT circuit checks that the modification of the trie state happened correctly.
 
 Let's assume there are two proofs (as returned by `eth getProof`):
