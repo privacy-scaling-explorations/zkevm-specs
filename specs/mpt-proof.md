@@ -1,7 +1,7 @@
 # Merkle Patricia Trie (MPT) Proof
 
 
-## Quick recap
+## 0. Quick recap
 
 - We validate the change of two storage proofs, from proof S(tate) to proof C(changed), where only one modification (`is_nonce_mod` or `is_balance_mod` or `is_codehash_mod` or `is_storage_mod` )  
 - Each proof consists in: path-to-acount-leaf + accout-leaf + path-to-storage + storage-leaf
@@ -26,20 +26,20 @@
   - for codehash [`counter`,`address_rlc, `codehash_s_rlc`, `codehash_c_rlc`, `is_codehash_mod`]
   - for storage [`counter`,`address_rlc`, `key_rlc`, `value_s_rlc`,`value_c_rlc`, `is_storage_mod`]
 
-## Pre-requisites
+## 1. Pre-requisites
 
 - Read about [RLP encoding](https://ethereum.org/en/developers/docs/data-structures-and-encoding/rlp/)
   - See [RLP encoded/decoder online](https://codechain-io.github.io/rlp-debugger/)
 - Read about [Patricia Merkle Tree](https://ethereum.org/en/developers/docs/data-structures-and-encoding/patricia-merkle-trie/#top)
 
-## Intro
+## 2. Intro
 
 MPT circuit checks that the modification of the trie state happened correctly.
 
 Let's assume there are two proofs (as returned by `eth getProof`):
 
-- A proof that there exists value `val1` at key `key1` for address `addr` in the state trie with root `root1`.
-- A proof that there exists value `val2` at key `key1` for address `addr` in the state trie with root `root2`.
+- A proof S(tate) that there exists value `val1` at key `key1` for address `addr` in the state trie with root `root1`.
+- A proof C(hanged) that there exists value `val2` at key `key1` for address `addr` in the state trie with root `root2`.
 
 The circuit checks the transition from `val1` to `val2` at `key1` that led to the change
 of trie root from `root1` to `root2` (the chaining of such proofs is yet to be added).
@@ -76,8 +76,6 @@ The proof returned by `eth getProof` looks like:
 }
 ```
 
-See a real example of data in _Geth proofs examples_ section.
-
 In the above case account proof contains five elements.
 The first four are branches / extension nodes, the last one is account leaf.
 The hash of the account leaf is checked to
@@ -88,6 +86,10 @@ The storage proof in the above case contains two elements.
 The first one is branch or extension node, the second element is storage leaf.
 The hash of storage leaf is checked to
 be in the first element at the proper position (depends on the key).
+
+See a real example of data in _Geth proofs examples_ section.
+
+### 2.1 Basic checks
 
 The hash of the first storage proof element (storage root) needs to be checked
 to be in the account leaf of the last account proof element.
@@ -179,31 +181,48 @@ Each branch row contains information of branch node from proof 1 and as well as 
 
 Proof 1 is on the left side, proof 2 is on the right side.
 
-## Branch / extension node layout
+### 2.2 Expected RLP patterns in 
+
+Not all possibilities exists in the MPT RLPs, we expect the following RLP patterns to appear in the geth proofs:
+
+In account 
+
+- In branches: 17-element RLP `[ <128|hash> (16 times) , 128]`
+- In extensions: 2-element RLP `[ nibble 2|3 + path nibbles , hash ]` 
+- In leafs:  2-element RLP `[ nibble 0|1 + path nibbles , rlp-list[ nonce, balance, storage-trie-root, codechash ] ]`
+
+In storage
+
+- In branches: **fix**
+- In extensions:
+- In leafs: 
+
+note `128` means an empty value
+note `hash` is 32 bytes
+
+### 2.3 General circuit layout
 
 The two parallel proofs are called S proof and C proof in the MPT circuit layout.
 
 The first 34 columns are for the S proof.
-The next 34 columns are for the C proof.
-The remaining columns are selectors, for example, for specifying whether the
-row is a branch node or a leaf node.
-
-34 columns presents 2 + 32.
-The first 2 columns are RLP specific as we will see below.
-32 columns are used because this is the length of hash output.
-Note that, for example, each branch node is given in a hash format -
+- 2 columns are RLP specific as we will see below.
+  - `s_rlp1`
+  - `s_rlp2`
+- 32 columns are used because this is the length of hash output. Note that, for example, each branch node is given in a hash format -
 it occupies 32 positions.
+  - `s_advices` (32 columns)
 
-In the codebase, the columns are named:
-
-- `s_rlp1`
-- `s_rlp2`
-- `s_advices` (32 columns)
+The next 34 columns are eactly the same but for the C proof.
 - `c_rlp1`
 - `c_rlp2`
 - `c_advices` (32 columns)
 
-### Branch
+The remaining columns are selectors, for example, for specifying whether the
+row is a branch node or a leaf node.
+
+## 3. Branch / extension node layout
+
+### 3.1 Branch
 
 Branch comprises 19 rows:
 
@@ -223,37 +242,41 @@ Extension node (the two extension node rows are non-empty):
   <img src="./img/extension_node.png?raw=true" width="50%">
 </p>
 
+#### 3.1.1 Ensure correctness of helper selectors 
+
 Boolean selectors `is_branch_init`, `is_branch_child`, `is_last_branch_child`,
 `is_modified` are used to trigger the constraints only when necessary.
+
 Two examples:
 
 - Checking that hash of a branch RLP is in the parent element
-  (branch / extension node) is done in the last branch row (`is_last_branch_child`)
+  (branch / extension node) is done in the last branch row (`is_last_branch_child`) 
 - S and C children are checked to be the same in all rows except at `is_modified`.
 
 There are two other columns that ensure that branch rows follow
 the prescribed layout: `node_index` and `modified_node`.
 
-`node_index` is checked to be running monotonously from 0 to 15.
+**§1** `node_index` is checked to be running monotonously from 0 to 15.
 This way it is ensured that branch layout really has 16 branch children rows.
 
 `modified_node` specifies the index at which the storage modification in this branch occured.
-`modified_node` is checked to be the same in all branch children rows - having this value
+**§2** `modified_node` is checked to be the same in all branch children rows - having this value
 available in all rows simplifies the constraints for checking that `is_modified` is true
 only when `node_index - modified_node = 0`. Having `modified_node` available only in one row,
 it would be difficult to write a constraint for `node_index - modified_node = 0` for all
 16 rows.
 
-`is_last_branch_child` is checked to be in the row with `node_index` = 15.
+**§3** `is_last_branch_child` is checked to be in the row with `node_index` = 15.
 `is_branch_child` is checked to follow either `is_branch_init` or `is_branch_child`.
-After `is_branch_init` it is checked to be a row with  `is_branch_child = 1`.
-After `is_branch_init` it is checked to be a row `node_index = 0`.
-When `is_branch_child` changes, it is checked to be `node_index = 15` in the previous row.
+**§4** After `is_branch_init` it is checked to be a row with  `is_branch_child = 1`.
+**§5** After `is_branch_init` it is checked to be a row `node_index = 0`.
+**§6** When `is_branch_child` changes, it is checked to be `node_index = 15` in the previous row.
 
-When `node_index != 15`, it is checked that `is_last_branch_child = 0`.
+**§7** When `node_index != 15`, it is checked that `is_last_branch_child = 0`.
 When `node_index = 15`, it is checked that `is_last_branch_child = 1`.
 
 All these constraints are implemented in `branch.rs`.
+
 Constraints to ensure the proper order of rows (after what row `is_branch_init` can appear,
 for example) are implemented in `selectors.rs`.
 
@@ -264,6 +287,8 @@ for example) are implemented in `selectors.rs`.
 The picture presents a branch which has 14 empty nodes and 2 non-empty nodes.
 The last two rows are all zeros because this is a regular branch,
 not an extension node.
+
+#### 3.1.2 Witness branch in the circuit
 
 Each branch node row starts with 34 S proof columns and 34 C proof columns.
 For non-empty rows, `rlp1` is always 160:
