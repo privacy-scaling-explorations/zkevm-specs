@@ -39,7 +39,6 @@ def copy_to_log(instruction: Instruction):
     instruction.constrain_zero((1 - lt) * (1 - finished))
 
     if finished == 0:
-        assert instruction.next is not None
         instruction.constrain_equal(instruction.next.execution_state, ExecutionState.CopyToLog)
         next_aux = instruction.next.aux_data
         assert isinstance(next_aux, CopyToLogAuxData)

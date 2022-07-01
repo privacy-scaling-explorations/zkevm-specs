@@ -37,7 +37,6 @@ def copy_code_to_memory(instruction: Instruction):
     instruction.constrain_zero((1 - lt) * (1 - finished))
 
     if finished == 0:
-        assert instruction.next is not None
         instruction.constrain_equal(
             instruction.next.execution_state, ExecutionState.CopyCodeToMemory
         )

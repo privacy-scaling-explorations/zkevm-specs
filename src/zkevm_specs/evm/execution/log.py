@@ -65,7 +65,6 @@ def log(instruction: Instruction):
     # check memory copy, should do in next step here
     # When length != 0, constrain the state in the next execution state CopyToLog
     if not instruction.is_zero(msize):
-        assert instruction.next is not None
         instruction.constrain_equal(instruction.next.execution_state, ExecutionState.CopyToLog)
         next_aux = instruction.next.aux_data
         instruction.constrain_equal(next_aux.src_addr, mstart)
