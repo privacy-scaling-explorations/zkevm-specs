@@ -288,10 +288,13 @@ The picture presents a branch which has 14 empty nodes and 2 non-empty nodes.
 The last two rows are all zeros because this is a regular branch,
 not an extension node.
 
-#### 3.1.2 Witness branch in the circuit
+#### 3.1.2 How branch data is witnessed
+
+##### 3.1.2.1 Init row
 
 Each branch node row starts with 34 S proof columns and 34 C proof columns.
-For non-empty rows, `rlp1` is always 160:
+
+- **For non-empty rows**, `rlp1` is always 160:
 
 ```
 0, 160, 55, 235, ...
@@ -301,7 +304,7 @@ This is because 160 denotes (in RLP encoding) the length of the
 substream which is 32 (= 160 - 128). The substream in this case is hash
 of a branch child.
 
-When there is an empty node, the column looks like:
+- **When there is an empty node** , the column looks like:
 
 ```
 0, 0, 128, 0, ..., 0
@@ -312,6 +315,8 @@ However, MPT circuit uses padding with 0s - empty node occupies the whole row to
 This is too simplify the comparisons
 between S and C branch. This way, the branch nodes are aligned horizontally
 for both proofs.
+
+**Example**
 
 Non-empty nodes in the above picture are at positions 3 and 11.
 Position 11 corresponds to the key (that
