@@ -78,6 +78,7 @@ class Row(NamedTuple):
                       FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,
                       FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ]
     value: FQ
+    value_prev: FQ
     auxs: Tuple[FQ]
     mpt_counter: FQ
     # fmt: on
@@ -269,9 +270,11 @@ def check_storage(row: Row, row_prev: Row, tables: Tables):
     # When the keys are equal in the previous row, the value_prev must be the
     # value in previous row.  When the keys change, value_prev is loaded from
     # committed_value, which holds the storage value before the tx began.
-    value_prev = row_prev.value if all_keys_eq(row, row_prev) else get_committed_value(row)
+    assert row.value_prev == (
+        row_prev.value if all_keys_eq(row, row_prev) else get_committed_value(row)
+    )
     tables.mpt_storage_lookup(
-        row.mpt_counter, get_addr(row), get_storage_key(row), row.value, value_prev
+        row.mpt_counter, get_addr(row), get_storage_key(row), row.value, row.value_prev
     )
 
 
@@ -310,9 +313,11 @@ def check_account(row: Row, row_prev: Row, tables: Tables):
     # When the keys are equal in the previous row, the value_prev must be the
     # value in previous row.  When the keys change, value_prev is loaded from
     # committed_value, which holds the account value before the block began.
-    value_prev = row_prev.value if all_keys_eq(row, row_prev) else get_committed_value(row)
+    assert row.value_prev == (
+        row_prev.value if all_keys_eq(row, row_prev) else get_committed_value(row)
+    )
     tables.mpt_account_lookup(
-        row.mpt_counter, get_field_tag(row), get_addr(row), row.value, value_prev
+        row.mpt_counter, get_field_tag(row), get_addr(row), row.value, row.value_prev
     )
 
     # NOTE: Value transition rules are constrained via the EVM circuit: for example,
@@ -328,8 +333,11 @@ def check_tx_refund(row: Row, row_prev: Row):
     assert row.field_tag() == 0
     assert row.storage_key() == 0
 
+    # 7.1 When keys change, value_prev must be 0
+    if all_keys_eq(row, row_prev):
+        assert row.value_prev == 0
+
     # TODO: Missing constraints
-    # - When keys change, value must be 0
 
 
 @is_circuit_code
@@ -341,8 +349,11 @@ def check_tx_access_list_account(row: Row, row_prev: Row):
     assert row.field_tag() == 0
     assert row.storage_key() == 0
 
+    # 9.1 When keys change, value_prev(is_warm_prev) must be False
+    if all_keys_eq(row, row_prev):
+        assert row.value_prev == 0
+
     # TODO: Missing constraints
-    # - When keys change, value must be 0
 
 
 @is_circuit_code
@@ -354,8 +365,11 @@ def check_tx_access_list_account_storage(row: Row, row_prev: Row):
     # 8.0. Unused keys are 0
     assert row.field_tag() == 0
 
+    # 8.1 When keys change, value_prev(is_warm_prev) must be False
+    if all_keys_eq(row, row_prev):
+        assert row.value_prev == 0
+
     # TODO: Missing constraints
-    # - When keys change, value must be 0
 
 
 @is_circuit_code
@@ -495,6 +509,19 @@ def check_state_row(row: Row, row_prev: Row, tables: Tables, randomness: FQ):
     if row.is_write == 0 and all_keys_eq(row, row_prev):
         assert row.value == row_prev.value
 
+    # 0.6. value_prev should be correct
+    if all_keys_eq(row, row_prev):
+        reversible_rws = [
+            Tag.Storage,
+            Tag.Account,
+            Tag.TxRefund,
+            Tag.TxAccessListAccount,
+            Tag.TxAccessListAccountStorage,
+            Tag.TxRefund,
+        ]
+        if row.tag() in reversible_rws:
+            assert row.value_prev == row_prev.value
+
     # 7. Increment mpt_counter
     #
     # When row is Storage or Account, increment the mpt_counter by
@@ -554,6 +581,7 @@ class Operation(NamedTuple):
     field_tag: U256
     storage_key: U256
     value: FQ
+    value_prev: FQ
     aux0: FQ
 
 
@@ -584,7 +612,7 @@ class MemoryOp(Operation):
         # fmt: off
         return super().__new__(self, rw_counter, rw,
                 U256(Tag.Memory), U256(call_id), U256(mem_addr), U256(0), U256(0), # keys
-                FQ(value), FQ(0)) # values
+                FQ(value), FQ(0), FQ(0)) # values
         # fmt: on
 
 
@@ -597,7 +625,7 @@ class StackOp(Operation):
         # fmt: off
         return super().__new__(self, rw_counter, rw,
                 U256(Tag.Stack), U256(call_id), U256(stack_ptr), U256(0), U256(0), # keys
-                value, FQ(0)) # values
+                value, FQ(0), FQ(0)) # values
         # fmt: on
 
 
@@ -614,12 +642,13 @@ class StorageOp(Operation):
         addr: U160,
         key: U256,
         value: FQ,
+        value_prev: FQ,
         committed_value: FQ,
     ):
         # fmt: off
         return super().__new__(self, rw_counter, rw,
                 U256(Tag.Storage), U256(tx_id), U256(addr), U256(0), U256(key), # keys
-                value, committed_value) # values
+                value, value_prev, committed_value) # values
         # fmt: on
 
 
@@ -634,7 +663,7 @@ class CallContextOp(Operation):
         # fmt: off
         return super().__new__(self, rw_counter, rw,
                 U256(Tag.CallContext), U256(call_id), U256(0), U256(field_tag), U256(0), # keys
-                value, FQ(0)) # values
+                value, FQ(0), FQ(0)) # values
         # fmt: on
 
 
@@ -650,12 +679,13 @@ class AccountOp(Operation):
         addr: U160,
         field_tag: AccountFieldTag,
         value: FQ,
+        value_prev: FQ,
         committed_value: FQ,
     ):
         # fmt: off
         return super().__new__(self, rw_counter, rw,
                 U256(Tag.Account), U256(0), U256(addr), U256(field_tag), U256(0), # keys
-                value, committed_value) # values
+                value, value_prev, committed_value) # values
         # fmt: on
 
 
@@ -664,11 +694,11 @@ class TxRefundOp(Operation):
     TxRefund Operation
     """
 
-    def __new__(self, rw_counter: int, rw: RW, tx_id: int, value: FQ):
+    def __new__(self, rw_counter: int, rw: RW, tx_id: int, value: FQ, value_prev: FQ):
         # fmt: off
         return super().__new__(self, rw_counter, rw,
                 U256(Tag.TxRefund), U256(tx_id), U256(0), U256(0), U256(0), # keys
-                value, FQ(0)) # values
+                value, value_prev, FQ(0)) # values
         # fmt: on
 
 
@@ -677,11 +707,11 @@ class TxAccessListAccountOp(Operation):
     TxAccessListAccount Operation
     """
 
-    def __new__(self, rw_counter: int, rw: RW, tx_id: int, addr: U160, value: FQ):
+    def __new__(self, rw_counter: int, rw: RW, tx_id: int, addr: U160, value: FQ, value_prev: FQ):
         # fmt: off
         return super().__new__(self, rw_counter, rw,
                 U256(Tag.TxAccessListAccount), U256(tx_id), U256(addr), U256(0), U256(0), # keys
-                value, FQ(0)) # values
+                value, value_prev, FQ(0)) # values
         # fmt: on
 
 
@@ -690,12 +720,14 @@ class TxAccessListAccountStorageOp(Operation):
     TxAccessListAccountStorage Operation
     """
 
-    def __new__(self, rw_counter: int, rw: RW, tx_id: int, addr: U160, key: U256, value: FQ):
+    def __new__(
+        self, rw_counter: int, rw: RW, tx_id: int, addr: U160, key: U256, value: FQ, value_prev: FQ
+    ):
         # fmt: off
         return super().__new__(self, rw_counter, rw,
                 U256(Tag.TxAccessListAccountStorage),
                 U256(tx_id), U256(addr), U256(0), U256(key), # keys
-                value, FQ(0)) # values
+                value, value_prev, FQ(0)) # values
         # fmt: on
 
 
@@ -704,11 +736,11 @@ class AccountDestructedOp(Operation):
     AccountDestructed Operation
     """
 
-    def __new__(self, rw_counter: int, rw: RW, addr: U160, value: FQ):
+    def __new__(self, rw_counter: int, rw: RW, addr: U160, value: FQ, value_prev: FQ):
         # fmt: off
         return super().__new__(self, rw_counter, rw,
                 U256(Tag.AccountDestructed), U256(0), U256(addr), U256(0), U256(0), # keys
-                value, FQ(0)) # values
+                value, value_prev, FQ(0)) # values
         # fmt: on
 
 
@@ -730,7 +762,7 @@ class TxLogOp(Operation):
         # fmt: off
         return super().__new__(self, rw_counter, rw,
                 U256(Tag.TxLog),U256(tx_id), U256(log_id), U256(field_tag), U256(index), # keys
-                value, FQ(0)) # values
+                value, FQ(0), FQ(0)) # values
         # fmt: on
 
 
@@ -743,7 +775,7 @@ class TxReceiptOp(Operation):
         # fmt: off
         return super().__new__(self, rw_counter, rw,
                 U256(Tag.TxReceipt), U256(tx_id),  U256(0), U256(field_tag), U256(0), # keys
-                value, FQ(0)) # values
+                value, FQ(0), FQ(0)) # values
         # fmt: on
 
 
@@ -768,6 +800,7 @@ class Assigner:
         storage_key = storage_key_rlc.expr()
         storage_key_bytes = tuple([FQ(x) for x in storage_key_rlc.le_bytes])
         value = FQ(op.value)
+        value_prev = FQ(op.value_prev)
         aux0 = FQ(op.aux0)
 
         if tag == FQ(Tag.Storage) or tag == FQ(Tag.Account):
@@ -777,7 +810,7 @@ class Assigner:
         return Row(rw_counter, is_write,
                 # keys
                 (tag, id, address, field_tag, storage_key), address_limbs, storage_key_bytes, # type: ignore
-                value, (aux0,), # values
+                value, value_prev, (aux0,), # values
                 self.mpt_counter)
         # fmt: on
 
