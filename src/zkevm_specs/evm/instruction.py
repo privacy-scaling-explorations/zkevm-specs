@@ -321,6 +321,10 @@ class Instruction:
             raise ConstraintUnsatFailure(f"Word {word} has too many bytes to fit {n_bytes} bytes")
         return self.bytes_to_fq(word.le_bytes[:n_bytes])
 
+    def word_is_neg(self, word: RLC) -> FQ:
+        assert len(word.le_bytes) == 32, "Expected word to contain 32 bytes"
+        return self.compare(FQ(127), FQ(word.le_bytes[31]), 1)[0]
+
     def word_is_zero(self, word: RLC) -> FQ:
         assert len(word.le_bytes) == 32, "Expected word to contain 32 bytes"
         return self.is_zero(self.sum(word.le_bytes))
@@ -367,6 +371,43 @@ class Instruction:
             return value.expr().n.to_bytes(n_bytes, "little")
         except OverflowError:
             raise ConstraintUnsatFailure(f"Value {value} has too many bytes to fit {n_bytes} bytes")
+
+    # Return a tuple of `abs(x)` and `x_is_neg`. For a special case when
+    # `x = -(1 << 255)`, this function returns the same value of `-(1 << 255)`,
+    # since it is signed overflow.
+    def abs_word(self, x: RLC) -> Tuple[RLC, FQ]:
+        is_neg = self.word_is_neg(x)
+
+        # Generate the witness `x_abs`.
+        x_abs = x if is_neg == 0 else self.rlc_encode((1 << 256) - x.int_value, 32)
+
+        x_abs_lo, x_abs_hi = self.word_to_lo_hi(x_abs)
+        x_lo, x_hi = self.word_to_lo_hi(x)
+
+        # Constrain `x_abs_lo == x_lo` and `x_abs_hi == x_hi` if non negative.
+        self.constrain_zero((x_abs_lo - x_lo) * (1 - is_neg))
+        self.constrain_zero((x_abs_hi - x_hi) * (1 - is_neg))
+
+        # When `is_neg`, contrain `x + x_abs == 1 << 256`. Even if
+        # `x = -(1 << 255)` that is signed overflow, and
+        # `abs(-(1 << 255) = -(1 << 255)`.
+        carry_lo, sum_lo = divmod(x_lo.n + x_abs_lo.n, 1 << 128)
+        carry_hi, sum_hi = divmod(x_hi.n + x_abs_hi.n + carry_lo, 1 << 128)
+
+        # Contrain `sum([x_lo, x_abs_lo]) == sum_lo + carry_lo * 2^128`.
+        self.constrain_zero(FQ(sum_lo) + FQ(carry_lo) * FQ(1 << 128) - self.sum([x_lo, x_abs_lo]))
+
+        # Contrain `sum([x_hi, x_abs_hi]) + carry_lo == sum_hi + carry_hi * 2^128`.
+        self.constrain_zero(
+            FQ(sum_hi) + FQ(carry_hi) * FQ(1 << 128) - FQ(carry_lo) - self.sum([x_hi, x_abs_hi])
+        )
+
+        # When `is_neg`, constrain both low and high remainders are zero, and
+        # `carry_hi == 1`. Since the final result is `1 << 256`.
+        self.constrain_zero(FQ(sum_lo + sum_hi) * is_neg)
+        self.constrain_zero(FQ(1 - carry_hi) * is_neg)
+
+        return x_abs, is_neg
 
     def add_words(self, addends: Sequence[RLC]) -> Tuple[RLC, FQ]:
         addends_lo, addends_hi = list(zip(*map(self.word_to_lo_hi, addends)))
