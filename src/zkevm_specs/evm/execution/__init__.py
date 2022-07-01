@@ -26,7 +26,6 @@ from .gas import *
 from .iszero import *
 from .jump import *
 from .jumpi import *
-from .mul_div_mod import *
 from .origin import *
 from .push import *
 from .slt_sgt import *
@@ -36,9 +35,9 @@ from .storage import *
 from .selfbalance import *
 from .extcodehash import *
 from .log import *
-from .shr import shr
 from .bitwise import not_opcode
 from .sdiv_smod import sdiv_smod
+from .mul_div_mod_shl_shr import mul_div_mod_shl_shr
 
 
 EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
@@ -50,7 +49,6 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.ADD: add_sub,
     ExecutionState.ADDMOD: addmod,
     ExecutionState.MULMOD: mulmod,
-    ExecutionState.MUL: mul_div_mod,
     ExecutionState.NOT: not_opcode,
     ExecutionState.ORIGIN: origin,
     ExecutionState.CALLER: caller,
@@ -75,6 +73,6 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.LOG: log,
     ExecutionState.CALL: call,
     ExecutionState.ISZERO: iszero,
-    ExecutionState.SHR: shr,
     ExecutionState.SDIV_SMOD: sdiv_smod,
+    ExecutionState.MUL_DIV_MOD_SHL_SHR: mul_div_mod_shl_shr,
 }
