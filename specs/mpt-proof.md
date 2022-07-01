@@ -210,8 +210,10 @@ The first 34 columns are for the S proof.
   - `s_rlp2`
 - 32 columns are used because this is the length of hash output. Note that, for example, each branch node is given in a hash format -
 it occupies 32 positions.
-  - `s_advices` (32 columns)
-
+  - `s_advices` (32 columns), We need it for two things:
+    - To compute the overall branch RLC (to be able to check the hash of a branch RLP to be in a parent) - in this case, `s_advices/c_advices` is a substream of RLP stream, we need to compare hash of the whole RLP stream to be in a parent
+    - To check whether `s_advices/c_advices` (at `is_modified` position) present the hash of the next element in a proof - in this case, `s_advices/c_advices` presents hash that is to be compared to be the hash of the underlying element.
+  
 The next 34 columns are eactly the same but for the C proof.
 - `c_rlp1`
 - `c_rlp2`
@@ -220,9 +222,9 @@ The next 34 columns are eactly the same but for the C proof.
 The remaining columns are selectors, for example, for specifying whether the
 row is a branch node or a leaf node.
 
-## 3. Branch / extension node layout
+## 3. Branch / extension
 
-### 3.1 Branch
+### 3.1 Rows
 
 Branch comprises 19 rows:
 
@@ -242,7 +244,109 @@ Extension node (the two extension node rows are non-empty):
   <img src="./img/extension_node.png?raw=true" width="50%">
 </p>
 
-#### 3.1.1 Ensure correctness of helper selectors 
+### 3.2 RLP data witness 
+
+#### 3.2.1 Init row
+
+Each branch node row starts with 34 S proof columns and 34 C proof columns.
+
+- **For non-empty rows**, `rlp1` is always 160:
+
+```
+0, 160, 55, 235, ...
+```
+
+This is because 160 denotes (in RLP encoding) the length of the
+substream which is 32 (= 160 - 128). The substream in this case is hash
+of a branch child.
+
+- **When there is an empty node** , the column looks like:
+
+```
+0, 0, 128, 0, ..., 0
+```
+
+Empty node in a RLP stream is denoted only by one byte - by value 128.
+However, MPT circuit uses padding with 0s - empty node occupies the whole row too.
+This is too simplify the comparisons
+between S and C branch. This way, the branch nodes are aligned horizontally
+for both proofs.
+
+#### 3.2.2 Nodes row
+
+
+#### 3.2.3 Extensions row
+
+The extension node element returned by `eth getProof` thus appear
+as leaf. It contains:
+
+- In the key: the information about nibbles in the leaf key.
+- In the value: the hash of the underlying branch.
+
+For example, the `eth getProof` returns:
+
+```
+228,130,0,149,160,114,253,150,133,18,192,156,19,241,162,51,210,24,1,151,16,48,7,177,42,60,49,34,230,254,242,79,132,165,90,75,249
+```
+
+The key (information about nibbles) is stored in:
+
+```
+0 149
+```
+
+The value (branch hash) is stored in:
+
+```
+114 253 150 ...
+```
+
+The second byte (130) means there are two (130 - 128) bytes compressing the nibbles.
+These two bytes are `0, 149` and they represent
+the two nibbles: 9 and 5 (149 = 9 * 16 + 5).
+
+The bytes after 160 represent a hash of the underlying branch.
+
+The layout uses `s_rlp1`, `s_rlp2`, and `s_advices` for RLP meta bytes and nibbles,
+while `c_advices` are used for branch hash, and `c_rlp2` stores 160 (denoting the number of hash bytes).
+
+<p align="center">
+  <img src="./img/extension_node_row.png?raw=true" width="45%">
+</p>
+
+There are two extension node rows - one for S proof, one for C proof.
+However, the extension key (nibbles) is the same for S and C, we do not need
+to duplicate this information.
+For this reason, in C row, we do not put key into `s_rlp1`, `s_rlp2`, and `s_advices`,
+we just put hash of C underlying branch in `c_advices`.
+
+But we do not leave `s_rlp1, s_rlp2, s_advices` empty in C row, we store additional witness for
+nibbles there because nibbles are
+compressed into bytes and it is difficult to decompress back into nibbles
+without any helper witnesses. This is not needed in all cases though, as we will see below.
+
+Thus, the two extension rows look like:
+
+<!--
+generated with TestExtensionTwoKeyBytesSel1
+-->
+
+```
+[228,130,0,149,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,160,114,253,150,133,18,192,156,19,241,162,51,210,24,1,151,16,48,7,177,42,60,49,34,230,254,242,79,132,165,90,75,249]
+[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,160,57,70,87,80,220,197,201,254,196,232,29,240,104,158,250,223,175,172,44,123,126,255,126,108,15,160,185,239,174,205,146,130]
+```
+
+The first row contains:
+
+- `s_advices`: extension (nibbles `3`, `9`, and `5` compressed into bytes)
+- `c_advices`: hash of S branch
+
+The second row contains:
+
+- `s_advices`: the second nibble of each byte stored in the first row
+- `c_advices`: hash of C branch
+
+#### 3.3 Helper selectors 
 
 Boolean selectors `is_branch_init`, `is_branch_child`, `is_last_branch_child`,
 `is_modified` are used to trigger the constraints only when necessary.
@@ -288,55 +392,9 @@ The picture presents a branch which has 14 empty nodes and 2 non-empty nodes.
 The last two rows are all zeros because this is a regular branch,
 not an extension node.
 
-#### 3.1.2 How branch data is witnessed
 
-##### 3.1.2.1 Init row
 
-Each branch node row starts with 34 S proof columns and 34 C proof columns.
-
-- **For non-empty rows**, `rlp1` is always 160:
-
-```
-0, 160, 55, 235, ...
-```
-
-This is because 160 denotes (in RLP encoding) the length of the
-substream which is 32 (= 160 - 128). The substream in this case is hash
-of a branch child.
-
-- **When there is an empty node** , the column looks like:
-
-```
-0, 0, 128, 0, ..., 0
-```
-
-Empty node in a RLP stream is denoted only by one byte - by value 128.
-However, MPT circuit uses padding with 0s - empty node occupies the whole row too.
-This is too simplify the comparisons
-between S and C branch. This way, the branch nodes are aligned horizontally
-for both proofs.
-
-**Example**
-
-Non-empty nodes in the above picture are at positions 3 and 11.
-Position 11 corresponds to the key (that
-means the key nibble that determines the position of a node in this branch is 11) and
-is stored in `modified_node` column.
-
-`s_advices/c_advices` present the hash of a branch child.
-
-One can observe that in position 3: `s_advices = c_advices`,
-while in position 11: `s_advices != c_advices`.
-
-That is because the nibble 11 corresponds to `key1` where the storage modification
-occured. The branch at position 3 is not affected by this storage modification.
-
-We need `s_advices/c_advices` for two things:
-
-- To compute the overall branch RLC (to be able to check the hash of a branch RLP to be in a parent) - in this case, `s_advices/c_advices` is a substream of RLP stream, we need to compare hash of the whole RLP stream to be in a parent
-- To check whether `s_advices/c_advices` (at `is_modified` position)
-  present the hash of the next element in a proof - in this case, `s_advices/c_advices`
-  presents hash that is to be compared to be the hash of the underlying element.
+#### 3.5 Checking branch/extension hash chaining
 
 Checking branch hash in a parent:
 
@@ -375,7 +433,7 @@ is not fixed.
 
 The lookup constraints for branch are implemented in `branch_hash_in_parent`. The lookup constraints for extension node are implemented in `extension_node.rs`.
 
-### Computing branch RLC
+#### 3.5.1 Computing branch RLC
 
 The intermediate branch RLC is computed in each row, the final one is given in
 `is_last_branch_child` row.
@@ -462,182 +520,11 @@ below.
 In `is_last_branch_child` row, columns `acc_s` and `acc_c` contain the RLC of branch S and branch C respectively. These two values are compared to be the same as
 the intermediate RLC values in the last branch children row.
 
-### Branch length corresponds to the RLP meta bytes
-
-As discussed above, branch RLP can have two or three RLP meta bytes that specify
-its length.
-To check whether the actual length of the stream corresponds to the length specified
-with the RLP meta bytes, column 0 is used (`s_rlp1, c_rlp1`).
-In each row we subtract the number
-of bytes in a row: 33 for non-empty row, 1 for empty row.
-In the last row we checked whether the value is 1.
-
-The final value should be 1 (and not 0) because
-RLP length includes also ValueNode which occupies 1 byte and is not stored in MPT layout.
-
-<p align="center">
-  <img src="./img/branch_length.png?raw=true" width="30%">
-</p>
-
-Constraints for RLP length are implemented in `branch.rs`.
-
-### Address and key RLC in branch nodes
-
-To check that storage modification occurs at the proper address / key,
-the circuit computes intermediate address RLC / key RLC at each branch / extension node. The final address RLC is computed in `is_account_leaf` row, the final
-key RLC is computed in `is_leaf_key` row.
-
-In each branch,
-`modified_node` corresponds to one of the nibbles of the key/address.
-
-<p align="center">
-  <img src="./img/address_key_branch_rlc.png?raw=true" width="60%">
-</p>
-
-Let us say the address (after being hashed) is composed of the following nibbles:
-
-```
-n0 n1 n2 ... n63
-```
-
-This means the bytes are:
-
-```
-(n0 * 16 + n1) (n2 * 16 + n3) ... (n62 * 16 + n63)
-```
-
-`modified_node` in one branch / extension node corresponds to one nibble, two
-consecutive elements (each branch or extension node) corresponds to one byte.
-
-To compute the RLC, we need to know whether
-the branch / extension node is the first or second nibble of a byte.
-This information is given in branch init row in two `s_advices` columns:
-`s_advices[IS_BRANCH_C16_POS - LAYOUT_OFFSET]` and
-`s_advices[IS_BRANCH_C1_POS - LAYOUT_OFFSET]`.
-If it is the first nibble, `modified_node` is multiplied by 16, otherwise by 1.
-
-Constraints for
-`s_advices[IS_BRANCH_C16_POS - LAYOUT_OFFSET]` and
-`s_advices[IS_BRANCH_C1_POS - LAYOUT_OFFSET]`
-are implemented in `branch_key.rs`.
-For example, the two values need to be boolean, need to alternate (this alternating
-gets more complicated when there is an extension node instead of a branch as it will be
-discussed below), and the sum of the two needs to be 1.
-
-### Extension node rows
-
-When does extension node appear?
-
-Let us observe the leaf in the picture below.
-
-<p align="center">
-  <img src="./img/leaf.png?raw=true" width="40%">
-</p>
-
-The leaf appears at position `n3` in the branch. Its parent branch appears at position `n2` in
-its own parent. Likewise for `n1` and `n0` (`n0` is position in the root branch).
-
-The rest of the nibbles are stored in the leaf.
-
-There are three possible storage modification scenarios:
-
-- If the storage modification occurs at the same key (all 64 nibbles match), the
-  value in the leaf will be updated.
-- If the storage modification occurs at the key where `n0 n1 n2 n3` match,
-  a branch is inserted instead of a leaf. Let us say the nibbles of the key where
-  change occurs are: `n0 n1 n2 n3 m4 m5 ... m63`. The new branch contains two leaves:
-  the old one at position `n4` and the new one at position `m4`.
-- If the storage modification occurs at the key where `n0 n1 n2 n3` match and
-  also some further nibbles match, for example: `n4 = m4, n5 = m5, n6 = m6`,
-  an extension node is inserted instead of a leaf. Extension node is like a leaf,
-  it contains key (which stores nibbles, in our example: `n4 n5 n6`) and value which is
-  a hash of the new branch. As in the second scenario, the new branch contains two leaves:
-  the old one at position `n7` and the new one at position `m7` (where `n7 != m7`).
-
-Leaf into branch:
-
-<p align="center">
-  <img src="./img/into_branch.png?raw=true" width="35%">
-</p>
-
-Leaf into extension node:
-
-<p align="center">
-  <img src="./img/into_extension.png?raw=true" width="35%">
-</p>
+### 3.5.x Computing Extension RLC
 
 Extension node can be viewed as a special branch. It contains a regular branch,
 but to arrive to this branch there is an extension - additional nibbles to be
 navigated. In the picture, the extension is: `n4 n5 n6`.
-
-The extension node element returned by `eth getProof` thus appear
-as leaf. It contains:
-
-- In the key: the information about nibbles in the leaf key.
-- In the value: the hash of the underlying branch.
-
-For example, the `eth getProof` returns:
-
-```
-228,130,0,149,160,114,253,150,133,18,192,156,19,241,162,51,210,24,1,151,16,48,7,177,42,60,49,34,230,254,242,79,132,165,90,75,249
-```
-
-The key (information about nibbles) is stored in:
-
-```
-0 149
-```
-
-The value (branch hash) is stored in:
-
-```
-114 253 150 ...
-```
-
-The second byte (130) means there are two (130 - 128) bytes compressing the nibbles.
-These two bytes are `0, 149` and they represent
-the two nibbles: 9 and 5 (149 = 9 * 16 + 5).
-
-The bytes after 160 represent a hash of the underlying branch.
-
-The layout uses `s_rlp1`, `s_rlp2`, and `s_advices` for RLP meta bytes and nibbles,
-while `c_advices` are used for branch hash, and `c_rlp2` stores 160 (denoting the number of hash bytes).
-
-<p align="center">
-  <img src="./img/extension_node_row.png?raw=true" width="45%">
-</p>
-
-There are two extension node rows - one for S proof, one for C proof.
-However, the extension key (nibbles) is the same for S and C, we do not need
-to duplicate this information.
-For this reason, in C row, we do not put key into `s_rlp1`, `s_rlp2`, and `s_advices`,
-we just put hash of C underlying branch in `c_advices`.
-
-But we do not leave `s_rlp1, s_rlp2, s_advices` empty in C row, we store additional witness for
-nibbles there because nibbles are
-compressed into bytes and it is difficult to decompress back into nibbles
-without any helper witnesses. This is not needed in all cases though, as we will see below.
-
-Thus, the two extension rows look like:
-
-<!--
-generated with TestExtensionTwoKeyBytesSel1
--->
-
-```
-[228,130,0,149,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,160,114,253,150,133,18,192,156,19,241,162,51,210,24,1,151,16,48,7,177,42,60,49,34,230,254,242,79,132,165,90,75,249]
-[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,160,57,70,87,80,220,197,201,254,196,232,29,240,104,158,250,223,175,172,44,123,126,255,126,108,15,160,185,239,174,205,146,130]
-```
-
-The first row contains:
-
-- `s_advices`: extension (nibbles `3`, `9`, and `5` compressed into bytes)
-- `c_advices`: hash of S branch
-
-The second row contains:
-
-- `s_advices`: the second nibble of each byte stored in the first row
-- `c_advices`: hash of C branch
 
 In extension node, the intermediate `key_rlc` is computed by taking `key_rlc` and `key_rlc_mult`
 (denoted by `key_rlc_prev` and `key_rlc_mult`)
@@ -753,7 +640,116 @@ And when there are odd nibbles above:
 key_rlc = key_rlc_mult + (s_rlp2 - 16) * key_rlc_mult
 ```
 
-### Selectors
+### 3.5.2 Checking branch length corresponds to the RLP meta bytes
+
+As discussed above, branch RLP can have two or three RLP meta bytes that specify
+its length.
+To check whether the actual length of the stream corresponds to the length specified
+with the RLP meta bytes, column 0 is used (`s_rlp1, c_rlp1`).
+In each row we subtract the number
+of bytes in a row: 33 for non-empty row, 1 for empty row.
+In the last row we checked whether the value is 1.
+
+The final value should be 1 (and not 0) because
+RLP length includes also ValueNode which occupies 1 byte and is not stored in MPT layout.
+
+<p align="center">
+  <img src="./img/branch_length.png?raw=true" width="30%">
+</p>
+
+Constraints for RLP length are implemented in `branch.rs`.
+
+### 3.6 Check address and key RLC in branch nodes
+
+To check that storage modification occurs at the proper address / key,
+the circuit computes intermediate address RLC / key RLC at each branch / extension node. The final address RLC is computed in `is_account_leaf` row, the final
+key RLC is computed in `is_leaf_key` row.
+
+In each branch,
+`modified_node` corresponds to one of the nibbles of the key/address.
+
+<p align="center">
+  <img src="./img/address_key_branch_rlc.png?raw=true" width="60%">
+</p>
+
+Let us say the address (after being hashed) is composed of the following nibbles:
+
+```
+n0 n1 n2 ... n63
+```
+
+This means the bytes are:
+
+```
+(n0 * 16 + n1) (n2 * 16 + n3) ... (n62 * 16 + n63)
+```
+
+`modified_node` in one branch / extension node corresponds to one nibble, two
+consecutive elements (each branch or extension node) corresponds to one byte.
+
+To compute the RLC, we need to know whether
+the branch / extension node is the first or second nibble of a byte.
+This information is given in branch init row in two `s_advices` columns:
+`s_advices[IS_BRANCH_C16_POS - LAYOUT_OFFSET]` and
+`s_advices[IS_BRANCH_C1_POS - LAYOUT_OFFSET]`.
+If it is the first nibble, `modified_node` is multiplied by 16, otherwise by 1.
+
+Constraints for
+`s_advices[IS_BRANCH_C16_POS - LAYOUT_OFFSET]` and
+`s_advices[IS_BRANCH_C1_POS - LAYOUT_OFFSET]`
+are implemented in `branch_key.rs`.
+For example, the two values need to be boolean, need to alternate (this alternating
+gets more complicated when there is an extension node instead of a branch as it will be
+discussed below), and the sum of the two needs to be 1.
+
+#### 3.4 Detecting modifications
+
+<p align="center">
+  <img src="./img/leaf.png?raw=true" width="40%">
+</p>
+
+Non-empty nodes in the above picture are at positions 3 and 11.
+Position 11 corresponds to the key (that
+means the key nibble that determines the position of a node in this branch is 11) and
+is stored in `modified_node` column.
+
+`s_advices/c_advices` present the hash of a branch child.
+
+One can observe that in position 3: `s_advices = c_advices`,
+while in position 11: `s_advices != c_advices`.
+
+That is because the nibble 11 corresponds to `key1` where the storage modification
+occured. The branch at position 3 is not affected by this storage modification.
+
+There are three possible storage modification scenarios:
+
+- If the storage modification occurs at the same key (all 64 nibbles match), the
+  value in the leaf will be updated.
+- If the storage modification occurs at the key where `n0 n1 n2 n3` match,
+  a branch is inserted instead of a leaf. Let us say the nibbles of the key where
+  change occurs are: `n0 n1 n2 n3 m4 m5 ... m63`. The new branch contains two leaves:
+  the old one at position `n4` and the new one at position `m4`.
+- If the storage modification occurs at the key where `n0 n1 n2 n3` match and
+  also some further nibbles match, for example: `n4 = m4, n5 = m5, n6 = m6`,
+  an extension node is inserted instead of a leaf. Extension node is like a leaf,
+  it contains key (which stores nibbles, in our example: `n4 n5 n6`) and value which is
+  a hash of the new branch. As in the second scenario, the new branch contains two leaves:
+  the old one at position `n7` and the new one at position `m7` (where `n7 != m7`).
+
+Leaf into branch:
+
+<p align="center">
+  <img src="./img/into_branch.png?raw=true" width="35%">
+</p>
+
+Leaf into extension node:
+
+<p align="center">
+  <img src="./img/into_extension.png?raw=true" width="35%">
+</p>
+
+
+### RLC computation selectors
 
 The following selectors are used to handle the computation of `key_rlc`. The following witnesses
 are stored in branch init row:
