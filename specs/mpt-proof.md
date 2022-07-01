@@ -256,23 +256,23 @@ Two examples:
 There are two other columns that ensure that branch rows follow
 the prescribed layout: `node_index` and `modified_node`.
 
-**§1** `node_index` is checked to be running monotonously from 0 to 15.
+- **§1** `node_index` is checked to be running monotonously from 0 to 15.
 This way it is ensured that branch layout really has 16 branch children rows.
 
-`modified_node` specifies the index at which the storage modification in this branch occured.
+- `modified_node` specifies the index at which the storage modification in this branch occured.
 **§2** `modified_node` is checked to be the same in all branch children rows - having this value
 available in all rows simplifies the constraints for checking that `is_modified` is true
 only when `node_index - modified_node = 0`. Having `modified_node` available only in one row,
 it would be difficult to write a constraint for `node_index - modified_node = 0` for all
 16 rows.
 
-**§3** `is_last_branch_child` is checked to be in the row with `node_index` = 15.
+- **§3** `is_last_branch_child` is checked to be in the row with `node_index` = 15.
 `is_branch_child` is checked to follow either `is_branch_init` or `is_branch_child`.
-**§4** After `is_branch_init` it is checked to be a row with  `is_branch_child = 1`.
-**§5** After `is_branch_init` it is checked to be a row `node_index = 0`.
-**§6** When `is_branch_child` changes, it is checked to be `node_index = 15` in the previous row.
+- **§4** After `is_branch_init` it is checked to be a row with  `is_branch_child = 1`.
+- **§5** After `is_branch_init` it is checked to be a row `node_index = 0`.
+- **§6** When `is_branch_child` changes, it is checked to be `node_index = 15` in the previous row.
 
-**§7** When `node_index != 15`, it is checked that `is_last_branch_child = 0`.
+- **§7** When `node_index != 15`, it is checked that `is_last_branch_child = 0`.
 When `node_index = 15`, it is checked that `is_last_branch_child = 1`.
 
 All these constraints are implemented in `branch.rs`.
