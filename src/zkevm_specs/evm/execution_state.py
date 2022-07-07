@@ -19,9 +19,6 @@ class ExecutionState(IntEnum):
     BeginTx = auto()
     EndTx = auto()
     EndBlock = auto()
-    CopyToMemory = auto()
-    CopyToLog = auto()
-    CopyCodeToMemory = auto()
 
     # Opcode's successful cases
     STOP = auto()

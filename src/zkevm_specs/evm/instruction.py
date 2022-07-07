@@ -34,6 +34,7 @@ from .table import (
     RWTableTag,
     TxLogFieldTag,
     TxReceiptFieldTag,
+    CopyDataTypeTag,
 )
 
 
@@ -154,8 +155,6 @@ class Instruction:
             assert curr.halts() or curr == ExecutionState.BeginTx
         elif next == ExecutionState.EndBlock:
             assert curr in [ExecutionState.EndTx, ExecutionState.EndBlock]
-        elif next == ExecutionState.CopyToMemory:
-            assert curr in [ExecutionState.CopyToMemory, ExecutionState.CALLDATACOPY]
 
     def constrain_step_state_transition(self, **kwargs: Transition):
         keys = set(
@@ -614,7 +613,7 @@ class Instruction:
             RW.Write,
             RWTableTag.TxLog,
             key1=tx_id,
-            key2=FQ(index + int(field_tag) << 32 + log_id.expr().n << 48),
+            key2=FQ(index + (int(field_tag) << 32) + (log_id.expr().n << 48)),
             key3=FQ(0),
             key4=FQ(0),
         ).value
@@ -993,3 +992,29 @@ class Instruction:
 
     def pow2_lookup(self, value: Expression, value_pow: Expression):
         self.fixed_lookup(FixedTableTag.Pow2, value, value_pow)
+
+    def copy_lookup(
+        self,
+        src_id: Expression,
+        src_type: CopyDataTypeTag,
+        dst_id: Expression,
+        dst_type: CopyDataTypeTag,
+        src_addr: Expression,
+        src_addr_end: Expression,
+        dst_addr: Expression,
+        length: Expression,
+        rw_counter: Expression,
+        log_id: Expression = None,
+    ) -> FQ:
+        return self.tables.copy_lookup(
+            src_id,
+            FQ(src_type),
+            dst_id,
+            FQ(dst_type),
+            src_addr,
+            src_addr_end,
+            dst_addr,
+            length,
+            rw_counter,
+            log_id,
+        ).rwc_inc
