@@ -1,8 +1,8 @@
 from ..instruction import Instruction, Transition
-from ..table import CallContextFieldTag, TxLogFieldTag, TxContextFieldTag
+from ..table import CallContextFieldTag, TxLogFieldTag, TxContextFieldTag, CopyDataTypeTag
 from ..opcode import Opcode
 from ..execution_state import ExecutionState
-from ...util.param import GAS_COST_LOG
+from ...util.param import GAS_COST_LOG, GAS_COST_LOGDATA
 from ...util import FQ, cast_expr
 
 
@@ -62,18 +62,21 @@ def log(instruction: Instruction):
             diff = topic_selectors[i - 1] - topic_selectors[i]
             instruction.constrain_bool(FQ(diff))
 
-    # check memory copy, should do in next step here
-    # When length != 0, constrain the state in the next execution state CopyToLog
-    if not instruction.is_zero(msize):
-        assert instruction.next is not None
-        instruction.constrain_equal(instruction.next.execution_state, ExecutionState.CopyToLog)
-        next_aux = instruction.next.aux_data
-        instruction.constrain_equal(next_aux.src_addr, mstart)
-        instruction.constrain_equal(next_aux.src_addr_end, mstart + msize)
-        instruction.constrain_equal(next_aux.bytes_left, msize)
-        instruction.constrain_equal(next_aux.is_persistent, is_persistent)
-        instruction.constrain_equal(next_aux.tx_id, tx_id)
-        instruction.constrain_zero(next_aux.data_start_index)
+    if instruction.is_zero(msize) == 0 and is_persistent == 1:
+        copy_rwc_inc = instruction.copy_lookup(
+            instruction.curr.call_id,
+            CopyDataTypeTag.Memory,
+            tx_id,
+            CopyDataTypeTag.TxLog,
+            mstart,
+            mstart + msize,
+            FQ(0),
+            msize,
+            instruction.curr.rw_counter + instruction.rw_counter_offset,
+            log_id=instruction.curr.log_id + 1,
+        )
+    else:
+        copy_rwc_inc = FQ(0)
 
     # omit block number constraint even it is set within op code explicitly, because by default the circuit only handle
     # current block, otherwise, block context lookup is required.
@@ -82,13 +85,16 @@ def log(instruction: Instruction):
         mstart, msize
     )
     dynamic_gas = (
-        GAS_COST_LOG + GAS_COST_LOG * (opcode - Opcode.LOG0) + 8 * msize + memory_expansion_gas
+        GAS_COST_LOG
+        + GAS_COST_LOG * (opcode - Opcode.LOG0)
+        + GAS_COST_LOGDATA * msize
+        + memory_expansion_gas
     )
 
     assert isinstance(is_persistent, FQ)
     instruction.step_state_transition_in_same_context(
         opcode,
-        rw_counter=Transition.delta(instruction.rw_counter_offset),
+        rw_counter=Transition.delta(instruction.rw_counter_offset + copy_rwc_inc),
         program_counter=Transition.delta(1),
         stack_pointer=Transition.delta(2 + opcode - Opcode.LOG0),
         dynamic_gas_cost=dynamic_gas,
