@@ -619,7 +619,7 @@ class Instruction:
         ).value
         return value
 
-    # look up TxReceipt fields (PostStateOrStatus, CumulativeGasUsed, LogLength)
+    # look up TxReceipt read for fields (PostStateOrStatus, CumulativeGasUsed, LogLength)
     def tx_receipt_read(
         self,
         tx_id: Expression,
@@ -635,7 +635,7 @@ class Instruction:
         ).value
         return value
 
-    # look up TxReceipt fields (PostStateOrStatus, CumulativeGasUsed, LogLength)
+    # look up TxReceipt write for fields (PostStateOrStatus, CumulativeGasUsed, LogLength)
     def tx_receipt_write(
         self,
         tx_id: Expression,
