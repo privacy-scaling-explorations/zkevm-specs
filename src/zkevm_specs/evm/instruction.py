@@ -620,13 +620,29 @@ class Instruction:
         return value
 
     # look up TxReceipt fields (PostStateOrStatus, CumulativeGasUsed, LogLength)
-    def tx_receipt_lookup(
+    def tx_receipt_read(
         self,
         tx_id: Expression,
         field_tag: TxReceiptFieldTag,
     ) -> Expression:
         value = self.rw_lookup(
             RW.Read,
+            RWTableTag.TxReceipt,
+            key1=tx_id,
+            key2=FQ(0),
+            key3=FQ(field_tag),
+            key4=FQ(0),
+        ).value
+        return value
+
+    # look up TxReceipt fields (PostStateOrStatus, CumulativeGasUsed, LogLength)
+    def tx_receipt_write(
+        self,
+        tx_id: Expression,
+        field_tag: TxReceiptFieldTag,
+    ) -> Expression:
+        value = self.rw_lookup(
+            RW.Write,
             RWTableTag.TxReceipt,
             key1=tx_id,
             key2=FQ(0),
