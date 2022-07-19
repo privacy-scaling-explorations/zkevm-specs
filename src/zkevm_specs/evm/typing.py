@@ -440,6 +440,22 @@ class RWDictionary:
             value=value,
         )
 
+    def tx_receipt_write(
+        self,
+        tx_id: IntOrFQ,
+        field_tag: TxReceiptFieldTag,
+        value: Union[int, FQ, RLC],
+    ) -> RWDictionary:
+        if isinstance(value, int):
+            value = FQ(value)
+        return self._append(
+            RW.Write,
+            RWTableTag.TxReceipt,
+            key1=FQ(tx_id),
+            key3=FQ(field_tag),
+            value=value,
+        )
+
     def tx_refund_read(self, tx_id: IntOrFQ, refund: IntOrFQ) -> RWDictionary:
         return self._append(
             RW.Read, RWTableTag.TxRefund, key1=FQ(tx_id), value=FQ(refund), value_prev=FQ(refund)
