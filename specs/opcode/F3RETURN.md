@@ -49,7 +49,7 @@ using a lookup to the copy circuit with the following parameters:
     - `src_id: callee.call_id`
     - `src_type: Memory`
     - `src_addr: return_offset`
-    - `src_addr_end: min(return_offset + return_length, callee.memory_size)`
+    - `src_addr_end: return_offset + return_length`
     - `length: min(return_length, call_context[ReturnDataLength, callee_id])`
     - `dst_id: caller.call_id`
     - `dst_type: Memory`
