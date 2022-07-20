@@ -3,6 +3,10 @@ from ..instruction import Instruction, Transition
 from ..table import CallContextFieldTag, CopyDataTypeTag
 from ..execution_state import ExecutionState
 
+# NOTE: This python file is called `return_.py` and the opcode gadget is called
+# `return_` because `return` is a reserved keyword in python and so can't be
+# used in the code (but with an underscore suffix it's OK).
+
 
 def return_(instruction: Instruction):
     # We do this check explicitly because we're not using same_context transition.
