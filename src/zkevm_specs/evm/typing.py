@@ -672,7 +672,7 @@ class CopyCircuit:
 
     def __init__(self) -> None:
         self.rows = []
-        self.pad_rows = [CopyCircuitRow(FQ(1), *[FQ(0)] * 16), CopyCircuitRow(*[FQ(0)] * 17)]
+        self.pad_rows = [CopyCircuitRow(FQ(1), *[FQ(0)] * 17), CopyCircuitRow(*[FQ(0)] * 18)]
 
     def table(self) -> Sequence[CopyCircuitRow]:
         return self.rows + self.pad_rows
@@ -692,6 +692,7 @@ class CopyCircuit:
         log_id: int = 0,
     ):
         new_rows: List[CopyCircuitRow] = []
+        acc_val = FQ(0)
         for i in range(int(copy_length)):
             if int(src_addr + i) < int(src_addr_end):
                 is_pad = False
@@ -728,6 +729,8 @@ class CopyCircuit:
             )
 
             # write row
+            if dst_type == CopyDataTypeTag.RlcAcc:
+                acc_val += value
             self._append_row(
                 new_rows,
                 rw_dict,
@@ -737,7 +740,7 @@ class CopyCircuit:
                 dst_id,
                 dst_type,
                 dst_addr + i,
-                value,
+                acc_val if dst_type == CopyDataTypeTag.RlcAcc else value,
                 is_code,
                 False,
                 log_id=log_id,
@@ -771,6 +774,7 @@ class CopyCircuit:
         is_bytecode = tag == CopyDataTypeTag.Bytecode
         is_tx_calldata = tag == CopyDataTypeTag.TxCalldata
         is_tx_log = tag == CopyDataTypeTag.TxLog
+        is_rlc_acc = tag == CopyDataTypeTag.RlcAcc
         rw_counter = rw_dict.rw_counter
         if is_memory:
             if is_write:
@@ -800,5 +804,6 @@ class CopyCircuit:
                 is_bytecode=FQ(is_bytecode),
                 is_tx_calldata=FQ(is_tx_calldata),
                 is_tx_log=FQ(is_tx_log),
+                is_rlc_acc=FQ(is_rlc_acc),
             )
         )

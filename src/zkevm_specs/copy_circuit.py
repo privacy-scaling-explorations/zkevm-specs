@@ -33,6 +33,7 @@ def verify_row(cs: ConstraintSystem, rows: Sequence[CopyCircuitRow]):
     cs.constrain_equal(rows[0].is_bytecode, cs.is_zero(rows[0].tag - CopyDataTypeTag.Bytecode))
     cs.constrain_equal(rows[0].is_tx_calldata, cs.is_zero(rows[0].tag - CopyDataTypeTag.TxCalldata))
     cs.constrain_equal(rows[0].is_tx_log, cs.is_zero(rows[0].tag - CopyDataTypeTag.TxLog))
+    cs.constrain_equal(rows[0].is_rlc_acc, cs.is_zero(rows[0].tag - CopyDataTypeTag.RlcAcc))
 
     # constrain the transition between two copy steps
     is_last_two_rows = rows[0].is_last + rows[1].is_last
@@ -60,8 +61,14 @@ def verify_step(cs: ConstraintSystem, rows: Sequence[CopyCircuitRow]):
         cs.constrain_zero(rows[1].is_last * (1 - rows[0].bytes_left))
         # bytes_left == bytes_left_next + 1 for non-last step
         cs.constrain_zero((1 - rows[1].is_last) * (rows[0].bytes_left - rows[2].bytes_left - 1))
-        # write value == read value
-        cs.constrain_equal(rows[0].value, rows[1].value)
+
+        # write value == read value if not rlc accumulator
+        with cs.condition(1 - rows[1].is_rlc_acc):
+            cs.constrain_equal(rows[0].value, rows[1].value)
+        # read value == write value for the first step (always)
+        with cs.condition(rows[0].is_first):
+            cs.constrain_equal(rows[0].value, rows[1].value)
+
         # value == 0 when is_pad == 1 for read
         cs.constrain_zero(rows[0].is_pad * rows[0].value)
         # is_pad == 1 - (src_addr < src_addr_end) for read row
@@ -70,6 +77,12 @@ def verify_step(cs: ConstraintSystem, rows: Sequence[CopyCircuitRow]):
         )
         # is_pad == 0 for write row
         cs.constrain_zero(rows[1].is_pad)
+
+    with cs.condition(1 - rows[0].q_step):
+        with cs.condition(1 - rows[0].is_last):
+            # next_write_value == write_value + next_read_value if rlc accumulator
+            with cs.condition(rows[0].is_rlc_acc):
+                cs.constrain_equal(rows[2].value, rows[1].value + rows[0].value)
 
 
 def verify_copy_table(copy_circuit: CopyCircuit, tables: Tables):

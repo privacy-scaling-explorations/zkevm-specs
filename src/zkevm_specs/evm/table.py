@@ -289,6 +289,15 @@ class CopyDataTypeTag(IntEnum):
     TxCalldata = auto()
     TxLog = auto()
 
+    # RLC Accumulator tag can be used whenever we wish to
+    # accumulates `value` iteratively over all the steps in
+    # copy circuit. This is specifically used in the SHA3
+    # opcode execution where the copy table's last row has
+    # an accumulated value that is the RLC representation of
+    # all input bytes. Using this value, we can then lookup
+    # the Keccak table for the SHA3 of the input bytes.
+    RlcAcc = auto()
+
 
 class WrongQueryKey(Exception):
     def __init__(self, table_name: str, diff: Set[str]) -> None:
@@ -396,6 +405,7 @@ class CopyCircuitRow(TableRow):
     is_bytecode: FQ
     is_tx_calldata: FQ
     is_tx_log: FQ
+    is_rlc_acc: FQ
 
 
 @dataclass(frozen=True)
