@@ -679,6 +679,7 @@ class CopyCircuit:
 
     def copy(
         self,
+        r: FQ,
         rw_dict: RWDictionary,
         src_id: IntOrFQ,
         src_type: CopyDataTypeTag,
@@ -692,7 +693,7 @@ class CopyCircuit:
         log_id: int = 0,
     ):
         new_rows: List[CopyCircuitRow] = []
-        acc_val = FQ(0)
+        rlc_acc = FQ(0)
         for i in range(int(copy_length)):
             if int(src_addr + i) < int(src_addr_end):
                 is_pad = False
@@ -730,7 +731,7 @@ class CopyCircuit:
 
             # write row
             if dst_type == CopyDataTypeTag.RlcAcc:
-                acc_val += value
+                rlc_acc = rlc_acc * r + value
             self._append_row(
                 new_rows,
                 rw_dict,
@@ -740,7 +741,7 @@ class CopyCircuit:
                 dst_id,
                 dst_type,
                 dst_addr + i,
-                acc_val if dst_type == CopyDataTypeTag.RlcAcc else value,
+                rlc_acc if dst_type == CopyDataTypeTag.RlcAcc else value,
                 is_code,
                 False,
                 log_id=log_id,

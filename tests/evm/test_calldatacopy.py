@@ -139,6 +139,7 @@ def test_calldatacopy(
         ]
     )
     copy_circuit = CopyCircuit().copy(
+        randomness,
         rw_dictionary,
         TX_ID if from_tx else CALLER_ID,
         CopyDataTypeTag.TxCalldata if from_tx else CopyDataTypeTag.Memory,
@@ -174,7 +175,7 @@ def test_calldatacopy(
         copy_circuit=copy_circuit.rows,
     )
 
-    verify_copy_table(copy_circuit, tables)
+    verify_copy_table(copy_circuit, tables, randomness)
     verify_steps(
         randomness=randomness,
         tables=tables,

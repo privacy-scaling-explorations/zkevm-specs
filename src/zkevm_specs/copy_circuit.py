@@ -55,7 +55,7 @@ def verify_row(cs: ConstraintSystem, rows: Sequence[CopyCircuitRow]):
         cs.constrain_equal(rows[0].rwc_inc_left, rw_diff)
 
 
-def verify_step(cs: ConstraintSystem, rows: Sequence[CopyCircuitRow]):
+def verify_step(cs: ConstraintSystem, rows: Sequence[CopyCircuitRow], r: FQ):
     with cs.condition(rows[0].q_step):
         # bytes_left == 1 for last step
         cs.constrain_zero(rows[1].is_last * (1 - rows[0].bytes_left))
@@ -82,10 +82,10 @@ def verify_step(cs: ConstraintSystem, rows: Sequence[CopyCircuitRow]):
         with cs.condition(1 - rows[0].is_last):
             # next_write_value == write_value + next_read_value if rlc accumulator
             with cs.condition(rows[0].is_rlc_acc):
-                cs.constrain_equal(rows[2].value, rows[1].value + rows[0].value)
+                cs.constrain_equal(rows[2].value, rows[0].value * r + rows[1].value)
 
 
-def verify_copy_table(copy_circuit: CopyCircuit, tables: Tables):
+def verify_copy_table(copy_circuit: CopyCircuit, tables: Tables, r: FQ):
     cs = ConstraintSystem()
     copy_table = copy_circuit.table()
     n = len(copy_table)
@@ -97,7 +97,7 @@ def verify_copy_table(copy_circuit: CopyCircuit, tables: Tables):
         ]
         # constrain on each row and step
         verify_row(cs, rows)
-        verify_step(cs, rows)
+        verify_step(cs, rows, r)
 
         # lookup into tables
         if row.is_memory == 1 and row.is_pad == 0:
