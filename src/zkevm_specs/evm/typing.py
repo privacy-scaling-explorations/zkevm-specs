@@ -45,6 +45,7 @@ from .table import (
     CopyDataTypeTag,
     CopyCircuitRow,
     CopyTableRow,
+    KeccakTableRow,
 )
 from .opcode import get_push_size, Opcode
 
@@ -663,6 +664,29 @@ class RWDictionary:
             )
         )
 
+        return self
+
+
+class KeccakCircuit:
+    rows: List[KeccakTableRow]
+
+    def __init__(self) -> None:
+        self.rows = []
+
+    def add(self, data: bytes, r: FQ) -> KeccakCircuit:
+        rows: List[KeccakTableRow] = []
+        hash_rlc = RLC(keccak256(RLC(bytes(reversed(data)), r, len(data)).le_bytes), r)
+        value_rlc = FQ.zero()
+        for i in range(len(data)):
+            value_rlc = value_rlc * r + data[i]
+            rows.append(
+                KeccakTableRow(
+                    idx=FQ(i),
+                    hash_rlc=hash_rlc.expr(),
+                    value_rlc=value_rlc,
+                )
+            )
+        self.rows.extend(rows)
         return self
 
 

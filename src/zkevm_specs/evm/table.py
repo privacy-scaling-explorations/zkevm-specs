@@ -418,8 +418,16 @@ class CopyTableRow(TableRow):
     src_addr_end: FQ
     dst_addr: FQ
     length: FQ
+    value_rlc: FQ
     rw_counter: FQ
     rwc_inc: FQ
+
+
+@dataclass(frozen=True)
+class KeccakTableRow(TableRow):
+    idx: FQ
+    hash_rlc: FQ
+    value_rlc: FQ
 
 
 class Tables:
@@ -433,6 +441,7 @@ class Tables:
     bytecode_table: Set[BytecodeTableRow]
     rw_table: Set[RWTableRow]
     copy_table: Set[CopyTableRow]
+    keccak_table: Set[KeccakTableRow]
 
     def __init__(
         self,
@@ -441,6 +450,7 @@ class Tables:
         bytecode_table: Set[BytecodeTableRow],
         rw_table: Union[Set[Sequence[Expression]], Set[RWTableRow]],
         copy_circuit: Sequence[CopyCircuitRow] = None,
+        keccak_table: Sequence[KeccakTableRow] = None,
     ) -> None:
         self.block_table = block_table
         self.tx_table = tx_table
@@ -451,29 +461,38 @@ class Tables:
         )
         if copy_circuit is not None:
             self.copy_table = self._convert_copy_circuit_to_table(copy_circuit)
+        if keccak_table is not None:
+            self.keccak_table = set(keccak_table)
 
     def _convert_copy_circuit_to_table(self, copy_circuit: Sequence[CopyCircuitRow]):
-        rows = []
+        rows: List[CopyTableRow] = []
         for i, row in enumerate(copy_circuit):
-            if row.is_first != 1:
-                continue
-            assert i + 1 < len(copy_circuit), "Not enough rows in copy circuit"
-            next_row = copy_circuit[i + 1]
-            assert next_row.q_step == 0, "Invalid copy circuit"
-            rows.append(
-                CopyTableRow(
-                    src_id=row.id,
-                    src_type=row.tag,
-                    dst_id=next_row.id,
-                    dst_type=next_row.tag,
-                    src_addr=row.addr,
-                    src_addr_end=row.src_addr_end,
-                    dst_addr=next_row.addr,
-                    length=row.bytes_left,
-                    rw_counter=row.rw_counter,
-                    rwc_inc=row.rwc_inc_left,
+            # the first row and the row next to it will be used for its fields.
+            if row.is_first == 1:
+                first_row = row
+                assert i + 1 < len(copy_circuit), "Not enough rows in copy circuit"
+                next_row = copy_circuit[i + 1]
+                assert next_row.q_step == 0, "Invalid copy circuit"
+
+            # update `value_rlc` when we encounter the copy event's last row.
+            if row.is_last == 1:
+                value_rlc = row.value
+                rows.append(
+                    CopyTableRow(
+                        src_id=first_row.id,
+                        src_type=first_row.tag,
+                        dst_id=next_row.id,
+                        dst_type=next_row.tag,
+                        src_addr=first_row.addr,
+                        src_addr_end=first_row.src_addr_end,
+                        dst_addr=next_row.addr,
+                        length=first_row.bytes_left,
+                        value_rlc=value_rlc,
+                        rw_counter=first_row.rw_counter,
+                        rwc_inc=first_row.rwc_inc_left,
+                    )
                 )
-            )
+
         return set(rows)
 
     def fixed_lookup(
@@ -580,6 +599,13 @@ class Tables:
             "rw_counter": rw_counter,
         }
         return lookup(CopyTableRow, self.copy_table, query)
+
+    def keccak_lookup(self, length: Expression, value_rlc: Expression):
+        query = {
+            "idx": length - FQ(1),
+            "value_rlc": value_rlc,
+        }
+        return lookup(KeccakTableRow, self.keccak_table, query)
 
 
 T = TypeVar("T", bound=TableRow)

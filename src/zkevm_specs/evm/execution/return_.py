@@ -35,7 +35,7 @@ def return_(instruction: Instruction):
         # callee's memory to bytecode, using the copy circuit.
         code_hash = instruction.curr.aux_data  # Load code_hash witness value from aux_data
         copy_length = return_length
-        copy_rwc_inc = instruction.copy_lookup(
+        copy_rwc_inc, _ = instruction.copy_lookup(
             instruction.curr.call_id,  # src_id
             CopyDataTypeTag.Memory,  # src_type
             code_hash,  # dst_id
@@ -62,7 +62,7 @@ def return_(instruction: Instruction):
             CallContextFieldTag.ReturnDataLength
         )  # rwc += 1
         copy_length = instruction.min(return_length, caller_return_length, N_BYTES_MEMORY_ADDRESS)
-        copy_rwc_inc = instruction.copy_lookup(
+        copy_rwc_inc, _ = instruction.copy_lookup(
             instruction.curr.call_id,  # src_id
             CopyDataTypeTag.Memory,  # src_type
             instruction.next.call_id,  # dst_id

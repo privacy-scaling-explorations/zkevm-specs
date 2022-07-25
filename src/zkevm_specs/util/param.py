@@ -41,6 +41,8 @@ GAS_COST_CREATE2 = 32000
 GAS_COST_SELF_DESTRUCT = 5000
 # Gas cost of copying every word
 GAS_COST_COPY = 3
+# Gas cost of copying every word, specifically in the case of SHA3 opcode
+GAS_COST_COPY_SHA3 = 6
 # Gas cost of non-creation transaction
 GAS_COST_TX = 21000
 # Constant gas cost of LOG
@@ -72,6 +74,8 @@ MAX_REFUND_QUOTIENT_OF_GAS_USED = 5
 MEMORY_EXPANSION_QUAD_DENOMINATOR = 512
 # Coefficient of linear part of memory expansion gas cost
 MEMORY_EXPANSION_LINEAR_COEFF = 3
+# Coefficient of linear part of memory expansion gas cost, specifically in the case of SHA3
+MEMORY_EXPANSION_LINEAR_COEFF_SHA3 = 6
 
 # Maximum number of bytes copied during one single iteration of CopyToMemory, i.e. the internal state used by the
 # CALLDATACOPY gadget
