@@ -67,16 +67,28 @@ length 64.
 Let's say we have a leaf:
 
 ```
-key = [10,6,3,5,7,0,1,2,12,1,10,3,10,14,0,10,1,7,13,3,0,4,12,9,9,2,0,3,1,0,3,8,2,13,9,6,8,14,11,12,12,4,11,1,7,7,1,15,4,1,12,6,11,3,0,4,2,0,5,11,5,7,0,16]
+key_nibbles = [10,6,3,5,7,0,1,2,12,1,10,3,10,14,0,10,1,7,13,3,0,4,12,9,9,2,0,3,1,0,3,8,2,13,9,6,8,14,11,12,12,4,11,1,7,7,1,15,4,1,12,6,11,3,0,4,2,0,5,11,5,7,0,16]
 val = [2]
 ```
 
-In a proof, key is put in the
-[compact form](https://github.com/ethereum/go-ethereum/blob/master/trie/hasher.go#L110)
+Note that the last value (`16`) is a terminator byte. It means this presents a key of the leaf.
+In case of an extension node key, there is no terminator byte. The terminator byte (if exists)
+is not part of the proof (see below the format of a key in a proof).
+
+In a proof, the key is put in the
+[compact form](https://github.com/ethereum/go-ethereum/blob/master/trie/encoding.go#L37)
 It becomes:
 
 ```
 [58,99,87,1,44,26,58,224,161,125,48,76,153,32,49,3,130,217,104,235,204,75,23,113,244,28,107,48,66,5,181,112]
+```
+
+Note that `58 = 48 + 10` where `48` is a fixed value used for compact form when there is an
+odd number of key nibbles. Then it goes:
+```
+99 = 6 * 16 + 3
+87 = 5 * 16 + 7
+...
 ```
 
 Then the leaf is
