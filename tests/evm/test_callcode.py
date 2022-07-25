@@ -62,7 +62,6 @@ def expected(callee: Account, caller_ctx: CallContext, stack: Stack, is_warm_acc
             return 0
         return (offset + length + 31) // 32
 
-    is_account_empty = callee.is_empty()
     has_value = stack.value != 0
     next_memory_size = max(
         memory_size(stack.cd_offset, stack.cd_length),
@@ -74,7 +73,7 @@ def expected(callee: Account, caller_ctx: CallContext, stack: Stack, is_warm_acc
     ) // 512 + 3 * (next_memory_size - caller_ctx.memory_size)
     gas_cost = (
         (GAS_COST_WARM_ACCESS if is_warm_access else GAS_COST_ACCOUNT_COLD_ACCESS)
-        + has_value * (GAS_COST_CALL_WITH_VALUE + is_account_empty * GAS_COST_NEW_ACCOUNT)
+        + has_value * GAS_COST_CALL_WITH_VALUE
         + memory_expansion_gas_cost
     )
     gas_available = caller_ctx.gas_left - gas_cost
@@ -137,7 +136,7 @@ TESTING_DATA = gen_testing_data()
 @pytest.mark.parametrize(
     "caller, callee, caller_ctx, stack, is_warm_access, expected", TESTING_DATA
 )
-def test_call(
+def test_callcode(
     caller: Account,
     callee: Account,
     caller_ctx: CallContext,
@@ -147,13 +146,9 @@ def test_call(
 ):
     randomness = rand_fq()
 
-    caller_balance_prev = RLC(caller.balance, randomness)
-    callee_balance_prev = RLC(callee.balance, randomness)
-    caller_balance = RLC(caller.balance - stack.value, randomness)
-    callee_balance = RLC(callee.balance + stack.value, randomness)
     caller_bytecode = (
         Bytecode()
-        .call(
+        .callcode(
             stack.gas,
             callee.address,
             stack.value,
@@ -201,8 +196,7 @@ def test_call(
         .tx_access_list_account_write(1, callee.address, True, is_warm_access, rw_counter_of_reversion=None if caller_ctx.is_persistent else caller_ctx.rw_counter_end_of_reversion - caller_ctx.reversible_write_counter)
         .call_context_read(24, CallContextFieldTag.RwCounterEndOfReversion, callee_rw_counter_end_of_reversion)
         .call_context_read(24, CallContextFieldTag.IsPersistent, callee_is_persistent)
-        .account_write(caller.address, AccountFieldTag.Balance, caller_balance, caller_balance_prev, rw_counter_of_reversion=None if callee_is_persistent else callee_rw_counter_end_of_reversion)
-        .account_write(callee.address, AccountFieldTag.Balance, callee_balance, callee_balance_prev, rw_counter_of_reversion=None if callee_is_persistent else callee_rw_counter_end_of_reversion - 1)
+        .account_read(caller.address, AccountFieldTag.Balance, RLC(caller.balance, randomness))
         .account_read(callee.address, AccountFieldTag.Nonce, RLC(callee.nonce, randomness))
         .account_read(callee.address, AccountFieldTag.CodeHash, callee_bytecode_hash)
     )

@@ -11,7 +11,7 @@ from .add_sub import *
 from .addmod import *
 from .mulmod import *
 from .block_ctx import *
-from .call import *
+from .call_ctx import *
 from .calldatasize import *
 from .caller import *
 from .callvalue import *
@@ -69,7 +69,7 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.GASPRICE: gasprice,
     ExecutionState.EXTCODEHASH: extcodehash,
     ExecutionState.LOG: log,
-    ExecutionState.CALL: call,
+    ExecutionState.CALLCtx: call_ctx,
     ExecutionState.ISZERO: iszero,
     ExecutionState.SHR: shr,
     ExecutionState.SDIV_SMOD: sdiv_smod,
