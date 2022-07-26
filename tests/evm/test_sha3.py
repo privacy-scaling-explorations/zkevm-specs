@@ -58,11 +58,7 @@ def test_sha3(offset: U64, length: U64):
     bytecode_hash = RLC(bytecode.hash(), randomness)
 
     pc = len(memory_chunks) * 67 + 66
-    memory_sha3 = keccak256(
-        RLC(
-            bytes(reversed(memory_snapshot[offset : offset + length])), randomness, n_bytes=length
-        ).le_bytes
-    )
+    memory_sha3 = keccak256(memory_snapshot[offset : offset + length])
     memory_sha3_rlc = RLC(memory_sha3, randomness, n_bytes=32)
     next_memory_size, memory_expansion_cost = memory_expansion(
         offset + length, offset + length, MEMORY_EXPANSION_LINEAR_COEFF_SHA3

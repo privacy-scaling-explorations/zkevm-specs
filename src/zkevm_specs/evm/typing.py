@@ -675,7 +675,7 @@ class KeccakCircuit:
 
     def add(self, data: bytes, r: FQ) -> KeccakCircuit:
         rows: List[KeccakTableRow] = []
-        hash_rlc = RLC(keccak256(RLC(bytes(reversed(data)), r, len(data)).le_bytes), r)
+        hash_rlc = RLC(keccak256(data), r, n_bytes=32)
         value_rlc = FQ.zero()
         for i in range(len(data)):
             value_rlc = value_rlc * r + data[i]
