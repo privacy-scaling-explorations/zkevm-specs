@@ -1,4 +1,4 @@
-from typing import NamedTuple, Tuple, List, Sequence, Set, Union, cast, Dict
+from typing import NamedTuple, Tuple, List, Sequence, Set, Union, cast, Dict, Optional
 from enum import IntEnum
 from math import log, ceil
 
@@ -706,58 +706,77 @@ class TxReceiptOp(Operation):
         # fmt: on
 
 
-class Assigner:
-    def __init__(self):
-        pass
+def op2row(
+    op: Operation,
+    randomness: FQ,
+    root: FQ,
+) -> Row:
+    rw_counter = FQ(op.rw_counter)
+    is_write = FQ(0) if op.rw == RW.Read else FQ(1)
+    tag = FQ(op.tag)
+    id = FQ(op.id)
+    address = FQ(op.address)
+    address_bytes = op.address.to_bytes(20, "little")
+    address_limbs = tuple(
+        [FQ(address_bytes[i] + 2**8 * address_bytes[i + 1]) for i in range(0, 20, 2)]
+    )
+    field_tag = FQ(op.field_tag)
+    storage_key_rlc = RLC(op.storage_key, randomness)
+    storage_key = storage_key_rlc.expr()
+    storage_key_bytes = tuple([FQ(x) for x in storage_key_rlc.le_bytes])
 
-    def op2row(
-        self, op: Operation, randomness: FQ, mpt_updates: Dict[Tuple[FQ, FQ, FQ], MPTTableRow]
-    ) -> Row:
-        rw_counter = FQ(op.rw_counter)
-        is_write = FQ(0) if op.rw == RW.Read else FQ(1)
-        tag = FQ(op.tag)
-        id = FQ(op.id)
-        address = FQ(op.address)
-        address_bytes = op.address.to_bytes(20, "little")
-        address_limbs = tuple(
-            [FQ(address_bytes[i] + 2**8 * address_bytes[i + 1]) for i in range(0, 20, 2)]
-        )
-        field_tag = FQ(op.field_tag)
-        storage_key_rlc = RLC(op.storage_key, randomness)
-        storage_key = storage_key_rlc.expr()
-        storage_key_bytes = tuple([FQ(x) for x in storage_key_rlc.le_bytes])
+    keys = (tag, id, address, field_tag, storage_key)
 
-        keys = (tag, id, address, field_tag, storage_key)
+    value = FQ(op.value)
+    committed_value = FQ(op.committed_value)
 
-        value = FQ(op.value)
-        committed_value = FQ(op.committed_value)
-        root = FQ(3)
-
-        return Row(
-            rw_counter,
-            is_write,
-            keys,
-            address_limbs,  # type: ignore
-            storage_key_bytes,  # type: ignore
-            value,
-            committed_value,
-            root,
-        )
+    return Row(
+        rw_counter,
+        is_write,
+        keys,
+        address_limbs,  # type: ignore
+        storage_key_bytes,  # type: ignore
+        value,
+        committed_value,
+        root,
+    )
 
 
 # Generate the advice Rows from a list of Operations
 def assign_state_circuit(ops: List[Operation], randomness: FQ) -> List[Row]:
     mpt_updates = _mock_mpt_updates(ops, randomness)
+    root = FQ(3)  # Same initial state root as in _mock_mpt_updates.
 
-    assigner = Assigner()
-    rows = [assigner.op2row(op, randomness, mpt_updates) for op in ops]
+    prev_op = None
+    prev_key = None
+
+    rows: List[Row] = []
+    for op in ops:
+        key = _mpt_key(op)
+
+        if prev_key != key:
+            if prev_key is not None:
+                update = mpt_updates[prev_key]
+                assert update.root_prev.expr() == root
+                root = update.root.expr()
+            prev_key = key
+
+        if prev_op is not None:
+            rows.append(op2row(prev_op, randomness, root))
+        prev_op = op
+    assert prev_op is not None
+    rows.append(op2row(prev_op, randomness, root))
     return rows
 
 
 def mpt_table_from_ops(ops: List[Operation], randomness: FQ) -> Set[MPTTableRow]:
-    x = set(_mock_mpt_updates(ops, randomness).values())
-    print(x)
-    return x
+    return set(_mock_mpt_updates(ops, randomness).values())
+
+
+def _mpt_key(op: Operation) -> Optional[Tuple[FQ, FQ, FQ]]:
+    if op.tag != Tag.Account and op.tag != Tag.Storage:
+        return None
+    return (FQ(op.address), FQ(op.field_tag), FQ(op.storage_key))
 
 
 def _mock_mpt_updates(ops: List[Operation], randomness: FQ) -> Dict[Tuple[FQ, FQ, FQ], MPTTableRow]:
@@ -767,14 +786,11 @@ def _mock_mpt_updates(ops: List[Operation], randomness: FQ) -> Dict[Tuple[FQ, FQ
 
     root = 3
     for op in ops:
-        if op.tag != Tag.Account and op.tag != Tag.Storage:
+        mpt_key = _mpt_key(op)
+        if mpt_key is None or mpt_key in mpt_map:
             continue
 
-        mpt_key = (FQ(op.address), FQ(op.field_tag), FQ(op.storage_key))
-        if mpt_key in mpt_map:
-            continue
-
-        new_root = root
+        new_root = root + 5
         mpt_map[mpt_key] = MPTTableRow(
             FQ(op.address),
             FQ(op.field_tag),
