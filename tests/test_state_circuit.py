@@ -96,6 +96,22 @@ def test_state_ok():
     verify(ops, tables, randomness)
 
 
+def test_mpt_updates_ok():
+    # fmt: off
+    ops = [
+        StartOp(),
+
+        StorageOp(rw_counter=7, rw=RW.Read,  tx_id=1, addr=0x12345678, key=0x1516, value=rlc(789), committed_value=rlc(789)),
+        StorageOp(rw_counter=8, rw=RW.Write, tx_id=1, addr=0x12345678, key=0x4959, value=rlc(38491), committed_value=rlc(98765)),
+
+        AccountOp(rw_counter=12, rw=RW.Write, addr=0x12345678, field_tag=AccountFieldTag.Nonce, value=FQ(1), committed_value=FQ(0)),
+        AccountOp(rw_counter=13, rw=RW.Read,  addr=0x12345678, field_tag=AccountFieldTag.Balance, value=FQ(3), committed_value=FQ(0)),
+    ]
+    # fmt: on
+    tables = Tables(mpt_table_from_ops(ops, randomness))
+    verify(ops, tables, randomness)
+
+
 def test_state_bad_key2():
     # fmt: off
     ops = [

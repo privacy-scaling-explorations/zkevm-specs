@@ -745,6 +745,8 @@ def op2row(
 # Generate the advice Rows from a list of Operations
 def assign_state_circuit(ops: List[Operation], randomness: FQ) -> List[Row]:
     mpt_updates = _mock_mpt_updates(ops, randomness)
+    for update in mpt_updates.values():
+        print(update)
     root = FQ(3)  # Same initial state root as in _mock_mpt_updates.
 
     prev_op = None
@@ -764,8 +766,13 @@ def assign_state_circuit(ops: List[Operation], randomness: FQ) -> List[Row]:
         if prev_op is not None:
             rows.append(op2row(prev_op, randomness, root))
         prev_op = op
-    assert prev_op is not None
-    rows.append(op2row(prev_op, randomness, root))
+
+    if prev_op is not None:
+        if prev_key in mpt_updates:
+            update = mpt_updates[prev_key]
+            assert update.root_prev.expr() == root
+            root = update.root.expr()
+        rows.append(op2row(prev_op, randomness, root))
     return rows
 
 
