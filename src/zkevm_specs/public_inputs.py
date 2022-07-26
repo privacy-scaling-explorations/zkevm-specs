@@ -19,7 +19,6 @@ from .evm import (
     TxLogFieldTag,
     TxReceiptFieldTag,
     MPTTableRow,
-    MPTTableTag,
     BlockContextFieldTag as BlockTag,
     lookup,
 )
