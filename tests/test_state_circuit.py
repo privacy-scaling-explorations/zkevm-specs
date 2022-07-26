@@ -25,8 +25,9 @@ def verify(
     ok = True
     for (idx, row) in enumerate(rows):
         row_prev = rows[(idx - 1) % len(rows)]
+        row_next = rows[(idx + 1) % len(rows)]
         try:
-            check_state_row(row, row_prev, tables, randomness)
+            check_state_row(row, row_prev, row_next, tables, randomness)
         except AssertionError as e:
             if success:
                 traceback.print_exc()
@@ -360,30 +361,3 @@ def test_storage_committed_value_bad():
     # fmt: on
     tables = Tables(mpt_table_from_ops(ops, randomness))
     verify(ops, tables, randomness, success=False)
-
-
-def test_mpt_counter_bad():
-    # fmt: off
-    ops = [
-        StartOp(),
-        StorageOp(rw_counter=1, rw=RW.Write, tx_id=1, addr=0x12345678, key=0x15161718, value=rlc(789), committed_value=rlc(789)),
-        StorageOp(rw_counter=2, rw=RW.Write, tx_id=1, addr=0x12345678, key=0x15161718, value=rlc(123), committed_value=rlc(789)),
-    ]
-    # fmt: on
-    rows = assign_state_circuit(ops, r)
-    # mpt_counter goes from 1 to 3
-    rows[2] = rows[2]._replace(mpt_counter=FQ(3))
-    tables = Tables(mpt_table_from_ops(ops, randomness))
-    verify(rows, tables, randomness, success=False)
-
-    # fmt: off
-    ops = [
-        StartOp(),
-        StackOp(rw_counter=1, rw=RW.Write, call_id=1, stack_ptr=1021, value=rlc(4321)),
-    ]
-    # fmt: on
-    rows = assign_state_circuit(ops, r)
-    # mpt_counter increases when tag is not Account or Storage
-    rows[1] = rows[1]._replace(mpt_counter=FQ(1))
-    tables = Tables(mpt_table_from_ops(ops, randomness))
-    verify(rows, tables, randomness, success=False)

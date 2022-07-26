@@ -1,4 +1,4 @@
-from typing import NamedTuple, Tuple, List, Sequence, Set, Union, cast
+from typing import NamedTuple, Tuple, List, Sequence, Set, Union, cast, Dict
 from enum import IntEnum
 from math import log, ceil
 
@@ -11,7 +11,6 @@ from .evm import (
     TxLogFieldTag,
     TxReceiptFieldTag,
     MPTTableRow,
-    MPTTableTag,
     lookup,
 )
 
@@ -78,8 +77,10 @@ class Row(NamedTuple):
                       FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,
                       FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ]
     value: FQ
-    auxs: Tuple[FQ]
-    mpt_counter: FQ
+    committed_value: FQ
+
+    root: FQ
+
     # fmt: on
 
     def tag(self):
@@ -114,39 +115,24 @@ class Tables:
     def __init__(self, mpt_table: Set[MPTTableRow]):
         self.mpt_table = mpt_table
 
-    def mpt_account_lookup(
+    def mpt_lookup(
         self,
-        counter: Expression,
-        target: Expression,
         address: Expression,
+        field_tag: Expression,
+        storage_key: Expression,
         value: Expression,
         value_prev: Expression,
+        root: Expression,
+        root_prev: Expression,
     ) -> MPTTableRow:
         query = {
-            "counter": counter,
-            "target": target,
             "address": address,
-            "key": FQ(0),
+            "field_tag": field_tag,
+            "storage_key": storage_key,
             "value": value,
             "value_prev": value_prev,
-        }
-        return lookup(MPTTableRow, self.mpt_table, query)
-
-    def mpt_storage_lookup(
-        self,
-        counter: Expression,
-        address: Expression,
-        key: Expression,
-        value: Expression,
-        value_prev: Expression,
-    ) -> MPTTableRow:
-        query = {
-            "counter": counter,
-            "target": FQ(MPTTableTag.Storage),
-            "address": address,
-            "key": key,
-            "value": value,
-            "value_prev": value_prev,
+            "root": root,
+            "root_prev": root_prev,
         }
         return lookup(MPTTableRow, self.mpt_table, query)
 
@@ -190,9 +176,6 @@ def assert_in_range(x: FQ, min_val: int, max_val: int) -> None:
 def check_start(row: Row, row_prev: Row):
     # 1.0. rw_counter is 0
     assert row.rw_counter == 0
-
-    # 1. mpt_counter is 0
-    assert row.mpt_counter == 0
 
 
 @is_circuit_code
@@ -248,31 +231,21 @@ def check_stack(row: Row, row_prev: Row):
 
 
 @is_circuit_code
-def check_storage(row: Row, row_prev: Row, tables: Tables):
-    get_addr = lambda row: row.address()
-    get_storage_key = lambda row: row.storage_key()
-    get_committed_value = lambda row: row.auxs[0]
-
+def check_storage(row: Row, row_prev: Row, row_next: Row, tables: Tables):
     # 4.0. Unused keys are 0
     assert row.field_tag() == 0
 
-    # 4.1. When keys don't change, committed_value must be kept equal
-    if all_keys_eq(row, row_prev):
-        assert get_committed_value(row) == get_committed_value(row_prev)
-
-    # TODO: The current spec does an MPT lookup for every storage update.  The
-    # next optimization consists on doing a single lookup merging all updates
-    # for a given key, using the first and last access values.
-
-    # 4.2. MPT storage lookup with incremental counter
-    #
-    # When the keys are equal in the previous row, the value_prev must be the
-    # value in previous row.  When the keys change, value_prev is loaded from
-    # committed_value, which holds the storage value before the tx began.
-    value_prev = row_prev.value if all_keys_eq(row, row_prev) else get_committed_value(row)
-    tables.mpt_storage_lookup(
-        row.mpt_counter, get_addr(row), get_storage_key(row), row.value, value_prev
-    )
+    # 4.1. MPT lookup for last access to (address, storage_key)
+    if not all_keys_eq(row, row_next):
+        tables.mpt_lookup(
+            row.address(),
+            row.field_tag(),
+            row.storage_key(),
+            row.value,
+            row.committed_value,
+            row.root,
+            row_prev.root,
+        )
 
 
 @is_circuit_code
@@ -288,32 +261,25 @@ def check_call_context(row: Row, row_prev: Row):
 
 
 @is_circuit_code
-def check_account(row: Row, row_prev: Row, tables: Tables):
+def check_account(row: Row, row_prev: Row, row_next: Row, tables: Tables):
     get_addr = lambda row: row.address()
     get_field_tag = lambda row: row.field_tag()
-    get_committed_value = lambda row: row.auxs[0]
 
     # 6.0. Unused keys are 0
     assert row.id() == 0
     assert row.storage_key() == 0
 
-    # 6.1. When keys don't change, committed_value must be kept equal
-    if all_keys_eq(row, row_prev):
-        assert get_committed_value(row) == get_committed_value(row_prev)
-
-    # TODO: The current spec does an MPT lookup for every storage update.  The
-    # next optimization consists on doing a single lookup merging all updates
-    # for a given key, using the first and last access values.
-
     # 6.2. MPT storage lookup with incremental counter
-    #
-    # When the keys are equal in the previous row, the value_prev must be the
-    # value in previous row.  When the keys change, value_prev is loaded from
-    # committed_value, which holds the account value before the block began.
-    value_prev = row_prev.value if all_keys_eq(row, row_prev) else get_committed_value(row)
-    tables.mpt_account_lookup(
-        row.mpt_counter, get_field_tag(row), get_addr(row), row.value, value_prev
-    )
+    if not all_keys_eq(row, row_next):
+        tables.mpt_lookup(
+            get_addr(row),
+            get_field_tag(row),
+            row.storage_key(),
+            row.value,
+            row.committed_value,
+            row.root,
+            row_prev.root,
+        )
 
     # NOTE: Value transition rules are constrained via the EVM circuit: for example,
     # Nonce only increases by 1 or decreases by 1 (on revert).
@@ -412,7 +378,7 @@ def check_tx_receipt(row: Row, row_prev: Row):
 
 
 @is_circuit_code
-def check_state_row(row: Row, row_prev: Row, tables: Tables, randomness: FQ):
+def check_state_row(row: Row, row_prev: Row, row_next: Row, tables: Tables, randomness: FQ):
     #
     # Constraints that affect all rows, no matter which Tag they use
     #
@@ -495,15 +461,8 @@ def check_state_row(row: Row, row_prev: Row, tables: Tables, randomness: FQ):
     if row.is_write == 0 and all_keys_eq(row, row_prev):
         assert row.value == row_prev.value
 
-    # 7. Increment mpt_counter
-    #
-    # When row is Storage or Account, increment the mpt_counter by
-    # one, otherwise maintain the same value
-    if row.tag() != Tag.Start:
-        if row.tag() == Tag.Storage or row.tag() == Tag.Account:
-            assert row.mpt_counter == row_prev.mpt_counter + 1
-        else:
-            assert row.mpt_counter == row_prev.mpt_counter
+    if all_keys_eq(row, row_prev):
+        assert row.committed_value == row_prev.committed_value
 
     # 8. RWC !=0 except for Tag.Start
     if row.tag() != Tag.Start:
@@ -519,11 +478,11 @@ def check_state_row(row: Row, row_prev: Row, tables: Tables, randomness: FQ):
     elif row.tag() == Tag.Stack:
         check_stack(row, row_prev)
     elif row.tag() == Tag.Storage:
-        check_storage(row, row_prev, tables)
+        check_storage(row, row_prev, row_next, tables)
     elif row.tag() == Tag.CallContext:
         check_call_context(row, row_prev)
     elif row.tag() == Tag.Account:
-        check_account(row, row_prev, tables)
+        check_account(row, row_prev, row_next, tables)
     elif row.tag() == Tag.TxRefund:
         check_tx_refund(row, row_prev)
     elif row.tag() == Tag.TxAccessListAccountStorage:
@@ -554,7 +513,7 @@ class Operation(NamedTuple):
     field_tag: U256
     storage_key: U256
     value: FQ
-    aux0: FQ
+    committed_value: FQ
 
 
 class StartOp(Operation):
@@ -748,12 +707,12 @@ class TxReceiptOp(Operation):
 
 
 class Assigner:
-    mpt_counter: FQ
-
     def __init__(self):
-        self.mpt_counter = FQ(0)
+        pass
 
-    def op2row(self, op: Operation, randomness: FQ) -> Row:
+    def op2row(
+        self, op: Operation, randomness: FQ, mpt_updates: Dict[Tuple[FQ, FQ, FQ], MPTTableRow]
+    ) -> Row:
         rw_counter = FQ(op.rw_counter)
         is_write = FQ(0) if op.rw == RW.Read else FQ(1)
         tag = FQ(op.tag)
@@ -767,84 +726,64 @@ class Assigner:
         storage_key_rlc = RLC(op.storage_key, randomness)
         storage_key = storage_key_rlc.expr()
         storage_key_bytes = tuple([FQ(x) for x in storage_key_rlc.le_bytes])
+
+        keys = (tag, id, address, field_tag, storage_key)
+
         value = FQ(op.value)
-        aux0 = FQ(op.aux0)
+        committed_value = FQ(op.committed_value)
+        root = FQ(3)
 
-        if tag == FQ(Tag.Storage) or tag == FQ(Tag.Account):
-            self.mpt_counter += 1
+        return Row(
+            rw_counter,
+            is_write,
+            keys,
+            address_limbs,
+            storage_key_bytes,
+            value,
+            committed_value,
+            root,
+        )
 
-        # fmt: off
-        return Row(rw_counter, is_write,
-                # keys
-                (tag, id, address, field_tag, storage_key), address_limbs, storage_key_bytes, # type: ignore
-                value, (aux0,), # values
-                self.mpt_counter)
-        # fmt: on
-
-
-# def rw_table_tag2tag(tag: RWTableTag) -> FQ:
-#     ret = None
-#     if tag == RWTableTag.Memory:
-#         ret = Tag.Memory
-#     elif tag == RWTableTag.Stack:
-#         ret = Tag.Stack
-#     elif tag == RWTableTag.Storage:
-#         ret = Tag.Storage
-#     elif tag == RWTableTag.CallContext:
-#         ret = Tag.CallContext
-#     elif tag == RWTableTag.Account:
-#         ret = Tag.Account
-#     elif tag == RWTableTag.TxRefund:
-#         ret = Tag.TxRefund
-#     elif tag == RWTableTag.TxAccessListAccount:
-#         ret = Tag.TxAccessListAccount
-#     elif tag == RWTableTag.TxAccessListAccountStorage:
-#         ret = Tag.TxAccessListAccountStorage
-#     elif tag == RWTableTag.AccountDestructed:
-#         ret = Tag.AccountDestructed
-#     else:
-#         raise ValueError("Unreacheable")
-#
-#     return FQ(ret)
 
 # Generate the advice Rows from a list of Operations
 def assign_state_circuit(ops: List[Operation], randomness: FQ) -> List[Row]:
+    mpt_updates = _mock_mpt_updates(ops, randomness)
+
     assigner = Assigner()
-    rows = [assigner.op2row(op, randomness) for op in ops]
+    rows = [assigner.op2row(op, randomness, mpt_updates) for op in ops]
     return rows
 
 
-def mpt_table_from_ops(
-    ops_or_rows: Union[List[Operation], List[Row]], randomness: FQ
-) -> Set[MPTTableRow]:
-    if isinstance(ops_or_rows[0], Operation):
-        rows = assign_state_circuit(cast(List[Operation], ops_or_rows), randomness)
-    else:
-        rows = cast(List[Row], ops_or_rows)
+def mpt_table_from_ops(ops: List[Operation], randomness: FQ) -> Set[MPTTableRow]:
+    x = set(_mock_mpt_updates(ops, randomness).values())
+    print(x)
+    return x
 
-    mpt_rows = []
-    for (idx, row) in enumerate(rows):
-        value_prev = row.auxs[0]
-        if idx > 0:
-            row_prev = rows[idx - 1]
-            if all_keys_eq(row, row_prev):
-                value_prev = row_prev.value
 
-        if row.keys[0] == FQ(Tag.Storage):
-            mpt_rows.append(
-                MPTTableRow(
-                    row.mpt_counter,
-                    FQ(MPTTableTag.Storage),
-                    row.keys[2],
-                    row.keys[4],
-                    row.value,
-                    value_prev,
-                )
-            )
-        elif row.keys[0] == FQ(Tag.Account):
-            mpt_rows.append(
-                MPTTableRow(
-                    row.mpt_counter, row.keys[3], row.keys[2], row.keys[4], row.value, value_prev
-                )
-            )
-    return set(mpt_rows)
+def _mock_mpt_updates(ops: List[Operation], randomness: FQ) -> Dict[Tuple[FQ, FQ, FQ], MPTTableRow]:
+    # makes fake mpt updates for a list of rows. the state root starts at 5 and
+    # is incremented by 3 for each Account or Storage MPT update.
+    mpt_map = {}
+
+    root = 3
+    for op in ops:
+        if op.tag != Tag.Account and op.tag != Tag.Storage:
+            continue
+
+        mpt_key = (op.address, op.field_tag, op.storage_key)
+        if mpt_key in mpt_map:
+            continue
+
+        new_root = root
+        mpt_map[mpt_key] = MPTTableRow(
+            FQ(op.address),
+            FQ(op.field_tag),
+            RLC(op.storage_key, randomness).expr(),
+            FQ(new_root),
+            FQ(root),
+            op.value,
+            op.committed_value,
+        )
+        root = new_root
+
+    return mpt_map
