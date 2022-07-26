@@ -63,7 +63,7 @@ def log(instruction: Instruction):
             instruction.constrain_bool(FQ(diff))
 
     if instruction.is_zero(msize) == 0 and is_persistent == 1:
-        copy_rwc_inc = instruction.copy_lookup(
+        copy_rwc_inc, _ = instruction.copy_lookup(
             instruction.curr.call_id,
             CopyDataTypeTag.Memory,
             tx_id,
