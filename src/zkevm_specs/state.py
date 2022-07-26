@@ -737,8 +737,8 @@ class Assigner:
             rw_counter,
             is_write,
             keys,
-            address_limbs,
-            storage_key_bytes,
+            address_limbs,  # type: ignore
+            storage_key_bytes,  # type: ignore
             value,
             committed_value,
             root,
@@ -770,7 +770,7 @@ def _mock_mpt_updates(ops: List[Operation], randomness: FQ) -> Dict[Tuple[FQ, FQ
         if op.tag != Tag.Account and op.tag != Tag.Storage:
             continue
 
-        mpt_key = (op.address, op.field_tag, op.storage_key)
+        mpt_key = (FQ(op.address), FQ(op.field_tag), FQ(op.storage_key))
         if mpt_key in mpt_map:
             continue
 
