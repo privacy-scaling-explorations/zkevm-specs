@@ -674,19 +674,18 @@ class KeccakCircuit:
         self.rows = []
 
     def add(self, data: bytes, r: FQ) -> KeccakCircuit:
-        rows: List[KeccakTableRow] = []
-        hash_rlc = RLC(keccak256(data), r, n_bytes=32)
-        value_rlc = FQ.zero()
+        output = RLC(keccak256(data), r, n_bytes=32)
+        acc_input = FQ.zero()
         for i in range(len(data)):
-            value_rlc = value_rlc * r + data[i]
-            rows.append(
-                KeccakTableRow(
-                    idx=FQ(i),
-                    hash_rlc=hash_rlc.expr(),
-                    value_rlc=value_rlc,
-                )
+            acc_input = acc_input * r + data[i]
+        self.rows.append(
+            KeccakTableRow(
+                state_tag=FQ(2),  # Finalize
+                input_len=FQ(len(data)),
+                acc_input=acc_input,
+                output=output.expr(),
             )
-        self.rows.extend(rows)
+        )
         return self
 
 

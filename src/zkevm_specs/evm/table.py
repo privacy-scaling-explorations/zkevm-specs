@@ -425,9 +425,10 @@ class CopyTableRow(TableRow):
 
 @dataclass(frozen=True)
 class KeccakTableRow(TableRow):
-    idx: FQ
-    hash_rlc: FQ
-    value_rlc: FQ
+    state_tag: FQ
+    input_len: FQ
+    acc_input: FQ
+    output: FQ
 
 
 class Tables:
@@ -602,8 +603,9 @@ class Tables:
 
     def keccak_lookup(self, length: Expression, value_rlc: Expression):
         query = {
-            "idx": length - FQ(1),
-            "value_rlc": value_rlc,
+            "state_tag": FQ(2),  # Finalize
+            "input_len": length,
+            "acc_input": value_rlc,
         }
         return lookup(KeccakTableRow, self.keccak_table, query)
 

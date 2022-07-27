@@ -1040,4 +1040,4 @@ class Instruction:
         return copy_table_row.rwc_inc, copy_table_row.value_rlc
 
     def keccak_lookup(self, length: Expression, value_rlc: Expression) -> FQ:
-        return self.tables.keccak_lookup(length, value_rlc).hash_rlc
+        return self.tables.keccak_lookup(length, value_rlc).output
