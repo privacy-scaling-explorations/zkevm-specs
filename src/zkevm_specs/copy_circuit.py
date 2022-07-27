@@ -50,9 +50,14 @@ def verify_row(cs: ConstraintSystem, rows: Sequence[CopyCircuitRow]):
         # not last row
         cs.constrain_equal(rows[0].rw_counter + rw_diff, rows[1].rw_counter)
         cs.constrain_equal(rows[0].rwc_inc_left - rw_diff, rows[1].rwc_inc_left)
+        # rlc_acc is the same over all rows
+        cs.constrain_equal(rows[0].rlc_acc, rows[1].rlc_acc)
     with cs.condition(rows[0].is_last) as cs:
         # rwc_inc_left == rw_diff for last row in the copy slot
         cs.constrain_equal(rows[0].rwc_inc_left, rw_diff)
+        # for RlcAcc type, value == rlc_acc at the last row
+        with cs.condition(rows[0].is_rlc_acc) as cs:
+            cs.constrain_equal(rows[0].rlc_acc, rows[0].value)
 
 
 def verify_step(cs: ConstraintSystem, rows: Sequence[CopyCircuitRow], r: FQ):

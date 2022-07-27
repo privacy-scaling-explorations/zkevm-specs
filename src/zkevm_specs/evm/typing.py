@@ -695,7 +695,7 @@ class CopyCircuit:
 
     def __init__(self) -> None:
         self.rows = []
-        self.pad_rows = [CopyCircuitRow(FQ(1), *[FQ(0)] * 17), CopyCircuitRow(*[FQ(0)] * 18)]
+        self.pad_rows = [CopyCircuitRow(FQ(1), *[FQ(0)] * 18), CopyCircuitRow(*[FQ(0)] * 19)]
 
     def table(self) -> Sequence[CopyCircuitRow]:
         return self.rows + self.pad_rows
@@ -716,7 +716,7 @@ class CopyCircuit:
         log_id: int = 0,
     ):
         new_rows: List[CopyCircuitRow] = []
-        rlc_acc = FQ(0)
+        rlc_acc = FQ.zero()
         for i in range(int(copy_length)):
             if int(src_addr + i) < int(src_addr_end):
                 is_pad = False
@@ -746,6 +746,7 @@ class CopyCircuit:
                 src_type,
                 src_addr + i,
                 value,
+                FQ.zero(),  # rlc_acc will be updated later
                 is_code,
                 is_pad,
                 src_addr_end=src_addr_end,
@@ -765,6 +766,7 @@ class CopyCircuit:
                 dst_type,
                 dst_addr + i,
                 rlc_acc if dst_type == CopyDataTypeTag.RlcAcc else value,
+                FQ.zero(),
                 is_code,
                 False,
                 log_id=log_id,
@@ -774,6 +776,8 @@ class CopyCircuit:
         rw_counter = rw_dict.rw_counter
         for row in new_rows:
             row.rwc_inc_left = rw_counter - row.rw_counter
+            if dst_type == CopyDataTypeTag.RlcAcc:
+                row.rlc_acc = rlc_acc
         self.rows.extend(new_rows)
         return self
 
@@ -788,6 +792,7 @@ class CopyCircuit:
         tag: CopyDataTypeTag,
         addr: IntOrFQ,
         value: IntOrFQ,
+        rlc_acc: IntOrFQ,
         is_code: IntOrFQ,
         is_pad: bool,
         src_addr_end: IntOrFQ = FQ(0),
@@ -820,6 +825,7 @@ class CopyCircuit:
                 src_addr_end=FQ(src_addr_end),
                 bytes_left=FQ(bytes_left),
                 value=FQ(value),
+                rlc_acc=FQ(rlc_acc),
                 is_code=FQ(is_code),
                 is_pad=FQ(is_pad),
                 rw_counter=FQ(rw_counter),

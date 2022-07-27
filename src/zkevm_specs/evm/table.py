@@ -397,6 +397,7 @@ class CopyCircuitRow(TableRow):
     src_addr_end: FQ
     bytes_left: FQ
     value: FQ
+    rlc_acc: FQ
     is_code: FQ
     is_pad: FQ
     rw_counter: FQ
@@ -474,10 +475,6 @@ class Tables:
                 assert i + 1 < len(copy_circuit), "Not enough rows in copy circuit"
                 next_row = copy_circuit[i + 1]
                 assert next_row.q_step == 0, "Invalid copy circuit"
-
-            # update `value_rlc` when we encounter the copy event's last row.
-            if row.is_last == 1:
-                value_rlc = row.value
                 rows.append(
                     CopyTableRow(
                         src_id=first_row.id,
@@ -488,12 +485,11 @@ class Tables:
                         src_addr_end=first_row.src_addr_end,
                         dst_addr=next_row.addr,
                         length=first_row.bytes_left,
-                        value_rlc=value_rlc,
+                        value_rlc=row.rlc_acc,
                         rw_counter=first_row.rw_counter,
                         rwc_inc=first_row.rwc_inc_left,
                     )
                 )
-
         return set(rows)
 
     def fixed_lookup(
