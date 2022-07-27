@@ -85,7 +85,7 @@ def verify_step(cs: ConstraintSystem, rows: Sequence[CopyCircuitRow], r: FQ):
 
     with cs.condition(1 - rows[0].q_step):
         with cs.condition(1 - rows[0].is_last):
-            # next_write_value == write_value + next_read_value if rlc accumulator
+            # next_write_value == (write_value * r) + next_read_value if rlc accumulator
             with cs.condition(rows[0].is_rlc_acc):
                 cs.constrain_equal(rows[2].value, rows[0].value * r + rows[1].value)
 
