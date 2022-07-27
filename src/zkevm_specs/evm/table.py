@@ -165,6 +165,8 @@ class RWTableTag(IntEnum):
     will be verified to be consistent between each write.
     """
 
+    Start = auto()  # Used for upper rows padding
+
     TxAccessListAccount = auto()
     TxAccessListAccountStorage = auto()
     TxRefund = auto()
@@ -360,7 +362,6 @@ class BytecodeTableRow(TableRow):
     index: Expression
     is_code: Expression
     value: Expression
-
 
 @dataclass(frozen=True)
 class RWTableRow(TableRow):
