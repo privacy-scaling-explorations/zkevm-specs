@@ -752,7 +752,7 @@ def assign_state_circuit(ops: List[Operation], randomness: FQ) -> List[Row]:
     prev_op = None
     prev_key = None
 
-    rows: List[Row] = []
+    roots: List[FQ] = []
     for op in ops:
         key = _mpt_key(op)
 
@@ -764,7 +764,7 @@ def assign_state_circuit(ops: List[Operation], randomness: FQ) -> List[Row]:
             prev_key = key
 
         if prev_op is not None:
-            rows.append(op2row(prev_op, randomness, root))
+            roots.append(root)
         prev_op = op
 
     if prev_op is not None:
@@ -772,8 +772,9 @@ def assign_state_circuit(ops: List[Operation], randomness: FQ) -> List[Row]:
             update = mpt_updates[prev_key]
             assert update.root_prev.expr() == root
             root = update.root.expr()
-        rows.append(op2row(prev_op, randomness, root))
-    return rows
+        roots.append(root)
+
+    return [op2row(op, randomness, root) for op, root in zip(ops, roots)]
 
 
 def mpt_table_from_ops(ops: List[Operation], randomness: FQ) -> Set[MPTTableRow]:
