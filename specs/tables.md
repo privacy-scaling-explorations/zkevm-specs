@@ -59,7 +59,7 @@ Details:
 
 NOTE: `kN` means `keyN`
 
-| 0 *Rwc*  | 1 *IsWrite* | 2 *Tag* (k0)               | 3 *Id* (k1) | 4 *Address* (k2)   | 5 *FieldTag* (k3)          | 6 *StorageKey* (k4) | 7 *Value0* | 8 *Value1* | 9 *Aux0*        |
+| 0 *Rwc*  | 1 *IsWrite* | 2 *Tag* (k0)               | 3 *Id* (k1) | 4 *Address* (k2)   | 5 *FieldTag* (k3)          | 6 *StorageKey* (k4) | 7 *Value0* | 8 *Value1* | 9 *CommittedValue*        |
 | -------- | ----------- | -------------------------- | --------    | --------           | -------------------------- | -----------         | ---------  | ---------- | --------------- |
 |          |             | *RwTableTag*               |             |                    |                            |                     |            |            |                 |
 | $counter | true        | TxAccessListAccount        | $txID       | $address           |                            |                     | $value     | $valuePrev | 0               |
@@ -194,83 +194,22 @@ Provided by the MPT (Merkle Patricia Trie) circuit.
 The current MPT circuit design exposes one big table where different targets require different lookups as described below.
 From this table, the following columns contain values using the RLC encoding:
 - Address
+- FieldTag
 - Key
 - ValuePrev
-- ValueCur
+- Value
+- RootPrev
+- Root
 
-### Nonce update
+There are four types of MPT updates which the circuit proves are correct: account nonce,
+balance, or code hash updates, or account storage updates.
 
-| Enable | Counter  | Address | ValuePrev  | ValueCur  |
-| ------ | -------- | ------- | ---------- | --------- |
-| 1      | $counter | $addr   | $noncePrev | $nonceCur |
-
-Column names in circuit:
-- Enable: `is_nonce_mod`
-- Counter: `counter`
-- Address: `address_rlc`
-- ValuePrev: `sel1`
-- ValueCur: `s_mod_node_hash_rlc`
-
-### Balance update
-
-| Enable | Counter  | Address | ValuePrev    | ValueCur    |
-| ------ | -------- | ------- | ------------ | ----------- |
-| 1      | $counter | $addr   | $balancePrev | $balanceCur |
-
-Column names in circuit:
-- Enable: `is_balance_mod`
-- Counter: `counter`
-- Address: `address_rlc`
-- ValuePrev: `sel2`
-- ValueCur: `c_mod_node_hash_rlc`
-
-### CodeHash update
-
-| Enable | Counter  | Address | ValuePrev     | ValueCur     |
-| ------ | -------- | ------- | ------------- | ------------ |
-| 1      | $counter | $addr   | $codeHashPrev | $codeHashCur |
-
-Column names in circuit:
-- Enable: `is_codehash_mod`
-- Counter: `counter`
-- Address: `address_rlc`
-- ValuePrev: `sel2`
-- ValueCur: `c_mod_node_hash_rlc`
-
-### Storage update
-
-| Enable | Counter  | Address | Key  | ValuePrev  | ValueCur  |
-| ------ | -------- | ------- | ---- | ---------- | --------- |
-| 1      | $counter | $addr   | $key | $valuePrev | $valueCur |
-
-Column names in circuit:
-- Enable: `is_storage_mod`
-- Counter: `counter`
-- Address: `address_rlc`
-- Key: `key_rlc_mult`
-- ValuePrev: `mult_diff`
-- ValueCur: `acc_c`
-
-### Unified table proposal
-
-We can compress the 4 tables into one at the expense of adding new columns in the MPT circuit.  We still need to analyze the tradeoff of adding columns to the circuit VS merging all the lookups into one.
-
-A unified MPT table would look like this:
-
-| Target   | Counter  | Address | Key  | ValuePrev     | ValueCur     |
-| -------- | -------- | ------- | ---- | ------------- | ------------ |
-| Nonce    | $counter | $addr   | 0    | $noncePrev    | $nonceCur    |
-| Balance  | $counter | $addr   | 0    | $balancePrev  | $balanceCur  |
-| CodeHash | $counter | $addr   | 0    | $codeHashPrev | $codeHashCur |
-| Storage  | $counter | $addr   | $key | $valuePrev    | $valueCur    |
-
-Columns expressions in circuit:
-- Target: `1 * is_nonce_mod + 2 * is_balance_mod + 4 * is_codehash_mod + 8 * is_storage_mod`
-- Counter: `counter`
-- Address: `address_rlc`
-- Key: `key_rlc_mult`
-- ValuePrev: `is_nonce_mod * sel1 + is_balance_mod * sel2 + is_codehash_mod * sel2 + is_storage_mod * mult_diff`
-- ValueCur: `is_nonce_mod * s_mod_node_hash_rlc + is_balance_mod * c_mod_node_hash_rlc + is_codehash_mod * c_mod_node_hash_rlc + is_storage_mod * acc_c`
+| Address | FieldTag | Key | ValuePrev | Value | RootPrev | Root |
+| - | - | - | - | - | - | - |
+| $addr | Nonce | $noncePrev | $nonceCur | $rootPrev | $root |
+| $addr | Balance | $balancePrev | $balanceCur | $rootPrev | $root |
+| $addr | CodeHash | $codeHashPrev | $codeHash | $rootPrev | $root |
+| $addr | $key | $valuePrev | $value | $rootPrev | $root |
 
 ## `copy_table`
 
