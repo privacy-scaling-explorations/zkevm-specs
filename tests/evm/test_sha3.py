@@ -36,9 +36,6 @@ TESTING_DATA = ((0x20, 0x40),)
 def test_sha3(offset: U64, length: U64):
     randomness = rand_fq()
 
-    offset_rlc = RLC(offset, randomness)
-    length_rlc = RLC(length, randomness)
-
     # divide rand memory into chunks of 32 which we will push and mstore.
     memory_snapshot = rand_bytes(offset + length)
     memory_chunks = list()
@@ -54,7 +51,7 @@ def test_sha3(offset: U64, length: U64):
     bytecode = Bytecode()
     for i, chunk in enumerate(memory_chunks):
         bytecode.push(32 * i, n_bytes=32).push(chunk, n_bytes=32).mstore()
-    bytecode.push(offset_rlc, n_bytes=32).push(length_rlc, n_bytes=32).sha3().stop()
+    bytecode.push(offset, n_bytes=32).push(length, n_bytes=32).sha3().stop()
     bytecode_hash = RLC(bytecode.hash(), randomness)
 
     pc = len(memory_chunks) * 67 + 66
@@ -68,6 +65,9 @@ def test_sha3(offset: U64, length: U64):
         + memory_expansion_cost
         + memory_word_size(length) * GAS_COST_COPY_SHA3
     )
+
+    offset_rlc = RLC(offset, randomness)
+    length_rlc = RLC(length, randomness)
 
     rw_dictionary = (
         RWDictionary(1)
