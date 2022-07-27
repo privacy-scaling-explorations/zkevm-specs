@@ -745,36 +745,33 @@ def op2row(
 # Generate the advice Rows from a list of Operations
 def assign_state_circuit(ops: List[Operation], randomness: FQ) -> List[Row]:
     mpt_updates = _mock_mpt_updates(ops, randomness)
-    for update in mpt_updates.values():
-        print(update)
-    root = FQ(3)  # Same initial state root as in _mock_mpt_updates.
 
-    prev_op = None
-    prev_key = None
+    # MPT keys for each Storage and Account row, and None otherwise.
+    mpt_keys = [_mpt_key(op) for op in ops]
+    # MPT updates for each Storage and Account row, and None otherwise.
+    updates = [None if key is None else mpt_updates.get(key) for key in mpt_keys]
+    # root_prev for each Storage and Account row, and None otherwise.
+    roots = [None if update is None else update.root_prev.expr() for update in updates]
 
-    roots: List[FQ] = []
-    for op in ops:
-        key = _mpt_key(op)
+    # With real mpt updates, the final root would be obtained from the public
+    # input. For _mock_mpt_updates, it's just 3 + 5 * number of MPT updates.
+    final_root = FQ(3 + 5 * len(mpt_updates))
+    roots.append(final_root)
 
-        if prev_key != key:
-            if prev_key is not None:
-                update = mpt_updates[prev_key]
-                assert update.root_prev.expr() == root
-                root = update.root.expr()
-            prev_key = key
+    # Fill in the None roots with the first non-None value that comes after it.
+    root: FQ = final_root
+    for i in reversed(range(len(roots))):
+        maybe_root = roots[i]
+        if maybe_root is None:
+            roots[i] = root
+        else:
+            root = maybe_root
 
-        if prev_op is not None:
-            roots.append(root)
-        prev_op = op
-
-    if prev_op is not None:
-        if prev_key in mpt_updates:
-            update = mpt_updates[prev_key]
-            assert update.root_prev.expr() == root
-            root = update.root.expr()
-        roots.append(root)
-
-    return [op2row(op, randomness, root) for op, root in zip(ops, roots)]
+    rows = []
+    for op, maybe_root in zip(ops, roots[1:]):
+        assert maybe_root is not None
+        rows.append(op2row(op, randomness, maybe_root))
+    return rows
 
 
 def mpt_table_from_ops(ops: List[Operation], randomness: FQ) -> Set[MPTTableRow]:
