@@ -419,7 +419,7 @@ class CopyTableRow(TableRow):
     src_addr_end: FQ
     dst_addr: FQ
     length: FQ
-    value_rlc: FQ
+    rlc_acc: FQ
     rw_counter: FQ
     rwc_inc: FQ
 
@@ -485,7 +485,7 @@ class Tables:
                         src_addr_end=first_row.src_addr_end,
                         dst_addr=next_row.addr,
                         length=first_row.bytes_left,
-                        value_rlc=row.rlc_acc,
+                        rlc_acc=row.rlc_acc,
                         rw_counter=first_row.rw_counter,
                         rwc_inc=first_row.rwc_inc_left,
                     )
