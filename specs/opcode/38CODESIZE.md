@@ -2,13 +2,11 @@
 
 ## Procedure
 
-The `CODESIZE` opcode gets the size of code running in current environment.
-
-## EVM behaviour
+### EVM behaviour
 
 The `CODESIZE` opcode pushes the size of code running in the current environment to the top of the stack.
 
-## Circuit behaviour
+### Circuit behaviour
 
 1. Lookup the code size from the bytecode table
 2. Do busmapping lookup for stack write operation
@@ -32,4 +30,4 @@ The `CODESIZE` opcode pushes the size of code running in the current environment
 
 ## Code
 
-Please refer [`codesize`](src/zkevm_specs/evm/execution/codesize.py).
+Please refer to `src/zkevm_specs/evm/execution/codesize.py`.
