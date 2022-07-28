@@ -73,8 +73,8 @@ def test_end_tx(
             .tx_refund_read(tx.id, refund)
             .account_write(tx.caller_address, AccountFieldTag.Balance, RLC(caller_balance, randomness), RLC(caller_balance_prev, randomness))
             .account_write(block.coinbase, AccountFieldTag.Balance, RLC(coinbase_balance, randomness), RLC(coinbase_balance_prev, randomness))
-            .tx_receipt_read(tx.id, TxReceiptFieldTag.PostStateOrStatus, 1)
-            .tx_receipt_read(tx.id, TxReceiptFieldTag.LogLength, 0)
+            .tx_receipt_write(tx.id, TxReceiptFieldTag.PostStateOrStatus, 1)
+            .tx_receipt_write(tx.id, TxReceiptFieldTag.LogLength, 0)
         # fmt: on
     )
 
@@ -82,12 +82,14 @@ def test_end_tx(
     is_first_tx = tx.id == 1
     if is_first_tx:
         assert current_cumulative_gas_used == 0
-        rw_dictionary.tx_receipt_read(tx.id, TxReceiptFieldTag.CumulativeGasUsed, tx.gas - gas_left)
+        rw_dictionary.tx_receipt_write(
+            tx.id, TxReceiptFieldTag.CumulativeGasUsed, tx.gas - gas_left
+        )
     else:
         rw_dictionary.tx_receipt_read(
             tx.id - 1, TxReceiptFieldTag.CumulativeGasUsed, current_cumulative_gas_used
         )
-        rw_dictionary.tx_receipt_read(
+        rw_dictionary.tx_receipt_write(
             tx.id,
             TxReceiptFieldTag.CumulativeGasUsed,
             tx.gas - gas_left + current_cumulative_gas_used,

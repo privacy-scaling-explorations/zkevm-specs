@@ -1,8 +1,7 @@
 from ...util import N_BYTES_MEMORY_ADDRESS, FQ
 from ..execution_state import ExecutionState
 from ..instruction import Instruction, Transition
-from ..step import CopyCodeToMemoryAuxData
-from ..table import RW, RWTableTag, CallContextFieldTag, AccountFieldTag
+from ..table import RW, RWTableTag, CallContextFieldTag, AccountFieldTag, CopyDataTypeTag
 
 
 def codecopy(instruction: Instruction):
@@ -25,21 +24,23 @@ def codecopy(instruction: Instruction):
     gas_cost = instruction.memory_copier_gas_cost(size, memory_expansion_gas_cost)
 
     if instruction.is_zero(size) == FQ(0):
-        assert instruction.next is not None
-        instruction.constrain_equal(
-            instruction.next.execution_state, ExecutionState.CopyCodeToMemory
+        copy_rwc_inc = instruction.copy_lookup(
+            instruction.curr.code_hash,
+            CopyDataTypeTag.Bytecode,
+            instruction.curr.call_id,
+            CopyDataTypeTag.Memory,
+            code_offset,
+            code_size,
+            memory_offset,
+            size,
+            instruction.curr.rw_counter + instruction.rw_counter_offset,
         )
-        next_aux = instruction.next.aux_data
-        assert isinstance(next_aux, CopyCodeToMemoryAuxData)
-        instruction.constrain_equal(next_aux.src_addr, code_offset)
-        instruction.constrain_equal(next_aux.dst_addr, memory_offset)
-        instruction.constrain_equal(next_aux.src_addr_end, code_size)
-        instruction.constrain_equal(next_aux.bytes_left, size)
-        instruction.constrain_equal(next_aux.code_hash, instruction.curr.code_hash)
+    else:
+        copy_rwc_inc = FQ(0)
 
     instruction.step_state_transition_in_same_context(
         opcode,
-        rw_counter=Transition.delta(instruction.rw_counter_offset),
+        rw_counter=Transition.delta(instruction.rw_counter_offset + copy_rwc_inc),
         program_counter=Transition.delta(1),
         stack_pointer=Transition.delta(3),
         memory_size=Transition.to(next_memory_size),

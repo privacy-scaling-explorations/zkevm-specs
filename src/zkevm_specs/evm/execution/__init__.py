@@ -3,11 +3,8 @@ from typing import Callable, Dict
 from ..execution_state import ExecutionState
 
 from .begin_tx import *
-from .copy_code_to_memory import *
 from .end_tx import *
 from .end_block import *
-from .memory_copy import *
-from .copy_to_log import *
 
 # Opcode's successful cases
 from .add_sub import *
@@ -35,15 +32,17 @@ from .storage import *
 from .selfbalance import *
 from .extcodehash import *
 from .log import *
-from .shl_shr import *
+from .bitwise import not_opcode
+from .sdiv_smod import sdiv_smod
+from .shl_shr import shl_shr
+from .stop import stop
+from .return_ import *
 
 
 EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.BeginTx: begin_tx,
     ExecutionState.EndTx: end_tx,
     ExecutionState.EndBlock: end_block,
-    ExecutionState.CopyCodeToMemory: copy_code_to_memory,
-    ExecutionState.CopyToMemory: copy_to_memory,
     ExecutionState.ADD: add_sub,
     ExecutionState.ADDMOD: addmod,
     ExecutionState.MUL: mul_div_mod,
@@ -66,9 +65,11 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.SELFBALANCE: selfbalance,
     ExecutionState.GASPRICE: gasprice,
     ExecutionState.EXTCODEHASH: extcodehash,
-    ExecutionState.CopyToLog: copy_to_log,
     ExecutionState.LOG: log,
     ExecutionState.CALL: call,
     ExecutionState.ISZERO: iszero,
+    ExecutionState.SDIV_SMOD: sdiv_smod,
     ExecutionState.SHL_SHR: shl_shr,
+    ExecutionState.STOP: stop,
+    ExecutionState.RETURN: return_,
 }

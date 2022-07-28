@@ -6,7 +6,6 @@ from zkevm_specs.evm import (
     AccountFieldTag,
     Bytecode,
     CallContextFieldTag,
-    CopyCodeToMemoryAuxData,
     ExecutionState,
     Opcode,
     RW,
@@ -15,7 +14,10 @@ from zkevm_specs.evm import (
     StepState,
     Tables,
     verify_steps,
+    CopyCircuit,
+    CopyDataTypeTag,
 )
+from zkevm_specs.copy_circuit import verify_copy_table
 from zkevm_specs.util import (
     GAS_COST_COPY,
     FQ,
@@ -56,84 +58,6 @@ def memory_copier_gas_cost(
     curr_memory_cost = memory_gas_cost(curr_memory_word_size)
     next_memory_cost = memory_gas_cost(next_memory_word_size)
     return to_word_size(length) * GAS_COST_COPY + next_memory_cost - curr_memory_cost
-
-
-def make_copy_code_step(
-    code: Bytecode,
-    code_hash: RLC,
-    buffer_map: Mapping[int, int],
-    src_addr: int,
-    dst_addr: int,
-    src_addr_end: int,
-    bytes_left: int,
-    rw_dictionary: RWDictionary,
-    program_counter: int,
-    stack_pointer: int,
-    memory_size: int,
-    randomness: FQ,
-) -> StepState:
-    aux_data = CopyCodeToMemoryAuxData(
-        src_addr=src_addr,
-        dst_addr=dst_addr,
-        src_addr_end=src_addr_end,
-        bytes_left=bytes_left,
-        code_hash=RLC(code.hash(), randomness),
-    )
-    step = StepState(
-        execution_state=ExecutionState.CopyCodeToMemory,
-        rw_counter=rw_dictionary.rw_counter,
-        call_id=CALL_ID,
-        is_root=True,
-        program_counter=program_counter,
-        stack_pointer=stack_pointer,
-        gas_left=0,
-        memory_size=memory_size,
-        code_hash=code_hash,
-        aux_data=aux_data,
-    )
-
-    num_bytes = min(MAX_N_BYTES_COPY_CODE_TO_MEMORY, bytes_left)
-    for i in range(num_bytes):
-        byte = buffer_map[src_addr + i] if src_addr + i < src_addr_end else 0
-        rw_dictionary.memory_write(CALL_ID, dst_addr + i, byte)
-    return step
-
-
-def make_copy_code_steps(
-    code: Bytecode,
-    code_hash: RLC,
-    src_addr: int,
-    dst_addr: int,
-    length: int,
-    rw_dictionary: RWDictionary,
-    program_counter: int,
-    stack_pointer: int,
-    memory_size: int,
-    randomness: FQ,
-) -> Sequence[StepState]:
-    buffer_map = dict(zip(range(src_addr, len(code.code)), code.code))
-    steps = []
-    bytes_left = length
-    while bytes_left > 0:
-        new_step = make_copy_code_step(
-            code,
-            code_hash,
-            buffer_map,
-            src_addr,
-            dst_addr,
-            len(code.code),
-            bytes_left,
-            rw_dictionary,
-            program_counter,
-            stack_pointer,
-            memory_size,
-            randomness,
-        )
-        steps.append(new_step)
-        src_addr += MAX_N_BYTES_COPY_CODE_TO_MEMORY
-        dst_addr += MAX_N_BYTES_COPY_CODE_TO_MEMORY
-        bytes_left -= MAX_N_BYTES_COPY_CODE_TO_MEMORY
-    return steps
 
 
 @pytest.mark.parametrize("src_addr, dst_addr, length", TESTING_DATA)
@@ -210,19 +134,19 @@ def test_codecopy(src_addr: U64, dst_addr: U64, length: U64):
         ),
     ]
 
-    steps_internal = make_copy_code_steps(
-        code,
-        code_hash,
+    src_data = dict([(i, (code.code[i], code.is_code[i])) for i in range(len(code.code))])
+    copy_circuit = CopyCircuit().copy(
+        rw_dictionary,
+        code_hash.rlc_value,
+        CopyDataTypeTag.Bytecode,
+        CALL_ID,
+        CopyDataTypeTag.Memory,
         src_addr,
+        len(code.code),
         dst_addr,
         length,
-        rw_dictionary=rw_dictionary,
-        program_counter=100,
-        stack_pointer=1024,
-        memory_size=next_memory_word_size,
-        randomness=randomness,
+        src_data,
     )
-    steps.extend(steps_internal)
 
     # rw counter post memory writes
     rw_counter_final = rw_dictionary.rw_counter
@@ -247,74 +171,10 @@ def test_codecopy(src_addr: U64, dst_addr: U64, length: U64):
         tx_table=set(),
         bytecode_table=set(code.table_assignments(randomness)),
         rw_table=set(rw_dictionary.rws),
+        copy_circuit=copy_circuit.rows,
     )
 
-    verify_steps(
-        randomness=randomness,
-        tables=tables,
-        steps=steps,
-    )
-
-
-@pytest.mark.parametrize("src_addr, dst_addr, length", TESTING_DATA)
-def test_copy_code_to_memory(src_addr: U64, dst_addr: U64, length: U64):
-    randomness = rand_fq()
-
-    code = (
-        Bytecode()
-        .push32(0x123)
-        .pop()
-        .push32(0x213)
-        .pop()
-        .push32(0x321)
-        .pop()
-        .push32(0x12349AB)
-        .pop()
-        .push32(0x1928835)
-        .pop()
-    )
-
-    dummy_code = Bytecode().stop()
-    code_hash = RLC(dummy_code.hash(), randomness)
-
-    rw_dictionary = RWDictionary(1)
-
-    next_memory_word_size = to_word_size(dst_addr + length)
-    steps = make_copy_code_steps(
-        code,
-        code_hash,
-        src_addr,
-        dst_addr,
-        length,
-        rw_dictionary=rw_dictionary,
-        program_counter=0,
-        memory_size=next_memory_word_size,
-        stack_pointer=1024,
-        randomness=randomness,
-    )
-    steps.append(
-        StepState(
-            execution_state=ExecutionState.STOP,
-            rw_counter=rw_dictionary.rw_counter,
-            call_id=CALL_ID,
-            is_root=True,
-            is_create=False,
-            code_hash=code_hash,
-            program_counter=0,
-            stack_pointer=1024,
-            memory_size=next_memory_word_size,
-            gas_left=0,
-        )
-    )
-
-    tables = Tables(
-        block_table=set(),
-        tx_table=set(),
-        bytecode_table=set(code.table_assignments(randomness)).union(
-            dummy_code.table_assignments(randomness)
-        ),
-        rw_table=set(rw_dictionary.rws),
-    )
+    verify_copy_table(copy_circuit, tables)
 
     verify_steps(
         randomness=randomness,
