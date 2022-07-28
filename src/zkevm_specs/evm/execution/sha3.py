@@ -1,6 +1,6 @@
 from ..instruction import Instruction, Transition
 from ..table import CopyDataTypeTag
-from zkevm_specs.util import FQ, GAS_COST_COPY_SHA3, RLC
+from zkevm_specs.util import FQ, GAS_COST_COPY_SHA3
 
 
 def sha3(instruction: Instruction):
