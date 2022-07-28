@@ -70,15 +70,7 @@ class FixedTableTag(IntEnum):
                 )
             ]
         elif self == FixedTableTag.Pow2:
-            return [
-                FixedTableRow(
-                    FQ(self),
-                    FQ(value),
-                    FQ(1 << value) if value < 128 else FQ(0),
-                    FQ(0) if value < 128 else FQ(1 << (value - 128)),
-                )
-                for value in range(256)
-            ]
+            return [FixedTableRow(FQ(self), FQ(value), FQ(1 << value)) for value in range(65)]
         else:
             raise ValueError("Unreacheable")
 
@@ -117,8 +109,8 @@ class BlockContextFieldTag(IntEnum):
     Timestamp = auto()
     Difficulty = auto()
     BaseFee = auto()
-    ChainId = auto()
     HistoryHash = auto()
+    ChainId = auto()
 
 
 class TxContextFieldTag(IntEnum):

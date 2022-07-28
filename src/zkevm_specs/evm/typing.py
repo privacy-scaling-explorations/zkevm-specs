@@ -374,9 +374,9 @@ class RWDictionary:
     def tx_log_write(
         self,
         tx_id: IntOrFQ,
-        log_id: int,
+        log_id: IntOrFQ,
         field_tag: TxLogFieldTag,
-        index: int,
+        index: IntOrFQ,
         value: Union[int, FQ, RLC],
     ) -> RWDictionary:
         if isinstance(value, int):
@@ -385,9 +385,9 @@ class RWDictionary:
             RW.Write,
             RWTableTag.TxLog,
             key1=FQ(tx_id),
-            key2=FQ(index + int(field_tag) << 32 + log_id << 48),
-            key3=FQ(0),
-            key4=FQ(0),
+            key2=FQ(log_id),
+            key3=FQ(field_tag),
+            key4=FQ(index),
             value=value,
         )
 

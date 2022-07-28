@@ -31,31 +31,24 @@ def addmod(instruction: Instruction):
 
     # witness
     if n.int_value == 0:
-        a_reduced = a.int_value
-        k = 0
         d = 0
-        r = RLC((a_reduced + b.int_value) % (2**256))
+        r = RLC((a.int_value + b.int_value) % (2**256))
     else:
-        a_reduced = a.int_value % n.int_value
-        k = a.int_value // n.int_value
-        d = (a_reduced + b.int_value) // n.int_value
+        d = ((a.int_value + b.int_value) // n.int_value) % (2**256)
         r = pushed_r
 
-    # check a == a_reduced + k * n
-    overflow = instruction.mul_add_words(RLC(k), n, RLC(a_reduced), a)
-    instruction.constrain_zero(overflow)
-
-    # check a_reduced + b ≡ d * n + r  in 512 bit space
-    a_reduced_plus_b, overflow = instruction.add_words([RLC(a_reduced), b])
-    instruction.mul_add_words_512(
-        RLC(d), n, r, RLC(overflow.n) if n.int_value > 0 else RLC(0), a_reduced_plus_b
+    assert (a.int_value + b.int_value) % (2**256) == ((d * n.int_value) + r.int_value) % (
+        2**256
     )
 
-    # check that r<n and a_reduced<n iff n!=0
+    # check a + b ≡ d * n + r  (mod 256)
+    a_plus_b, _ = instruction.add_words([a, b])
+    instruction.mul_add_words(RLC(d), n, r, a_plus_b)
+
+    # check that r<n iff n!=0
     n_is_zero = instruction.is_zero(n)
     r_lt_n = lt_u256(instruction, r, n)
-    a_reduced_lt_n = lt_u256(instruction, RLC(a_reduced), n)
-    instruction.constrain_zero(FQ(2) - (a_reduced_lt_n + r_lt_n + 2 * n_is_zero))
+    instruction.constrain_zero(FQ(1) - (r_lt_n + n_is_zero))
 
     assert pushed_r.int_value == r.int_value * (1 - n_is_zero)
 

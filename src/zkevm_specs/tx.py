@@ -47,8 +47,8 @@ class Row:
 
 # TODO: Review if the keccak table layout used here matches the final keccak
 # lookup table layout in the spec.
-# - Keccak input spec PR https://github.com/privacy-scaling-explorations/zkevm-specs/pull/147
-# - Tracking issue https://github.com/privacy-scaling-explorations/zkevm-specs/issues/158
+# - Keccak input spec PR https://github.com/appliedzkp/zkevm-specs/pull/147
+# - Tracking issue https://github.com/appliedzkp/zkevm-specs/issues/158
 class KeccakTable:
     # The columns are: (is_enabled, input_rlc, input_len, output_rlc)
     table: Set[Tuple[FQ, FQ, FQ, FQ]]
@@ -78,7 +78,7 @@ class KeccakTable:
 class WrongFieldInteger:
     """
     Wrong Field arithmetic Integer, representing the implementation at
-    https://github.com/privacy-scaling-explorations/halo2wrong/blob/master/integer/src/integer.rs
+    https://github.com/appliedzkp/halo2wrong/blob/master/integer/src/integer.rs
     """
 
     limbs: Tuple[FQ, FQ, FQ, FQ]  # Little-Endian limbs of [72, 72, 72, 40] bits
@@ -121,7 +121,7 @@ class ECDSAVerifyChip:
     """
     ECDSA Signature Verification Chip.  This represents an ECDSA signature
     verification Chip as implemented in
-    https://github.com/privacy-scaling-explorations/halo2wrong/blob/master/ecdsa/src/ecdsa.rs
+    https://github.com/appliedzkp/halo2wrong/blob/master/ecdsa/src/ecdsa.rs
     """
 
     signature: Tuple[Secp256k1ScalarField, Secp256k1ScalarField]

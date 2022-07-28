@@ -1,4 +1,6 @@
 import pytest
+
+from typing import Optional
 from zkevm_specs.evm import (
     ExecutionState,
     StepState,
@@ -9,61 +11,59 @@ from zkevm_specs.evm import (
     Block,
     Bytecode,
 )
-from zkevm_specs.evm.execution.sdiv_smod import get_abs, get_neg, is_neg
 from zkevm_specs.util import rand_fq, rand_word, RLC
 from common import generate_nasty_tests
 
+
 TESTING_DATA = [
-    (Opcode.SDIV, 0xFFFFFF, 0xABC),
-    (Opcode.SDIV, 0xABC, 0xFFFFFF),
-    (Opcode.SDIV, 0xFFFFFF, 0xFFFFFFF),
-    (Opcode.SDIV, 0xABC, 0),
-    (Opcode.SDIV, (1 << 255) + (7 << 128), 0x1234),
-    (Opcode.SDIV, (1 << 256) - 1, 0xABCDEF),
-    (Opcode.SDIV, 0xABCDEF, (1 << 256) - 1),
-    (Opcode.SDIV, 1 << 255, (1 << 256) - 1),
-    (Opcode.SMOD, 0xFFFFFF, 0xABC),
-    (Opcode.SMOD, 0xABC, 0xFFFFFF),
-    (Opcode.SMOD, 0xFFFFFF, 0xFFFFFFF),
-    (Opcode.SMOD, 0xABC, 0),
-    (Opcode.SMOD, (1 << 255) + (7 << 128), 0x1234),
-    (Opcode.SMOD, (1 << 256) - 1, 0xABCDEF),
-    (Opcode.SMOD, 0xABCDEF, (1 << 256) - 1),
-    (Opcode.SMOD, 1 << 255, (1 << 256) - 1),
-    (Opcode.SDIV, rand_word(), rand_word()),
-    (Opcode.SMOD, rand_word(), rand_word()),
+    (Opcode.MUL, 0x030201, 0x060504),
+    (
+        Opcode.MUL,
+        3402823669209384634633746074317682114560,
+        34028236692093846346337460743176821145600,
+    ),
+    (
+        Opcode.MUL,
+        3402823669209384634633746074317682114560,
+        34028236692093846346337460743176821145500,
+    ),
+    (Opcode.DIV, 0xFFFFFF, 0xABC),
+    (Opcode.DIV, 0xABC, 0xFFFFFF),
+    (Opcode.DIV, 0xFFFFFF, 0xFFFFFFF),
+    (Opcode.DIV, 0xABC, 0),
+    (Opcode.MOD, 0xFFFFFF, 0xABC),
+    (Opcode.MOD, 0xABC, 0xFFFFFF),
+    (Opcode.MOD, 0xFFFFFF, 0xFFFFFFF),
+    (Opcode.MOD, 0xABC, 0),
+    (Opcode.MUL, rand_word(), rand_word()),
+    (Opcode.DIV, rand_word(), rand_word()),
+    (Opcode.MOD, rand_word(), rand_word()),
 ]
 
-generate_nasty_tests(TESTING_DATA, (Opcode.SDIV, Opcode.SMOD))
+generate_nasty_tests(TESTING_DATA, (Opcode.MUL, Opcode.DIV, Opcode.MOD))
 
 
 @pytest.mark.parametrize("opcode, a, b", TESTING_DATA)
-def test_sdiv_smod(opcode: Opcode, a: int, b: int):
-    a_abs = get_abs(a)
-    b_abs = get_abs(b)
-    a_is_neg = is_neg(a)
-    b_is_neg = is_neg(b)
-    if opcode == Opcode.SDIV:
-        if b == 0:
-            c = 0
-        elif a_is_neg == b_is_neg:
-            c = a_abs // b_abs
-        else:
-            c = get_neg(a_abs // b_abs)
-    else:  # Opcode.SMOD
-        if b == 0:
-            c = 0
-        elif a_is_neg:
-            c = get_neg(a_abs % b_abs)
-        else:
-            c = a_abs % b_abs
-
+def test_mul_div_mod(opcode: Opcode, a: int, b: int):
     randomness = rand_fq()
+
+    if opcode == Opcode.MUL:
+        c = a * b % 2**256
+    elif opcode == Opcode.DIV:
+        c = 0 if b == 0 else a // b
+    else:  # Opcode.MOD
+        c = 0 if b == 0 else a % b
+
     a = RLC(a, randomness)
     b = RLC(b, randomness)
     c = RLC(c, randomness)
 
-    bytecode = Bytecode().sdiv(a, b) if opcode == Opcode.SDIV else Bytecode().smod(a, b)
+    if opcode == Opcode.MUL:
+        bytecode = Bytecode().mul(a, b)
+    elif opcode == Opcode.DIV:
+        bytecode = Bytecode().div(a, b)
+    else:
+        bytecode = Bytecode().mod(a, b)
     bytecode_hash = RLC(bytecode.hash(), randomness)
 
     tables = Tables(
@@ -84,7 +84,7 @@ def test_sdiv_smod(opcode: Opcode, a: int, b: int):
         tables=tables,
         steps=[
             StepState(
-                execution_state=ExecutionState.SDIV_SMOD,
+                execution_state=ExecutionState.MUL,
                 rw_counter=9,
                 call_id=1,
                 is_root=True,

@@ -12,7 +12,6 @@ from .copy_to_log import *
 # Opcode's successful cases
 from .add_sub import *
 from .addmod import *
-from .mulmod import *
 from .block_ctx import *
 from .call import *
 from .calldatasize import *
@@ -26,6 +25,7 @@ from .gas import *
 from .iszero import *
 from .jump import *
 from .jumpi import *
+from .mul_div_mod import *
 from .origin import *
 from .push import *
 from .slt_sgt import *
@@ -35,9 +35,7 @@ from .storage import *
 from .selfbalance import *
 from .extcodehash import *
 from .log import *
-from .bitwise import not_opcode
-from .sdiv_smod import sdiv_smod
-from .mul_div_mod_shl_shr import mul_div_mod_shl_shr
+from .shl_shr import *
 
 
 EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
@@ -48,8 +46,7 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.CopyToMemory: copy_to_memory,
     ExecutionState.ADD: add_sub,
     ExecutionState.ADDMOD: addmod,
-    ExecutionState.MULMOD: mulmod,
-    ExecutionState.NOT: not_opcode,
+    ExecutionState.MUL: mul_div_mod,
     ExecutionState.ORIGIN: origin,
     ExecutionState.CALLER: caller,
     ExecutionState.CALLVALUE: callvalue,
@@ -73,6 +70,5 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.LOG: log,
     ExecutionState.CALL: call,
     ExecutionState.ISZERO: iszero,
-    ExecutionState.SDIV_SMOD: sdiv_smod,
-    ExecutionState.MUL_DIV_MOD_SHL_SHR: mul_div_mod_shl_shr,
+    ExecutionState.SHL_SHR: shl_shr,
 }

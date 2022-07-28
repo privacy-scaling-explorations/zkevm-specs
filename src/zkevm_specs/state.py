@@ -375,13 +375,36 @@ def check_account_destructed(row: Row, row_prev: Row):
 def check_tx_log(row: Row, row_prev: Row):
     # tx_id | log_id | field_tag | index | value
     tx_id = row.id()
-    prev_tx_id = row_prev.id()
+    pre_tx_id = row_prev.id()
+    log_id = row.address()
+    pre_field_tag = row_prev.field_tag()
+    field_tag = row.field_tag()
+    index = row.storage_key()
+    pre_index = row_prev.storage_key()
 
     # 12.0 is_write is always true
     assert row.is_write == 1
+    # 12.1 reset log_id when tx_id increases
+    if row.tag() == row_prev.tag():
+        if tx_id != pre_tx_id:
+            assert tx_id == pre_tx_id + 1
+            assert log_id == 0
+        else:
+            # increase log_id when tag changes to Address, make sure tag can only increase(Non-Decreasing),
+            # when log_index stays same,
+            if pre_field_tag == U256(TxLogFieldTag.Address):
+                assert (field_tag - pre_field_tag).n > 0
+            # make sure if tag Data appear, data_index can only increase by one when tag stays same.
+            # make sure if tag Topic appear, topic_index in range [0,4),can only increase by one when tag stays same.
+            if field_tag == U256(TxLogFieldTag.Topic):
+                assert_in_range(index, 0, 3)
+            if field_tag not in [U256(TxLogFieldTag.Topic), U256(TxLogFieldTag.Data)]:
+                assert index == 0
+            elif pre_field_tag == field_tag:
+                assert index == pre_index + 1
 
-    # removed field_tag-specific constraints as issue
-    # https://github.com/privacy-scaling-explorations/zkevm-specs/issues/221
+    # make sure if log set is not empty within receipt/tx, tx must be successful status because failed execution will revert the log data,
+    # in other words, logs section must be empty list for failed tx
 
 
 @is_circuit_code
