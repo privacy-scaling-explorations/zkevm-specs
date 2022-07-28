@@ -675,14 +675,12 @@ class KeccakCircuit:
 
     def add(self, data: bytes, r: FQ) -> KeccakCircuit:
         output = RLC(keccak256(data), r, n_bytes=32)
-        acc_input = FQ.zero()
-        for i in range(len(data)):
-            acc_input = acc_input * r + data[i]
+        acc_input = RLC(bytes(reversed(data)), r, n_bytes=len(data))
         self.rows.append(
             KeccakTableRow(
                 state_tag=FQ(2),  # Finalize
                 input_len=FQ(len(data)),
-                acc_input=acc_input,
+                acc_input=acc_input.expr(),
                 output=output.expr(),
             )
         )
