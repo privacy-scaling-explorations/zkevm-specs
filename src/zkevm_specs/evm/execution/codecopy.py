@@ -1,7 +1,6 @@
 from ...util import N_BYTES_MEMORY_ADDRESS, FQ
-from ..execution_state import ExecutionState
 from ..instruction import Instruction, Transition
-from ..table import RW, RWTableTag, CallContextFieldTag, AccountFieldTag, CopyDataTypeTag
+from ..table import CopyDataTypeTag
 
 
 def codecopy(instruction: Instruction):

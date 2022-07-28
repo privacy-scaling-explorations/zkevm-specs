@@ -1,7 +1,7 @@
 from ...util import FQ, RLC, Expression, N_BYTES_WORD
 from ..instruction import Instruction, Transition
 from ..opcode import Opcode
-from ..table import RW, CallContextFieldTag, TxContextFieldTag
+from ..table import RW, CallContextFieldTag
 from ..util import BufferReaderGadget
 
 
