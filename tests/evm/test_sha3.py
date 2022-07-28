@@ -22,7 +22,6 @@ from zkevm_specs.util import (
     rand_fq,
     FQ,
     GAS_COST_COPY_SHA3,
-    MEMORY_EXPANSION_LINEAR_COEFF_SHA3,
     RLC,
     U64,
 )
@@ -57,9 +56,7 @@ def test_sha3(offset: U64, length: U64):
     pc = len(memory_chunks) * 67 + 66
     memory_sha3 = keccak256(memory_snapshot[offset : offset + length])
     memory_sha3_rlc = RLC(memory_sha3, randomness, n_bytes=32)
-    next_memory_size, memory_expansion_cost = memory_expansion(
-        offset + length, offset + length, MEMORY_EXPANSION_LINEAR_COEFF_SHA3
-    )
+    next_memory_size, memory_expansion_cost = memory_expansion(offset + length, offset + length)
     gas = (
         Opcode.SHA3.constant_gas_cost()
         + memory_expansion_cost

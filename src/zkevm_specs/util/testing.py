@@ -21,7 +21,6 @@ def div(
 def memory_expansion(
     curr_memory_size: U64,
     address: U64,
-    mem_exp_linear: int = MEMORY_EXPANSION_LINEAR_COEFF,
 ) -> Tuple[U64, U128]:
     # The memory size required for the used address
     address_memory_size = memory_word_size(address)
@@ -35,7 +34,7 @@ def memory_expansion(
 
     # Calculate the gas cost for the memory expansion
     # This gas cost is the difference between the next and current memory costs
-    memory_gas_cost = (next_memory_size - curr_memory_size) * mem_exp_linear + (
+    memory_gas_cost = (next_memory_size - curr_memory_size) * MEMORY_EXPANSION_LINEAR_COEFF + (
         next_quad_memory_cost - curr_quad_memory_cost
     )
 
