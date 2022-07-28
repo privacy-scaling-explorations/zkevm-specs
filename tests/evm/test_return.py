@@ -163,6 +163,7 @@ def test_return_not_root_not_create(
     src_data = dict([(i, CALLEE_MEMORY[i] if i < len(CALLEE_MEMORY) else 0) for i in range(return_offset, return_offset + return_length)])
     copy_length = min(return_length, caller_return_length)
     copy_circuit = CopyCircuit().copy(
+        randomness,
         rw_dict,
         callee_id,
         CopyDataTypeTag.Memory,
@@ -205,7 +206,7 @@ def test_return_not_root_not_create(
         copy_circuit=copy_circuit.rows,
     )
 
-    verify_copy_table(copy_circuit, tables)
+    verify_copy_table(copy_circuit, tables, randomness)
 
     verify_steps(
         randomness=randomness,

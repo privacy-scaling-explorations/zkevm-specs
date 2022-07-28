@@ -999,10 +999,13 @@ class Instruction:
         return cast_expr(next_memory_size, FQ), cast_expr(memory_expansion_gas_cost, FQ)
 
     def memory_copier_gas_cost(
-        self, length: Expression, memory_expansion_gas_cost: Expression
+        self,
+        length: Expression,
+        memory_expansion_gas_cost: Expression,
+        gas_cost_copy: int = GAS_COST_COPY,
     ) -> FQ:
         word_size, _ = self.constant_divmod(length + FQ(31), FQ(32), N_BYTES_MEMORY_SIZE)
-        gas_cost = word_size * GAS_COST_COPY + memory_expansion_gas_cost
+        gas_cost = word_size * gas_cost_copy + memory_expansion_gas_cost
         self.range_check(gas_cost, N_BYTES_GAS)
         return gas_cost
 
@@ -1021,8 +1024,8 @@ class Instruction:
         length: Expression,
         rw_counter: Expression,
         log_id: Expression = None,
-    ) -> FQ:
-        return self.tables.copy_lookup(
+    ) -> Tuple[FQ, FQ]:
+        copy_table_row = self.tables.copy_lookup(
             src_id,
             FQ(src_type),
             dst_id,
@@ -1033,4 +1036,8 @@ class Instruction:
             length,
             rw_counter,
             log_id,
-        ).rwc_inc
+        )
+        return copy_table_row.rwc_inc, copy_table_row.rlc_acc
+
+    def keccak_lookup(self, length: Expression, value_rlc: Expression) -> FQ:
+        return self.tables.keccak_lookup(length, value_rlc).output

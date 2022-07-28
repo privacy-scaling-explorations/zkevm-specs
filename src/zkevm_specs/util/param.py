@@ -41,6 +41,8 @@ GAS_COST_CREATE2 = 32000
 GAS_COST_SELF_DESTRUCT = 5000
 # Gas cost of copying every word
 GAS_COST_COPY = 3
+# Gas cost of copying every word, specifically in the case of SHA3 opcode
+GAS_COST_COPY_SHA3 = 6
 # Gas cost of non-creation transaction
 GAS_COST_TX = 21000
 # Constant gas cost of LOG

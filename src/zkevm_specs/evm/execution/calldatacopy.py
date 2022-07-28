@@ -39,7 +39,7 @@ def calldatacopy(instruction: Instruction):
         FQ(instruction.curr.is_root), FQ(CopyDataTypeTag.TxCalldata), FQ(CopyDataTypeTag.Memory)
     )
     if instruction.is_zero(length) == 0:
-        copy_rwc_inc = instruction.copy_lookup(
+        copy_rwc_inc, _ = instruction.copy_lookup(
             src_id,
             CopyDataTypeTag(src_type.n),
             instruction.curr.call_id,
