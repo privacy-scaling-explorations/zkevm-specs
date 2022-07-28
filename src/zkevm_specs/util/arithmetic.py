@@ -1,8 +1,27 @@
 from __future__ import annotations
-from typing import Protocol, Sequence, Type, TypeVar, Union
-from functools import reduce
+from typing import Sequence, Protocol, Type, TypeVar, Union
 from py_ecc import bn128
 from py_ecc.utils import prime_field_inv
+
+
+def linear_combine(le_bytes: Sequence[Union[int, FQ]], base: FQ, range_check: bool = True) -> FQ:
+    """
+    Aggregate bytes into a single field element.
+    If we intend to use it as a commitment, the base must be a secured random number.
+    >>> r = 10
+    >>> assert linear_combine([1, 2, 3], r) == 1 * r**2 + 2 * r + 3
+    If the input represents a sequence of data, apply the function directly.
+    If the input represents a number, it must be in little-endian order.
+    Do not use linear_combine(le_limbs, 256) to evaluate the integer value.
+    """
+    result = FQ.zero()
+    be_bytes = reversed(le_bytes)
+    for limb in be_bytes:
+        if range_check:
+            limb_int = limb.n if isinstance(limb, FQ) else limb
+            assert 0 <= limb_int < 256, "Each byte should fit in 8-bit"
+        result = result * base + limb
+    return result
 
 
 class FQ(bn128.FQ):
@@ -20,16 +39,6 @@ class FQ(bn128.FQ):
 
     def inv(self) -> FQ:
         return FQ(prime_field_inv(self.n, self.field_modulus))
-
-    @staticmethod
-    def linear_combine(le_bytes: Sequence[int], base: FQ) -> FQ:
-        def accumulate(acc: FQ, byte: int) -> FQ:
-            assert (
-                0 <= byte < 256
-            ), "Each byte in le_bytes for linear combination should fit in 8-bit"
-            return acc * base + FQ(byte)
-
-        return reduce(accumulate, reversed(le_bytes), FQ(0))
 
 
 IntOrFQ = Union[int, FQ]
@@ -52,7 +61,7 @@ class RLC:
         value = value.ljust(n_bytes, b"\x00")
 
         self.int_value = int.from_bytes(value, "little")
-        self.rlc_value = FQ.linear_combine(value, randomness)
+        self.rlc_value = linear_combine(value, randomness)
         self.le_bytes = value
 
     def expr(self) -> FQ:
