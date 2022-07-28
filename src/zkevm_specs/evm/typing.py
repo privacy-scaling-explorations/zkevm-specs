@@ -407,7 +407,7 @@ class RWDictionary:
     def tx_log_write(
         self,
         tx_id: IntOrFQ,
-        log_id: IntOrFQ,
+        log_id: int,
         field_tag: TxLogFieldTag,
         index: IntOrFQ,
         value: Union[int, FQ, RLC],

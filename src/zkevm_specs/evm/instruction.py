@@ -393,6 +393,10 @@ class Instruction:
             raise ConstraintUnsatFailure(f"Word {word} has too many bytes to fit {n_bytes} bytes")
         return self.bytes_to_fq(word.le_bytes[:n_bytes])
 
+    def word_is_neg(self, word: RLC) -> FQ:
+        assert len(word.le_bytes) == 32, "Expected word to contain 32 bytes"
+        return self.compare(FQ(127), FQ(word.le_bytes[31]), 1)[0]
+
     def word_is_zero(self, word: RLC) -> FQ:
         assert len(word.le_bytes) == 32, "Expected word to contain 32 bytes"
         return self.is_zero(self.sum(word.le_bytes))
@@ -439,6 +443,43 @@ class Instruction:
             return value.expr().n.to_bytes(n_bytes, "little")
         except OverflowError:
             raise ConstraintUnsatFailure(f"Value {value} has too many bytes to fit {n_bytes} bytes")
+
+    # Return a tuple of `abs(x)` and `x_is_neg`. For a special case when
+    # `x = -(1 << 255)`, this function returns the same value of `-(1 << 255)`,
+    # since it is signed overflow.
+    def abs_word(self, x: RLC) -> Tuple[RLC, FQ]:
+        is_neg = self.word_is_neg(x)
+
+        # Generate the witness `x_abs`.
+        x_abs = x if is_neg == 0 else self.rlc_encode((1 << 256) - x.int_value, 32)
+
+        x_abs_lo, x_abs_hi = self.word_to_lo_hi(x_abs)
+        x_lo, x_hi = self.word_to_lo_hi(x)
+
+        # Constrain `x_abs_lo == x_lo` and `x_abs_hi == x_hi` if non negative.
+        self.constrain_zero((x_abs_lo - x_lo) * (1 - is_neg))
+        self.constrain_zero((x_abs_hi - x_hi) * (1 - is_neg))
+
+        # When `is_neg`, contrain `x + x_abs == 1 << 256`. Even if
+        # `x = -(1 << 255)` that is signed overflow, and
+        # `abs(-(1 << 255) = -(1 << 255)`.
+        carry_lo, sum_lo = divmod(x_lo.n + x_abs_lo.n, 1 << 128)
+        carry_hi, sum_hi = divmod(x_hi.n + x_abs_hi.n + carry_lo, 1 << 128)
+
+        # Contrain `sum([x_lo, x_abs_lo]) == sum_lo + carry_lo * 2^128`.
+        self.constrain_zero(FQ(sum_lo) + FQ(carry_lo) * FQ(1 << 128) - self.sum([x_lo, x_abs_lo]))
+
+        # Contrain `sum([x_hi, x_abs_hi]) + carry_lo == sum_hi + carry_hi * 2^128`.
+        self.constrain_zero(
+            FQ(sum_hi) + FQ(carry_hi) * FQ(1 << 128) - FQ(carry_lo) - self.sum([x_hi, x_abs_hi])
+        )
+
+        # When `is_neg`, constrain both low and high remainders are zero, and
+        # `carry_hi == 1`. Since the final result is `1 << 256`.
+        self.constrain_zero(FQ(sum_lo + sum_hi) * is_neg)
+        self.constrain_zero(FQ(1 - carry_hi) * is_neg)
+
+        return x_abs, is_neg
 
     def add_words(self, addends: Sequence[RLC]) -> Tuple[RLC, FQ]:
         addends_lo, addends_hi = list(zip(*map(self.word_to_lo_hi, addends)))
@@ -509,6 +550,39 @@ class Instruction:
         self.constrain_equal(t2 + t3 * (2**64) + c_hi + carry_lo, d_hi + carry_hi * (2**128))
 
         return overflow
+
+    def mul_add_words_512(self, a: RLC, b: RLC, c: RLC, d: RLC, e: RLC):
+        """
+        The function constrains a * b + c == d * 2**256 + e, where a, b, c, d are 256-bit words.
+        """
+        a64s = self.word_to_64s(a)
+        b64s = self.word_to_64s(b)
+        c_lo, c_hi = self.word_to_lo_hi(c)
+        d_lo, d_hi = self.word_to_lo_hi(d)
+        e_lo, e_hi = self.word_to_lo_hi(e)
+
+        t0 = a64s[0] * b64s[0]
+        t1 = a64s[0] * b64s[1] + a64s[1] * b64s[0]
+        t2 = a64s[0] * b64s[2] + a64s[1] * b64s[1] + a64s[2] * b64s[0]
+        t3 = a64s[0] * b64s[3] + a64s[1] * b64s[2] + a64s[2] * b64s[1] + a64s[3] * b64s[0]
+
+        t4 = a64s[1] * b64s[3] + a64s[2] * b64s[2] + a64s[3] * b64s[1]
+        t5 = a64s[2] * b64s[3] + a64s[3] * b64s[2]
+        t6 = a64s[3] * b64s[3]
+
+        carry_0 = (t0 + t1 * (2**64) + c_lo - e_lo) / (2**128)
+        carry_1 = (t2 + t3 * (2**64) + c_hi + carry_0 - e_hi) / (2**128)
+        carry_2 = (t4 + t5 * (2**64) + carry_1 - d_lo) / (2**128)
+
+        # range check for carries
+        self.range_check(carry_0, 9)
+        self.range_check(carry_1, 9)
+        self.range_check(carry_2, 9)
+
+        self.constrain_equal(t0 + t1 * (2**64) + c_lo, e_lo + carry_0 * (2**128))
+        self.constrain_equal(t2 + t3 * (2**64) + c_hi + carry_0, e_hi + carry_1 * (2**128))
+        self.constrain_equal(t4 + t5 * (2**64) + carry_1, d_lo + carry_2 * (2**128))
+        self.constrain_equal(t6 + carry_2, d_hi)
 
     def fixed_lookup(
         self,
