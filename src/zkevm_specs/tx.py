@@ -404,7 +404,10 @@ def txs2witness(
     # number padding rows in the fixed region.   And fill all the rows in the
     # dynamic region to reach MAX_CALLDATA_BYTES with pad rows in the back.
     rows = (
-        [Row(FQ(i + 1), FQ(Tag.Pad), FQ(0), FQ(0)) for i in range((MAX_TXS - len(txs)) * Tag.TxSignHash)]
+        [
+            Row(FQ(i + 1), FQ(Tag.Pad), FQ(0), FQ(0))
+            for i in range((MAX_TXS - len(txs)) * Tag.TxSignHash)
+        ]
         + tx_fixed_rows
         + tx_dyn_rows
         + [Row(FQ(0), FQ(Tag.Pad), FQ(0), FQ(0))] * (MAX_CALLDATA_BYTES - len(tx_dyn_rows))

@@ -33,10 +33,13 @@ def get_tx_table_max_txs(table: Set[TxTableRow]) -> int:
     fixed_field_count = 0
     for row in table:
         print(vars(row))
-        if (row.field_tag != TxContextFieldTag.CallData) or (row.field_tag == TxContextFieldTag.Pad and row.tx_id != 0):
+        if (row.field_tag != TxContextFieldTag.CallData) or (
+            row.field_tag == TxContextFieldTag.Pad and row.tx_id != 0
+        ):
             fixed_field_count += 1
-    print(f'fixed_field_count = {fixed_field_count}')
+    print(f"fixed_field_count = {fixed_field_count}")
     return fixed_field_count // TxContextFieldTag.TxSignHash
+
 
 def end_block(instruction: Instruction):
     if instruction.is_last_step:
@@ -58,7 +61,10 @@ def end_block(instruction: Instruction):
         total_tx = instruction.call_context_lookup(CallContextFieldTag.TxId)
         # Verify that there are at most total_txs meaningful entries in the tx_table
         instruction.tx_context_lookup(FQ(1), TxContextFieldTag.Pad)
-        instruction.tx_context_lookup(FQ((tx_table_max_txs - total_tx.expr().n) * TxContextFieldTag.TxSignHash), TxContextFieldTag.Pad)
+        instruction.tx_context_lookup(
+            FQ((tx_table_max_txs - total_tx.expr().n) * TxContextFieldTag.TxSignHash),
+            TxContextFieldTag.Pad,
+        )
         # Since every tx lookup done in the EVM circuit must succeed and uses a unique
         # tx_id, we know that at least there are total_tx meaningful txs
         # in the tx_table.
@@ -69,4 +75,3 @@ def end_block(instruction: Instruction):
             rw_counter=Transition.same(),
             call_id=Transition.same(),
         )
-

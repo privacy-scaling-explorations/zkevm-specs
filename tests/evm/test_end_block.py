@@ -24,6 +24,7 @@ MAX_CALLDATA_BYTES = 0
 
 MAX_RWS = 64
 
+
 @pytest.mark.parametrize("is_last_step", TESTING_DATA)
 def test_end_block(is_last_step: bool):
     randomness = rand_fq()
@@ -33,11 +34,25 @@ def test_end_block(is_last_step: bool):
     # dummy read/write for counting
     rw_rows = [RWTableRow(FQ(i), *9 * [FQ(0)]) for i in range(22)]
     if is_last_step:
-        rw_rows.append(RWTableRow(FQ(22), FQ(RW.Read), FQ(RWTableTag.CallContext), FQ(1), FQ(CallContextFieldTag.TxId), value=FQ(tx.id)))
-    rw_padding = [RWTableRow(FQ(i+1), FQ(0), FQ(RWTableTag.Start)) for i in range(MAX_RWS - len(rw_rows))]
+        rw_rows.append(
+            RWTableRow(
+                FQ(22),
+                FQ(RW.Read),
+                FQ(RWTableTag.CallContext),
+                FQ(1),
+                FQ(CallContextFieldTag.TxId),
+                value=FQ(tx.id),
+            )
+        )
+    rw_padding = [
+        RWTableRow(FQ(i + 1), FQ(0), FQ(RWTableTag.Start)) for i in range(MAX_RWS - len(rw_rows))
+    ]
 
     num_txs = 1
-    tx_padding = [TxTableRow(FQ(i+1), FQ(TxContextFieldTag.Pad), FQ(0), FQ(0)) for i in range((MAX_TXS - num_txs) * TxContextFieldTag.CallData)]
+    tx_padding = [
+        TxTableRow(FQ(i + 1), FQ(TxContextFieldTag.Pad), FQ(0), FQ(0))
+        for i in range((MAX_TXS - num_txs) * TxContextFieldTag.CallData)
+    ]
 
     tables = Tables(
         block_table=set(Block().table_assignments(randomness)),
