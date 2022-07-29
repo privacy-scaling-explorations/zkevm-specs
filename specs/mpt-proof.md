@@ -66,13 +66,13 @@ The value `2 * (2 + 32)` is motivated by the fact that keccak output is of 32 wi
 The additional 2 bytes are for RLP specific bytes which store information like
 how long is the substream.
 The multiplier 2 is because we always have two parallel proofs: before and after modification.
-Before modification proof is names `S` as state and `C` as change.
+Before modification proof is named `S` as state and after modification is named `C` as change.
 
-The struct `MainCols` contain `rlp1`, `rlp2` bytes (2 bytes) and an array `bytes` of length 32.
+The struct `MainCols` contains `rlp1`, `rlp2` bytes (2 bytes) and an array `bytes` of length 32.
 There is `MainCols` for `S` proof (named `s_main`) and
 `MainCols` for `C` proof (named `c_main`).
 
-Let us observe a branch. It contains 16 children which are distributed in 16 rows.
+Let us observe a branch. It contains 16 children which are distributed over 16 rows.
 We have branch `S` and branch `C`.
 
 Branch rows:
@@ -87,9 +87,11 @@ when a child is shorter than 32 bytes, in this case the raw child is included in
 
 Branch rows (you can see there are `2 * (2 + 32)` columns):
 ```
-0 160 hash(S child 0) | 0 160 hash(C child 0)
+s_main                     | c_main
+rlp1 rlp2 bytes            | rlp1 rlp2 bytes
+0    160  hash(S child 0)  | 0    160  hash(C child 0)
 ...
-0 160 hash(S child 15) | 0 160 hash(C child 15)
+0    160  hash(S child 15) | 0    160  hash(C child 15)
 ```
 
 The value 160 is RLP specific and it means that the following RLP string is of length
