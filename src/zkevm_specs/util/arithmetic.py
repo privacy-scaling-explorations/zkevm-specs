@@ -4,19 +4,17 @@ from py_ecc import bn128
 from py_ecc.utils import prime_field_inv
 
 
-def linear_combine(le_bytes: Sequence[Union[int, FQ]], base: FQ, range_check: bool = True) -> FQ:
+def linear_combine(seq: Sequence[Union[int, FQ]], base: FQ, range_check: bool = True) -> FQ:
     """
-    Aggregate bytes into a single field element.
-    If we intend to use it as a commitment, the base must be a secured random number.
-    >>> r = 10
-    >>> assert linear_combine([1, 2, 3], r) == 1 * r**2 + 2 * r + 3
+    Aggregate a sequence of data into a single field element.
+    To use it as a commitment, the base must be a secured random number.
     If the input represents a sequence of data, apply the function directly.
     If the input represents a number, it must be in little-endian order.
-    Do not use linear_combine(le_limbs, 256) to evaluate the integer value.
+    >>> r = 10
+    >>> assert linear_combine([1, 2, 3], r) == 1 + 2 * r + 3 * r**2
     """
     result = FQ.zero()
-    be_bytes = reversed(le_bytes)
-    for limb in be_bytes:
+    for limb in reversed(seq):
         if range_check:
             limb_int = limb.n if isinstance(limb, FQ) else limb
             assert 0 <= limb_int < 256, "Each byte should fit in 8-bit"
