@@ -17,7 +17,7 @@ type: ## Check the typing of the Python code
 	mypy src
 
 test: ## Run tests
-	pytest
+	pytest --doctest-modules
 
 
 .PHONY: help install fmt lint test

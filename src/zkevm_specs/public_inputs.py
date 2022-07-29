@@ -1,9 +1,12 @@
 from dataclasses import dataclass
-from typing import Tuple, List, Sequence
-from functools import reduce
+from typing import Tuple, List
 
-from .util import FQ, U64, U160, U256
 from .util import (
+    FQ,
+    U64,
+    U160,
+    U256,
+    linear_combine,
     PUBLIC_INPUTS_BLOCK_LEN as BLOCK_LEN,
     PUBLIC_INPUTS_EXTRA_LEN as EXTRA_LEN,
     PUBLIC_INPUTS_TX_LEN as TX_LEN,
@@ -284,13 +287,6 @@ class PublicData:
         )
 
 
-def linear_combine(seq: Sequence[FQ], base: FQ) -> FQ:
-    def accumulate(acc: FQ, v: FQ) -> FQ:
-        return acc * base + FQ(v)
-
-    return reduce(accumulate, reversed(seq), FQ(0))
-
-
 def public_data2witness(
     public_data: PublicData, MAX_TXS: int, MAX_CALLDATA_BYTES: int, rand_rpi: FQ
 ) -> Witness:
@@ -316,7 +312,7 @@ def public_data2witness(
     assert len(raw_public_inputs) == BLOCK_LEN + EXTRA_LEN + 3 * (
         TX_LEN * MAX_TXS + MAX_CALLDATA_BYTES
     )
-    rpi_rlc = linear_combine(raw_public_inputs, rand_rpi)
+    rpi_rlc = linear_combine(raw_public_inputs, rand_rpi, range_check=False)
     # NOTE: End rlc calculation of raw_public_inputs.
 
     rpi_rlc_acc_col = [raw_public_inputs[-1]]
