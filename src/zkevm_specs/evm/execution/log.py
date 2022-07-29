@@ -1,9 +1,8 @@
 from ..instruction import Instruction, Transition
-from ..table import CallContextFieldTag, TxLogFieldTag, TxContextFieldTag, CopyDataTypeTag
+from ..table import CallContextFieldTag, TxLogFieldTag, CopyDataTypeTag
 from ..opcode import Opcode
-from ..execution_state import ExecutionState
 from ...util.param import GAS_COST_LOG, GAS_COST_LOGDATA
-from ...util import FQ, cast_expr
+from ...util import FQ
 
 
 def log(instruction: Instruction):

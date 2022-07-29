@@ -1,27 +1,17 @@
 from dataclasses import dataclass
-from typing import NamedTuple, Tuple, List, Sequence, Set, Union, cast
-from enum import IntEnum
-from math import log, ceil
+from typing import Tuple, List, Sequence
 from functools import reduce
 
-from .util import FQ, RLC, U64, U160, U256, Expression
+from .util import FQ, U64, U160, U256
 from .util import (
     PUBLIC_INPUTS_BLOCK_LEN as BLOCK_LEN,
     PUBLIC_INPUTS_EXTRA_LEN as EXTRA_LEN,
     PUBLIC_INPUTS_TX_LEN as TX_LEN,
 )
-from .encoding import U8, is_circuit_code
+from .encoding import is_circuit_code
 from .tx import Tag as TxTag
 from .evm import (
-    RW,
-    AccountFieldTag,
-    CallContextFieldTag,
-    TxLogFieldTag,
-    TxReceiptFieldTag,
-    MPTTableRow,
-    MPTTableTag,
     BlockContextFieldTag as BlockTag,
-    lookup,
 )
 
 

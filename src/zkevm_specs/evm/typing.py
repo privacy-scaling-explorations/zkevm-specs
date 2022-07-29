@@ -44,7 +44,6 @@ from .table import (
     TxTableRow,
     CopyDataTypeTag,
     CopyCircuitRow,
-    CopyTableRow,
     KeccakTableRow,
 )
 from .opcode import get_push_size, Opcode

@@ -1,4 +1,4 @@
-from typing import Dict, Iterator, List, NewType, Optional, Sequence, Union, Mapping, Tuple
+from typing import Sequence
 
 from .util import FQ, Expression, ConstraintSystem, cast_expr, MAX_N_BYTES, N_BYTES_MEMORY_ADDRESS
 from .evm import (
@@ -7,11 +7,9 @@ from .evm import (
     CopyCircuitRow,
     RW,
     RWTableTag,
-    FixedTableTag,
     CopyCircuit,
     TxContextFieldTag,
     BytecodeFieldTag,
-    TxLogFieldTag,
 )
 
 

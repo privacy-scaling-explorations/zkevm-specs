@@ -1,5 +1,3 @@
-from ..encoding import U256, is_circuit_code
-
 # Simulate evm stack and pop & dupx op code
 
 

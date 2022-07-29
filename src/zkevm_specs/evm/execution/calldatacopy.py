@@ -1,7 +1,6 @@
 from ...util import N_BYTES_MEMORY_ADDRESS, FQ, Expression
-from ..execution_state import ExecutionState
 from ..instruction import Instruction, Transition
-from ..table import RW, CallContextFieldTag, TxContextFieldTag, CopyDataTypeTag
+from ..table import RW, CallContextFieldTag, CopyDataTypeTag
 
 
 def calldatacopy(instruction: Instruction):

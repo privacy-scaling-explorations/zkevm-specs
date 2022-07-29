@@ -1,7 +1,7 @@
-from .encoding import U8, is_circuit_code
-from typing import NamedTuple, Tuple, List, Sequence, Set
+from .encoding import is_circuit_code
+from typing import NamedTuple, Tuple, List, Set
 from .util import FQ, RLC, U160, U256, U64
-from enum import IntEnum, auto
+from enum import IntEnum
 from eth_keys import KeyAPI  # type: ignore
 import rlp  # type: ignore
 from eth_utils import keccak

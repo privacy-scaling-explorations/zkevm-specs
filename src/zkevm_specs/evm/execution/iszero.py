@@ -1,5 +1,4 @@
 from ..instruction import Instruction, Transition
-from ..opcode import Opcode
 
 
 def iszero(instruction: Instruction):
