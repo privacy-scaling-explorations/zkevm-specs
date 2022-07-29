@@ -16,16 +16,15 @@ class Tag(IntEnum):
     Nonce = 1
     Gas = 2
     GasPrice = 3
-    GasTipCap = 4
-    GasFeeCap = 5
-    CallerAddress = 6
-    CalleeAddress = 7
-    IsCreate = 8
-    Value = 9
-    CallDataLength = 10
-    TxSignHash = 11
-    CallData = 12
-    Pad = 13
+    CallerAddress = 4
+    CalleeAddress = 5
+    IsCreate = 6
+    Value = 7
+    CallDataLength = 8
+    CallDataGasCost = 9
+    TxSignHash = 10
+    CallData = 11
+    Pad = 12
 
 
 class Row:
@@ -270,6 +269,8 @@ def verify_circuit(
     """
 
     rows = witness.rows
+    for row in rows:
+        print(vars(row))
     sign_verifications = witness.sign_verifications
     keccak_table = witness.keccak_table
     for tx_index in range(MAX_TXS):
@@ -337,18 +338,19 @@ def tx2witness(
 
     sign_verification = SignVerifyChip.assign(sig, pk, tx_sign_hash, randomness)
 
+    call_data_gas_cost = sum([(4 if byte == 0 else 16) for byte in tx.data])
+
     tx_id = FQ(index + 1)
     rows: List[Row] = []
     rows.append(Row(tx_id, FQ(Tag.Nonce), FQ(0), FQ(tx.nonce)))
     rows.append(Row(tx_id, FQ(Tag.Gas), FQ(0), FQ(tx.gas)))
     rows.append(Row(tx_id, FQ(Tag.GasPrice), FQ(0), RLC(tx.gas_price, randomness).expr()))
-    rows.append(Row(tx_id, FQ(Tag.GasTipCap), FQ(0), FQ(0)))
-    rows.append(Row(tx_id, FQ(Tag.GasFeeCap), FQ(0), FQ(0)))
     rows.append(Row(tx_id, FQ(Tag.CallerAddress), FQ(0), FQ(int.from_bytes(addr, "big"))))
     rows.append(Row(tx_id, FQ(Tag.CalleeAddress), FQ(0), FQ(tx.to)))
     rows.append(Row(tx_id, FQ(Tag.IsCreate), FQ(0), FQ(1) if tx.to == FQ(0) else FQ(0)))
     rows.append(Row(tx_id, FQ(Tag.Value), FQ(0), RLC(tx.value, randomness).expr()))
     rows.append(Row(tx_id, FQ(Tag.CallDataLength), FQ(0), FQ(len(tx.data))))
+    rows.append(Row(tx_id, FQ(Tag.CallDataGasCost), FQ(0), FQ(call_data_gas_cost)))
     tx_sign_hash_rlc = RLC(int.from_bytes(tx_sign_hash, "big"), randomness).expr()
     rows.append(Row(tx_id, FQ(Tag.TxSignHash), FQ(0), tx_sign_hash_rlc))
     for byte_index, byte in enumerate(tx.data):
@@ -397,11 +399,13 @@ def txs2witness(
     assert len(tx_dyn_rows) <= MAX_CALLDATA_BYTES
 
     # Fill all the rows in the fixed region to reach MAX_TXS * Tag.TxSignHash
-    # with pad rows.  And fill all the rows in the dynamic region to reach
-    # MAX_CALLDATA_BYTES with pad rows.
+    # with pad rows in the front.  These front padding rows use a sequential id
+    # starting at 1 in the tx_id field used to prove a lower bound on the
+    # number padding rows in the fixed region.   And fill all the rows in the
+    # dynamic region to reach MAX_CALLDATA_BYTES with pad rows in the back.
     rows = (
-        tx_fixed_rows
-        + [Row(FQ(0), FQ(Tag.Pad), FQ(0), FQ(0))] * (MAX_TXS - len(txs)) * Tag.TxSignHash
+        [Row(FQ(i + 1), FQ(Tag.Pad), FQ(0), FQ(0)) for i in range((MAX_TXS - len(txs)) * Tag.TxSignHash)]
+        + tx_fixed_rows
         + tx_dyn_rows
         + [Row(FQ(0), FQ(Tag.Pad), FQ(0), FQ(0))] * (MAX_CALLDATA_BYTES - len(tx_dyn_rows))
     )
@@ -419,6 +423,6 @@ def txs2witness(
     )
     # Fill the rest of sign_verifications with the witnessess assigned to 0s
     # and dummy ecdsa vefification values to disable the verification.
-    sign_verifications = sign_verifications + [padding_sign_verification] * (MAX_TXS - len(txs))
+    sign_verifications = [padding_sign_verification] * (MAX_TXS - len(txs)) + sign_verifications
 
     return Witness(rows, keccak_table, sign_verifications)
