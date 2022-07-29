@@ -56,6 +56,109 @@ be in the first element at the proper position (depends on the key).
 The hash of the first storage proof element (storage root) needs to be checked
 to be in the account leaf of the last account proof element.
 
+## New specs (temporary name)
+
+The columns are split into two categories. There are `2 * (2 + 32)` columns which contain RLP
+streams returned by `getProof`. The other columns are selectors (for example which kind of
+row we are at).
+
+The value `2 * (2 + 32)` is motivated by the fact that keccak output is of 32 width.
+The additional 2 bytes are for RLP specific bytes which store information like
+how long is the substream.
+The multiplier 2 is because we always have two parallel proofs: before and after modification.
+Before modification proof is names `S` as state and `C` as change.
+
+The struct `MainCols` contain `rlp1`, `rlp2` bytes (2 bytes) and an array `bytes` of length 32.
+There is `MainCols` for `S` proof (named `s_main`) and
+`MainCols` for `C` proof (named `c_main`).
+
+Let us observe a branch. It contains 16 children which are distributed in 16 rows.
+We have branch `S` and branch `C`.
+
+Branch rows:
+```
+Branch S child 0 | Branch C child 0
+...
+Branch S child 15 | Branch C child 15
+```
+
+The branch does not include raw children, it includes only a hash of each children (except
+when a child is shorter than 32 bytes, in this case the raw child is included in a branch).
+
+Branch rows (you can see there are `2 * (2 + 32)` columns):
+```
+0 160 hash(S child 0) | 0 160 hash(C child 0)
+...
+0 160 hash(S child 15) | 0 160 hash(C child 15)
+```
+
+The value 160 is RLP specific and it means that the following RLP string is of length
+`32 = 160 - 128`.
+
+Branch can have some empty children, in this case the row looks like:
+```
+0 0 128 0 ... 0 | 0 0 128 0 ... 0 
+```
+
+In case, there is a child of length smaller than 32, its corresponding branch row looks like:
+```
+0 0 194 32 1 0 ... 0 | 0 0 194 32 1 0 ... 0 
+```
+
+The value 194 is RLP specific and it means that the following RLP list is of length
+`2 = 194 - 192`.
+
+### Account leaf
+
+Let us observe the proof for the modification of account nonce. Let us assume there is only
+one account stored in the trie. We change nonce for this account from 0 to 1.
+
+Account leaf occupies 8 rows. Thus, in our example, where there is only one account in the trie,
+our circuit will only have 8 rows.
+
+Contrary as in the branch rows, the `S` and `C` leaves are not positioned parallel to each
+other. The rows are the following:
+
+```
+ACCOUNT_LEAF_KEY_S
+ACCOUNT_LEAF_KEY_C
+ACCOUNT_NON_EXISTING
+ACCOUNT_LEAF_NONCE_BALANCE_S
+ACCOUNT_LEAF_NONCE_BALANCE_C
+ACCOUNT_LEAF_STORAGE_CODEHASH_S
+ACCOUNT_LEAF_STORAGE_CODEHASH_C
+ACCOUNT_DRIFTED_LEAF
+```
+
+The witness for our proof looks like (excluding selector columns):
+
+```
+[248,106,161,32,252,237,52,8,133,130,180,167,143,97,28,115,102,25,94,62,148,249,8,6,55,244,16,75,187,208,208,127,251,120,61,73,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+
+[248,106,161,32,252,237,52,8,133,130,180,167,143,97,28,115,102,25,94,62,148,249,8,6,55,244,16,75,187,208,208,127,251,120,61,73,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+
+[0,0,0,32,252,237,52,8,133,130,180,167,143,97,28,115,102,25,94,62,148,249,8,6,55,244,16,75,187,208,208,127,251,120,61,73,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+
+[184,70,128,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,248,68,128,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+
+[184,70,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,248,68,128,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+
+[0,160,86,232,31,23,27,204,85,166,255,131,69,230,146,192,248,110,91,72,224,27,153,108,173,192,1,98,47,181,227,99,180,33,0,160,197,210,70,1,134,247,35,60,146,126,125,178,220,199,3,192,229,0,182,83,202,130,39,59,123,250,216,4,93,133,164,122]
+
+[0,160,86,232,31,23,27,204,85,166,255,131,69,230,146,192,248,110,91,72,224,27,153,108,173,192,1,98,47,181,227,99,180,33,0,160,197,210,70,1,134,247,35,60,146,126,125,178,220,199,3,192,229,0,182,83,202,130,39,59,123,250,216,4,93,133,164,122]
+
+[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+```
+
+In `ACCOUNT_LEAF_NONCE_BALANCE_S` row, there is `S` nonce stored in `s_main` and `S` balance in
+`c_main`. We can see nonce in `S` proof is `0 = 128 - 128`.
+
+In `ACCOUNT_LEAF_NONCE_BALANCE_C` row, there is `C` nonce stored in `s_main` and `C` balance in
+`c_main`. We can see nonce in `C` proof is `1`.
+
+
+## Old specs (will be replaced by new specs above)
+
 We split the branch information into 16 rows (one row for each node). The proof looks like:
 
 <p align="center">
