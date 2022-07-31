@@ -11,12 +11,13 @@ fmt: ## Format the code
 
 lint: ## Check whether the code is formatted correctly
 	black . --check
+	flake8 src
 
 type: ## Check the typing of the Python code
 	mypy src
 
 test: ## Run tests
-	pytest
+	pytest --doctest-modules
 
 
 .PHONY: help install fmt lint test

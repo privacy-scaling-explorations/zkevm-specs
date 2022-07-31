@@ -34,6 +34,7 @@ from .table import (
     RWTableTag,
     TxLogFieldTag,
     TxReceiptFieldTag,
+    CopyDataTypeTag,
 )
 
 
@@ -50,9 +51,9 @@ class TransitionKind(IntEnum):
 
 class Transition:
     kind: TransitionKind
-    value: Union[int, FQ, RLC]
+    value: Union[int, Expression]
 
-    def __init__(self, kind: TransitionKind, value: Union[int, FQ, RLC] = 0) -> None:
+    def __init__(self, kind: TransitionKind, value: Union[int, Expression] = 0) -> None:
         self.kind = kind
         self.value = value
 
@@ -61,11 +62,11 @@ class Transition:
         return Transition(TransitionKind.Same)
 
     @staticmethod
-    def delta(delta: Union[int, FQ, RLC]):
+    def delta(delta: Union[int, Expression]):
         return Transition(TransitionKind.Delta, delta)
 
     @staticmethod
-    def to(to: Union[int, FQ, RLC]):
+    def to(to: Union[int, Expression]):
         return Transition(TransitionKind.To, to)
 
 
@@ -154,8 +155,6 @@ class Instruction:
             assert curr.halts() or curr == ExecutionState.BeginTx
         elif next == ExecutionState.EndBlock:
             assert curr in [ExecutionState.EndTx, ExecutionState.EndBlock]
-        elif next == ExecutionState.CopyToMemory:
-            assert curr in [ExecutionState.CopyToMemory, ExecutionState.CALLDATACOPY]
 
     def constrain_step_state_transition(self, **kwargs: Transition):
         keys = set(
@@ -227,6 +226,79 @@ class Instruction:
             program_counter=Transition.to(0),
             stack_pointer=Transition.to(1024),
             memory_size=Transition.to(0),
+        )
+
+    def step_state_transition_to_restored_context(
+        self,
+        rw_counter_delta: int,
+        return_data_offset: Expression,
+        return_data_length: Expression,
+        gas_left: Expression,
+    ):
+        # Read caller's context for restore
+        caller_id = self.call_context_lookup(CallContextFieldTag.CallerId)
+        [
+            caller_is_root,
+            caller_is_create,
+            caller_code_hash,
+            caller_program_counter,
+            caller_stack_pointer,
+            caller_gas_left,
+            caller_memory_size,
+            caller_reversible_write_counter,
+        ] = [
+            self.call_context_lookup(field_tag, call_id=caller_id)
+            for field_tag in [
+                CallContextFieldTag.IsRoot,
+                CallContextFieldTag.IsCreate,
+                CallContextFieldTag.CodeHash,
+                CallContextFieldTag.ProgramCounter,
+                CallContextFieldTag.StackPointer,
+                CallContextFieldTag.GasLeft,
+                CallContextFieldTag.MemorySize,
+                CallContextFieldTag.ReversibleWriteCounter,
+            ]
+        ]
+
+        # Update caller's last callee information
+        for (field_tag, expected_value) in [
+            (CallContextFieldTag.LastCalleeId, self.curr.call_id),
+            (CallContextFieldTag.LastCalleeReturnDataOffset, return_data_offset),
+            (CallContextFieldTag.LastCalleeReturnDataLength, return_data_length),
+        ]:
+            self.constrain_equal(
+                self.call_context_lookup(field_tag, RW.Write, call_id=caller_id),
+                expected_value,
+            )
+
+        # Consume all gas_left if call halts in exception
+        if self.curr.execution_state.halts_in_exception():
+            gas_left = FQ(0)
+
+        # Accumulate reversible_write_counter in case this call stack reverts
+        # in the future even it itself succeeds.
+        # Note that when sub-call halts in failure, we don't need to
+        # accumulate reversible_write_counter because what happened in the
+        # sub-call has been reverted.
+        reversible_write_counter = FQ(0)
+        if self.curr.execution_state.halts_in_success():
+            reversible_write_counter = self.curr.reversible_write_counter
+
+        self.constrain_step_state_transition(
+            rw_counter=Transition.delta(rw_counter_delta + 12),
+            call_id=Transition.to(caller_id),
+            is_root=Transition.to(caller_is_root),
+            is_create=Transition.to(caller_is_create),
+            code_hash=Transition.to(caller_code_hash),
+            program_counter=Transition.to(caller_program_counter),
+            stack_pointer=Transition.to(caller_stack_pointer),
+            # Pays back gas_left to caller
+            gas_left=Transition.to(caller_gas_left.expr() + gas_left.expr()),
+            memory_size=Transition.to(caller_memory_size),
+            # Accumulate reversible_write_counter to caller
+            reversible_write_counter=Transition.to(
+                caller_reversible_write_counter.expr() + reversible_write_counter.expr()
+            ),
         )
 
     def step_state_transition_in_same_context(
@@ -321,38 +393,9 @@ class Instruction:
             raise ConstraintUnsatFailure(f"Word {word} has too many bytes to fit {n_bytes} bytes")
         return self.bytes_to_fq(word.le_bytes[:n_bytes])
 
-    def mul_add_words_512(self, a: RLC, b: RLC, c: RLC, d: RLC, e: RLC):
-        """
-        The function constrains a * b + c == d * 2**256 + e, where a, b, c, d are 256-bit words.
-        """
-        a64s = self.word_to_64s(a)
-        b64s = self.word_to_64s(b)
-        c_lo, c_hi = self.word_to_lo_hi(c)
-        d_lo, d_hi = self.word_to_lo_hi(d)
-        e_lo, e_hi = self.word_to_lo_hi(e)
-
-        t0 = a64s[0] * b64s[0]
-        t1 = a64s[0] * b64s[1] + a64s[1] * b64s[0]
-        t2 = a64s[0] * b64s[2] + a64s[1] * b64s[1] + a64s[2] * b64s[0]
-        t3 = a64s[0] * b64s[3] + a64s[1] * b64s[2] + a64s[2] * b64s[1] + a64s[3] * b64s[0]
-
-        t4 = a64s[1] * b64s[3] + a64s[2] * b64s[2] + a64s[3] * b64s[1]
-        t5 = a64s[2] * b64s[3] + a64s[3] * b64s[2]
-        t6 = a64s[3] * b64s[3]
-
-        carry_0 = (t0 + t1 * (2**64) + c_lo - e_lo) / (2**128)
-        carry_1 = (t2 + t3 * (2**64) + c_hi + carry_0 - e_hi) / (2**128)
-        carry_2 = (t4 + t5 * (2**64) + carry_1 - d_lo) / (2**128)
-
-        # range check for carries
-        self.range_check(carry_0, 9)
-        self.range_check(carry_1, 9)
-        self.range_check(carry_2, 9)
-
-        self.constrain_equal(t0 + t1 * (2**64) + c_lo, e_lo + carry_0 * (2**128))
-        self.constrain_equal(t2 + t3 * (2**64) + c_hi + carry_0, e_hi + carry_1 * (2**128))
-        self.constrain_equal(t4 + t5 * (2**64) + carry_1, d_lo + carry_2 * (2**128))
-        self.constrain_equal(t6 + carry_2, d_hi)
+    def word_is_neg(self, word: RLC) -> FQ:
+        assert len(word.le_bytes) == 32, "Expected word to contain 32 bytes"
+        return self.compare(FQ(127), FQ(word.le_bytes[31]), 1)[0]
 
     def word_is_neg(self, word: RLC) -> FQ:
         assert len(word.le_bytes) == 32, "Expected word to contain 32 bytes"
@@ -404,6 +447,43 @@ class Instruction:
             return value.expr().n.to_bytes(n_bytes, "little")
         except OverflowError:
             raise ConstraintUnsatFailure(f"Value {value} has too many bytes to fit {n_bytes} bytes")
+
+    # Return a tuple of `abs(x)` and `x_is_neg`. For a special case when
+    # `x = -(1 << 255)`, this function returns the same value of `-(1 << 255)`,
+    # since it is signed overflow.
+    def abs_word(self, x: RLC) -> Tuple[RLC, FQ]:
+        is_neg = self.word_is_neg(x)
+
+        # Generate the witness `x_abs`.
+        x_abs = x if is_neg == 0 else self.rlc_encode((1 << 256) - x.int_value, 32)
+
+        x_abs_lo, x_abs_hi = self.word_to_lo_hi(x_abs)
+        x_lo, x_hi = self.word_to_lo_hi(x)
+
+        # Constrain `x_abs_lo == x_lo` and `x_abs_hi == x_hi` if non negative.
+        self.constrain_zero((x_abs_lo - x_lo) * (1 - is_neg))
+        self.constrain_zero((x_abs_hi - x_hi) * (1 - is_neg))
+
+        # When `is_neg`, contrain `x + x_abs == 1 << 256`. Even if
+        # `x = -(1 << 255)` that is signed overflow, and
+        # `abs(-(1 << 255) = -(1 << 255)`.
+        carry_lo, sum_lo = divmod(x_lo.n + x_abs_lo.n, 1 << 128)
+        carry_hi, sum_hi = divmod(x_hi.n + x_abs_hi.n + carry_lo, 1 << 128)
+
+        # Contrain `sum([x_lo, x_abs_lo]) == sum_lo + carry_lo * 2^128`.
+        self.constrain_zero(FQ(sum_lo) + FQ(carry_lo) * FQ(1 << 128) - self.sum([x_lo, x_abs_lo]))
+
+        # Contrain `sum([x_hi, x_abs_hi]) + carry_lo == sum_hi + carry_hi * 2^128`.
+        self.constrain_zero(
+            FQ(sum_hi) + FQ(carry_hi) * FQ(1 << 128) - FQ(carry_lo) - self.sum([x_hi, x_abs_hi])
+        )
+
+        # When `is_neg`, constrain both low and high remainders are zero, and
+        # `carry_hi == 1`. Since the final result is `1 << 256`.
+        self.constrain_zero(FQ(sum_lo + sum_hi) * is_neg)
+        self.constrain_zero(FQ(1 - carry_hi) * is_neg)
+
+        return x_abs, is_neg
 
     def add_words(self, addends: Sequence[RLC]) -> Tuple[RLC, FQ]:
         addends_lo, addends_hi = list(zip(*map(self.word_to_lo_hi, addends)))
@@ -475,6 +555,39 @@ class Instruction:
 
         return overflow
 
+    def mul_add_words_512(self, a: RLC, b: RLC, c: RLC, d: RLC, e: RLC):
+        """
+        The function constrains a * b + c == d * 2**256 + e, where a, b, c, d are 256-bit words.
+        """
+        a64s = self.word_to_64s(a)
+        b64s = self.word_to_64s(b)
+        c_lo, c_hi = self.word_to_lo_hi(c)
+        d_lo, d_hi = self.word_to_lo_hi(d)
+        e_lo, e_hi = self.word_to_lo_hi(e)
+
+        t0 = a64s[0] * b64s[0]
+        t1 = a64s[0] * b64s[1] + a64s[1] * b64s[0]
+        t2 = a64s[0] * b64s[2] + a64s[1] * b64s[1] + a64s[2] * b64s[0]
+        t3 = a64s[0] * b64s[3] + a64s[1] * b64s[2] + a64s[2] * b64s[1] + a64s[3] * b64s[0]
+
+        t4 = a64s[1] * b64s[3] + a64s[2] * b64s[2] + a64s[3] * b64s[1]
+        t5 = a64s[2] * b64s[3] + a64s[3] * b64s[2]
+        t6 = a64s[3] * b64s[3]
+
+        carry_0 = (t0 + t1 * (2**64) + c_lo - e_lo) / (2**128)
+        carry_1 = (t2 + t3 * (2**64) + c_hi + carry_0 - e_hi) / (2**128)
+        carry_2 = (t4 + t5 * (2**64) + carry_1 - d_lo) / (2**128)
+
+        # range check for carries
+        self.range_check(carry_0, 9)
+        self.range_check(carry_1, 9)
+        self.range_check(carry_2, 9)
+
+        self.constrain_equal(t0 + t1 * (2**64) + c_lo, e_lo + carry_0 * (2**128))
+        self.constrain_equal(t2 + t3 * (2**64) + c_hi + carry_0, e_hi + carry_1 * (2**128))
+        self.constrain_equal(t4 + t5 * (2**64) + carry_1, d_lo + carry_2 * (2**128))
+        self.constrain_equal(t6 + carry_2, d_hi)
+
     def fixed_lookup(
         self,
         tag: FixedTableTag,
@@ -504,20 +617,36 @@ class Instruction:
             RW.Write,
             RWTableTag.TxLog,
             key1=tx_id,
-            key2=log_id,
-            key3=FQ(field_tag),
-            key4=FQ(index),
+            key2=FQ(index + (int(field_tag) << 32) + (log_id.expr().n << 48)),
+            key3=FQ(0),
+            key4=FQ(0),
         ).value
         return value
 
-    # look up TxReceipt fields (PostStateOrStatus, CumulativeGasUsed, LogLength)
-    def tx_receipt_lookup(
+    # look up TxReceipt read for fields (PostStateOrStatus, CumulativeGasUsed, LogLength)
+    def tx_receipt_read(
         self,
         tx_id: Expression,
         field_tag: TxReceiptFieldTag,
     ) -> Expression:
         value = self.rw_lookup(
             RW.Read,
+            RWTableTag.TxReceipt,
+            key1=tx_id,
+            key2=FQ(0),
+            key3=FQ(field_tag),
+            key4=FQ(0),
+        ).value
+        return value
+
+    # look up TxReceipt write for fields (PostStateOrStatus, CumulativeGasUsed, LogLength)
+    def tx_receipt_write(
+        self,
+        tx_id: Expression,
+        field_tag: TxReceiptFieldTag,
+    ) -> Expression:
+        value = self.rw_lookup(
+            RW.Write,
             RWTableTag.TxReceipt,
             key1=tx_id,
             key2=FQ(0),
@@ -874,12 +1003,45 @@ class Instruction:
         return cast_expr(next_memory_size, FQ), cast_expr(memory_expansion_gas_cost, FQ)
 
     def memory_copier_gas_cost(
-        self, length: Expression, memory_expansion_gas_cost: Expression
+        self,
+        length: Expression,
+        memory_expansion_gas_cost: Expression,
+        gas_cost_copy: int = GAS_COST_COPY,
     ) -> FQ:
         word_size, _ = self.constant_divmod(length + FQ(31), FQ(32), N_BYTES_MEMORY_SIZE)
-        gas_cost = word_size * GAS_COST_COPY + memory_expansion_gas_cost
+        gas_cost = word_size * gas_cost_copy + memory_expansion_gas_cost
         self.range_check(gas_cost, N_BYTES_GAS)
         return gas_cost
 
     def pow2_lookup(self, value: Expression, value_pow: Expression):
         self.fixed_lookup(FixedTableTag.Pow2, value, value_pow)
+
+    def copy_lookup(
+        self,
+        src_id: Expression,
+        src_type: CopyDataTypeTag,
+        dst_id: Expression,
+        dst_type: CopyDataTypeTag,
+        src_addr: Expression,
+        src_addr_end: Expression,
+        dst_addr: Expression,
+        length: Expression,
+        rw_counter: Expression,
+        log_id: Expression = None,
+    ) -> Tuple[FQ, FQ]:
+        copy_table_row = self.tables.copy_lookup(
+            src_id,
+            FQ(src_type),
+            dst_id,
+            FQ(dst_type),
+            src_addr,
+            src_addr_end,
+            dst_addr,
+            length,
+            rw_counter,
+            log_id,
+        )
+        return copy_table_row.rwc_inc, copy_table_row.rlc_acc
+
+    def keccak_lookup(self, length: Expression, value_rlc: Expression) -> FQ:
+        return self.tables.keccak_lookup(length, value_rlc).output

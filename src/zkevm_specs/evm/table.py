@@ -109,8 +109,8 @@ class BlockContextFieldTag(IntEnum):
     Timestamp = auto()
     Difficulty = auto()
     BaseFee = auto()
-    HistoryHash = auto()
     ChainId = auto()
+    HistoryHash = auto()
 
 
 class TxContextFieldTag(IntEnum):
@@ -279,6 +279,26 @@ class TxReceiptFieldTag(IntEnum):
     LogLength = auto()
 
 
+class CopyDataTypeTag(IntEnum):
+    """
+    Tag for CopyTable that specifies the type of data source.
+    """
+
+    Bytecode = auto()
+    Memory = auto()
+    TxCalldata = auto()
+    TxLog = auto()
+
+    # RLC Accumulator tag can be used whenever we wish to
+    # accumulates `value` iteratively over all the steps in
+    # copy circuit. This is specifically used in the SHA3
+    # opcode execution where the copy table's last row has
+    # an accumulated value that is the RLC representation of
+    # all input bytes. Using this value, we can then lookup
+    # the Keccak table for the SHA3 of the input bytes.
+    RlcAcc = auto()
+
+
 class WrongQueryKey(Exception):
     def __init__(self, table_name: str, diff: Set[str]) -> None:
         self.message = f"Lookup {table_name} with invalid keys {diff}"
@@ -366,6 +386,52 @@ class MPTTableRow(TableRow):
     value_prev: Expression
 
 
+@dataclass
+class CopyCircuitRow(TableRow):
+    q_step: FQ
+    is_first: FQ
+    is_last: FQ
+    id: FQ  # one of call_id, bytecode_hash, tx_id
+    tag: FQ  # CopyDataTypeTag
+    addr: FQ
+    src_addr_end: FQ
+    bytes_left: FQ
+    value: FQ
+    rlc_acc: FQ
+    is_code: FQ
+    is_pad: FQ
+    rw_counter: FQ
+    rwc_inc_left: FQ
+    is_memory: FQ
+    is_bytecode: FQ
+    is_tx_calldata: FQ
+    is_tx_log: FQ
+    is_rlc_acc: FQ
+
+
+@dataclass(frozen=True)
+class CopyTableRow(TableRow):
+    src_id: FQ
+    src_type: FQ
+    dst_id: FQ
+    dst_type: FQ
+    src_addr: FQ
+    src_addr_end: FQ
+    dst_addr: FQ
+    length: FQ
+    rlc_acc: FQ
+    rw_counter: FQ
+    rwc_inc: FQ
+
+
+@dataclass(frozen=True)
+class KeccakTableRow(TableRow):
+    state_tag: FQ
+    input_len: FQ
+    acc_input: FQ
+    output: FQ
+
+
 class Tables:
     """
     A collection of lookup tables used in EVM circuit.
@@ -376,6 +442,8 @@ class Tables:
     tx_table: Set[TxTableRow]
     bytecode_table: Set[BytecodeTableRow]
     rw_table: Set[RWTableRow]
+    copy_table: Set[CopyTableRow]
+    keccak_table: Set[KeccakTableRow]
 
     def __init__(
         self,
@@ -383,6 +451,8 @@ class Tables:
         tx_table: Set[TxTableRow],
         bytecode_table: Set[BytecodeTableRow],
         rw_table: Union[Set[Sequence[Expression]], Set[RWTableRow]],
+        copy_circuit: Sequence[CopyCircuitRow] = None,
+        keccak_table: Sequence[KeccakTableRow] = None,
     ) -> None:
         self.block_table = block_table
         self.tx_table = tx_table
@@ -391,6 +461,36 @@ class Tables:
             row if isinstance(row, RWTableRow) else RWTableRow(*row)  # type: ignore  # (RWTableRow input args)
             for row in rw_table
         )
+        if copy_circuit is not None:
+            self.copy_table = self._convert_copy_circuit_to_table(copy_circuit)
+        if keccak_table is not None:
+            self.keccak_table = set(keccak_table)
+
+    def _convert_copy_circuit_to_table(self, copy_circuit: Sequence[CopyCircuitRow]):
+        rows: List[CopyTableRow] = []
+        for i, row in enumerate(copy_circuit):
+            # the first row and the row next to it will be used for its fields.
+            if row.is_first == 1:
+                first_row = row
+                assert i + 1 < len(copy_circuit), "Not enough rows in copy circuit"
+                next_row = copy_circuit[i + 1]
+                assert next_row.q_step == 0, "Invalid copy circuit"
+                rows.append(
+                    CopyTableRow(
+                        src_id=first_row.id,
+                        src_type=first_row.tag,
+                        dst_id=next_row.id,
+                        dst_type=next_row.tag,
+                        src_addr=first_row.addr,
+                        src_addr_end=first_row.src_addr_end,
+                        dst_addr=next_row.addr,
+                        length=first_row.bytes_left,
+                        rlc_acc=row.rlc_acc,
+                        rw_counter=first_row.rw_counter,
+                        rwc_inc=first_row.rwc_inc_left,
+                    )
+                )
+        return set(rows)
 
     def fixed_lookup(
         self,
@@ -467,6 +567,43 @@ class Tables:
             "aux0": aux0,
         }
         return lookup(RWTableRow, self.rw_table, query)
+
+    def copy_lookup(
+        self,
+        src_id: Expression,
+        src_type: Expression,
+        dst_id: Expression,
+        dst_type: Expression,
+        src_addr: Expression,
+        src_addr_end: Expression,
+        dst_addr: Expression,
+        length: Expression,
+        rw_counter: Expression,
+        log_id: Expression = None,
+    ) -> CopyTableRow:
+        if dst_type == CopyDataTypeTag.TxLog:
+            assert log_id is not None
+            dst_addr = dst_addr + FQ(int(TxLogFieldTag.Data) << 32) + FQ(log_id.expr().n << 48)
+        query = {
+            "src_id": src_id,
+            "src_type": src_type,
+            "dst_id": dst_id,
+            "dst_type": dst_type,
+            "src_addr": src_addr,
+            "src_addr_end": src_addr_end,
+            "dst_addr": dst_addr,
+            "length": length,
+            "rw_counter": rw_counter,
+        }
+        return lookup(CopyTableRow, self.copy_table, query)
+
+    def keccak_lookup(self, length: Expression, value_rlc: Expression):
+        query = {
+            "state_tag": FQ(2),  # Finalize
+            "input_len": length,
+            "acc_input": value_rlc,
+        }
+        return lookup(KeccakTableRow, self.keccak_table, query)
 
 
 T = TypeVar("T", bound=TableRow)

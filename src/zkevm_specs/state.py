@@ -1,8 +1,8 @@
-from typing import NamedTuple, Tuple, List, Sequence, Set, Union, cast
+from typing import NamedTuple, Tuple, List, Set, Union, cast
 from enum import IntEnum
 from math import log, ceil
 
-from .util import FQ, RLC, U160, U256, Expression
+from .util import FQ, RLC, U160, U256, Expression, linear_combine
 from .encoding import U8, is_circuit_code
 from .evm import (
     RW,
@@ -149,13 +149,6 @@ class Tables:
             "value_prev": value_prev,
         }
         return lookup(MPTTableRow, self.mpt_table, query)
-
-
-def linear_combine(limbs: Sequence[FQ], base: FQ) -> FQ:
-    ret = FQ.zero()
-    for limb in reversed(limbs):
-        ret = ret * base + limb
-    return ret
 
 
 # Boolean Expression builder
@@ -375,36 +368,13 @@ def check_account_destructed(row: Row, row_prev: Row):
 def check_tx_log(row: Row, row_prev: Row):
     # tx_id | log_id | field_tag | index | value
     tx_id = row.id()
-    pre_tx_id = row_prev.id()
-    log_id = row.address()
-    pre_field_tag = row_prev.field_tag()
-    field_tag = row.field_tag()
-    index = row.storage_key()
-    pre_index = row_prev.storage_key()
+    prev_tx_id = row_prev.id()
 
     # 12.0 is_write is always true
     assert row.is_write == 1
-    # 12.1 reset log_id when tx_id increases
-    if row.tag() == row_prev.tag():
-        if tx_id != pre_tx_id:
-            assert tx_id == pre_tx_id + 1
-            assert log_id == 0
-        else:
-            # increase log_id when tag changes to Address, make sure tag can only increase(Non-Decreasing),
-            # when log_index stays same,
-            if pre_field_tag == U256(TxLogFieldTag.Address):
-                assert (field_tag - pre_field_tag).n > 0
-            # make sure if tag Data appear, data_index can only increase by one when tag stays same.
-            # make sure if tag Topic appear, topic_index in range [0,4),can only increase by one when tag stays same.
-            if field_tag == U256(TxLogFieldTag.Topic):
-                assert_in_range(index, 0, 3)
-            if field_tag not in [U256(TxLogFieldTag.Topic), U256(TxLogFieldTag.Data)]:
-                assert index == 0
-            elif pre_field_tag == field_tag:
-                assert index == pre_index + 1
 
-    # make sure if log set is not empty within receipt/tx, tx must be successful status because failed execution will revert the log data,
-    # in other words, logs section must be empty list for failed tx
+    # removed field_tag-specific constraints as issue
+    # https://github.com/privacy-scaling-explorations/zkevm-specs/issues/221
 
 
 @is_circuit_code
@@ -450,11 +420,9 @@ def check_state_row(row: Row, row_prev: Row, tables: Tables, randomness: FQ):
     # 0.1. address is linear combination of 10 x 16bit limbs and also in range
     for limb in row.address_limbs():
         assert_in_range(limb, 0, 2**16 - 1)
-    assert row.address() == linear_combine(row.address_limbs(), FQ(2**16))
+    assert row.address() == linear_combine(row.address_limbs(), FQ(2**16), range_check=False)
 
     # 0.2. address is RLC encoded
-    for limb in row.storage_key_bytes():
-        assert_in_range(limb, 0, 2**8 - 1)
     assert row.storage_key() == linear_combine(row.storage_key_bytes(), randomness)
 
     # 0.3. is_write is boolean

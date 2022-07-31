@@ -1,5 +1,17 @@
 from __future__ import annotations
-from typing import Dict, Iterator, List, NewType, Optional, Sequence, Union
+from typing import (
+    cast,
+    Dict,
+    Iterator,
+    List,
+    MutableSequence,
+    NewType,
+    Optional,
+    Sequence,
+    Union,
+    Mapping,
+    Tuple,
+)
 from functools import reduce
 from itertools import chain
 
@@ -30,6 +42,9 @@ from .table import (
     TxLogFieldTag,
     TxReceiptFieldTag,
     TxTableRow,
+    CopyDataTypeTag,
+    CopyCircuitRow,
+    KeccakTableRow,
 )
 from .opcode import get_push_size, Opcode
 
@@ -197,11 +212,25 @@ class Transaction:
         )
 
 
+def init_is_code(code: bytearray) -> MutableSequence[bool]:
+    is_codes = []
+    push_data_left = 0
+    for idx in range(0, len(code)):
+        is_code = push_data_left == 0
+        push_data_left = get_push_size(code[idx]) if is_code else push_data_left - 1
+        is_codes.append(is_code)
+    return is_codes
+
+
 class Bytecode:
     code: bytearray
+    is_code: MutableSequence[bool]
 
-    def __init__(self, code: Optional[bytearray] = None) -> None:
+    def __init__(
+        self, code: Optional[bytearray] = None, is_code: Optional[MutableSequence[bool]] = None
+    ) -> None:
         self.code = bytearray() if code is None else code
+        self.is_code = init_is_code(self.code) if is_code is None else is_code
 
     def __getattr__(self, name: str):
         def method(*args) -> Bytecode:
@@ -216,11 +245,13 @@ class Bytecode:
             elif opcode.is_dup() or opcode.is_swap():
                 assert len(args) == 0
                 self.code.append(opcode)
+                self.is_code.append(True)
             else:
                 assert len(args) <= 1024 - opcode.max_stack_pointer()
                 for arg in reversed(args):
                     self.push(arg, 32)
                 self.code.append(opcode)
+                self.is_code.append(True)
 
             return self
 
@@ -242,7 +273,9 @@ class Bytecode:
 
         opcode = Opcode.PUSH1 + n_bytes - 1
         self.code.append(opcode)
+        self.is_code.append(True)
         self.code.extend(value.rjust(n_bytes, b"\x00"))
+        self.is_code.extend([False] * n_bytes)
 
         return self
 
@@ -252,15 +285,16 @@ class Bytecode:
     def table_assignments(self, randomness: FQ) -> Iterator[BytecodeTableRow]:
         class BytecodeIterator:
             idx: int
-            push_data_left: int
             hash: FQ
             code: bytes
+            is_code: Sequence[bool]
 
-            def __init__(self, hash: FQ, code: bytes):
+            def __init__(self, hash: FQ, code: bytes, is_code: Sequence[bool]):
                 self.idx = 0
-                self.push_data_left = 0
                 self.hash = hash
                 self.code = code
+                self.is_code = is_code
+                assert len(code) == len(is_code)
 
             def __iter__(self):
                 return self
@@ -279,14 +313,13 @@ class Bytecode:
                 # the other rows represent each byte in the bytecode
                 idx = self.idx - 1
                 byte = self.code[idx]
-                is_code = self.push_data_left == 0
-                self.push_data_left = get_push_size(byte) if is_code else self.push_data_left - 1
+                is_code = self.is_code[idx]
                 self.idx += 1
                 return BytecodeTableRow(
                     self.hash, FQ(BytecodeFieldTag.Byte), FQ(idx), FQ(is_code), FQ(byte)
                 )
 
-        return BytecodeIterator(RLC(self.hash(), randomness).expr(), self.code)
+        return BytecodeIterator(RLC(self.hash(), randomness).expr(), self.code, self.is_code)
 
 
 Storage = NewType("Storage", Dict[U256, U256])
@@ -374,7 +407,7 @@ class RWDictionary:
     def tx_log_write(
         self,
         tx_id: IntOrFQ,
-        log_id: IntOrFQ,
+        log_id: int,
         field_tag: TxLogFieldTag,
         index: IntOrFQ,
         value: Union[int, FQ, RLC],
@@ -385,9 +418,9 @@ class RWDictionary:
             RW.Write,
             RWTableTag.TxLog,
             key1=FQ(tx_id),
-            key2=FQ(log_id),
-            key3=FQ(field_tag),
-            key4=FQ(index),
+            key2=FQ(index + (int(field_tag) << 32) + (log_id << 48)),
+            key3=FQ(0),
+            key4=FQ(0),
             value=value,
         )
 
@@ -401,6 +434,22 @@ class RWDictionary:
             value = FQ(value)
         return self._append(
             RW.Read,
+            RWTableTag.TxReceipt,
+            key1=FQ(tx_id),
+            key3=FQ(field_tag),
+            value=value,
+        )
+
+    def tx_receipt_write(
+        self,
+        tx_id: IntOrFQ,
+        field_tag: TxReceiptFieldTag,
+        value: Union[int, FQ, RLC],
+    ) -> RWDictionary:
+        if isinstance(value, int):
+            value = FQ(value)
+        return self._append(
+            RW.Write,
             RWTableTag.TxReceipt,
             key1=FQ(tx_id),
             key3=FQ(field_tag),
@@ -615,3 +664,173 @@ class RWDictionary:
         )
 
         return self
+
+
+class KeccakCircuit:
+    rows: List[KeccakTableRow]
+
+    def __init__(self) -> None:
+        self.rows = []
+
+    def add(self, data: bytes, r: FQ) -> KeccakCircuit:
+        output = RLC(keccak256(data), r, n_bytes=32)
+        acc_input = RLC(bytes(reversed(data)), r, n_bytes=len(data))
+        self.rows.append(
+            KeccakTableRow(
+                state_tag=FQ(2),  # Finalize
+                input_len=FQ(len(data)),
+                acc_input=acc_input.expr(),
+                output=output.expr(),
+            )
+        )
+        return self
+
+
+class CopyCircuit:
+    rows: List[CopyCircuitRow]
+    pad_rows: List[CopyCircuitRow]
+
+    def __init__(self) -> None:
+        self.rows = []
+        self.pad_rows = [CopyCircuitRow(FQ(1), *[FQ(0)] * 18), CopyCircuitRow(*[FQ(0)] * 19)]
+
+    def table(self) -> Sequence[CopyCircuitRow]:
+        return self.rows + self.pad_rows
+
+    def copy(
+        self,
+        r: FQ,
+        rw_dict: RWDictionary,
+        src_id: IntOrFQ,
+        src_type: CopyDataTypeTag,
+        dst_id: IntOrFQ,
+        dst_type: CopyDataTypeTag,
+        src_addr: IntOrFQ,
+        src_addr_end: IntOrFQ,
+        dst_addr: IntOrFQ,
+        copy_length: IntOrFQ,
+        src_data: Mapping[IntOrFQ, Union[IntOrFQ, Tuple[IntOrFQ, IntOrFQ]]],
+        log_id: int = 0,
+    ):
+        new_rows: List[CopyCircuitRow] = []
+        rlc_acc = FQ.zero()
+        for i in range(int(copy_length)):
+            if int(src_addr + i) < int(src_addr_end):
+                is_pad = False
+                assert src_addr + i in src_data, f"Cannot find data at the offset {src_addr+i}"
+                value = src_data[src_addr + i]
+                if src_type == CopyDataTypeTag.Bytecode:
+                    value = cast(Tuple[IntOrFQ, IntOrFQ], value)
+                    value, is_code = value
+                else:
+                    value = cast(IntOrFQ, value)
+                    is_code = FQ(0)
+                value = FQ(value)
+                is_code = FQ(is_code)
+            else:
+                is_pad = True
+                value = FQ(0)
+                is_code = FQ(0)
+
+            # read row, because TxLog is write-only, no need to feed log_id in the read row
+            self._append_row(
+                new_rows,
+                rw_dict,
+                False,
+                i == 0,
+                False,
+                src_id,
+                src_type,
+                src_addr + i,
+                value,
+                FQ.zero(),  # rlc_acc will be updated later
+                is_code,
+                is_pad,
+                src_addr_end=src_addr_end,
+                bytes_left=copy_length - i,
+            )
+
+            # write row
+            if dst_type == CopyDataTypeTag.RlcAcc:
+                rlc_acc = rlc_acc * r + value
+            self._append_row(
+                new_rows,
+                rw_dict,
+                True,
+                False,
+                i == copy_length - 1,
+                dst_id,
+                dst_type,
+                dst_addr + i,
+                rlc_acc if dst_type == CopyDataTypeTag.RlcAcc else value,
+                FQ.zero(),
+                is_code,
+                False,
+                log_id=log_id,
+            )
+
+        # update the rwc_inc_left column
+        rw_counter = rw_dict.rw_counter
+        for row in new_rows:
+            row.rwc_inc_left = rw_counter - row.rw_counter
+            if dst_type == CopyDataTypeTag.RlcAcc:
+                row.rlc_acc = rlc_acc
+        self.rows.extend(new_rows)
+        return self
+
+    def _append_row(
+        self,
+        rows: MutableSequence[CopyCircuitRow],
+        rw_dict: RWDictionary,
+        is_write: bool,
+        is_first: bool,
+        is_last: bool,
+        id: IntOrFQ,
+        tag: CopyDataTypeTag,
+        addr: IntOrFQ,
+        value: IntOrFQ,
+        rlc_acc: IntOrFQ,
+        is_code: IntOrFQ,
+        is_pad: bool,
+        src_addr_end: IntOrFQ = FQ(0),
+        bytes_left: IntOrFQ = FQ(0),
+        log_id: int = 0,
+    ):
+        is_memory = tag == CopyDataTypeTag.Memory
+        is_bytecode = tag == CopyDataTypeTag.Bytecode
+        is_tx_calldata = tag == CopyDataTypeTag.TxCalldata
+        is_tx_log = tag == CopyDataTypeTag.TxLog
+        is_rlc_acc = tag == CopyDataTypeTag.RlcAcc
+        rw_counter = rw_dict.rw_counter
+        if is_memory:
+            if is_write:
+                rw_dict.memory_write(id, addr, value)
+            else:
+                rw_dict.memory_read(id, addr, value)
+        elif is_tx_log:
+            assert is_write
+            rw_dict.tx_log_write(id, log_id, TxLogFieldTag.Data, addr, value)
+            addr += (int(TxLogFieldTag.Data) << 32) + (log_id << 48)
+        rows.append(
+            CopyCircuitRow(
+                q_step=FQ(not is_write),
+                is_first=FQ(is_first),
+                is_last=FQ(is_last),
+                id=FQ(id),
+                tag=FQ(tag),
+                addr=FQ(addr),
+                src_addr_end=FQ(src_addr_end),
+                bytes_left=FQ(bytes_left),
+                value=FQ(value),
+                rlc_acc=FQ(rlc_acc),
+                is_code=FQ(is_code),
+                is_pad=FQ(is_pad),
+                rw_counter=FQ(rw_counter),
+                rwc_inc_left=FQ(0),  # placeholder for now
+                is_memory=FQ(is_memory),
+                is_bytecode=FQ(is_bytecode),
+                is_tx_calldata=FQ(is_tx_calldata),
+                is_tx_log=FQ(is_tx_log),
+                is_rlc_acc=FQ(is_rlc_acc),
+            )
+        )

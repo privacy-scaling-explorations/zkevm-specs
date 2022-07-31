@@ -1,7 +1,6 @@
 from ...util import N_BYTES_MEMORY_ADDRESS, FQ, Expression
-from ..execution_state import ExecutionState
 from ..instruction import Instruction, Transition
-from ..table import RW, CallContextFieldTag, TxContextFieldTag
+from ..table import RW, CallContextFieldTag, CopyDataTypeTag
 
 
 def calldatacopy(instruction: Instruction):
@@ -35,23 +34,27 @@ def calldatacopy(instruction: Instruction):
     )
     gas_cost = instruction.memory_copier_gas_cost(length, memory_expansion_gas_cost)
 
-    # When length != 0, constrain the state in the next execution state CopyToMemory
-    if instruction.is_zero(length) == FQ(0):
-        assert instruction.next is not None
-        instruction.constrain_equal(instruction.next.execution_state, ExecutionState.CopyToMemory)
-        next_aux = instruction.next.aux_data
-        instruction.constrain_equal(next_aux.src_addr, data_offset + call_data_offset)
-        instruction.constrain_equal(next_aux.dst_addr, memory_offset)
-        instruction.constrain_equal(
-            next_aux.src_addr_end, call_data_length.expr() + call_data_offset
+    src_type = instruction.select(
+        FQ(instruction.curr.is_root), FQ(CopyDataTypeTag.TxCalldata), FQ(CopyDataTypeTag.Memory)
+    )
+    if instruction.is_zero(length) == 0:
+        copy_rwc_inc, _ = instruction.copy_lookup(
+            src_id,
+            CopyDataTypeTag(src_type.n),
+            instruction.curr.call_id,
+            CopyDataTypeTag.Memory,
+            call_data_offset.expr() + data_offset.expr(),
+            call_data_offset.expr() + call_data_length.expr(),
+            memory_offset,
+            length,
+            instruction.curr.rw_counter + instruction.rw_counter_offset,
         )
-        instruction.constrain_equal(next_aux.from_tx, FQ(instruction.curr.is_root))
-        instruction.constrain_equal(next_aux.src_id, src_id)
-        instruction.constrain_equal(next_aux.bytes_left, length)
+    else:
+        copy_rwc_inc = FQ(0)
 
     instruction.step_state_transition_in_same_context(
         opcode,
-        rw_counter=Transition.delta(instruction.rw_counter_offset),
+        rw_counter=Transition.delta(instruction.rw_counter_offset + copy_rwc_inc),
         program_counter=Transition.delta(1),
         stack_pointer=Transition.delta(3),
         memory_size=Transition.to(next_memory_size),

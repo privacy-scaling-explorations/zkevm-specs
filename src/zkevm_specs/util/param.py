@@ -41,10 +41,14 @@ GAS_COST_CREATE2 = 32000
 GAS_COST_SELF_DESTRUCT = 5000
 # Gas cost of copying every word
 GAS_COST_COPY = 3
+# Gas cost of copying every word, specifically in the case of SHA3 opcode
+GAS_COST_COPY_SHA3 = 6
 # Gas cost of non-creation transaction
 GAS_COST_TX = 21000
 # Constant gas cost of LOG
 GAS_COST_LOG = 375
+# Gas cost of per byte in a LOG* operation's data.
+GAS_COST_LOGDATA = 8
 # Gas cost of creation transaction
 GAS_COST_CREATION_TX = 53000
 # Gas cost of transaction call_data per non-zero byte
@@ -88,3 +92,8 @@ SSTORE_CLEARS_SCHEDULE = 4800
 # The max number of bytes that can be copied in a step limited by the number
 # of cells in a step
 MAX_COPY_BYTES = 32
+
+# PublicInputs circuit parameters
+PUBLIC_INPUTS_BLOCK_LEN = 7 + 256  # Length of block public data
+PUBLIC_INPUTS_EXTRA_LEN = 3  # Length of fields that don't belong to any table
+PUBLIC_INPUTS_TX_LEN = 11  # Length of tx public data (without calldata)

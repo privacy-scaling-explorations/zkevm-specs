@@ -1,7 +1,6 @@
 from ..instruction import Instruction, Transition
 from ..table import CallContextFieldTag, AccountFieldTag
-from ..opcode import Opcode
-from ...util.param import EXTRA_GAS_COST_ACCOUNT_COLD_ACCESS, GAS_COST_WARM_ACCESS
+from ...util.param import EXTRA_GAS_COST_ACCOUNT_COLD_ACCESS
 from ...util.hash import EMPTY_CODE_HASH
 from ...util import FQ
 
