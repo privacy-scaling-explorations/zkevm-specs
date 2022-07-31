@@ -43,6 +43,7 @@ the following parameters:
     - `dst_addr: 0`
     - `rw_counter: callee.rw_counter`
     - `rwc_inc: length`
+
 D. Otherwise, if it's not a root call, it copies the source memory chunk to the
 callers memory defined by the `*CALL*` arguments `retOffset`, `retLength`,
 using a lookup to the copy circuit with the following parameters:
@@ -58,6 +59,7 @@ using a lookup to the copy circuit with the following parameters:
     - `rwc_inc: 2 * length`
 
 B. If it's a root call, it transitions to `EndTx`.
+
 C. Otherwise, it restore caller's context by reading to `rw_table`, then does
 step state transition to it.
 

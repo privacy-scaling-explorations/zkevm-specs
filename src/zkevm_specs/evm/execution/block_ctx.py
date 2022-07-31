@@ -1,8 +1,7 @@
-from ...util.param import N_BYTES_ACCOUNT_ADDRESS, N_BYTES_U64, N_BYTES_WORD
+from ...util.param import N_BYTES_ACCOUNT_ADDRESS, N_BYTES_U64
 from ..instruction import Instruction, Transition
 from ..table import BlockContextFieldTag
 from ..opcode import Opcode
-from ...util import FQ
 
 
 def blockctx(instruction: Instruction):
