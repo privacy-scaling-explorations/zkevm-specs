@@ -69,6 +69,11 @@ def check_witness(
         push.expr(), is_shl * dividend.expr() + is_shr * quotient.expr() * (1 - divisor_is_zero)
     )
 
+    # Constrain shift == shift.cells[0] when divisor != 0.
+    instruction.constrain_zero(
+        (1 - divisor_is_zero) * (shift.expr() - shift.le_bytes[0]),
+    )
+
     # Constrain remainder < divisor when divisor != 0.
     remainder_lt_divisor, _ = instruction.compare_word(remainder, divisor)
     instruction.constrain_zero((1 - divisor_is_zero) * (1 - remainder_lt_divisor))
@@ -80,11 +85,6 @@ def check_witness(
     # Constrain overflow == 0 for SHR.
     overflow = instruction.mul_add_words(quotient, divisor, remainder, dividend)
     instruction.constrain_zero(is_shr * overflow)
-
-    # Constrain pop1 == pop1.cells[0] when divisor != 0.
-    instruction.constrain_zero(
-        (1 - divisor_is_zero) * (pop1.expr() - pop1.le_bytes[0]),
-    )
 
     # Constrain divisor_lo == 2^shf0 when shf0 < 128, and
     # divisor_hi == 2^(128 - shf0) otherwise.

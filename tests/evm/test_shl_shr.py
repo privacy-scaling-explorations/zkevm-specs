@@ -45,10 +45,10 @@ generate_nasty_tests(TESTING_DATA, (Opcode.SHL, Opcode.SHR))
 @pytest.mark.parametrize("opcode, shift, a", TESTING_DATA)
 def test_shl_shr(opcode: Opcode, shift: int, a: int):
     if opcode == Opcode.SHL:
-        b = a << shift & MAX_WORD if shift <= 255 else 0
+        b = a << shift & MAX_WORD if shift < 256 else 0
         bytecode = Bytecode().shl(shift, a)
     else:  # SHR
-        b = a >> shift if shift <= 255 else 0
+        b = a >> shift if shift < 256 else 0
         bytecode = Bytecode().shr(shift, a)
 
     randomness = rand_fq()
