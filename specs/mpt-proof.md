@@ -112,10 +112,10 @@ The value 194 is RLP specific and it means that the following RLP list is of len
 
 ### Account leaf
 
-Let us observe the proof for the modification of account nonce. Let us assume there is only
-one account stored in the trie. We change nonce for this account from 0 to 1.
+Let us observe the proof for the modification of the account nonce. Let us assume there is only
+one account stored in the trie. We change the nonce for this account from 0 to 1.
 
-Account leaf occupies 8 rows. Thus, in our example, where there is only one account in the trie,
+An account leaf occupies 8 rows. Thus, in our example, where there is only one account in the trie,
 our circuit will only have 8 rows.
 
 Contrary as in the branch rows, the `S` and `C` leaves are not positioned parallel to each
@@ -158,6 +158,21 @@ In `ACCOUNT_LEAF_NONCE_BALANCE_S` row, there is `S` nonce stored in `s_main` and
 In `ACCOUNT_LEAF_NONCE_BALANCE_C` row, there is `C` nonce stored in `s_main` and `C` balance in
 `c_main`. We can see nonce in `C` proof is `1`.
 
+The two main things the circuit needs to check are:
+ * Everything is the same in `S` and `C`, except the nonce value.
+ * The change occurs at the proper account address.
+
+However, there are many other things to be checked, for example the RLP encoding and RLC accumulators.
+The RLC accumulators are used to compute the RLC of the whole node, in this particular case, the RLC of
+the account leaf. As an account leaf is distributed over multiple rows, we need to compute the intermediate
+RLC in each row.
+
+All chips in the MPT circuit use the first gate to check the RLP encoding and RLC.
+
+The constraints for the first gate of `AccountLeafNonceBalanceChip` which is named
+`Account leaf nonce balance RLC & RLP` are give below.
+
+### Bool check is_nonce_long
 
 ## Old specs (will be replaced by new specs above)
 
