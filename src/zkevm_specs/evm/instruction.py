@@ -397,10 +397,6 @@ class Instruction:
         assert len(word.le_bytes) == 32, "Expected word to contain 32 bytes"
         return self.compare(FQ(127), FQ(word.le_bytes[31]), 1)[0]
 
-    def word_is_neg(self, word: RLC) -> FQ:
-        assert len(word.le_bytes) == 32, "Expected word to contain 32 bytes"
-        return self.compare(FQ(127), FQ(word.le_bytes[31]), 1)[0]
-
     def word_is_zero(self, word: RLC) -> FQ:
         assert len(word.le_bytes) == 32, "Expected word to contain 32 bytes"
         return self.is_zero(self.sum(word.le_bytes))
