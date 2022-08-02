@@ -52,6 +52,7 @@ class Row:
     rand_rpi: FQ
 
     q_end: FQ  # Fixed Column
+    q_not_end: FQ  # Fixed Column
 
 
 @dataclass
@@ -75,12 +76,15 @@ def check_row(
     row_offset_tx_table_value: Row,
 ):
 
-    q_not_end = 1 - row.q_end
+    q_not_end = row.q_not_end
+    q_end = row.q_end
 
     # 0.0 rpi_rlc_acc[0] == RLC(raw_public_inputs, rand_rpi)
-    assert (
-        row.rpi_rlc_acc == q_not_end * row_next.rpi_rlc_acc * row.rand_rpi + row.raw_public_inputs
+    assert q_not_end * row.rpi_rlc_acc == q_not_end * (
+        row_next.rpi_rlc_acc * row.rand_rpi + row.raw_public_inputs
     )
+
+    assert q_end * row.rpi_rlc_acc == q_end * row.raw_public_inputs
 
     # 0.1 rand_rpi[i] == rand_rpi[j]
     assert q_not_end * row.rand_rpi == q_not_end * row_next.rand_rpi
@@ -343,6 +347,7 @@ def public_data2witness(
     rows = []
     for i in range(len(raw_public_inputs)):
         q_end = FQ(1) if i == len(raw_public_inputs) - 1 else FQ(0)
+        q_not_end = FQ(1) - q_end
         block_row = BlockTableRow(FQ(0))
 
         q_block_table = FQ(0)
@@ -374,6 +379,7 @@ def public_data2witness(
             rpi_rlc_acc_col[i],
             rand_rpi,
             q_end,
+            q_not_end,
         )
         rows.append(row)
 
