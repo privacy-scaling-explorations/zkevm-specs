@@ -171,7 +171,7 @@ class Block:
     parent_hash: U256
     uncle_hash: U256
     coinbase: U160
-    root: U256  # State Trie Root
+    state_root: U256  # State Trie Root
     tx_hash: U256  # Txs Trie Root
     receipt_hash: U256  # Receipts Trie Root
     bloom: bytes  # 256 bytes
@@ -229,7 +229,7 @@ class Transaction:
 class PublicData:
     chain_id: U64
     block: Block
-    block_prev_root: U256
+    state_root_prev: U256
     block_hashes: List[U256]  # 256 previous block hashes
     txs: List[Transaction]
 
@@ -320,8 +320,8 @@ def public_data2witness(
 
     # Extra fields
     raw_public_inputs.append(FQ(public_data.block.hash))  # start offset = BLOCK_LEN + 1 (for 0 row)
-    raw_public_inputs.append(FQ(public_data.block.root))
-    raw_public_inputs.append(FQ(public_data.block_prev_root))
+    raw_public_inputs.append(FQ(public_data.block.state_root))
+    raw_public_inputs.append(FQ(public_data.state_root_prev))
 
     # Tx Table
     tx_table = public_data.tx_table(MAX_TXS, MAX_CALLDATA_BYTES)
@@ -387,7 +387,7 @@ def public_data2witness(
         rand_rpi,
         rpi_rlc,
         FQ(public_data.chain_id),
-        FQ(public_data.block.root),
-        FQ(public_data.block_prev_root),
+        FQ(public_data.block.state_root),
+        FQ(public_data.state_root_prev),
     )
     return Witness(rows, public_inputs)
