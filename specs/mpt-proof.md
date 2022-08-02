@@ -1,8 +1,10 @@
 # Merkle Patricia Trie (MPT) Proof
 
+## New specs (temporary name)
+
 MPT circuit checks that the modification of the trie state happened correctly.
 
-Let's assume there are two proofs (as returned by `eth getProof`):
+Let us assume there are two proofs (as returned by `eth getProof`):
 
 - A proof that there exists value `val1` at key `key1` for address `addr` in the state trie with root `root1`.
 - A proof that there exists value `val2` at key `key1` for address `addr` in the state trie with root `root2`.
@@ -56,17 +58,23 @@ be in the first element at the proper position (depends on the key).
 The hash of the first storage proof element (storage root) needs to be checked
 to be in the account leaf of the last account proof element.
 
-## New specs (temporary name)
+## Two parallel proofs
 
-The columns are split into two categories. There are `2 * (2 + 32)` columns which contain RLP
+This section gives a bit of intuition why MPT circuit handles two parallel proofs at the
+same time. Namely, there is `S` (as `State`) proof which presents the state of the trie
+before the modification. And there is `C` (as `Change`) proof which presents the state
+of the trie after modification. 
+
+The columns are split into two categories (not to be mixed with two parallel proofs).
+There are `2 * (2 + 32)` columns which contain RLP
 streams returned by `getProof`. The other columns are selectors (for example which kind of
 row we are at).
 
 The value `2 * (2 + 32)` is motivated by the fact that keccak output is of 32 width.
 The additional 2 bytes are for RLP specific bytes which store information like
 how long is the substream.
-The multiplier 2 is because we always have two parallel proofs: before and after modification.
-Before modification proof is named `S` as state and after modification is named `C` as change.
+Finally, the multiplier 2 is because we always have two parallel proofs:
+before and after modification.
 
 The struct `MainCols` contains `rlp1`, `rlp2` bytes (2 bytes) and an array `bytes` of length 32.
 There is `MainCols` for `S` proof (named `s_main`) and
@@ -110,7 +118,30 @@ In case, there is a child of length smaller than 32, its corresponding branch ro
 The value 194 is RLP specific and it means that the following RLP list is of length
 `2 = 194 - 192`.
 
-### Account leaf
+## Proof type
+
+MPT circuit supports the following proofs:
+ - Storage modification
+ - Nonce modification
+ - Balance modification
+ - Account delete
+ - Non existing account
+
+There is a struct `ProofTypeCols` that is to be used to specify the type of a proof:
+```
+struct ProofTypeCols {
+    is_storage_mod: Column<Advice>,
+    is_nonce_mod: Column<Advice>,
+    is_balance_mod: Column<Advice>,
+    is_account_delete_mod: Column<Advice>,
+    is_non_existing_account_proof: Column<Advice>,
+}
+```
+
+The columns in the struct falls into selectors category (as opposed to `MainCols` columns).
+`SelectorsChip` ensures there is exactly one type of proof selected.
+
+## Account leaf chip
 
 Let us observe the proof for the modification of the account nonce. Let us assume there is only
 one account stored in the trie. We change the nonce for this account from 0 to 1.
@@ -167,12 +198,86 @@ The RLC accumulators are used to compute the RLC of the whole node, in this part
 the account leaf. As an account leaf is distributed over multiple rows, we need to compute the intermediate
 RLC in each row.
 
-All chips in the MPT circuit use the first gate to check the RLP encoding and RLC.
+All chips in the MPT circuit use the first gate to check the RLP encoding,
+the computation of RLC, and selectors being of proper values (for example being
+boolean).
 
 The constraints for the first gate of `AccountLeafNonceBalanceChip` which is named
-`Account leaf nonce balance RLC & RLP` are give below.
+`Account leaf nonce balance RLC & RLP` are given below.
 
-### Bool check is_nonce_long
+### Bool check is_nonce_long & Bool check is_balance_long
+
+If nonce (same holds for balance) is smaller or equal to 128, then it will occupy only one byte:
+`s_main.bytes[0]` (`c_main.bytes[0]` for balance).
+We can see such case in the example above. The nonce there is 128 (meaning 0) before modification
+and 1 (meaning 1) after modification.
+
+In case nonce (same for balance) is bigger than 128, it will occupy more than 1 byte.
+The example row below shows nonce value 142, while 129 means there is a nonce of byte
+length `1 = 129 - 128`.
+Balance in the example row below is: `28 + 5 * 256 + 107 * 256^2 + ... + 59 * 256^6`, while
+135 means there are `7 = 135 - 128` bytes.
+```
+[rlp1 rlp2 bytes[0] bytes[1]]           rlp1 rlp2 bytes[0] bytes[1]   ...    ]
+[184  78   129      142       0 0 ... 0 248  76   135      28       5 107 201 118 120 59 0 0 ... 0]
+```
+
+The `sel1` column in the `ACCOUNT_LEAF_KEY_S` or `ACCOUNT_LEAF_KEY_C` row
+is used to mark whether nonce is of 1 byte (short) or more than 1 byte (long).
+`sel1 = 1` means long, `sel1 = 0` means short.
+`Bool check is_nonce_long` constraint ensures the value is boolean.
+
+Analogously, `sel2` holds the information whether balance is long or short.
+Bool check `is_balance_long` constraint ensures the `sel2` value is boolean.
+
+### s_main.bytes[i] = 0 for i > 0 when is_nonce_short
+
+It is important that there are 0s in `s_main.bytes` after the nonce bytes end.
+When nonce is short (1 byte), like in `[184,70,1,0,...]`, the constraint is simple:
+`s_main.bytes[i] = 0` for all `i > 0`.
+
+When nonce is long, the constraints need to be written differently because we do not
+know the length of nonce in advance.
+The row below holds nonce length specification in `s_main.bytes[0]`.
+The length in the example below is `1 = 129 - 128`,
+so the constraint needs to be `s_main.bytes[i] = 0` for
+all `i > 1` (note that the actual value is in `s_main.bytes[1]`).
+
+```
+[184  78   129      142       0 0 ... 0 248  76   135      28       5 107 201 118 120 59 0 0 ... 0]
+```
+
+But instead of 129 we could have 130 or some other value in `s_main.bytes[0]`. For this
+reason, the constraints are implemented using `key_len_lookup`, more about this approach
+in what follows.
+
+### c_main.bytes[i] = 0 for i > 0 when is_balance_short
+
+The balance constraints are analogous to the nonce constraints described above.
+The difference is that balance is stored in `c_main.bytes`.
+
+### is_wrong_leaf is bool
+
+When `non_existing_account_proof` proof type (which can be of two subtypes: with wrong leaf
+and without wrong leaf, more about it below), the `is_wrong_leaf` flag specifies whether
+the subtype is with wrong leaf or not.
+When `non_existing_account_proof` without wrong leaf
+the proof contains only branches and a placeholder account leaf.
+In this case, it is checked that there is nil in the parent branch
+at the proper position (see `account_non_existing`). Note that we need (placeholder) account
+leaf for lookups and to know when to check that parent branch has a nil.
+
+In `is_wrong_leaf is bool` we only check that `is_wrong_leaf` is a boolean values.
+Other wrong leaf related constraints are in other gates.
+
+### Leaf nonce balance c_rlp1
+
+<!--
+```
+[184 77 7 0 0 ...       248 75 135 28 5 107 201 118 120 59 0 0 ... 0]
+[184 78 129 142 0 0 ... 248 76 135 28 5 107 201 118 120 59 0 0 ... 0]
+```
+-->
 
 ## Old specs (will be replaced by new specs above)
 
