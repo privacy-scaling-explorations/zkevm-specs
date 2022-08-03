@@ -270,7 +270,122 @@ leaf for lookups and to know when to check that parent branch has a nil.
 In `is_wrong_leaf is bool` we only check that `is_wrong_leaf` is a boolean values.
 Other wrong leaf related constraints are in other gates.
 
+### is_wrong_leaf needs to be 0 when not in non_existing_account proof
+
+`is_wrong_leaf` can be set to 1 only when the proof is not non_existing_account proof.
+
 ### Leaf nonce balance c_rlp1
+
+`c_main.rlp1` needs to always be 248. This is RLP byte meaning that behind this byte
+there is a list which has one byte that specifies the length - `at c_main.rlp2`.
+
+The only exception is when `is_non_existing_account_proof = 1` & `is_wrong_leaf = 0`.
+In this case the value does not matter as the account leaf is only a placeholder and
+does not use `c_main`. Note that it uses `s_main` for nibbles because the account address
+is computed using nibbles and this account address needs to be as required by a lookup.
+That means there is an account leaf which is just a placeholder but it still has the
+correct address.
+
+Example:
+```
+[184  78   129      142       0 0 ... 0 248  76   135      28       5 107 201 118 120 59 0 0 ... 0]
+```
+248 at c_main.rlp1 means one byte for length. This byte is 76, meaning there are 76 bytes after it.
+
+### Nonce RLC long 
+
+Besides having nonce (its bytes) stored in `s_main.bytes`, we also have the RLC
+of nonce bytes stored in `s_mod_node_hash_rlc` column. The value in this column
+is to be used by lookups.
+`Nonce RLP long` constraint ensures the RLC of a nonce is computed properly when
+nonce is long.
+
+### Nonce RLC short
+
+Similarly as in `Nonce RLP long` constraint, 
+`Nonce RLP short` constraint ensures the RLC of a nonce is computed properly when
+nonce is short.
+
+### Balance RLC long 
+
+Besides having balance (its bytes) stored in `c_main.bytes`, we also have the RLC
+of nonce bytes stored in `c_mod_node_hash_rlc` column. The value in this column
+is to be used by lookups.
+`Balance RLP long` constraint ensures the RLC of a balance is computed properly when
+balance is long.
+
+### Balance RLC short
+
+Similarly as in `Balance RLP long` constraint, 
+`Balance RLP short` constraint ensures the RLC of a balance is computed properly when
+balance is short.
+
+### S nonce RLC is correctly copied to C row
+
+To enable lookup for nonce modification we need to have `S` nonce and `C` nonce
+in the same row. For this reason, `S` nonce RLC is copied to `sel1` column in `C` row.
+This constraint checks whether the value is properly copied.
+
+### S balance RLC is correctly copied to C row
+
+To enable lookup for balance modification we need to have `S` balance and `C` balance
+in the same row. For this reason, `S` balance RLC is copied to `sel2` column in `C` row.
+This constraint checks whether the value is properly copied.
+
+### If storage or balance modification: S nonce = C nonce
+
+We need to ensure there is only one modification at a time. If there is storage or
+balance modification, we need to ensure `S` nonce and `C` nonce are the same.
+
+### If storage or nonce modification: S balance = C balance
+
+We need to ensure there is only one modification at a time. If there is storage or
+nonce modification, we need to ensure `S` balance and `C` balance are the same.
+
+### Leaf nonce acc mult (nonce long)
+
+When adding nonce bytes to the account leaf RLC we do:
+`rlc_after_nonce = rlc_tmp + s_main.bytes[0] * mult_tmp + s_main.bytes[1] * mult_tmp * r
+  + ... + s_main.bytes[k] * mult_tmp * r^k`
+Note that `rlc_tmp` means the RLC after the previous row, while `mult_tmp` means the multiplier
+(power of randomness `r`) that needs to be used for the first byte in the current row.
+
+In this case we assumed there are `k + 1` nonce bytes. After this we continue adding bytes:
+`rlc_after_nonce + b1 * mult_tmp * r^{k+1} + b2 * mult_tmp * r^{k+1} * r + ...
+Note that `b1` and `b2` are the first two bytes that need to used next (balance bytes).
+
+The problem is `k` can be different from case to case. For this reason, we store `r^{k+1}` in
+`mult_diff_nonce` (which is actually `acc_c`).
+That means we can compute the expression above as:
+`rlc_after_nonce + b1 * mult_tmp * mult_diff_nonce + b2 * mult_tmp * mult_diff_nonce * r + ...
+
+However, we need to ensure that `mult_diff_nonce` corresponds to `s_main.bytes[0]` where the length
+of the nonce is specified. This is done using `key_len_lookup` below.
+
+There is one more detail: when computing RLC after nonce, we compute also the bytes that come before
+nonce bytes in the row. These are: `s_main.rlp1`, `s_main.rlp2`, `c_main.rlp1`, `c_main.rlp2`.
+It is a bit confusing (we are limited with layout), but `c_main.rlp1` and `c_main.rlp2`
+are bytes that actually appear in the account leaf RLP stream before `s_main.bytes`.
+So we have:
+`rlc_after_nonce = rlc_tmp + s_main.rlp1 * mult_tmp + s_main.rlp2 * mult_tmp * r
+  + c_main.rlp1 * mult_tmp * r^2 + c_main.rlp2 * mult_tmp * r^3 + s_main.bytes[0] * mult_tmp * r^4 + ...
+  + s_main.bytes[k] * mult_tmp * r^4 * r^k`
+That means `mult_diff_nonce` needs to store `r^4 * r^{k+1}` and we continue computing the RLC
+as mentioned above:
+`rlc_after_nonce + b1 * mult_tmp * mult_diff_nonce + b2 * mult_tmp * mult_diff_nonce * r + ...
+
+Let us observe the following example.
+[184  78   129      142       0 0 ... 0 248  76   135      28       5 107 201 118 120 59 0 0 ... 0]
+Here:
+`rlc_after_nonce = rlc_tmp + 184 * mult_tmp + 78 * mult_tmp * r + 248 * mult_tmp * r^2
+  + 76 * mult_tmp * r^3 + 129 * mult_tmp * r^4 + 142 * mult_tmp * r^5`
+And we continue computing the RLC:
+`rlc_after_nonce + 135 * mult_tmp * mult_diff_nonce + 28 + mult_tmp * mult_diff_nonce * r + ... `
+
+### Leaf nonce acc mult (nonce short)
+
+When nonce is short (occupying only one byte), we know in advance that `mult_diff_nonce = r^5`
+as there are `s_main.rlp1`, `s_main.rlp2`, `c_main.rlp1`, `c_main.rlp2`, and `s_main.bytes[0]` bytes to be taken into account.
 
 <!--
 ```
