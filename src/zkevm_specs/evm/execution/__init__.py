@@ -10,6 +10,7 @@ from .end_block import *
 from .add_sub import *
 from .addmod import *
 from .mulmod import *
+from .balance import *
 from .block_ctx import *
 from .call import *
 from .calldatasize import *
@@ -51,6 +52,7 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.MUL: mul_div_mod,
     ExecutionState.NOT: not_opcode,
     ExecutionState.ORIGIN: origin,
+    ExecutionState.BALANCE: balance,
     ExecutionState.CALLER: caller,
     ExecutionState.CALLVALUE: callvalue,
     ExecutionState.CALLDATACOPY: calldatacopy,
