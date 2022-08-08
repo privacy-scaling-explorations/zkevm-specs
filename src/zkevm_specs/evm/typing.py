@@ -770,7 +770,7 @@ class CopyCircuit:
                 dst_type,
                 dst_addr + i,
                 aux_value if dst_type in [CopyDataTypeTag.RlcAcc, CopyDataTypeTag.Exp] else value,
-                FQ.zero(),
+                FQ.zero(),  # aux_value will be updated later
                 is_code,
                 False,
                 log_id=log_id,

@@ -19,6 +19,7 @@ from .calldatacopy import *
 from .calldataload import *
 from .codecopy import *
 from .codesize import *
+from .exp import exp
 from .gas import *
 from .iszero import *
 from .jump import *
@@ -49,6 +50,7 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.ADDMOD: addmod,
     ExecutionState.MULMOD: mulmod,
     ExecutionState.MUL: mul_div_mod,
+    ExecutionState.EXP: exp,
     ExecutionState.NOT: not_opcode,
     ExecutionState.ORIGIN: origin,
     ExecutionState.CALLER: caller,
