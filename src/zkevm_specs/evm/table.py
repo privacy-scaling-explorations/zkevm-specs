@@ -298,6 +298,14 @@ class CopyDataTypeTag(IntEnum):
     # the Keccak table for the SHA3 of the input bytes.
     RlcAcc = auto()
 
+    # Exponentiation tag is reserved for cases where every
+    # written value is a product of the previous row's written
+    # value and the corresponding read value. It is being used
+    # for the EXP opcode where for (a ** exponent) we have every
+    # read value as `a` with a total of `exponent` number of
+    # rows.
+    Exp = auto()
+
 
 class WrongQueryKey(Exception):
     def __init__(self, table_name: str, diff: Set[str]) -> None:
@@ -397,7 +405,7 @@ class CopyCircuitRow(TableRow):
     src_addr_end: FQ
     bytes_left: FQ
     value: FQ
-    rlc_acc: FQ
+    aux_value: FQ
     is_code: FQ
     is_pad: FQ
     rw_counter: FQ
@@ -407,6 +415,7 @@ class CopyCircuitRow(TableRow):
     is_tx_calldata: FQ
     is_tx_log: FQ
     is_rlc_acc: FQ
+    is_exp: FQ
 
 
 @dataclass(frozen=True)
@@ -419,7 +428,7 @@ class CopyTableRow(TableRow):
     src_addr_end: FQ
     dst_addr: FQ
     length: FQ
-    rlc_acc: FQ
+    aux_value: FQ
     rw_counter: FQ
     rwc_inc: FQ
 
@@ -485,7 +494,7 @@ class Tables:
                         src_addr_end=first_row.src_addr_end,
                         dst_addr=next_row.addr,
                         length=first_row.bytes_left,
-                        rlc_acc=row.rlc_acc,
+                        aux_value=row.aux_value,
                         rw_counter=first_row.rw_counter,
                         rwc_inc=first_row.rwc_inc_left,
                     )

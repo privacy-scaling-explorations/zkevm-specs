@@ -32,6 +32,7 @@ def verify_row(cs: ConstraintSystem, rows: Sequence[CopyCircuitRow]):
     cs.constrain_equal(rows[0].is_tx_calldata, cs.is_zero(rows[0].tag - CopyDataTypeTag.TxCalldata))
     cs.constrain_equal(rows[0].is_tx_log, cs.is_zero(rows[0].tag - CopyDataTypeTag.TxLog))
     cs.constrain_equal(rows[0].is_rlc_acc, cs.is_zero(rows[0].tag - CopyDataTypeTag.RlcAcc))
+    cs.constrain_equal(rows[0].is_exp, cs.is_zero(rows[0].tag - CopyDataTypeTag.Exp))
 
     # constrain the transition between two copy steps
     is_last_two_rows = rows[0].is_last + rows[1].is_last
@@ -48,14 +49,17 @@ def verify_row(cs: ConstraintSystem, rows: Sequence[CopyCircuitRow]):
         # not last row
         cs.constrain_equal(rows[0].rw_counter + rw_diff, rows[1].rw_counter)
         cs.constrain_equal(rows[0].rwc_inc_left - rw_diff, rows[1].rwc_inc_left)
-        # rlc_acc is the same over all rows
-        cs.constrain_equal(rows[0].rlc_acc, rows[1].rlc_acc)
+        # aux_value is the same over all rows
+        cs.constrain_equal(rows[0].aux_value, rows[1].aux_value)
     with cs.condition(rows[0].is_last) as cs:
         # rwc_inc_left == rw_diff for last row in the copy slot
         cs.constrain_equal(rows[0].rwc_inc_left, rw_diff)
-        # for RlcAcc type, value == rlc_acc at the last row
+        # for RlcAcc type, value == aux_value at the last row
         with cs.condition(rows[0].is_rlc_acc) as cs:
-            cs.constrain_equal(rows[0].rlc_acc, rows[0].value)
+            cs.constrain_equal(rows[0].aux_value, rows[0].value)
+        # for Exp type, value == aux_value at the last row
+        with cs.condition(rows[0].is_exp) as cs:
+            cs.constrain_equal(rows[0].aux_value, rows[0].value)
 
 
 def verify_step(cs: ConstraintSystem, rows: Sequence[CopyCircuitRow], r: FQ):
@@ -65,8 +69,8 @@ def verify_step(cs: ConstraintSystem, rows: Sequence[CopyCircuitRow], r: FQ):
         # bytes_left == bytes_left_next + 1 for non-last step
         cs.constrain_zero((1 - rows[1].is_last) * (rows[0].bytes_left - rows[2].bytes_left - 1))
 
-        # write value == read value if not rlc accumulator
-        with cs.condition(1 - rows[1].is_rlc_acc):
+        # write value == read value if (is_rlc == 1 or is_exp == 1)
+        with cs.condition((1 - rows[1].is_rlc_acc) * (1 - rows[1].is_exp)):
             cs.constrain_equal(rows[0].value, rows[1].value)
         # read value == write value for the first step (always)
         with cs.condition(rows[0].is_first):
@@ -86,6 +90,9 @@ def verify_step(cs: ConstraintSystem, rows: Sequence[CopyCircuitRow], r: FQ):
             # next_write_value == (write_value * r) + next_read_value if rlc accumulator
             with cs.condition(rows[0].is_rlc_acc):
                 cs.constrain_equal(rows[2].value, rows[0].value * r + rows[1].value)
+            # next_write_value == (write_value * next_read_value) if exponentiation
+            with cs.condition(rows[0].is_exp):
+                cs.constrain_equal(rows[2].value, rows[0].value * rows[1].value)
 
 
 def verify_copy_table(copy_circuit: CopyCircuit, tables: Tables, r: FQ):

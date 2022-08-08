@@ -1037,7 +1037,7 @@ class Instruction:
             rw_counter,
             log_id,
         )
-        return copy_table_row.rwc_inc, copy_table_row.rlc_acc
+        return copy_table_row.rwc_inc, copy_table_row.aux_value
 
     def keccak_lookup(self, length: Expression, value_rlc: Expression) -> FQ:
         return self.tables.keccak_lookup(length, value_rlc).output
