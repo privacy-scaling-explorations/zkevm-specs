@@ -1,5 +1,5 @@
-from ..encoding import U8, U64, U128, U256
-from typing import Sequence, Tuple
+from ..encoding import U64, U128, U256
+from typing import Tuple
 from .param import MEMORY_EXPANSION_LINEAR_COEFF
 
 

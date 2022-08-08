@@ -109,13 +109,6 @@ def test_calldatacopy(
         .stack_read(CALL_ID, 1021, memory_offset_rlc)
         .stack_read(CALL_ID, 1022, data_offset_rlc)
         .stack_read(CALL_ID, 1023, length_rlc)
-        .call_context_read(CALL_ID, CallContextFieldTag.TxId, TX_ID)
-    )
-    rw_dictionary = (
-        RWDictionary(1)
-        .stack_read(CALL_ID, 1021, memory_offset_rlc)
-        .stack_read(CALL_ID, 1022, data_offset_rlc)
-        .stack_read(CALL_ID, 1023, length_rlc)
     )
     if from_tx:
         rw_dictionary.call_context_read(CALL_ID, CallContextFieldTag.TxId, TX_ID).call_context_read(
@@ -139,6 +132,7 @@ def test_calldatacopy(
         ]
     )
     copy_circuit = CopyCircuit().copy(
+        randomness,
         rw_dictionary,
         TX_ID if from_tx else CALLER_ID,
         CopyDataTypeTag.TxCalldata if from_tx else CopyDataTypeTag.Memory,
@@ -174,7 +168,7 @@ def test_calldatacopy(
         copy_circuit=copy_circuit.rows,
     )
 
-    verify_copy_table(copy_circuit, tables)
+    verify_copy_table(copy_circuit, tables, randomness)
     verify_steps(
         randomness=randomness,
         tables=tables,

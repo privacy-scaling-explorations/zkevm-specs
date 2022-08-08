@@ -1,7 +1,6 @@
 from ...util import N_BYTES_MEMORY_ADDRESS, FQ
-from ..execution_state import ExecutionState
 from ..instruction import Instruction, Transition
-from ..table import RW, RWTableTag, CallContextFieldTag, AccountFieldTag, CopyDataTypeTag
+from ..table import CopyDataTypeTag
 
 
 def codecopy(instruction: Instruction):
@@ -24,7 +23,7 @@ def codecopy(instruction: Instruction):
     gas_cost = instruction.memory_copier_gas_cost(size, memory_expansion_gas_cost)
 
     if instruction.is_zero(size) == FQ(0):
-        copy_rwc_inc = instruction.copy_lookup(
+        copy_rwc_inc, _ = instruction.copy_lookup(
             instruction.curr.code_hash,
             CopyDataTypeTag.Bytecode,
             instruction.curr.call_id,

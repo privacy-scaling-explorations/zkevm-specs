@@ -1,5 +1,4 @@
 from ..instruction import Instruction, Transition, FixedTableTag
-from ..opcode import Opcode
 from ...util import FQ
 
 

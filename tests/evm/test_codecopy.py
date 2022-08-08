@@ -136,6 +136,7 @@ def test_codecopy(src_addr: U64, dst_addr: U64, length: U64):
 
     src_data = dict([(i, (code.code[i], code.is_code[i])) for i in range(len(code.code))])
     copy_circuit = CopyCircuit().copy(
+        randomness,
         rw_dictionary,
         code_hash.rlc_value,
         CopyDataTypeTag.Bytecode,
@@ -174,7 +175,7 @@ def test_codecopy(src_addr: U64, dst_addr: U64, length: U64):
         copy_circuit=copy_circuit.rows,
     )
 
-    verify_copy_table(copy_circuit, tables)
+    verify_copy_table(copy_circuit, tables, randomness)
 
     verify_steps(
         randomness=randomness,

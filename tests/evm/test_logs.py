@@ -147,6 +147,7 @@ def make_log(
     src_data = dict([(mstart + i, byte) for (i, byte) in enumerate(data)])
     if is_persistent:
         copy_circuit.copy(
+            randomness,
             rw_dictionary,
             CALL_ID,
             CopyDataTypeTag.Memory,
@@ -221,7 +222,7 @@ def test_single_log(topics: list, mstart: U64, msize: U64, is_persistent: bool):
         rw_table=set(rw_dictionary.rws),
         copy_circuit=copy_circuit.rows,
     )
-    verify_copy_table(copy_circuit, tables)
+    verify_copy_table(copy_circuit, tables, randomness)
     verify_steps(
         randomness=randomness,
         tables=tables,
@@ -303,7 +304,7 @@ def test_multi_logs(log_entries):
         copy_circuit=copy_circuit.rows,
     )
 
-    verify_copy_table(copy_circuit, tables)
+    verify_copy_table(copy_circuit, tables, randomness)
     verify_steps(
         randomness=randomness,
         tables=tables,

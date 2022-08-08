@@ -36,11 +36,11 @@ def end_tx(instruction: Instruction):
 
     # constrain tx status matches with `PostStateOrStatus` of TxReceipt tag in RW
     instruction.constrain_equal(
-        is_persistent, instruction.tx_receipt_lookup(tx_id, TxReceiptFieldTag.PostStateOrStatus)
+        is_persistent, instruction.tx_receipt_write(tx_id, TxReceiptFieldTag.PostStateOrStatus)
     )
 
     # constrain log id matches with `LogLength` of TxReceipt tag in RW
-    log_id = instruction.tx_receipt_lookup(tx_id, TxReceiptFieldTag.LogLength)
+    log_id = instruction.tx_receipt_write(tx_id, TxReceiptFieldTag.LogLength)
     instruction.constrain_equal(log_id, instruction.curr.log_id)
 
     # constrain `CumulativeGasUsed` of TxReceipt tag in RW
@@ -48,13 +48,13 @@ def end_tx(instruction: Instruction):
     if is_first_tx:  # check if it is the first tx
         current_cumulative_gas_used = FQ(0)
     else:
-        current_cumulative_gas_used = instruction.tx_receipt_lookup(
+        current_cumulative_gas_used = instruction.tx_receipt_read(
             tx_id - FQ(1), TxReceiptFieldTag.CumulativeGasUsed
         ).expr()
 
     instruction.constrain_equal(
         current_cumulative_gas_used + gas_used,
-        instruction.tx_receipt_lookup(tx_id, TxReceiptFieldTag.CumulativeGasUsed),
+        instruction.tx_receipt_write(tx_id, TxReceiptFieldTag.CumulativeGasUsed),
     )
 
     # When to next transaction

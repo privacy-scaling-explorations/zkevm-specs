@@ -33,10 +33,12 @@ from .storage import *
 from .selfbalance import *
 from .extcodehash import *
 from .log import *
+from .sha3 import sha3
 from .shr import shr
 from .bitwise import not_opcode
 from .sdiv_smod import sdiv_smod
 from .stop import stop
+from .return_ import *
 
 
 EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
@@ -62,6 +64,7 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.PUSH: push,
     ExecutionState.SCMP: scmp,
     ExecutionState.GAS: gas,
+    ExecutionState.SHA3: sha3,
     ExecutionState.SLOAD: sload,
     ExecutionState.SSTORE: sstore,
     ExecutionState.SELFBALANCE: selfbalance,
@@ -73,4 +76,5 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.SHR: shr,
     ExecutionState.SDIV_SMOD: sdiv_smod,
     ExecutionState.STOP: stop,
+    ExecutionState.RETURN: return_,
 }

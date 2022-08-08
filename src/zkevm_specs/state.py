@@ -1,8 +1,8 @@
-from typing import NamedTuple, Tuple, List, Sequence, Set, Union, cast, Dict, Optional
+from typing import NamedTuple, Tuple, List, Set, Union, cast, Dict, Optional
 from enum import IntEnum
 from math import log, ceil
 
-from .util import FQ, RLC, U160, U256, Expression
+from .util import FQ, RLC, U160, U256, Expression, linear_combine
 from .encoding import U8, is_circuit_code
 from .evm import (
     RW,
@@ -135,13 +135,6 @@ class Tables:
             "root_prev": root_prev,
         }
         return lookup(MPTTableRow, self.mpt_table, query)
-
-
-def linear_combine(limbs: Sequence[FQ], base: FQ) -> FQ:
-    ret = FQ.zero()
-    for limb in reversed(limbs):
-        ret = ret * base + limb
-    return ret
 
 
 # Boolean Expression builder
@@ -393,11 +386,9 @@ def check_state_row(row: Row, row_prev: Row, row_next: Row, tables: Tables, rand
     # 0.1. address is linear combination of 10 x 16bit limbs and also in range
     for limb in row.address_limbs():
         assert_in_range(limb, 0, 2**16 - 1)
-    assert row.address() == linear_combine(row.address_limbs(), FQ(2**16))
+    assert row.address() == linear_combine(row.address_limbs(), FQ(2**16), range_check=False)
 
     # 0.2. address is RLC encoded
-    for limb in row.storage_key_bytes():
-        assert_in_range(limb, 0, 2**8 - 1)
     assert row.storage_key() == linear_combine(row.storage_key_bytes(), randomness)
 
     # 0.3. is_write is boolean

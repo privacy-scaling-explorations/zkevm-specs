@@ -1,6 +1,5 @@
 from typing import Any
 from .execution_state import ExecutionState
-from .typing import Bytecode
 from ..util import FQ, RLC
 
 
