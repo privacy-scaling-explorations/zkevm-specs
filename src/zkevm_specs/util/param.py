@@ -33,6 +33,8 @@ GAS_COST_SLOW = 10
 GAS_COST_EXT = 20
 # Gas cost of SHA3
 GAS_COST_SHA3 = 30
+# Dynamic gas multiplier for EXP opcode
+GAS_COST_EXP = 50
 # Gas cost of CREATE
 GAS_COST_CREATE = 32000
 # Gas cost of CREATE2

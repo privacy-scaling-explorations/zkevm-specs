@@ -9,6 +9,10 @@ def memory_word_size(
     return U64((address + 31) // 32)
 
 
+def byte_size(value: int) -> int:
+    return (value.bit_length() + 7) // 8
+
+
 def div(
     value: U256,
     divisor: U64,

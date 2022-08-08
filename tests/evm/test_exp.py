@@ -14,9 +14,11 @@ from zkevm_specs.evm import (
 )
 from zkevm_specs.copy_circuit import verify_copy_table
 from zkevm_specs.util import (
+    byte_size,
     rand_fq,
     rand_range,
     FQ,
+    GAS_COST_EXP,
     RLC,
 )
 
@@ -79,11 +81,7 @@ def test_exp(base: int, exponent: int):
 
     verify_copy_table(copy_circuit, tables, randomness)
 
-    gas = (
-        Opcode.EXP.constant_gas_cost()
-        # TODO(rohit): dynamic gas cost
-        + 0
-    )
+    gas = Opcode.EXP.constant_gas_cost() + (GAS_COST_EXP * byte_size(exponent))
     verify_steps(
         randomness=randomness,
         tables=tables,
