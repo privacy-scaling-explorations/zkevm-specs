@@ -17,7 +17,9 @@ class ConstraintSystem:
     def __enter__(self):
         return self
 
-    def __exit__(self, type, value, traceback):
+    def __exit__(self, e_type, e_value, traceback):
+        if e_type is not None:
+            raise e_value
         self.cond = None
         return self
 
@@ -27,7 +29,7 @@ class ConstraintSystem:
         return expr.expr()
 
     def constrain_equal(self, lhs: Expression, rhs: Expression):
-        assert self._eval(lhs.expr() - rhs.expr()) == 0, ConstraintUnsatFailure(
+        assert self._eval(lhs.expr()) == self._eval(rhs.expr()), ConstraintUnsatFailure(
             f"Expected values to be equal, but got {lhs} and {rhs}"
         )
 
