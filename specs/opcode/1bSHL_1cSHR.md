@@ -38,7 +38,7 @@ The opcode circuit also adds some extra constraints:
 3. Lookups: 1 pow2 lookup + 3 busmapping lookups
    - divisor lookup in pow2 table (where 0≤shf0<256)  
       - when `shf0 < 128`, constrain `divisor_lo == 2^shf0`.
-      - when `shf0 >= 128`, constrain `divisor_hi == 2^(128 - shf0)`.
+      - when `shf0 >= 128`, constrain `divisor_hi == 2^(shf0 - 128)`.
    - top of the stack
       - when opcode is SHL, quotient is at the top of the stack.
       - when opcode is SHR, dividend is at the top of the stack.
