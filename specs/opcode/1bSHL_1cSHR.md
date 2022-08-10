@@ -36,7 +36,7 @@ The opcode circuit also adds some extra constraints:
    - pc + 1
    - gas + 3
 3. Lookups: 1 pow2 lookup + 3 busmapping lookups
-   - divisor lookup in pow2 table
+   - divisor lookup in pow2 table (where 0≤shf0<256)  
       - when `shf0 < 128`, constrain `divisor_lo == 2^shf0`.
       - when `shf0 >= 128`, constrain `divisor_hi == 2^(128 - shf0)`.
    - top of the stack
