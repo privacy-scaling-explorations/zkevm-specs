@@ -1,10 +1,5 @@
 # Account leaf
 
-## Nonce balance constraints
-
-Let us observe the proof for the modification of the account nonce. Let us assume there is only
-one account stored in the trie. We change the nonce for this account from 0 to 1.
-
 An account leaf occupies 8 rows. Thus, in our example, where there is only one account in the trie,
 our circuit will only have 8 rows.
 
@@ -21,6 +16,76 @@ ACCOUNT_LEAF_STORAGE_CODEHASH_S
 ACCOUNT_LEAF_STORAGE_CODEHASH_C
 ACCOUNT_DRIFTED_LEAF
 ```
+
+Example:
+```
+[248,106,161,32,252,237,52,8,133,130,180,167,143,97,28,115,102,25,94,62,148,249,8,6,55,244,16,75,187,208,208,127,251,120,61,73,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+
+[248,106,161,32,252,237,52,8,133,130,180,167,143,97,28,115,102,25,94,62,148,249,8,6,55,244,16,75,187,208,208,127,251,120,61,73,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+
+[0,0,0,32,252,237,52,8,133,130,180,167,143,97,28,115,102,25,94,62,148,249,8,6,55,244,16,75,187,208,208,127,251,120,61,73,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+
+[184,70,128,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,248,68,128,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+
+[184,70,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,248,68,128,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+
+[0,160,86,232,31,23,27,204,85,166,255,131,69,230,146,192,248,110,91,72,224,27,153,108,173,192,1,98,47,181,227,99,180,33,0,160,197,210,70,1,134,247,35,60,146,126,125,178,220,199,3,192,229,0,182,83,202,130,39,59,123,250,216,4,93,133,164,122]
+
+[0,160,86,232,31,23,27,204,85,166,255,131,69,230,146,192,248,110,91,72,224,27,153,108,173,192,1,98,47,181,227,99,180,33,0,160,197,210,70,1,134,247,35,60,146,126,125,178,220,199,3,192,229,0,182,83,202,130,39,59,123,250,216,4,93,133,164,122]
+
+[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+```
+
+## Key constraints
+
+### Account leaf key s_main.rlp1 = 248
+
+Account leaf always starts with 248 because its length is always longer than 55 bytes due to
+containing two hashes - storage root and codehash, which are both of 32 bytes. 
+248 is RLP byte which means there is `1 = 248 - 247` byte specifying the length of the remaining
+list. For example, in `[248,112,157,59,...]`, there are 112 byte after the second byte.
+
+## Leaf key RLC
+
+In each row of the account leaf we compute an intermediate RLC of the whole leaf.
+The RLC after account leaf key row is stored in `acc` column. We check the stored value
+is computed correctly.
+
+## Zeros in s_main.bytes & c_main.rlp1 & c_main.rlp2 after key ends
+
+Key RLC is computed over `s_main.bytes[1]`, ..., `s_main.bytes[31]` because we do not know
+the key length in advance. To prevent changing the key and setting `s_main.bytes[i]` for
+`i > nonce_len + 1` to get the correct nonce RLC, we need to ensure that
+`s_main.bytes[i] = 0` for `i > key_len + 1`.
+The key can also appear in `c_main.rlp1` and `c_main.rlp2`, so we need to check these two columns too.
+
+Note: the key length is always in `s_main.bytes[0]` here as opposed to storage
+key leaf where it can appear in `s_rlp2` too. This is because the account
+leaf contains nonce, balance, ... which makes it always longer than 55 bytes,
+which makes a RLP to start with 248 (`s_rlp1`) and having one byte (in `s_rlp2`)
+for the length of the remaining stream.
+
+### mult_diff
+
+When the account intermediate RLC needs to be computed in the next row (nonce balance row), we need
+to know the intermediate RLC from the current row and the randomness multiplier (`r` to some power).
+The power of randomness `r` is determined by the key length - the intermediate RLC in the current row
+is computed as (key starts in `s_main.bytes[1]`):
+`rlc = s_main.rlp1 + s_main.rlp2 * r + s_main.bytes[0] * r^2 + key_bytes[0] * r^3 + ... + key_bytes[key_len-1] * r^{key_len + 2}`
+So the multiplier to be used in the next row is `r^{key_len + 2}`. 
+
+`mult_diff` needs to correspond to the key length + 2 RLP bytes + 1 byte for byte that contains the key length.
+That means `mult_diff` needs to be `r^{key_len+1}` where `key_len = s_main.bytes[0] - 128`.
+
+
+
+## Nonce balance constraints
+
+Let us observe the proof for the modification of the account nonce. Let us assume there is only
+one account stored in the trie. We change the nonce for this account from 0 to 1.
+
+An account leaf occupies 8 rows. Thus, in our example, where there is only one account in the trie,
+our circuit will only have 8 rows.
 
 The witness for our proof looks like (excluding selector columns):
 
@@ -451,5 +516,4 @@ the hash of the leaf needs to be checked to be the state root.
 Range lookups ensure that `s_main` and `c_main` columns are all bytes (between 0 - 255).
 
 Note: `s_main.rlp1` and `c_main.rlp1` are not used.
-
 

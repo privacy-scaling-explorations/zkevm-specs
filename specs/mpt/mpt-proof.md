@@ -1,7 +1,5 @@
 # Merkle Patricia Trie (MPT) Proof
 
-## New specs (temporary name)
-
 MPT circuit checks that the modification of the trie state happened correctly.
 
 Let us assume there are two proofs (as returned by `eth getProof`):
