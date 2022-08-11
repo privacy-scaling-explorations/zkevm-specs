@@ -77,6 +77,62 @@ So the multiplier to be used in the next row is `r^{key_len + 2}`.
 `mult_diff` needs to correspond to the key length + 2 RLP bytes + 1 byte for byte that contains the key length.
 That means `mult_diff` needs to be `r^{key_len+1}` where `key_len = s_main.bytes[0] - 128`.
 
+### Account leaf key with even nibbles: s_main.bytes[1] = 32
+
+If there is an even number of nibbles in the leaf, `s_main.bytes[1]` need to be 32.
+
+### Address RLC
+
+Account leaf contains the remaining nibbles of the account address. Combining the path 
+of the leaf in the trie and these remaining nibbles needs to be the same as the account
+address which is given in the `address_rlc` column that is to be used by a lookup (see the
+constraint below).
+
+Address RLC needs to be computed properly - we need to take into account the path of the leaf 
+in the trie and the remaining nibbles in the account leaf.
+
+The intermediate RLC is retrieved from the last branch above the account leaf - this
+presents the RLC after the path to the leaf is considered. After this, the bytes (nibbles
+in a compacted form) in the leaf have to be added to the RLC.
+
+### Computed account address RLC same as value in address_rlc column
+
+The computed key RLC needs to be the same as the value in `address_rlc` column.
+This seems to be redundant (we could write one constraint instead of two:
+`key_rlc_acc - address_rlc = 0`), but note that `key_rlc` is used in
+`account_leaf_key_in_added_branch` and in cases when there is a placeholder branch
+we have `key_rlc - address_rlc != 0` because `key_rlc` is computed for the branch
+that is parallel to the placeholder branch.
+
+Note that there is a similar constraint for the cases when the account leaf is in the first level, but
+here we do not fetch for the intermediate RLC from the branch above as there is no branch above.
+
+### Previous key RLC
+
+When there is an account leaf after a placeholder branch, the intermediate key RLC needs to be
+fetched from the branch above the placeholder branch. That would require a rotation over two
+levels which leads into ConstrainedPoisoned because we are accessing the rows before 0 in
+some cases. For this reason, we copy previous key RLC to the current branch so that we have
+in each branch a current and previous key RLC at our disposal. This way we do not need to
+rotate over two levels.
+
+We need to ensure that the key RLC from the branch above the placeholder branch is copied
+to `accs.acc_c.rlc`. This enables us to compute the address RLC after a branch placeholder
+(see the constraint below) by not using rotations over two levels (we have the intermediate
+RLC in the current row).
+
+### Previous key RLC mult
+
+We need to ensure that the key RLC mult from the branch above the placeholder branch is copied
+to `accs.acc_c.mult`.
+
+### Account address RLC after branch placeholder
+
+Although `key_rlc` is not compared to `address_rlc` in the case when the leaf
+is below placeholder branch (`address_rlc` is compared to the parallel leaf `key_rlc`), 
+we still need properly computed `key_rlc` to reuse it in `account_leaf_key_in_added_branch`.
+
+Note: `key_rlc - address_rlc != 0` when placeholder branch.
 
 
 ## Nonce balance constraints
