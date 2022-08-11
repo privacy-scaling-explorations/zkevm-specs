@@ -1,4 +1,4 @@
-from typing import NamedTuple, Tuple, List, Set, Union, cast, Dict, Optional
+from typing import NamedTuple, Tuple, List, Set, Dict, Optional
 from enum import IntEnum
 from math import log, ceil
 

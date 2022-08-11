@@ -14,12 +14,6 @@ from .util import (
 from .encoding import is_circuit_code
 from .tx import Tag as TxTag
 from .evm import (
-    RW,
-    AccountFieldTag,
-    CallContextFieldTag,
-    TxLogFieldTag,
-    TxReceiptFieldTag,
-    MPTTableRow,
     BlockContextFieldTag as BlockTag,
 )
 
