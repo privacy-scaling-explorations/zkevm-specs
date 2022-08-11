@@ -29,7 +29,7 @@ class ConstraintSystem:
         return expr.expr()
 
     def constrain_equal(self, lhs: Expression, rhs: Expression):
-        assert self._eval(lhs.expr()) == self._eval(rhs.expr()), ConstraintUnsatFailure(
+        assert self._eval(lhs.expr() - rhs.expr()) == 0, ConstraintUnsatFailure(
             f"Expected values to be equal, but got {lhs} and {rhs}"
         )
 
