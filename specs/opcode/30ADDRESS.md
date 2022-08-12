@@ -22,7 +22,7 @@ context, then pushes this address to the stack.
    - gc + 2 (1 stack write, 1 call context read)
    - stack_pointer - 1
    - pc + 1
-   - gas + 2
+   - gas - 2
 3. Lookups: 2
    - `address` is in the rw table {call context, call ID, callee}
    - `address` is on top of stack
