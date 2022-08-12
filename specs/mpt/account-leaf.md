@@ -128,12 +128,43 @@ to `accs.acc_c.mult`.
 
 ### Account address RLC after branch placeholder
 
+The example layout for a branch placeholder looks like (placeholder could be in `C` proof too):
+```
+Branch 1S               || Branch 1C
+Branch 2S (placeholder) || Branch 2C
+Leaf S
+Leaf C
+```
+
+Using `Previous key RLC` constraint we ensured that we copied the key RLC from Branch 1S
+to Leaf S `accs.acc_c.rlc` column. So when add nibbles to compute the key RLC (address RLC)
+of the account, we start with `accs.acc_c.rlc` value from the current row.
+
 Although `key_rlc` is not compared to `address_rlc` in the case when the leaf
-is below placeholder branch (`address_rlc` is compared to the parallel leaf `key_rlc`), 
+is below the placeholder branch (`address_rlc` is compared to the parallel leaf `key_rlc`), 
 we still need properly computed `key_rlc` to reuse it in `account_leaf_key_in_added_branch`.
 
 Note: `key_rlc - address_rlc != 0` when placeholder branch.
 
+### If account delete, there is either a placeholder leaf or a placeholder branch
+
+We need to make sure there is no leaf when account is deleted. Two possible cases:
+1. Account leaf is deleted and there is a nil object in branch. In this case we have 
+    a placeholder leaf.
+2. Account leaf is deleted from a branch with two leaves, the remaining leaf moves one level up
+    and replaces the branch. In this case we have a branch placeholder.
+
+So we need to check there is a placeholder branch when we have the second case.
+
+Note: we do not need to cover the case when the (only) branch dissapears and only one
+leaf remains in the trie because there will always be at least two leaves
+(the genesis account) when account will be deleted,
+so there will always be a branch / extension node (and thus placeholder branch).
+
+### Range lookups
+
+Range lookups ensure that `s_main`, `c_main.rlp1`, `c_main.rlp2` columns are all bytes (between 0 - 255).
+Note that `c_main.bytes` columns are not used.
 
 ## Nonce balance constraints
 
