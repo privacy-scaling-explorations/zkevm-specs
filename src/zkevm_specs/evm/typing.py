@@ -690,9 +690,11 @@ class CopyCircuit:
     rows: List[CopyCircuitRow]
     pad_rows: List[CopyCircuitRow]
 
-    def __init__(self) -> None:
+    def __init__(self, pad_rows: Optional[List[CopyCircuitRow]] = None) -> None:
         self.rows = []
-        self.pad_rows = [CopyCircuitRow(FQ(1), *[FQ(0)] * 18), CopyCircuitRow(*[FQ(0)] * 19)]
+        self.pad_rows = []
+        if pad_rows is not None:
+            self.pad_rows = pad_rows
 
     def table(self) -> Sequence[CopyCircuitRow]:
         return self.rows + self.pad_rows
@@ -805,7 +807,7 @@ class CopyCircuit:
         if is_memory:
             if is_write:
                 rw_dict.memory_write(id, addr, value)
-            else:
+            elif is_pad is False:
                 rw_dict.memory_read(id, addr, value)
         elif is_tx_log:
             assert is_write
