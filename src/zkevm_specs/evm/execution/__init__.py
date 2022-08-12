@@ -9,6 +9,7 @@ from .end_block import *
 # Opcode's successful cases
 from .add_sub import *
 from .addmod import *
+from .address import *
 from .mulmod import *
 from .block_ctx import *
 from .call import *
@@ -47,6 +48,7 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.EndBlock: end_block,
     ExecutionState.ADD: add_sub,
     ExecutionState.ADDMOD: addmod,
+    ExecutionState.ADDRESS: address,
     ExecutionState.MULMOD: mulmod,
     ExecutionState.MUL: mul_div_mod,
     ExecutionState.NOT: not_opcode,
