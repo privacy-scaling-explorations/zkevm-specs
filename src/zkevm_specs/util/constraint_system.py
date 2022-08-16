@@ -17,7 +17,9 @@ class ConstraintSystem:
     def __enter__(self):
         return self
 
-    def __exit__(self, type, value, traceback):
+    def __exit__(self, e_type, e_value, traceback):
+        if e_type is not None:
+            raise e_value
         self.cond = None
         return self
 

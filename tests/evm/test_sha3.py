@@ -28,7 +28,11 @@ from zkevm_specs.util import (
 
 
 CALL_ID = 1
-TESTING_DATA = ((0x20, 0x40),)
+TESTING_DATA = (
+    (0x20, 0x40),
+    (0x101, 0x202),
+    (0x202, 0x00),
+)
 
 
 @pytest.mark.parametrize("offset, length", TESTING_DATA)
