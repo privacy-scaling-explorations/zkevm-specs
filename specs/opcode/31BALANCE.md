@@ -35,7 +35,7 @@ doesn't exist, then it will push 0 onto the stack instead.
      `is_persistent`.
    - `address` is added to the transaction access list if not already present.
    - `balance` is read from the given account. Set to 0 if it doesn't exist.
-   - the `balance` result is pushed onto the stack.
+   - The BALANCE result is in the top of the stack.
 4. Additional Constraints
    - value `is_warm` matches the gas cost for this opcode.
 
