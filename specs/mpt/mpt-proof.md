@@ -139,6 +139,7 @@ struct ProofTypeCols {
 The columns in the struct falls into selectors category (as opposed to `MainCols` columns).
 `SelectorsChip` ensures there is exactly one type of proof selected.
 
-## Account leaf
+## Constraints for different nodes
 
 Account leaf constraints documentation is in [account-leaf.md](account-leaf.md).
+Extension node constraints documentation is in [extension-node.md](extension-node.md).

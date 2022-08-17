@@ -67,8 +67,8 @@ for the length of the remaining stream.
 
 ### mult_diff
 
-When the account intermediate RLC needs to be computed in the next row (nonce balance row), we need
-to know the intermediate RLC from the current row and the randomness multiplier (`r` to some power).
+When the account intermediate RLC is computed in the next row (nonce balance row), we need
+to know the intermediate RLC and the randomness multiplier (`r` to some power) from the current row.
 The power of randomness `r` is determined by the key length - the intermediate RLC in the current row
 is computed as (key starts in `s_main.bytes[1]`):
 `rlc = s_main.rlp1 + s_main.rlp2 * r + s_main.bytes[0] * r^2 + key_bytes[0] * r^3 + ... + key_bytes[key_len-1] * r^{key_len + 2}`
@@ -632,6 +632,16 @@ Node_1_0 Node_1_1 ... Node_1_15
 
 `Node_1_15` is the hash of the account `A`.
 
+So we have:
+```
+                              Branch0
+Node_0_0 Node_0_1 ...              Node_0_8                 ... Node_0_15
+                                      |
+                        Node_1_0 Node_1_1 ... Node_1_15
+                                                  |
+                                                  A
+```
+
 Before we add the account `A1`, we first obtain the `S` proof which will contain the account `A` as a leaf
 because the first part of the address `[8, 15]` is the same and when going down the trie retrieving
 the elements of a proof, the algorithm arrives to the account `A`.
@@ -650,6 +660,9 @@ Branch1              || Branch1
 (Placeholder branch) || Branch2
 A                    || A1
 ```
+
+Note that the scenario is reversed (`S` and `C` are turned around) when a leaf is deleted
+from the branch with exactly two leaves.
 
 To preserve the parallel layout, the circuit uses a placeholder branch that occupies the columns
 in `S` proof parallel to `Branch2`.
@@ -702,7 +715,9 @@ ACCOUNT_LEAF_STORAGE_CODEHASH_C
 ACCOUNT_DRIFTED_LEAF
 ```
 
-`ACCOUNT_DRIFTED_LEAF` row is where the account `A` when in `Branch2` is stored.
+`ACCOUNT_DRIFTED_LEAF` row is where the account `A` (when in `Branch2`) is stored.
+We can see the example below - the key of the account `A` (when in `Branch2`) is in the last
+row. Note that key of the account `A` when in `Branch1` is in the first row.
 
 ```
 [248 102 157 55 236 125 29 155 142 209 241 75 145 144 143 254 65 81 209 56 13 192 157 236 195 213 73 132 11 251 149 241 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 92 69 153 141 251 249 206 112 188 187 128 87 78 215 166 34 146 45 44 119 94 10 35 49 254 90 139 141 204 153 244 144 242 246 191 23 44 167 166 154 14 14 27 198 200 66 149 155 102 162 36 92 147 76 227 228 141 122 139 186 245 89 5 41 252 237 52 8 133 130 180 167 143 97 28 115 102 25 94 62 148 249 8 6 55 244 16 75 187 208 208 127 251 120 61 73 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 1 6]
@@ -714,3 +729,60 @@ ACCOUNT_DRIFTED_LEAF
 [0 160 112 158 181 221 162 20 124 79 184 25 162 13 167 162 146 25 237 242 59 120 184 154 118 137 92 181 187 152 115 82 223 48 0 160 7 190 1 231 231 32 111 227 30 206 233 26 215 93 173 166 90 214 186 67 58 230 71 161 185 51 4 105 247 198 103 124 0 92 69 153 141 251 249 206 112 188 187 128 87 78 215 166 34 146 45 44 119 94 10 35 49 254 90 139 141 204 153 244 144 242 246 191 23 44 167 166 154 14 14 27 198 200 66 149 155 102 162 36 92 147 76 227 228 141 122 139 186 245 89 5 41 252 237 52 8 133 130 180 167 143 97 28 115 102 25 94 62 148 249 8 6 55 244 16 75 187 208 208 127 251 120 61 73 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 1 11]
 [248 102 157 32 236 125 29 155 142 209 241 75 145 144 143 254 65 81 209 56 13 192 157 236 195 213 73 132 11 251 149 241 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 6 92 69 153 141 251 249 206 112 188 187 128 87 78 215 166 34 146 45 44 119 94 10 35 49 254 90 139 141 204 153 244 144 242 246 191 23 44 167 166 154 14 14 27 198 200 66 149 155 102 162 36 92 147 76 227 228 141 122 139 186 245 89 5 41 252 237 52 8 133 130 180 167 143 97 28 115 102 25 94 62 148 249 8 6 55 244 16 75 187 208 208 127 251 120 61 73 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 1 10]
 ```
+
+We can observe that there is a difference of one nibble in the key. In the first row, the nibbles
+are compressed as: `[55, 236, 125, ...]`. In the last row, the nibbles are compressed as:
+`[32, 236, 125, ...]`. The difference is that in the first row there is a first nibble `7 = 55 - 48`.
+This nibble is not present in the account `A` when moved down into `Branch2` because 7 is the position
+where the account `A` is placed in `Branch2`.
+
+The constraints for a drifted leaf are presented below.
+
+### Account leaf key s_rlp1 = 248
+
+`s_rlp1` is always 248 because the account leaf is always longer than 55 bytes.
+
+### Leaf key intermediate RLC
+
+We check that the leaf RLC is properly computed. RLC is then taken and
+nonce/balance & storage root / codehash values are added to the RLC (note that nonce/balance
+& storage root / codehash are not stored for the drifted leaf because these values stay
+the same as in the leaf before drift).
+Finally, the lookup is used to check the hash that corresponds to this RLC is
+in the parent branch at `drifted_pos` position.
+
+### mult_diff
+
+Similarly as in `account_leaf_key.rs`.
+When the full account intermediate RLC is computed, we need
+to know the intermediate RLC and the randomness multiplier (`r` to some power) from the key row.
+The power of randomness `r` is determined by the key length - the intermediate RLC in the current row
+is computed as (key starts in `s_main.bytes[1]`):
+`rlc = s_main.rlp1 + s_main.rlp2 * r + s_main.bytes[0] * r^2 + key_bytes[0] * r^3 + ... + key_bytes[key_len-1] * r^{key_len + 2}`
+So the multiplier to be used in the next row is `r^{key_len + 2}`. 
+
+`mult_diff` needs to correspond to the key length + 2 RLP bytes + 1 byte for byte that contains the key length.
+That means `mult_diff` needs to be `r^{key_len+1}` where `key_len = s_main.bytes[0] - 128`.
+
+Note that the key length is different than the on of the leaf before it drifted (by one nibble
+if a branch is added, by multiple nibbles if extension node is added).
+
+### Drifted leaf key RLC same as the RLC of the leaf before drift
+
+The key RLC of the drifted leaf needs to be the same as the key RLC of the leaf before
+the drift - the nibbles are the same in both cases, the difference is that before the
+drift some nibbles are stored in the leaf key, while after the drift these nibbles are used as 
+position in a branch or/and nibbles of the extension node.
+
+### Account leaf key in added branch: drifted leaf hash in the parent branch
+
+We take the leaf RLC computed in the key row, we then add nonce/balance and storage root/codehash
+to get the final RLC of the drifted leaf. We then check whether the drifted leaf is at
+the `drifted_pos` in the parent branch - we use a lookup to check that the hash that
+corresponds to this RLC is in the parent branch at `drifted_pos` position.
+
+### Range lookups
+
+Range lookups ensure that the value in the columns are all bytes (between 0 - 255).
+Note that `c_main.bytes` columns are not used.
+
