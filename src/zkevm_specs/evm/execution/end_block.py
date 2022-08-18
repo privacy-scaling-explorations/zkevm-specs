@@ -13,7 +13,7 @@ from typing import Set
 # 4. We need to prove that the EndBlock state exists
 
 # We prove (1) by constraining the transition rule that after an EndBlock
-# state, only an EndBlockState can follow.
+# state, only an EndBlock state can follow.
 #
 # We prove (2) and (3) by proving that at least `MAX_COUNT - evm_circuit_count`
 # padding elements exist in the rw table and tx table.  To achieve this, we do
@@ -32,12 +32,10 @@ from typing import Set
 def get_tx_table_max_txs(table: Set[TxTableRow]) -> int:
     fixed_field_count = 0
     for row in table:
-        print(vars(row))
         if (row.field_tag != TxContextFieldTag.CallData) or (
             row.field_tag == TxContextFieldTag.Pad and row.tx_id != 0
         ):
             fixed_field_count += 1
-    print(f"fixed_field_count = {fixed_field_count}")
     return fixed_field_count // TxContextFieldTag.TxSignHash
 
 

@@ -14,14 +14,18 @@ Proved by the tx circuit.
 | $TxID  | Nonce               | 0          | $value  |
 | $TxID  | Gas                 | 0          | $value  |
 | $TxID  | GasPrice            | 0          | $value  |
-| $TxID  | GasTipCap           | 0          | $value  |
-| $TxID  | GasFeeCap           | 0          | $value  |
 | $TxID  | CallerAddress       | 0          | $value  |
 | $TxID  | CalleeAddress       | 0          | $value  |
 | $TxID  | IsCreate            | 0          | $value  |
 | $TxID  | Value               | 0          | $value  |
 | $TxID  | CallDataLength      | 0          | $value  |
+| $TxID  | CallDataGasCost     | 0          | $value  |
+| $TxID  | TxSignHash          | 0          | $value  |
 | $TxID  | CallData            | $ByteIndex | $value  |
+| $TxID  | Pad                 | 0          | $value  |
+
+NOTE: `CallDataGasCost` and `TxSignHash` are values calculated by the verifier
+and used to reduce the circuit complexity.  They may be removed in the future.
 
 ## `rw_table`
 

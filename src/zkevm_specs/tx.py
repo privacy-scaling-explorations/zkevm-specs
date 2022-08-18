@@ -1,6 +1,15 @@
 from .encoding import is_circuit_code
 from typing import NamedTuple, Tuple, List, Set
-from .util import FQ, RLC, U160, U256, U64, linear_combine
+from .util import (
+    FQ,
+    RLC,
+    U160,
+    U256,
+    U64,
+    linear_combine,
+    GAS_COST_TX_CALL_DATA_PER_NON_ZERO_BYTE,
+    GAS_COST_TX_CALL_DATA_PER_ZERO_BYTE,
+)
 from enum import IntEnum
 from eth_keys import KeyAPI  # type: ignore
 import rlp  # type: ignore
@@ -269,8 +278,6 @@ def verify_circuit(
     """
 
     rows = witness.rows
-    for row in rows:
-        print(vars(row))
     sign_verifications = witness.sign_verifications
     keccak_table = witness.keccak_table
     for tx_index in range(MAX_TXS):
@@ -338,7 +345,16 @@ def tx2witness(
 
     sign_verification = SignVerifyChip.assign(sig, pk, tx_sign_hash, randomness)
 
-    call_data_gas_cost = sum([(4 if byte == 0 else 16) for byte in tx.data])
+    call_data_gas_cost = sum(
+        [
+            (
+                GAS_COST_TX_CALL_DATA_PER_ZERO_BYTE
+                if byte == 0
+                else GAS_COST_TX_CALL_DATA_PER_NON_ZERO_BYTE
+            )
+            for byte in tx.data
+        ]
+    )
 
     tx_id = FQ(index + 1)
     rows: List[Row] = []
