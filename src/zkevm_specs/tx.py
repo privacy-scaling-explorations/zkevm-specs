@@ -10,30 +10,10 @@ from .util import (
     GAS_COST_TX_CALL_DATA_PER_NON_ZERO_BYTE,
     GAS_COST_TX_CALL_DATA_PER_ZERO_BYTE,
 )
-from enum import IntEnum
 from eth_keys import KeyAPI  # type: ignore
 import rlp  # type: ignore
 from eth_utils import keccak
-
-
-class Tag(IntEnum):
-    """
-    Tag used as second key in the Tx Circuit Rows to "select" the transaction field target.
-    Can be encoded in 4 bits.
-    """
-
-    Nonce = 1
-    Gas = 2
-    GasPrice = 3
-    CallerAddress = 4
-    CalleeAddress = 5
-    IsCreate = 6
-    Value = 7
-    CallDataLength = 8
-    CallDataGasCost = 9
-    TxSignHash = 10
-    CallData = 11
-    Pad = 12
+from .evm import TxContextFieldTag as Tag
 
 
 class Row:
