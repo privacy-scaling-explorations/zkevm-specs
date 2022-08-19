@@ -202,6 +202,12 @@ class Transaction:
                     FQ(0),
                     FQ(self.call_data_gas_cost()),
                 ),
+                TxTableRow(
+                    FQ(self.id),
+                    FQ(TxContextFieldTag.TxSignHash),
+                    FQ(0),
+                    FQ(1234),  # Mock value for TxSignHash
+                ),
             ],
             map(
                 lambda item: TxTableRow(

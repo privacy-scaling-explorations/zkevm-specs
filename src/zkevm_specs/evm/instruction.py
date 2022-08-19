@@ -752,6 +752,10 @@ class Instruction:
             call_id = self.curr.call_id
         return self.rw_lookup(rw, RWTableTag.CallContext, call_id, FQ(field_tag)).value
 
+    def rw_table_start_lookup(self, counter: Expression):
+        # Raises exception if no lookup matches
+        self.rw_lookup(rw=RW.Read, tag=RWTableTag.Start, rw_counter=counter)
+
     def reversion_info(self, call_id: Expression = None) -> ReversionInfo:
         [rw_counter_end_of_reversion, is_persistent] = [
             self.call_context_lookup(tag, call_id=call_id)

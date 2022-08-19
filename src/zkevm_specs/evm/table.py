@@ -138,7 +138,9 @@ class TxContextFieldTag(IntEnum):
     Value = auto()
     CallDataLength = auto()
     CallDataGasCost = auto()
+    TxSignHash = auto()
     CallData = auto()
+    Pad = auto()
 
 
 class BytecodeFieldTag(IntEnum):
@@ -172,6 +174,8 @@ class RWTableTag(IntEnum):
     prover, which will be part of State circuit and each unit read-write data
     will be verified to be consistent between each write.
     """
+
+    Start = auto()  # Used for upper rows padding
 
     TxAccessListAccount = auto()
     TxAccessListAccountStorage = auto()
