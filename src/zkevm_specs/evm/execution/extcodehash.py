@@ -17,6 +17,9 @@ def extcodehash(instruction: Instruction):
     balance = instruction.account_read(address, AccountFieldTag.Balance)
     code_hash = instruction.account_read(address, AccountFieldTag.CodeHash)
 
+    # Get flag of the account existance.
+    # TODO: Need to update after the below issue is fixed -
+    # https://github.com/privacy-scaling-explorations/zkevm-specs/issues/249.
     is_empty = (
         instruction.is_zero(nonce)
         * instruction.is_zero(balance)

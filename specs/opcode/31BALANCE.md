@@ -8,7 +8,8 @@ The `BALANCE` opcode gets balance of the given account.
 
 The `BALANCE` opcode pops `address` (20 bytes of data) off the stack and pushes
 the balance of the corresponding account onto the stack. If the given account
-doesn't exist, then it will push 0 onto the stack instead.
+doesn't exist (i.e. has nonce = 0, balance = 0 and no code), then it will push 0
+onto the stack instead.
 
 ## Circuit behaviour
 
@@ -22,19 +23,22 @@ doesn't exist, then it will push 0 onto the stack instead.
 
 1. opId = 0x31
 2. State transition:
-   - gc + 7 (1 stack read, 1 stack write, 3 call context reads, 1 account reads,
+   - gc + 9 (1 stack read, 1 stack write, 3 call context reads, 3 account reads,
      1 transaction access list write)
    - stack_pointer + 0 (one pop and one push)
    - pc + 1
    - gas:
      - the accessed `address` is warm: GAS_COST_WARM_ACCESS
      - the accessed `address` is cold: GAS_COST_ACCOUNT_COLD_ACCESS
-3. Lookups: 7 busmapping lookups
+3. Lookups: 9 busmapping lookups
    - `address` is at top of the stack.
    - 3 reads from call context for `tx_id`, `rw_counter_end_of_reversion`, and
      `is_persistent`.
    - `address` is added to the transaction access list if not already present.
-   - `balance` is read from the given account. Set to 0 if it doesn't exist.
+   - nonce of account is `nonce`.
+   - `nonce` is read from account. It is used to check account existence.
+   - `code_hash` is read from account. It is used to check account existence.
+   - `balance` is read from account. Set to 0 if it doesn't exist.
    - The BALANCE result is at the new top of the stack.
 4. Additional Constraints
    - value `is_warm` matches the gas cost for this opcode.
