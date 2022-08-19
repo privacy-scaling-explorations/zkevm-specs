@@ -12,45 +12,57 @@ from zkevm_specs.evm import (
     verify_steps,
 )
 from zkevm_specs.util import (
+    EMPTY_CODE_HASH,
     EXTRA_GAS_COST_ACCOUNT_COLD_ACCESS,
     GAS_COST_WARM_ACCESS,
     RLC,
     U160,
     U256,
+    keccak256,
     rand_address,
+    rand_bytes,
     rand_fq,
     rand_range,
     rand_word,
 )
 
 TESTING_DATA = [
-    (0x30000, 0, True, True),
-    (0x30000, 0, False, True),
-    (0x30000, 200, True, True),
-    (0x30000, 200, False, True),
+    (0x30000, 0, 0, bytes(), True, True),
+    (0x30000, 0, 0, bytes(), False, True),
+    (0x30000, 200, 1, bytes(), True, True),
+    (0x30000, 200, 0, bytes([10, 10]), False, True),
     (
         rand_address(),
         rand_word(),
+        rand_word(),
+        rand_bytes(100),
         rand_range(2) == 0,
         True,  # persistent call
     ),
     (
         rand_address(),
         rand_word(),
+        rand_word(),
+        rand_bytes(100),
         rand_range(2) == 0,
         False,  # reverted call
     ),
 ]
 
 
-@pytest.mark.parametrize("address, balance, is_warm, is_persistent", TESTING_DATA)
-def test_balance(address: U160, balance: U256, is_warm: bool, is_persistent: bool):
+@pytest.mark.parametrize("address, balance, nonce, code, is_warm, is_persistent", TESTING_DATA)
+def test_balance(
+    address: U160, balance: U256, nonce: U256, code: bytes, is_warm: bool, is_persistent: bool
+):
     randomness = rand_fq()
+
+    code_hash = int.from_bytes(keccak256(code), "big")
+    result = 0 if (balance == 0 and nonce == 0 and code_hash == EMPTY_CODE_HASH) else balance
 
     tx_id = 1
     call_id = 1
 
-    rw_counter_end_of_reversion = 0 if is_persistent else 7
+    rw_counter_end_of_reversion = 0 if is_persistent else 9
     reversible_write_counter = 0
 
     rw_table = set(
@@ -68,8 +80,10 @@ def test_balance(address: U160, balance: U256, is_warm: bool, is_persistent: boo
             is_warm,
             rw_counter_of_reversion=rw_counter_end_of_reversion - reversible_write_counter,
         )
+        .account_read(address, AccountFieldTag.Nonce, RLC(nonce, randomness))
         .account_read(address, AccountFieldTag.Balance, RLC(balance, randomness))
-        .stack_write(call_id, 1023, RLC(balance, randomness))
+        .account_read(address, AccountFieldTag.CodeHash, RLC(code_hash, randomness))
+        .stack_write(call_id, 1023, RLC(result, randomness))
         .rws
     )
 
@@ -99,7 +113,7 @@ def test_balance(address: U160, balance: U256, is_warm: bool, is_persistent: boo
             ),
             StepState(
                 execution_state=ExecutionState.STOP if is_persistent else ExecutionState.REVERT,
-                rw_counter=8,
+                rw_counter=10,
                 call_id=1,
                 is_root=True,
                 is_create=False,
