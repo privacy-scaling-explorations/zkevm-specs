@@ -9,19 +9,18 @@ from zkevm_specs.evm import (
     Bytecode,
     RWDictionary,
 )
-from typing import Union
-from zkevm_specs.util import rand_address, rand_word, rand_fq, RLC, U64, U256, Sequence, keccak256
+from zkevm_specs.util import rand_fq, RLC, U64, U256, Sequence, keccak256
 
-SEQ_TESTING_DATA = [
+TESTING_DATA = [
     # valid range
     (3, [keccak256(bytes(i)) for i in range(3)], 1, True),
-    (256, [keccak256(bytes(i)) for i in range(256)], 1, True),
     (261, [keccak256(bytes(i)) for i in range(5, 261)], 260, True),
     # invalid range
-    (3, [keccak256(bytes(i)) for i in range(3)], 4, False)
+    (3, [keccak256(bytes(i)) for i in range(3)], 4, False),
+    (258, [keccak256(bytes(i)) for i in range(256)], 1, False)
 ]
 
-@pytest.mark.parametrize("current_number, history_hashes, block_number, is_valid", SEQ_TESTING_DATA)
+@pytest.mark.parametrize("current_number, history_hashes, block_number, is_valid", TESTING_DATA)
 def test_blockhash(current_number: U64, history_hashes: Sequence[U256], block_number: U64, is_valid: bool):
     block = Block(number=current_number, history_hashes=history_hashes)
     randomness = rand_fq()
