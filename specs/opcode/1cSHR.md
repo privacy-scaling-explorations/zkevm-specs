@@ -101,7 +101,7 @@ a64s_hi[3] * shf_div64_eq0
 
 5. `Pow2` table look up:
 
-* First build `Pow2` table by tuple $[value, value\_pow]$ which meets $${value\_pow == 2^{value}}$$
+* First build `Pow2` table by tuple $[value, value\_{pow}]$ which meets $${value\_{pow} == 2^{value}}$$
 
 * Look up for `(shf_mod64, p_lo)` and `(64 - shf_mod64, p_hi)`
 
