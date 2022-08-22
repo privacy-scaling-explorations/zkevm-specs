@@ -69,16 +69,16 @@ is computed correctly.
 
 ## Zeros in s_main.bytes & c_main.rlp1 & c_main.rlp2 after key ends
 
-Key RLC is computed over `s_main.bytes[1]`, ..., `s_main.bytes[31]` because we do not know
-the key length in advance. To prevent changing the key and setting `s_main.bytes[i]` for
-`i > nonce_len + 1` to get the correct nonce RLC, we need to ensure that
+Key RLC is computed over all of `s_main.bytes[1], ..., s_main.bytes[31], c_main.rlp1, c_main.rlp2`
+because we do not know the key length in advance.
+To prevent changing the key and setting `s_main.bytes[i]` (or `c_main.rlp1/c_main.rlp2`) for
+`i > key_len + 1` to get the desired key RLC, we need to ensure that
 `s_main.bytes[i] = 0` for `i > key_len + 1`.
-The key can also appear in `c_main.rlp1` and `c_main.rlp2`, so we need to check these two columns too.
 
-Note: the key length is always in `s_main.bytes[0]` here as opposed to storage
-key leaf where it can appear in `s_rlp2` too. This is because the account
+Note: the key length is always in s_main.bytes[0] here as opposed to storage
+key leaf where it can appear in s_rlp2 too. This is because the account
 leaf contains nonce, balance, ... which makes it always longer than 55 bytes,
-which makes a RLP to start with 248 (`s_rlp1`) and having one byte (in `s_rlp2`)
+which makes a RLP to start with 248 (s_rlp1) and having one byte (in s_rlp2)
 for the length of the remaining stream.
 
 ### mult_diff
@@ -866,4 +866,70 @@ in the rows above (except for the `ACCOUNT_NON_EXISTING` row) and continues with
 
 Note that the selector (being 1 in this case) at `s_main.rlp1` specifies whether it is wrong leaf or nil case.
 
+### Account address RLC
 
+Differently as for the other proofs, the account-non-existing proof compares `address_rlc` with the address
+stored in `ACCOUNT_NON_EXISTING` row, not in `ACCOUNT_LEAF_KEY` row.
+
+The crucial thing is that we have a wrong leaf at the address (not exactly the same, just some starting
+set of nibbles is the same) where we are proving there is no account.
+If there would be an account at the specified address, it would be positioned in the branch where
+the wrong account is positioned. Note that the position is determined by the starting set of nibbles.
+Once we add the remaining nibbles to the starting ones, we need to obtain the enquired address.
+There is a complementary constraint that makes sure the remaining nibbles are different for wrong leaf
+and the non-existing account (in the case of wrong leaf, while the case with nil being in branch
+is different).
+
+### Wrong leaf sum check
+
+We compute the RLC of the key bytes in the `ACCOUNT_NON_EXISTING` row. We check whether the computed
+value is the same as the one stored in `accs.key.rlc` column.
+
+### Wrong leaf sum_prev check
+
+We compute the RLC of the key bytes in the `ACCOUNT_NON_EXISTING` row. We check whether the computed
+value is the same as the one stored in `accs.key.mult` column.
+
+### Address of a leaf is different than address being inquired (corresponding to address_rlc)
+
+The address in the `ACCOUNT_LEAF_KEY` row and the address in the `ACCOUNT_NON_EXISTING` row
+are indeed different.
+
+### Nil object in parent branch
+
+In case when there is no wrong leaf, we need to check there is a nil object in the parent branch.
+Note that the constraints in `branch.rs` ensure that `sel1` is 1 if and only if there is a nil object
+at `modified_node` position. We check that in case of no wrong leaf in
+the non-existing-account proof, `sel1` is 1.
+
+### Non existing account proof leaf address RLC (leaf in first level)
+
+Ensuring that the account does not exist when there is only one account in the state trie.
+Similarly as `Account address RLC` constraint but for the first level.
+
+Note 1: The hash of the only account is checked to be the state root in `account_leaf_storage_codehash.rs`.
+Note 2: There is no nil_object case checked in this gate, because it is covered in the gate
+above. That is because when there is a branch (with nil object) in the first level,
+it automatically means the account leaf is not in the first level.
+
+### s_main.bytes[i] = 0 when key ends
+
+Key RLC is computed over all of `s_main.bytes[1], ..., s_main.bytes[31], c_main.rlp1, c_main.rlp2`
+because we do not know the key length in advance.
+To prevent changing the key and setting `s_main.bytes[i]` (or `c_main.rlp1/c_main.rlp2`) for
+`i > key_len + 1` to get the desired key RLC, we need to ensure that
+`s_main.bytes[i] = 0` for `i > key_len + 1`.
+
+Note that the number of the key bytes in the `ACCOUNT_NON_EXISTING` row needs to be the same as
+the number of the key bytes in the `ACCOUNT_LEAF_KEY` row.
+
+Note: the key length is always in s_main.bytes[0] here as opposed to storage
+key leaf where it can appear in `s_rlp2` too. This is because the account
+leaf contains nonce, balance, ... which makes it always longer than 55 bytes,
+which makes a RLP to start with 248 (`s_rlp1`) and having one byte (in `s_rlp2`)
+for the length of the remaining stream.
+
+### Range lookups
+
+Range lookups ensure that `s_main`, `c_main.rlp1`, `c_main.rlp2` columns are all bytes (between 0 - 255).
+Note that `c_main.bytes` columns are not used.
