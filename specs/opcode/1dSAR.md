@@ -1,24 +1,22 @@
-# SHR and SAR opcodes
+# SAR opcodes
 
 ## Procedure
 
-The `SHR` opcode shifts the bits towards the least significant one. The bits moved before the first one are discarded, the new bits are set to 0.
 The `SAR` opcode also shifts the bits towards the least significant one, and the bits moved before the first one are discarded. But the new bits are set to 0 if the previous most significant bit was 0, otherwise the new bits are set to 1.
 
 ### EVM behavior
 
 Pop two EVM words `a` and `shift` from the stack, and push `b` to the stack, where `b` is calculated as `b = a >> shift`.
 
-- For opcode `SHR`，both `a` and `b` are considered as `unsigned` 256-bit values.
-- But for opcode `SAR`，both `a` and `b` are considered as `signed` 256-bit values.
+- For opcode `SAR`，both `a` and `b` are considered as `signed` 256-bit values.
 
 ### Circuit behavior
 
-To prove the `SHR/SAR` opcode, we first get the stack word `a`, `shift` and `b` to construct a gadget that proves `a >> shift == b`.
-For opcode `SHR`, all `a`, `shift` and `b` are `unsigned` 256-bit values. For opcode `SAR`, `shift` is an `unsigned` value, but both `a` and `b` are `signed`. A `signed` value is either negative or non-negative (postive and zero), it is negative if the highest bit is 1, otherwise it is non-negative.
+To prove the `SAR` opcode, we first get the stack word `a`, `shift` and `b` to construct a gadget that proves `a >> shift == b`.
+For opcode `SAR`, `shift` is an `unsigned` value, but both `a` and `b` are `signed`. A `signed` value is either negative or non-negative (postive and zero), it is negative if the highest bit is 1, otherwise it is non-negative.
 
 As usual, we use 32 cells to represent word `a` and `b`, where each cell holds a 8-bit value. Then split each word into four 64-bit limbs denoted by `a64s[idx]` and `b64s[idx]` where idx in `(0, 1, 2, 3)`.
-We put the lower `n` bits of a limb into the `lo` array, and put the higher `64 - n` bits into the `hi` array, where `n` is `shift % 64`. During the SHR operation, the `lo` array will move to higher bits of the result, and the `hi` array will move to lower bits of the result.
+We put the lower `n` bits of a limb into the `lo` array, and put the higher `64 - n` bits into the `hi` array, where `n` is `shift % 64`. During the right shift operation, the `lo` array will move to higher bits of the result, and the `hi` array will move to lower bits of the result.
 
 The following figure illustrates how shift right works under the case of `shift < 64`.
 
@@ -34,14 +32,12 @@ The following figure illustrates how shift right works under the case of `shift 
              +-------------------------------+------------------------
 ```
 
-Specially for opcode `SAR`, the top new bits are set to 1 if `a` is negative, set to 0 otherwise.
+For opcode `SAR`, the top new bits are set to 1 if `a` is negative, set to 0 otherwise.
 
 More formally, the variables are defined as follows:
 
 ```
-# Opcode of SHR and SAR are 0x1C and 0x1D. Result is 1 for SAR and 0 for SHR.
-is_sar = opcode - 0x1c
-is_neg = is_sar * is_neg(a)
+is_neg = is_neg(a)
 shf0 = bytes_to_fq(shift.le_bytes[:1])
 shf_div64 = shift // 64
 shf_mod64 = shift % 64
@@ -132,8 +128,7 @@ shf_div64_eq3 = is_zero(shf_div64 - 3)
 ## Constraints
 
 1. opcodeId checks
-   1. opId === OpcodeId(0x1c) for `SHR`
-   2. opId === OpcodeId(0x1d) for `SAR`
+   - opId === OpcodeId(0x1d) for `SAR`
 2. state transition:
    - gc + 3 (2 stack reads + 1 stack write)
    - `stack_pointer` + 1
@@ -151,4 +146,4 @@ shf_div64_eq3 = is_zero(shf_div64 - 3)
 
 ## Code
 
-See `src/zkevm_specs/evm/execution/shr_sar.py`
+See `src/zkevm_specs/evm/execution/sar.py`
