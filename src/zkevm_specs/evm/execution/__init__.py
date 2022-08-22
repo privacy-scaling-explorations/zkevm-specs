@@ -12,6 +12,7 @@ from .addmod import *
 from .address import *
 from .mulmod import *
 from .block_ctx import *
+from .blockhash import *
 from .call import *
 from .calldatasize import *
 from .caller import *
@@ -61,6 +62,7 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.CODECOPY: codecopy,
     ExecutionState.CODESIZE: codesize,
     ExecutionState.BlockCtx: blockctx,
+    ExecutionState.BLOCKHASH: blockhash,
     ExecutionState.JUMP: jump,
     ExecutionState.JUMPI: jumpi,
     ExecutionState.PUSH: push,
