@@ -8,20 +8,24 @@ def blockhash(instruction: Instruction):
     block_number = instruction.rlc_to_fq(instruction.stack_pop(), N_BYTES_U64)
     
     current_block_number = instruction.block_context_lookup(BlockContextFieldTag.Number)
-    is_current_bigger = instruction.compare(block_number, current_block_number.expr(), N_BYTES_U64)[0]
+    # get value that was pushed to stack (RLC-encoded)
+    block_hash = instruction.stack_push()
 
-    diff = current_block_number.expr() - block_number if is_current_bigger == 1 else block_number - current_block_number.expr()
-    is_invalid_range = 1 - (
-        is_current_bigger
-        * instruction.compare(diff, FQ(257), N_BYTES_U64)[0]
-    )
-    op = BlockContextFieldTag.HistoryHash
-    block_hash = FQ(0) if is_invalid_range == 1 else instruction.block_context_lookup(op, block_number)
+    # comparing block_number and current_block_number
+    block_lt, _ = instruction.compare(block_number, current_block_number, N_BYTES_U64)
+    diff_lt, _ = instruction.compare(current_block_number, FQ(256) + block_number, 2)
 
-    instruction.constrain_equal(
-        instruction.select(is_invalid_range, FQ(0), block_hash),
-        instruction.stack_push()
-    )
+    # get the expected block hash depending on the above conditions (RLC-encoded)
+    if instruction.is_equal(block_lt * diff_lt, FQ.one()) == FQ.one():
+        expected_block_hash = instruction.block_context_lookup(
+            BlockContextFieldTag.HistoryHash,
+            block_number,
+        )
+    else:
+        expected_block_hash = FQ.zero()
+
+# block hash is as expected
+    instruction.constrain_equal(block_hash, expected_block_hash)
 
     instruction.step_state_transition_in_same_context(
         opcode,
