@@ -16,6 +16,8 @@ The `BLOCKHASH` opcode pops `block_number` off the stack and pushes the hash fro
     - `block_number` is popped from the stack.
     - `current_block_number` is in the block context table.
     - `block_hash` is in the block context table.
+4. Additional Constraint
+    - `block_number` should be in valid range.
 
 ## Exceptions
 
@@ -24,4 +26,4 @@ The `BLOCKHASH` opcode pops `block_number` off the stack and pushes the hash fro
 
 ## Code
 
-Please refer to 'src/zkevm-specs/evm/execution/blockhash.py'
+Please refer to [blockhash.py](src/zkevm-specs/evm/execution/blockhash.py).
