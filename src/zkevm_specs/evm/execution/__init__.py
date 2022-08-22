@@ -13,7 +13,7 @@ from .address import *
 from .mulmod import *
 from .block_ctx import *
 from .blockhash import *
-from .call import *
+from .call_staticcall import *
 from .calldatasize import *
 from .caller import *
 from .callvalue import *
@@ -79,7 +79,7 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.EXTCODECOPY: extcodecopy,
     ExecutionState.EXTCODEHASH: extcodehash,
     ExecutionState.LOG: log,
-    ExecutionState.CALL: call,
+    ExecutionState.CALL_STATICCALL: call_staticcall,
     ExecutionState.ISZERO: iszero,
     ExecutionState.SDIV_SMOD: sdiv_smod,
     ExecutionState.SHL_SHR: shl_shr,

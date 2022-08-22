@@ -2,26 +2,26 @@ import itertools
 import pytest
 from collections import namedtuple
 from itertools import chain
-
 from zkevm_specs.evm import (
-    ExecutionState,
-    StepState,
-    verify_steps,
-    Tables,
-    AccountFieldTag,
-    CallContextFieldTag,
-    Block,
     Account,
+    AccountFieldTag,
+    Block,
     Bytecode,
+    CallContextFieldTag,
+    ExecutionState,
     RWDictionary,
+    StepState,
+    Tables,
+    verify_steps,
 )
-from zkevm_specs.util import rand_fq, RLC, EMPTY_CODE_HASH
-from zkevm_specs.util.param import (
-    GAS_COST_NEW_ACCOUNT,
-    GAS_COST_CALL_WITH_VALUE,
-    GAS_COST_WARM_ACCESS,
+from zkevm_specs.util import (
+    EMPTY_CODE_HASH,
     GAS_COST_ACCOUNT_COLD_ACCESS,
-    GAS_STIPEND_CALL_WITH_VALUE,
+    GAS_COST_CALL_WITH_VALUE,
+    GAS_COST_NEW_ACCOUNT,
+    GAS_COST_WARM_ACCESS,
+    RLC,
+    rand_fq,
 )
 
 CallContext = namedtuple(
@@ -37,8 +37,8 @@ CallContext = namedtuple(
 )
 Stack = namedtuple(
     "Stack",
-    ["gas", "value", "cd_offset", "cd_length", "rd_offset", "rd_length"],
-    defaults=[0, 0, 0, 0, 0, 0],
+    ["gas", "cd_offset", "cd_length", "rd_offset", "rd_length"],
+    defaults=[0, 0, 0, 0, 0],
 )
 Expected = namedtuple(
     "Expected",
@@ -63,7 +63,6 @@ def expected(callee: Account, caller_ctx: CallContext, stack: Stack, is_warm_acc
         return (offset + length + 31) // 32
 
     is_account_empty = callee.is_empty()
-    has_value = stack.value != 0
     next_memory_size = max(
         memory_size(stack.cd_offset, stack.cd_length),
         memory_size(stack.rd_offset, stack.rd_length),
@@ -73,22 +72,18 @@ def expected(callee: Account, caller_ctx: CallContext, stack: Stack, is_warm_acc
         next_memory_size * next_memory_size - caller_ctx.memory_size * caller_ctx.memory_size
     ) // 512 + 3 * (next_memory_size - caller_ctx.memory_size)
     gas_cost = (
-        (GAS_COST_WARM_ACCESS if is_warm_access else GAS_COST_ACCOUNT_COLD_ACCESS)
-        + has_value * (GAS_COST_CALL_WITH_VALUE + is_account_empty * GAS_COST_NEW_ACCOUNT)
-        + memory_expansion_gas_cost
-    )
+        GAS_COST_WARM_ACCESS if is_warm_access else GAS_COST_ACCOUNT_COLD_ACCESS
+    ) + memory_expansion_gas_cost
     gas_available = caller_ctx.gas_left - gas_cost
     all_but_one_64th_gas = gas_available - gas_available // 64
     callee_gas_left = min(all_but_one_64th_gas, stack.gas)
     caller_gas_left = caller_ctx.gas_left - (
-        gas_cost - has_value * GAS_STIPEND_CALL_WITH_VALUE
-        if callee.code_hash() == EMPTY_CODE_HASH
-        else gas_cost + callee_gas_left
+        gas_cost if callee.code_hash() == EMPTY_CODE_HASH else gas_cost + callee_gas_left
     )
 
     return Expected(
         caller_gas_left=caller_gas_left,
-        callee_gas_left=callee_gas_left + has_value * GAS_STIPEND_CALL_WITH_VALUE,
+        callee_gas_left=callee_gas_left,
         next_memory_size=next_memory_size,
     )
 
@@ -107,7 +102,6 @@ def gen_testing_data():
     ]
     stacks = [
         Stack(),
-        Stack(value=int(1e18)),
         Stack(gas=100),
         Stack(gas=100000),
         Stack(cd_offset=64, cd_length=320, rd_offset=0, rd_length=32),
@@ -137,7 +131,7 @@ TESTING_DATA = gen_testing_data()
 @pytest.mark.parametrize(
     "caller, callee, caller_ctx, stack, is_warm_access, expected", TESTING_DATA
 )
-def test_call(
+def test_staticcall(
     caller: Account,
     callee: Account,
     caller_ctx: CallContext,
@@ -147,16 +141,11 @@ def test_call(
 ):
     randomness = rand_fq()
 
-    caller_balance_prev = RLC(caller.balance, randomness)
-    callee_balance_prev = RLC(callee.balance, randomness)
-    caller_balance = RLC(caller.balance - stack.value, randomness)
-    callee_balance = RLC(callee.balance + stack.value, randomness)
     caller_bytecode = (
         Bytecode()
-        .call(
+        .staticcall(
             stack.gas,
             callee.address,
-            stack.value,
             stack.cd_offset,
             stack.cd_length,
             stack.rd_offset,
@@ -183,26 +172,24 @@ def test_call(
 
     # fmt: off
     rw_dictionary = (
-        RWDictionary(24)
+        RWDictionary(22)
         .call_context_read(1, CallContextFieldTag.TxId, 1)
         .call_context_read(1, CallContextFieldTag.RwCounterEndOfReversion, caller_ctx.rw_counter_end_of_reversion)
         .call_context_read(1, CallContextFieldTag.IsPersistent, caller_ctx.is_persistent)
         .call_context_read(1, CallContextFieldTag.CalleeAddress, caller.address)
-        .call_context_read(1, CallContextFieldTag.IsStatic, False)
+        .call_context_read(1, CallContextFieldTag.IsStatic, True)
         .call_context_read(1, CallContextFieldTag.Depth, 1)
-        .stack_read(1, 1017, RLC(stack.gas, randomness))
-        .stack_read(1, 1018, RLC(callee.address, randomness))
-        .stack_read(1, 1019, RLC(stack.value, randomness))
+        .stack_read(1, 1018, RLC(stack.gas, randomness))
+        .stack_read(1, 1019, RLC(callee.address, randomness))
         .stack_read(1, 1020, RLC(stack.cd_offset, randomness))
         .stack_read(1, 1021, RLC(stack.cd_length, randomness))
         .stack_read(1, 1022, RLC(stack.rd_offset, randomness))
         .stack_read(1, 1023, RLC(stack.rd_length, randomness))
         .stack_write(1, 1023, RLC(is_success, randomness))
         .tx_access_list_account_write(1, callee.address, True, is_warm_access, rw_counter_of_reversion=None if caller_ctx.is_persistent else caller_ctx.rw_counter_end_of_reversion - caller_ctx.reversible_write_counter)
-        .call_context_read(24, CallContextFieldTag.RwCounterEndOfReversion, callee_rw_counter_end_of_reversion)
-        .call_context_read(24, CallContextFieldTag.IsPersistent, callee_is_persistent)
-        .account_write(caller.address, AccountFieldTag.Balance, caller_balance, caller_balance_prev, rw_counter_of_reversion=None if callee_is_persistent else callee_rw_counter_end_of_reversion)
-        .account_write(callee.address, AccountFieldTag.Balance, callee_balance, callee_balance_prev, rw_counter_of_reversion=None if callee_is_persistent else callee_rw_counter_end_of_reversion - 1)
+        .call_context_read(22, CallContextFieldTag.RwCounterEndOfReversion, callee_rw_counter_end_of_reversion)
+        .call_context_read(22, CallContextFieldTag.IsPersistent, callee_is_persistent)
+        .account_read(callee.address, AccountFieldTag.Balance, RLC(callee.balance, randomness))
         .account_read(callee.address, AccountFieldTag.Nonce, RLC(callee.nonce, randomness))
         .account_read(callee.address, AccountFieldTag.CodeHash, callee_bytecode_hash)
     )
@@ -216,29 +203,28 @@ def test_call(
         .call_context_write(1, CallContextFieldTag.LastCalleeReturnDataLength, 0)
     else:
         rw_dictionary \
-        .call_context_write(1, CallContextFieldTag.ProgramCounter, 232) \
+        .call_context_write(1, CallContextFieldTag.ProgramCounter, 199) \
         .call_context_write(1, CallContextFieldTag.StackPointer, 1023) \
         .call_context_write(1, CallContextFieldTag.GasLeft, expected.caller_gas_left) \
         .call_context_write(1, CallContextFieldTag.MemorySize, expected.next_memory_size) \
         .call_context_write(1, CallContextFieldTag.ReversibleWriteCounter, caller_ctx.reversible_write_counter + 1) \
-        .call_context_read(24, CallContextFieldTag.CallerId, 1) \
-        .call_context_read(24, CallContextFieldTag.TxId, 1) \
-        .call_context_read(24, CallContextFieldTag.Depth, 2) \
-        .call_context_read(24, CallContextFieldTag.CallerAddress, caller.address) \
-        .call_context_read(24, CallContextFieldTag.CalleeAddress, callee.address) \
-        .call_context_read(24, CallContextFieldTag.CallDataOffset, stack.cd_offset if stack.cd_length != 0 else 0) \
-        .call_context_read(24, CallContextFieldTag.CallDataLength, stack.cd_length) \
-        .call_context_read(24, CallContextFieldTag.ReturnDataOffset, stack.rd_offset if stack.rd_length != 0 else 0) \
-        .call_context_read(24, CallContextFieldTag.ReturnDataLength, stack.rd_length) \
-        .call_context_read(24, CallContextFieldTag.Value, RLC(stack.value, randomness)) \
-        .call_context_read(24, CallContextFieldTag.IsSuccess, is_success) \
-        .call_context_read(24, CallContextFieldTag.IsStatic, False) \
-        .call_context_read(24, CallContextFieldTag.LastCalleeId, 0) \
-        .call_context_read(24, CallContextFieldTag.LastCalleeReturnDataOffset, 0) \
-        .call_context_read(24, CallContextFieldTag.LastCalleeReturnDataLength, 0) \
-        .call_context_read(24, CallContextFieldTag.IsRoot, False) \
-        .call_context_read(24, CallContextFieldTag.IsCreate, False) \
-        .call_context_read(24, CallContextFieldTag.CodeHash, callee_bytecode_hash)
+        .call_context_read(22, CallContextFieldTag.CallerId, 1) \
+        .call_context_read(22, CallContextFieldTag.TxId, 1) \
+        .call_context_read(22, CallContextFieldTag.Depth, 2) \
+        .call_context_read(22, CallContextFieldTag.CallerAddress, caller.address) \
+        .call_context_read(22, CallContextFieldTag.CalleeAddress, callee.address) \
+        .call_context_read(22, CallContextFieldTag.CallDataOffset, stack.cd_offset if stack.cd_length != 0 else 0) \
+        .call_context_read(22, CallContextFieldTag.CallDataLength, stack.cd_length) \
+        .call_context_read(22, CallContextFieldTag.ReturnDataOffset, stack.rd_offset if stack.rd_length != 0 else 0) \
+        .call_context_read(22, CallContextFieldTag.ReturnDataLength, stack.rd_length) \
+        .call_context_read(22, CallContextFieldTag.IsSuccess, is_success) \
+        .call_context_read(22, CallContextFieldTag.IsStatic, True) \
+        .call_context_read(22, CallContextFieldTag.LastCalleeId, 0) \
+        .call_context_read(22, CallContextFieldTag.LastCalleeReturnDataOffset, 0) \
+        .call_context_read(22, CallContextFieldTag.LastCalleeReturnDataLength, 0) \
+        .call_context_read(22, CallContextFieldTag.IsRoot, False) \
+        .call_context_read(22, CallContextFieldTag.IsCreate, False) \
+        .call_context_read(22, CallContextFieldTag.CodeHash, callee_bytecode_hash)
     # fmt: on
 
     tables = Tables(
@@ -259,13 +245,13 @@ def test_call(
         steps=[
             StepState(
                 execution_state=ExecutionState.CALL_STATICCALL,
-                rw_counter=24,
+                rw_counter=22,
                 call_id=1,
                 is_root=True,
                 is_create=False,
                 code_hash=caller_bytecode_hash,
-                program_counter=231,
-                stack_pointer=1017,
+                program_counter=198,
+                stack_pointer=1018,
                 gas_left=caller_ctx.gas_left,
                 memory_size=caller_ctx.memory_size,
                 reversible_write_counter=caller_ctx.reversible_write_counter,
@@ -278,7 +264,7 @@ def test_call(
                     is_root=True,
                     is_create=False,
                     code_hash=caller_bytecode_hash,
-                    program_counter=232,
+                    program_counter=199,
                     stack_pointer=1023,
                     gas_left=expected.caller_gas_left,
                     memory_size=expected.next_memory_size,
@@ -290,7 +276,7 @@ def test_call(
                     if callee.code == STOP_BYTECODE
                     else ExecutionState.PUSH,
                     rw_counter=rw_dictionary.rw_counter,
-                    call_id=24,
+                    call_id=22,
                     is_root=False,
                     is_create=False,
                     code_hash=callee_bytecode_hash,
