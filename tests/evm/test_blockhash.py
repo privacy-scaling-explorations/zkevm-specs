@@ -17,11 +17,14 @@ TESTING_DATA = [
     (261, [keccak256(bytes(i)) for i in range(5, 261)], 260, True),
     # invalid range
     (3, [keccak256(bytes(i)) for i in range(3)], 4, False),
-    (258, [keccak256(bytes(i)) for i in range(256)], 1, False)
+    (258, [keccak256(bytes(i)) for i in range(256)], 1, False),
 ]
 
+
 @pytest.mark.parametrize("current_number, history_hashes, block_number, is_valid", TESTING_DATA)
-def test_blockhash(current_number: U64, history_hashes: Sequence[U256], block_number: U64, is_valid: bool):
+def test_blockhash(
+    current_number: U64, history_hashes: Sequence[U256], block_number: U64, is_valid: bool
+):
     block = Block(number=current_number, history_hashes=history_hashes)
     randomness = rand_fq()
     bytecode = Bytecode().blockhash()
@@ -73,4 +76,3 @@ def test_blockhash(current_number: U64, history_hashes: Sequence[U256], block_nu
             ),
         ],
     )
-

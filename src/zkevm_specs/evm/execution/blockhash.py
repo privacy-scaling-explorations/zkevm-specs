@@ -2,11 +2,12 @@ from ..instruction import Instruction, Transition
 from ..table import BlockContextFieldTag
 from ...util import FQ, N_BYTES_U64
 
+
 def blockhash(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
 
     block_number = instruction.rlc_to_fq(instruction.stack_pop(), N_BYTES_U64)
-    
+
     current_block_number = instruction.block_context_lookup(BlockContextFieldTag.Number)
     # get value that was pushed to stack (RLC-encoded)
     block_hash = instruction.stack_push()
