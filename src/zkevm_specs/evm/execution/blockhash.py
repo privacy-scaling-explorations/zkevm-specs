@@ -24,7 +24,7 @@ def blockhash(instruction: Instruction):
     else:
         expected_block_hash = FQ.zero()
 
-# block hash is as expected
+    # block hash is as expected
     instruction.constrain_equal(block_hash, expected_block_hash)
 
     instruction.step_state_transition_in_same_context(
