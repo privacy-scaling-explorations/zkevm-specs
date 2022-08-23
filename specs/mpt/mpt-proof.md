@@ -139,7 +139,12 @@ struct ProofTypeCols {
 The columns in the struct falls into selectors category (as opposed to `MainCols` columns).
 `SelectorsChip` ensures there is exactly one type of proof selected.
 
-## Constraints for different nodes
+## Constraints for different types of nodes
 
-Account leaf constraints documentation is in [account-leaf.md](account-leaf.md).
-Extension node constraints documentation is in [extension-node.md](extension-node.md).
+All configs of the MPT circuit use the first gate to check the RLP encoding,
+the computation of RLC, and the selectors being of proper values (for example being
+boolean).
+
+The constraints are grouped according to different trie node types:
+ * Account leaf constraints documentation is in [account-leaf.md](account-leaf.md).
+ * Extension node constraints documentation is in [extension-node.md](extension-node.md).

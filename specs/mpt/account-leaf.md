@@ -1,10 +1,8 @@
 # Account leaf
 
-An account leaf occupies 8 rows. Thus, in our example, where there is only one account in the trie,
-our circuit will only have 8 rows.
-
+An account leaf occupies 8 rows.
 Contrary as in the branch rows, the `S` and `C` leaves are not positioned parallel to each
-other. The rows are the following:
+other. The rows are as follows:
 
 ```
 ACCOUNT_LEAF_KEY_S
@@ -37,22 +35,36 @@ Example:
 ```
 
 There are two main scenarios when an account is added to the trie:
- 1. There exists an account which has the same address to the some point. There are 64
- nibbles, if any number of the starting nibbles are the same for both addresses, a branch
- will be added to trie. The existing account will drift down one level to the branch. The newly
- added account will also appear in this branch. For example, let us say we have the account `A`
+ 1. There exists another account which has the same address to the some point as the one that
+ is being added, including the position of this account in the branch.
+ In this case a new branch is added to the trie.
+ The existing account drifts down one level to the new branch. The newly
+ added account will also appear in this branch. For example, let us say that we have the account `A`
  with nibbles `[3, 12, 3]` in the trie. We then add the account `A1` with nibbles `[3, 12, 5]`
  to the trie. The branch will appear (at position `[3, 12]`) which will have `A` at position 3
- and `A1` at position 5. That means there will be an additional branch in `C` proof (or in `S`
+ and `A1` at position 5. This means there will be an additional branch in `C` proof (or in `S`
  proof when the situation is reversed - we are deleting the leaf instead of adding) and
- a placeholder branch will be used to maintain the circuit layout (more details below).
+ for this reason we add a placeholder branch for `S` proof (for `C` proof in reversed situation)
+ to preserve the circuit layout (more details about this technicality are given below).
 
- 2. There does not exist an account which has the same address to the some point. That means
- there exists a branch with `nil` child where the account will be added. In this case,
- the `getProof` response does not end with a leaf, but with a branch. To maintain the layout,
- a placeholder account leaf is added.
+ 2. The branch where the new account is to be added has nil node at the position where the new account
+ is to be added. For example, let us have a branch at `[3, 12]`, we are adding a leaf with the
+ first three nibbles as `[3, 12, 5]`, and the position 5 in our branch is not occupied.
+ There does not exist an account which has the same address to the some point.
+ In this case, the `getProof` response does not end with a leaf, but with a branch.
+ To preserve the layout, a placeholder account leaf is added.
 
-## Key constraints
+In what follows we present the constraints for the account leaf. These are grouped into five
+files:
+ * `account_leaf_key.rs`
+ * `account_leaf_nonce_balance.rs`
+ * `account_leaf_storage_codehash.rs`
+ * `account_leaf_key_in_added_branch.rs`
+ * `account_non_existing.rs`
+
+In the last section, we give an example of nonce modification proof.
+
+## Account key constraints
 
 ### Account leaf key s_main.rlp1 = 248
 
@@ -61,7 +73,7 @@ containing two hashes - storage root and codehash, which are both of 32 bytes.
 248 is RLP byte which means there is `1 = 248 - 247` byte specifying the length of the remaining
 list. For example, in `[248,112,157,59,...]`, there are 112 byte after the second byte.
 
-## Leaf key RLC
+### Leaf key RLC
 
 In each row of the account leaf we compute an intermediate RLC of the whole leaf.
 The RLC after account leaf key row is stored in `acc` column. We check the stored value
@@ -75,10 +87,10 @@ To prevent changing the key and setting `s_main.bytes[i]` (or `c_main.rlp1/c_mai
 `i > key_len + 1` to get the desired key RLC, we need to ensure that
 `s_main.bytes[i] = 0` for `i > key_len + 1`.
 
-Note: the key length is always in s_main.bytes[0] here as opposed to storage
-key leaf where it can appear in s_rlp2 too. This is because the account
+Note: the key length is always in `s_main.bytes[0]` here as opposed to storage
+key leaf where it can appear in `s_rlp2` too. This is because the account
 leaf contains nonce, balance, ... which makes it always longer than 55 bytes,
-which makes a RLP to start with 248 (s_rlp1) and having one byte (in s_rlp2)
+which makes a RLP to start with 248 (`s_rlp1`) and having one byte (in `s_rlp2`)
 for the length of the remaining stream.
 
 ### mult_diff
@@ -87,7 +99,11 @@ When the account intermediate RLC is computed in the next row (nonce balance row
 to know the intermediate RLC and the randomness multiplier (`r` to some power) from the current row.
 The power of randomness `r` is determined by the key length - the intermediate RLC in the current row
 is computed as (key starts in `s_main.bytes[1]`):
-`rlc = s_main.rlp1 + s_main.rlp2 * r + s_main.bytes[0] * r^2 + key_bytes[0] * r^3 + ... + key_bytes[key_len-1] * r^{key_len + 2}`
+
+```
+rlc = s_main.rlp1 + s_main.rlp2 * r + s_main.bytes[0] * r^2 + key_bytes[0] * r^3 + ... + key_bytes[key_len-1] * r^{key_len + 2}
+```
+
 So the multiplier to be used in the next row is `r^{key_len + 2}`. 
 
 `mult_diff` needs to correspond to the key length + 2 RLP bytes + 1 byte for byte that contains the key length.
@@ -182,15 +198,9 @@ so there will always be a branch / extension node (and thus placeholder branch).
 Range lookups ensure that `s_main`, `c_main.rlp1`, `c_main.rlp2` columns are all bytes (between 0 - 255).
 Note that `c_main.bytes` columns are not used.
 
-## Nonce balance constraints
+## Account leaf nonce balance constraints
 
-Let us observe the proof for the modification of the account nonce. Let us assume there is only
-one account stored in the trie. We change the nonce for this account from 0 to 1.
-
-An account leaf occupies 8 rows. Thus, in our example, where there is only one account in the trie,
-our circuit will only have 8 rows.
-
-The witness for our proof looks like (excluding selector columns):
+An example rows of the account leaf are:
 
 ```
 [248,106,161,32,252,237,52,8,133,130,180,167,143,97,28,115,102,25,94,62,148,249,8,6,55,244,16,75,187,208,208,127,251,120,61,73,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
@@ -210,24 +220,11 @@ The witness for our proof looks like (excluding selector columns):
 [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
 ```
 
-In `ACCOUNT_LEAF_NONCE_BALANCE_S` row, there is `S` nonce stored in `s_main` and `S` balance in
-`c_main`. We can see nonce in `S` proof is `0 = 128 - 128`.
+In `ACCOUNT_LEAF_NONCE_BALANCE_S` row (fourth row), there is `S` nonce stored in `s_main`
+and `S` balance in `c_main`. We can see nonce in `S` proof is `0 = 128 - 128`.
 
-In `ACCOUNT_LEAF_NONCE_BALANCE_C` row, there is `C` nonce stored in `s_main` and `C` balance in
-`c_main`. We can see nonce in `C` proof is `1`.
-
-The two main things the circuit needs to check are:
- * Everything is the same in `S` and `C`, except the nonce value.
- * The change occurs at the proper account address.
-
-However, there are many other things to be checked, for example the RLP encoding and RLC accumulators.
-The RLC accumulators are used to compute the RLC of the whole node, in this particular case, the RLC of
-the account leaf. As an account leaf is distributed over multiple rows, we need to compute the intermediate
-RLC in each row.
-
-All chips in the MPT circuit use the first gate to check the RLP encoding,
-the computation of RLC, and selectors being of proper values (for example being
-boolean).
+In `ACCOUNT_LEAF_NONCE_BALANCE_C` row (fifth row), there is `C` nonce stored in `s_main`
+and `C` balance in `c_main`. We can see nonce in `C` proof is `1`.
 
 The constraints for the first gate of `AccountLeafNonceBalanceChip` which is named
 `Account leaf nonce balance RLC & RLP` are given below.
@@ -354,7 +351,11 @@ nonce modification, we need to ensure `S` balance and `C` balance are the same.
 ### Leaf nonce acc mult (nonce long)
 
 When adding nonce bytes to the account leaf RLC we do:
-`rlc_after_nonce = rlc_tmp + s_main.bytes[0] * mult_tmp + s_main.bytes[1] * mult_tmp * r + ... + s_main.bytes[k] * mult_tmp * r^k`
+
+```
+rlc_after_nonce = rlc_tmp + s_main.bytes[0] * mult_tmp + s_main.bytes[1] * mult_tmp * r + ... + s_main.bytes[k] * mult_tmp * r^k
+```
+
 Note that `rlc_tmp` means the RLC after the previous row, while `mult_tmp` means the multiplier
 (power of randomness `r`) that needs to be used for the first byte in the current row.
 
@@ -375,17 +376,30 @@ nonce bytes in the row. These are: `s_main.rlp1`, `s_main.rlp2`, `c_main.rlp1`, 
 It is a bit confusing (we are limited with layout), but `c_main.rlp1` and `c_main.rlp2`
 are bytes that actually appear in the account leaf RLP stream before `s_main.bytes`.
 So we have:
-`rlc_after_nonce = rlc_tmp + s_main.rlp1 * mult_tmp + s_main.rlp2 * mult_tmp * r + c_main.rlp1 * mult_tmp * r^2 + c_main.rlp2 * mult_tmp * r^3 + s_main.bytes[0] * mult_tmp * r^4 + ... + s_main.bytes[k] * mult_tmp * r^4 * r^k`
+
+```
+rlc_after_nonce = rlc_tmp + s_main.rlp1 * mult_tmp + s_main.rlp2 * mult_tmp * r + c_main.rlp1 * mult_tmp * r^2 + c_main.rlp2 * mult_tmp * r^3 + s_main.bytes[0] * mult_tmp * r^4 + ... + s_main.bytes[k] * mult_tmp * r^4 * r^k
+```
+
 That means `mult_diff_nonce` needs to store `r^4 * r^{k+1}` and we continue computing the RLC
 as mentioned above:
-`rlc_after_nonce + b1 * mult_tmp * mult_diff_nonce + b2 * mult_tmp * mult_diff_nonce * r + ...
+
+```
+rlc_after_nonce + b1 * mult_tmp * mult_diff_nonce + b2 * mult_tmp * mult_diff_nonce * r + ...
+```
 
 Let us observe the following example.
 [184  78   129      142       0 0 ... 0 248  76   135      28       5 107 201 118 120 59 0 0 ... 0]
 Here:
-`rlc_after_nonce = rlc_tmp + 184 * mult_tmp + 78 * mult_tmp * r + 248 * mult_tmp * r^2 + 76 * mult_tmp * r^3 + 129 * mult_tmp * r^4 + 142 * mult_tmp * r^5`
+
+```rlc_after_nonce = rlc_tmp + 184 * mult_tmp + 78 * mult_tmp * r + 248 * mult_tmp * r^2 + 76 * mult_tmp * r^3 + 129 * mult_tmp * r^4 + 142 * mult_tmp * r^5
+```
+
 And we continue computing the RLC:
-`rlc_after_nonce + 135 * mult_tmp * mult_diff_nonce + 28 + mult_tmp * mult_diff_nonce * r + ... `
+
+```
+rlc_after_nonce + 135 * mult_tmp * mult_diff_nonce + 28 + mult_tmp * mult_diff_nonce * r + ...
+```
 
 ### Leaf nonce acc mult (nonce short)
 
@@ -397,10 +411,18 @@ as there are `s_main.rlp1`, `s_main.rlp2`, `c_main.rlp1`, `c_main.rlp2`, and `s_
 We need to prepare the multiplier that will be needed in the next row: `acc_mult_final`.
 We have the multiplier after nonce bytes were added to the RLC: `acc_mult_after_nonce`.
 Now, `acc_mult_final` depends on the number of balance bytes. 
-`rlc_after_balance = rlc_after_nonce + b1 * acc_mult_after_nonce + ... + bl * acc_mult_after_nonce * r^{l-1}`
+
+```
+rlc_after_balance = rlc_after_nonce + b1 * acc_mult_after_nonce + ... + bl * acc_mult_after_nonce * r^{l-1}
+```
+
 Where `b1,...,bl` are `l` balance bytes. As with nonce, we do not know the length of balance bytes
 in advance. For this reason, we store `r^l` in `mult_diff_balance` and check whether:
-`acc_mult_final = acc_mult_after_nonce * mult_diff_balance`.
+
+```
+acc_mult_final = acc_mult_after_nonce * mult_diff_balance
+```
+
 Note that `mult_diff_balance` is not the last multiplier in this row, but the first in
 the next row (this is why there is `r^l` instead of `r^{l-1}`).
 
@@ -466,7 +488,10 @@ The whole RLP length of the account leaf is specified in the account leaf key ro
 row, so we need to check that `s_main.rlp2` corresponds to the key length (in key row) and
 `s_main.rlp2` in nonce balance row. However, we need to take into account also the bytes
 where the lengths are stored:
-`s_main.rlp2 (key row) - key_len - 1 (because key_len is stored in 1 byte) - s_main.rlp2 (nonce balance row) - 1 (because of s_main.rlp1) - 1 (because of s_main.rlp2) = 0`
+
+```
+s_main.rlp2 (key row) - key_len - 1 (because key_len is stored in 1 byte) - s_main.rlp2 (nonce balance row) - 1 (because of s_main.rlp1) - 1 (because of s_main.rlp2) = 0
+```
 
 Example:
 ```
@@ -508,7 +533,7 @@ the balance length in advance. To prevent changing the balance and setting `c_ma
 
 Range lookups ensure that `s_main` and `c_main` columns are all bytes (0 - 255).
 
-## Storage codehash constraints
+## Account leaf storage codehash constraints
 
 The constraints in `account_leaf_storage_codehash.rs` apply to ACCOUNT_LEAF_STORAGE_CODEHASH_S and
 ACCOUNT_LEAF_STORAGE_CODEHASH_C rows.
@@ -620,7 +645,7 @@ Range lookups ensure that `s_main` and `c_main` columns are all bytes (between 0
 
 Note: `s_main.rlp1` and `c_main.rlp1` are not used.
 
-## Drifted leaf (account in added branch)
+## Account leaf in added branch (drifted leaf) constraints
 
 Sometimes `S` and `C` proofs are not of the same length. For example, when a new account `A1` is added,
 the following scenario might happen. Let us say that the account that is being added has the address
@@ -774,7 +799,11 @@ When the full account intermediate RLC is computed, we need
 to know the intermediate RLC and the randomness multiplier (`r` to some power) from the key row.
 The power of randomness `r` is determined by the key length - the intermediate RLC in the current row
 is computed as (key starts in `s_main.bytes[1]`):
-`rlc = s_main.rlp1 + s_main.rlp2 * r + s_main.bytes[0] * r^2 + key_bytes[0] * r^3 + ... + key_bytes[key_len-1] * r^{key_len + 2}`
+
+```
+rlc = s_main.rlp1 + s_main.rlp2 * r + s_main.bytes[0] * r^2 + key_bytes[0] * r^3 + ... + key_bytes[key_len-1] * r^{key_len + 2}
+```
+
 So the multiplier to be used in the next row is `r^{key_len + 2}`. 
 
 `mult_diff` needs to correspond to the key length + 2 RLP bytes + 1 byte for byte that contains the key length.
@@ -802,7 +831,7 @@ corresponds to this RLC is in the parent branch at `drifted_pos` position.
 Range lookups ensure that the value in the columns are all bytes (between 0 - 255).
 Note that `c_main.bytes` columns are not used.
 
-## Non-existing account proof constraints
+## Account leaf non-existing-account constraints
 
 The rows of the account leaf are the following:
 ```
@@ -933,3 +962,90 @@ for the length of the remaining stream.
 
 Range lookups ensure that `s_main`, `c_main.rlp1`, `c_main.rlp2` columns are all bytes (between 0 - 255).
 Note that `c_main.bytes` columns are not used.
+
+
+## Example
+
+Let us observe the proof for the modification of the account nonce. Let us assume there is only
+one account stored in the trie. We change the nonce for this account from 0 to 1.
+
+An account leaf occupies 8 rows. Thus, in our example, where there is only one account in the trie,
+our circuit will only have 8 rows.
+
+The witness for our proof looks like (excluding selector columns):
+
+```
+[248,106,161,32,252,237,52,8,133,130,180,167,143,97,28,115,102,25,94,62,148,249,8,6,55,244,16,75,187,208,208,127,251,120,61,73,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+
+[248,106,161,32,252,237,52,8,133,130,180,167,143,97,28,115,102,25,94,62,148,249,8,6,55,244,16,75,187,208,208,127,251,120,61,73,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+
+[0,0,0,32,252,237,52,8,133,130,180,167,143,97,28,115,102,25,94,62,148,249,8,6,55,244,16,75,187,208,208,127,251,120,61,73,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+
+[184,70,128,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,248,68,128,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+
+[184,70,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,248,68,128,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+
+[0,160,86,232,31,23,27,204,85,166,255,131,69,230,146,192,248,110,91,72,224,27,153,108,173,192,1,98,47,181,227,99,180,33,0,160,197,210,70,1,134,247,35,60,146,126,125,178,220,199,3,192,229,0,182,83,202,130,39,59,123,250,216,4,93,133,164,122]
+
+[0,160,86,232,31,23,27,204,85,166,255,131,69,230,146,192,248,110,91,72,224,27,153,108,173,192,1,98,47,181,227,99,180,33,0,160,197,210,70,1,134,247,35,60,146,126,125,178,220,199,3,192,229,0,182,83,202,130,39,59,123,250,216,4,93,133,164,122]
+
+[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+```
+
+The rows are:
+```
+ACCOUNT_LEAF_KEY_S
+ACCOUNT_LEAF_KEY_C
+ACCOUNT_NON_EXISTING
+ACCOUNT_LEAF_NONCE_BALANCE_S
+ACCOUNT_LEAF_NONCE_BALANCE_C
+ACCOUNT_LEAF_STORAGE_CODEHASH_S
+ACCOUNT_LEAF_STORAGE_CODEHASH_C
+ACCOUNT_DRIFTED_LEAF
+```
+
+In `ACCOUNT_LEAF_NONCE_BALANCE_S` row, there is `S` nonce stored in `s_main`
+and `S` balance in `c_main`. We can see nonce in `S` proof is `0 = 128 - 128`.
+
+In `ACCOUNT_LEAF_NONCE_BALANCE_C` row, there is `C` nonce stored in `s_main`
+and `C` balance in `c_main`. We can see nonce in `C` proof is `1`.
+
+The two main things the circuit needs to check are:
+ * Everything is the same in `S` and `C`, except the nonce value.
+ * The change occurs at the proper account address.
+
+However, there are many other things to be checked, for example the RLP encoding and RLC accumulators.
+The RLC accumulators are used to compute the RLC of the whole node, in this particular case the RLC of
+the account leaf. As the account leaf is distributed over multiple rows, we need to compute
+the intermediate RLC in each row. That means we compute the RLC after the first row, then starts
+with this value in the second row, compute the RLC after the second row:
+
+```
+account_s_rlc = account_leaf_key_s_rlc + account_leaf_nonce_balance_s_rlc * mult1 + account_leaf_storage_codehash_s_rlc * mult2
+```
+
+Note that `mult1` and `mult2` depend on the number of bytes in `account_leaf_key_s` and
+`account_leaf_nonce_balance_s` bytes respectively. The RLC computed after the last row
+and the RLC of the state trie hash (we only have this account in the trie) need
+to be in the keccak table in the same row.
+
+When we check that the computed account address is the same as the given address where the change
+should occur, all address nibles are in the account leaf (no nibbles used in the branches as there
+are no branches).
+We can see this in the `ACCOUNT_LEAF_KEY_S` row:
+
+```
+[248,106,161,32,252,237,52,8,133,130,180,167,143,97,28,115,102,25,94,62,148,249,8,6,55,244,16,75,187,208,208,127,251,120,61,73,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+```
+
+There are `33 = 161 - 128` bytes that store the nibbles. The value 32 does not hold any nibble
+(this is how nibbles are compressed in case of even nibbles), but then we have 32 bytes that
+store the nibbles:
+```
+[252,237,52,8,133,130,180,167,143,97,28,115,102,25,94,62,148,249,8,6,55,244,16,75,187,208,208,127,251,120,61,73]
+```
+
+Each of these bytes stores two nibbles. The address is computed as:
+```
+address_rlc = 252 + 237 * r + ... + 73 * r^31
+```
