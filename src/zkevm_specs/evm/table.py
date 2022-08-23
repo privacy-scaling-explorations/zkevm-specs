@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Any, List, Mapping, Optional, Sequence, Set, Type, TypeVar, Union
+from typing import Any, List, Mapping, Optional, Sequence, Set, Tuple, Type, TypeVar, Union
 from enum import IntEnum, auto
 from itertools import chain, product
 from dataclasses import dataclass, field, fields
@@ -468,6 +468,38 @@ class KeccakTableRow(TableRow):
     output: FQ
 
 
+@dataclass
+class ExpCircuitRow(TableRow):
+    q_step: FQ
+    idx: FQ
+    is_last: FQ
+    remainder: FQ
+    # columns from the exponentiation table
+    is_first: FQ
+    base_limb: FQ
+    intermediate_exponent_lo_hi: FQ
+    intermediate_exponentiation_lo_hi: FQ
+    # columns from the MulGadget
+    col0: FQ
+    col1: FQ
+    col2: FQ
+    col3: FQ
+    col4: FQ
+
+
+@dataclass(frozen=True)
+class ExpTableRow(TableRow):
+    is_first: FQ
+    base_limb0: FQ
+    base_limb1: FQ
+    base_limb2: FQ
+    base_limb3: FQ
+    exponent_lo: FQ
+    exponent_hi: FQ
+    exponentiation_lo: FQ
+    exponentiation_hi: FQ
+
+
 class Tables:
     """
     A collection of lookup tables used in EVM circuit.
@@ -480,6 +512,7 @@ class Tables:
     rw_table: Set[RWTableRow]
     copy_table: Set[CopyTableRow]
     keccak_table: Set[KeccakTableRow]
+    exp_table: Set[ExpTableRow]
 
     def __init__(
         self,
@@ -489,6 +522,7 @@ class Tables:
         rw_table: Union[Set[Sequence[Expression]], Set[RWTableRow]],
         copy_circuit: Sequence[CopyCircuitRow] = None,
         keccak_table: Sequence[KeccakTableRow] = None,
+        exp_circuit: Sequence[ExpCircuitRow] = None,
     ) -> None:
         self.block_table = block_table
         self.tx_table = tx_table
@@ -501,6 +535,8 @@ class Tables:
             self.copy_table = self._convert_copy_circuit_to_table(copy_circuit)
         if keccak_table is not None:
             self.keccak_table = set(keccak_table)
+        if exp_circuit is not None:
+            self.exp_table = self._convert_exp_circuit_to_table(exp_circuit)
 
     def _convert_copy_circuit_to_table(self, copy_circuit: Sequence[CopyCircuitRow]):
         rows: List[CopyTableRow] = []
@@ -526,6 +562,11 @@ class Tables:
                         rwc_inc=first_row.rwc_inc_left,
                     )
                 )
+        return set(rows)
+
+    def _convert_exp_circuit_to_table(self, exp_circuit: Sequence[ExpCircuitRow]):
+        rows: List[ExpTableRow] = []
+        # TODO(rohit): implement
         return set(rows)
 
     def fixed_lookup(
@@ -640,6 +681,22 @@ class Tables:
             "acc_input": value_rlc,
         }
         return lookup(KeccakTableRow, self.keccak_table, query)
+
+    def exp_lookup(
+        self,
+        base_limbs: Tuple[Expression, ...],
+        exponent: Tuple[Expression, Expression],
+    ):
+        query = {
+            "is_first": FQ.one(),
+            "base_limb0": base_limbs[0].expr(),
+            "base_limb1": base_limbs[1].expr(),
+            "base_limb2": base_limbs[2].expr(),
+            "base_limb3": base_limbs[3].expr(),
+            "exponent_lo": exponent[0].expr(),
+            "exponent_hi": exponent[1].expr(),
+        }
+        return lookup(ExpTableRow, self.exp_table, query)
 
 
 T = TypeVar("T", bound=TableRow)

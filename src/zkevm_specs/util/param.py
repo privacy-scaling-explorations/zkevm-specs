@@ -31,6 +31,8 @@ GAS_COST_MID = 8
 GAS_COST_SLOW = 10
 # Gas cost of ext step
 GAS_COST_EXT = 20
+# Gas cost (dynamic) per exponent byte-size
+GAS_COST_EXP_PER_BYTE = 50
 # Gas cost of SHA3
 GAS_COST_SHA3 = 30
 # Gas cost of CREATE

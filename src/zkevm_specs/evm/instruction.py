@@ -421,6 +421,10 @@ class Instruction:
         assert len(word.le_bytes) == 32, "Expected word to contain 32 bytes"
         return tuple(self.bytes_to_fq(word.le_bytes[8 * i : 8 * (i + 1)]) for i in range(4))
 
+    def byte_size(self, word: RLC) -> FQ:
+        assert len(word.le_bytes) == 32, "Expected word to contain 32 bytes"
+        return FQ(len(bytearray(word.le_bytes).rstrip(b"\x00")))
+
     def bytes_to_fq(self, value: bytes, constrained=False) -> FQ:
         assert len(value) <= MAX_N_BYTES, "Too many bytes to composite an integer in field"
 
@@ -1055,3 +1059,11 @@ class Instruction:
 
     def keccak_lookup(self, length: Expression, value_rlc: Expression) -> FQ:
         return self.tables.keccak_lookup(length, value_rlc).output
+
+    def exp_lookup(
+        self,
+        base_limbs: Tuple[Expression, ...],
+        exponent_lo_hi: Tuple[Expression, Expression],
+    ) -> Tuple[FQ, FQ]:
+        exp_table_row = self.tables.exp_lookup(base_limbs, exponent_lo_hi)
+        return exp_table_row.exponentiation_lo, exp_table_row.exponentiation_hi
