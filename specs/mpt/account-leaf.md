@@ -62,7 +62,7 @@ files:
  * `account_leaf_key_in_added_branch.rs`
  * `account_non_existing.rs`
 
-In the last section, we give an example of nonce modification proof.
+In the last section, we give an example of the nonce modification proof.
 
 ## Account key constraints
 
@@ -389,10 +389,14 @@ rlc_after_nonce + b1 * mult_tmp * mult_diff_nonce + b2 * mult_tmp * mult_diff_no
 ```
 
 Let us observe the following example.
+```
 [184  78   129      142       0 0 ... 0 248  76   135      28       5 107 201 118 120 59 0 0 ... 0]
+```
+
 Here:
 
-```rlc_after_nonce = rlc_tmp + 184 * mult_tmp + 78 * mult_tmp * r + 248 * mult_tmp * r^2 + 76 * mult_tmp * r^3 + 129 * mult_tmp * r^4 + 142 * mult_tmp * r^5
+```
+rlc_after_nonce = rlc_tmp + 184 * mult_tmp + 78 * mult_tmp * r + 248 * mult_tmp * r^2 + 76 * mult_tmp * r^3 + 129 * mult_tmp * r^4 + 142 * mult_tmp * r^5
 ```
 
 And we continue computing the RLC:
