@@ -8,9 +8,9 @@ The `RETURNDATASIZE` opcode gets size of output data from the previous call from
 
 ### Circuit behaviour
 
-1. Construct call context table in rw table
-2. Do busmapping lookup for call context last call return data length read operation
-3. Do busmapping lookup for stack write operation
+1. Construct call context table in rw table.
+2. Do a busmapping lookup for CallContext last Call's ReturnDataLength  read.
+3. Do a busmapping lookup for a stack write operation corresponding to the RETURNDATASIZE result.
 
 ## Constraints
 
@@ -21,8 +21,8 @@ The `RETURNDATASIZE` opcode gets size of output data from the previous call from
    - pc + 1
    - gas + 2
 3. Lookups: 2
-   - `u64` is in the rw table {call context, call ID, call data length}
-   - `u64` is on top of stack
+   - ReturnDataLength is in the rw table {call context, call ID, ReturnDataLength}.
+   - ReturnDataLength is on top of stack.
 
 ## Exceptions
 
@@ -31,4 +31,4 @@ The `RETURNDATASIZE` opcode gets size of output data from the previous call from
 
 ## Code
 
-Please refer to `src/zkevm_specs/evm/execution/returndatasize.py`.
+Please refer to [returndatasize.py](src/zkevm_specs/evm/execution/returndatasize.py).

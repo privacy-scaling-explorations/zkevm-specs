@@ -32,7 +32,7 @@ def test_returndatasize(returndatasize: U64):
         bytecode_table=set(bytecode.table_assignments(randomness)),
         rw_table=set(
             RWDictionary(9)
-            .call_context_read(1, CallContextFieldTag.CallDataLength, returndatasize)
+            .call_context_read(1, CallContextFieldTag.LastCalleeReturnDataLength, returndatasize)
             .stack_write(1, 1023, RLC(returndatasize, randomness))
             .rws
         ),

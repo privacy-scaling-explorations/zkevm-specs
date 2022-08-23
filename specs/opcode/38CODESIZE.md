@@ -30,4 +30,4 @@ The `CODESIZE` opcode pushes the size of code running in the current environment
 
 ## Code
 
-Please refer to `src/zkevm_specs/evm/execution/codesize.py`.
+Please refer to [codesize.py](src/zkevm_specs/evm/execution/codesize.py).
