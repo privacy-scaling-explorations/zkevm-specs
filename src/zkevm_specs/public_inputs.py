@@ -350,8 +350,7 @@ def public_data2witness(
             tag = FQ(TxTag.CallData)
             if i < TX_LEN * MAX_TXS:
                 # Iterate over TxTag values (until TxTag.TxSignHash) in a cycle
-                # FIXME: review
-                tag = FQ((i % (TX_LEN - 1)) + 1)
+                tag = FQ((i % TX_LEN ) + 1)
             tx_row = TxTableRow(tx_id, tag, index, value)
         row = Row(
             q_block_table,
