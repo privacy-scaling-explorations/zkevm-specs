@@ -8,7 +8,7 @@ The gas cost of `EXTCODECOPY` opcode is dynamic and is based on the cost of memo
 
 ## Circuit Behaviour
 
-`EXTCODECOPY` makes use of the internal execution step `CopyCodeToMemory` and loops over these steps iteratively until there are no more bytes to be copied. The `EXTCODECOPY` circuit itself only constrains the values popped from stack and call context/address read lookups.
+The `EXTCODECOPY` circuit constrains the values popped from stack, call context/address read lookups and CopyTable lookups to verify the copy of bytes. The copy of a dynamic number of bytes is verified by the CopyCircuit outside the `EXTCODECOPY` gadget.
 
 The gadget then transits to the internal state of `CopyCodeToMemory`.
 
