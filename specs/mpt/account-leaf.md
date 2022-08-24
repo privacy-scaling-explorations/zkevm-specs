@@ -79,7 +79,7 @@ In each row of the account leaf we compute an intermediate RLC of the whole leaf
 The RLC after account leaf key row is stored in `acc` column. We check the stored value
 is computed correctly.
 
-## Zeros in s_main.bytes & c_main.rlp1 & c_main.rlp2 after key ends
+### Zeros in s_main.bytes & c_main.rlp1 & c_main.rlp2 after key ends
 
 Key RLC is computed over all of `s_main.bytes[1], ..., s_main.bytes[31], c_main.rlp1, c_main.rlp2`
 because we do not know the key length in advance.
