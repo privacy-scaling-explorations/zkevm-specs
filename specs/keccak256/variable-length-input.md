@@ -50,10 +50,10 @@ Columns:
 - `input_len`: int. The length of the input.
 - `input`: RLC of 136 bytes. 136 bytes to be absorbed in this round. Padding not included yet.
 - `perm_count`: int. Permutations we have done after the current one.
-- `acc_input`: RLC. Accumulatd bytes by random linear combination (in big-endian order)
+- `input_rlc`: RLC. Accumulatd bytes by random linear combination (in big-endian order)
 - `output` RLC of 32 bytes. The base-2 `state[:4]` output from this round `keccak_f`
 
-| state_tag | input_len | input | perm_count | acc_input | output |
+| state_tag | input_len | input | perm_count | input_rlc | output |
 | --------: | --------: | ----: | ---------: | --------: | -----: |
 |     Start |         0 |     0 |          0 |         0 |      0 |
 |  Finalize |        20 |       |          1 |           |        |
@@ -69,7 +69,7 @@ Columns:
 We branch the constraints to apply by state_tag
 
 - Start
-  - input_len === input === perm_count === acc_input === output === 0
+  - input_len === input === perm_count === input_rlc === output === 0
   - State transition
     - next.state_tag in (Continue, Finalize, End)
 - Continue
@@ -77,7 +77,7 @@ We branch the constraints to apply by state_tag
     - next.input === 0 (since the input is the unpadded input)
     - next.state_tag === Finalize
   - Next row validity
-    - next.acc_input === curr.acc_input * r**136 + next.input
+    - next.input_rlc === curr.input_rlc * r**136 + next.input
     - next.perm_count === curr.perm_count + 1
   - State transition
     - next.state_tag in (Continue, Finalize)
@@ -86,7 +86,7 @@ We branch the constraints to apply by state_tag
         - (curr.perm_count * 136 - input_len) in 1~136
     - Next row validity
         - next.perm_count === 1
-        - next.acc_input === next.input
+        - next.input_rlc === next.input
     - State transition: (Continue, Finalize, End) all 3 states allowed
 - End
     - We can broadcast this state_tag to the `keccak_f` as a flag to disable all checks.
@@ -99,7 +99,7 @@ To lookup the Keccak256 input to the output, query the following columns:
 
 - `state_tag`
 - `input_len`: FQ. This is required because input \[0, 0, 0\] and \[0, 0\] have the same RLC value but different keccak hash outputs.
-- `acc_input`: RLC
+- `input_rlc`: RLC
 - `output`: RLC
 
 When the lookup is needed, constrain `state_tag === 2 (Finalize)`.
