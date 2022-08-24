@@ -28,6 +28,7 @@ from .jumpi import *
 from .mul_div_mod import *
 from .origin import *
 from .push import *
+from .returndatasize import *
 from .slt_sgt import *
 from .gas import *
 from .gasprice import *
@@ -66,6 +67,7 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.JUMP: jump,
     ExecutionState.JUMPI: jumpi,
     ExecutionState.PUSH: push,
+    ExecutionState.RETURNDATASIZE: returndatasize,
     ExecutionState.SCMP: scmp,
     ExecutionState.GAS: gas,
     ExecutionState.SHA3: sha3,
