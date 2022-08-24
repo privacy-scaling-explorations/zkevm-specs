@@ -1,5 +1,5 @@
 from .encoding import is_circuit_code
-from typing import NamedTuple, Tuple, List, Set
+from typing import NamedTuple, Tuple, List, Set, Union
 from .util import (
     FQ,
     RLC,
@@ -292,12 +292,17 @@ class Transaction(NamedTuple):
     nonce: U64
     gas_price: U256
     gas: U64
-    to: U160
+    to: Union[None, U160]
     value: U256
     data: bytes
     sig_v: U64
     sig_r: U256
     sig_s: U256
+
+    def encode_to(self):
+        if self.to is None:
+            return bytes(0)
+        return self.to.to_bytes(20, "big")
 
 
 def tx2witness(
@@ -310,7 +315,7 @@ def tx2witness(
     """
 
     tx_sign_data = rlp.encode(
-        [tx.nonce, tx.gas_price, tx.gas, tx.to, tx.value, tx.data, chain_id, 0, 0]
+        [tx.nonce, tx.gas_price, tx.gas, tx.encode_to(), tx.value, tx.data, chain_id, 0, 0]
     )
     tx_sign_hash = keccak(tx_sign_data)
 

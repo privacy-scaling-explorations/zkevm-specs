@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Tuple, List
+from typing import Tuple, List, Union
 
 from .util import (
     FQ,
@@ -182,14 +182,14 @@ class Transaction:
     gas_price: U256
     gas: U64
     from_addr: U160
-    to_addr: U160
+    to_addr: Union[None, U160]
     value: U256
     data: bytes
     tx_sign_hash: U256
 
     @classmethod
     def default(cls):
-        return Transaction(U64(0), U256(0), U64(0), U160(0), U160(0), U256(0), bytes([]), U256(0))
+        return Transaction(U64(0), U256(0), U64(0), U160(0), None, U256(0), bytes([]), U256(0))
 
     def tx_table_value_column(self) -> List[FQ]:
         """Return the tx table value column corresponding to this tx.  Contains fields and no calldata"""
@@ -198,9 +198,8 @@ class Transaction:
         column.append(FQ(self.gas))  # Gas
         column.append(FQ(self.gas_price))  # GasPrice
         column.append(FQ(self.from_addr))  # CallerAddress
-        column.append(FQ(self.to_addr))  # CalleeAddress
-        # FIXME: no difference in the case `tx.to = None` and `tx.to = 0x0000000000000000000000000000000000000000`
-        column.append(FQ(1 if self.to_addr == FQ(0) else 0))  # IsCreate
+        column.append(FQ(self.to_addr or 0))  # CalleeAddress
+        column.append(FQ(1 if self.to_addr is None else 0))  # IsCreate
         column.append(FQ(self.value))  # Value
         column.append(FQ(len(self.data)))  # CallDataLength
         call_data_gas_cost = sum(
@@ -350,7 +349,7 @@ def public_data2witness(
             tag = FQ(TxTag.CallData)
             if i < TX_LEN * MAX_TXS:
                 # Iterate over TxTag values (until TxTag.TxSignHash) in a cycle
-                tag = FQ((i % TX_LEN ) + 1)
+                tag = FQ((i % TX_LEN) + 1)
             tx_row = TxTableRow(tx_id, tag, index, value)
         row = Row(
             q_block_table,
