@@ -45,6 +45,7 @@ from .table import (
     CopyDataTypeTag,
     CopyCircuitRow,
     KeccakTableRow,
+    ExpCircuitRow,
 )
 from .opcode import get_push_size, Opcode
 
@@ -698,6 +699,51 @@ class KeccakCircuit:
             )
         )
         return self
+
+
+class ExpCircuit:
+    rows: List[ExpCircuitRow]
+    pad_rows: List[ExpCircuitRow]
+
+    def __init__(self, pad_rows: Optional[List[ExpCircuitRow]] = None) -> None:
+        self.rows = []
+        self.pad_rows = []
+        if pad_rows is not None:
+            self.pad_rows = pad_rows
+
+    def table(self) -> Sequence[ExpCircuitRow]:
+        return self.rows + self.pad_rows
+
+    def add_event(self, base: int, exponent: int):
+        steps: List[Tuple[int, int, int]] = []
+        exponentiation = self._exp_by_squaring(base, exponent, steps)
+        self._append_steps(base, exponent, exponentiation, steps)
+
+    def _exp_by_squaring(self, base: int, exponent: int, steps: List[Tuple[int, int, int]]):
+        if exponent == 0:
+            return 1
+        elif exponent == 1:
+            return base
+        else:
+            pow2 = 2**256
+            base2 = (base * base) % pow2
+            if exponent % 2 == 0:
+                # exponent is even
+                steps.append((base, base, base2))
+                return self._exp_by_squaring(base2, exponent // 2, steps)
+            else:
+                # exponent is odd
+                steps.append((base, base, base2))
+                exp1 = self._exp_by_squaring(base2, (exponent - 1) // 2, steps)
+                exp = (base * exp1) % pow2
+                steps.append((exp1, base, exp))
+                return exp
+
+    def _append_steps(
+        self, base: int, exponent: int, exponentiation: int, steps: List[Tuple[int, int, int]]
+    ):
+        # TODO(rohit): unimplemented
+        print("hello")
 
 
 class CopyCircuit:

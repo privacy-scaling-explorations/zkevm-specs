@@ -566,7 +566,7 @@ class Tables:
 
     def _convert_exp_circuit_to_table(self, exp_circuit: Sequence[ExpCircuitRow]):
         rows: List[ExpTableRow] = []
-        # TODO(rohit): implement
+        # TODO(rohit): unimplemented
         return set(rows)
 
     def fixed_lookup(
