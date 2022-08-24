@@ -202,6 +202,20 @@ From this table, the following columns contain values using the RLC encoding:
 - ValuePrev
 - ValueCur
 
+## Keccak Table
+
+See [tx.py](src/zkevm_specs/tx.py)
+
+| IsEnabled | InputRLC   | InputLen | Output      |
+| --------- | ---------- | -------- | ----------- |
+| 1         | $input_rlc | 200      | $output_rlc |
+
+Column names in circuit:
+- IsEnabled: `is_enabled`
+- InputRLC: `input_rlc`
+- InputLen: `input_len`
+- Output: `output_rlc`
+
 ### Nonce update
 
 | Enable | Counter  | Address | ValuePrev  | ValueCur  |
