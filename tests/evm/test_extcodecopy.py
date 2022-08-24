@@ -15,7 +15,7 @@ from zkevm_specs.evm import (
     CopyCircuit,
     CopyDataTypeTag,
     AccountFieldTag,
-    CallContextFieldTag
+    CallContextFieldTag,
 )
 from zkevm_specs.evm.typing import RWDictionary
 from zkevm_specs.util import (
@@ -24,15 +24,16 @@ from zkevm_specs.util import (
     EXTRA_GAS_COST_ACCOUNT_COLD_ACCESS,
     MEMORY_EXPANSION_LINEAR_COEFF,
     MEMORY_EXPANSION_QUAD_DENOMINATOR,
-    GAS_COST_COPY
+    GAS_COST_COPY,
 )
 
 TESTING_DATA = (
-    (bytes(), True, True, 0x30000, 0x00, 0x00, 54), # warm account with empty code
+    (bytes(), True, True, 0x30000, 0x00, 0x00, 54),  # warm account with empty code
     (bytes(), False, True, 0x30000, 0x00, 0x00, 54),  # cold account with empty code
-    (bytes([10, 40]), True, True, 0x30000, 0x00, 0x00, 54), # warm account
+    (bytes([10, 40]), True, True, 0x30000, 0x00, 0x00, 54),  # warm account
     (bytes([10, 10]), False, True, 0x30000, 0x00, 0x00, 54),  # cold account
 )
+
 
 def to_word_size(addr: int) -> int:
     return (addr + 31) // 32
@@ -43,6 +44,7 @@ def memory_gas_cost(memory_word_size: int) -> int:
     linear_cost = memory_word_size * MEMORY_EXPANSION_LINEAR_COEFF
     return quad_cost + linear_cost
 
+
 def memory_copier_gas_cost(
     curr_memory_word_size: int, next_memory_word_size: int, length: int
 ) -> int:
@@ -50,25 +52,30 @@ def memory_copier_gas_cost(
     next_memory_cost = memory_gas_cost(next_memory_word_size)
     return to_word_size(length) * GAS_COST_COPY + next_memory_cost - curr_memory_cost
 
-@pytest.mark.parametrize("code, is_warm, is_persistent, address, src_addr, dst_addr, length", TESTING_DATA)
+
+@pytest.mark.parametrize(
+    "code, is_warm, is_persistent, address, src_addr, dst_addr, length", TESTING_DATA
+)
 def test_extcodecopy(
     code: bytes,
     is_warm: bool,
-    is_persistent:bool,
+    is_persistent: bool,
     address: U160,
     src_addr: U64,
     dst_addr: U64,
-    length: U64
+    length: U64,
 ):
     randomness = rand_fq()
 
     code_hash = int.from_bytes(keccak256(code), "big")
- 
+
     next_memory_word_size = to_word_size(dst_addr + length)
 
-    gas_cost_extcodecopy = Opcode.EXTCODECOPY.constant_gas_cost() + memory_copier_gas_cost(
-        0, next_memory_word_size, length
-    ) + (not is_warm) * EXTRA_GAS_COST_ACCOUNT_COLD_ACCESS
+    gas_cost_extcodecopy = (
+        Opcode.EXTCODECOPY.constant_gas_cost()
+        + memory_copier_gas_cost(0, next_memory_word_size, length)
+        + (not is_warm) * EXTRA_GAS_COST_ACCOUNT_COLD_ACCESS
+    )
 
     tx_id = 1
     call_id = 1
@@ -168,7 +175,7 @@ def test_extcodecopy(
     )
 
     verify_copy_table(copy_circuit, tables, randomness)
-    
+
     verify_steps(
         randomness=randomness,
         tables=tables,

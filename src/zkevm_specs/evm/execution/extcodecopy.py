@@ -25,12 +25,10 @@ def extcodecopy(instruction: Instruction):
     next_memory_size, memory_expansion_gas_cost = instruction.memory_expansion_dynamic_length(
         memory_offset, size
     )
-    memory_copier_gas_cost = instruction.memory_copier_gas_cost(size, memory_expansion_gas_cost) 
+    memory_copier_gas_cost = instruction.memory_copier_gas_cost(size, memory_expansion_gas_cost)
 
     gas_cost = memory_copier_gas_cost + instruction.select(
-        is_warm,
-        FQ(0),
-        FQ(EXTRA_GAS_COST_ACCOUNT_COLD_ACCESS)
+        is_warm, FQ(0), FQ(EXTRA_GAS_COST_ACCOUNT_COLD_ACCESS)
     )
 
     if instruction.is_zero(size) == FQ(0):
