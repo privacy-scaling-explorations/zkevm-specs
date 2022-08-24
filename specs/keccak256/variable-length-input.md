@@ -98,8 +98,8 @@ We branch the constraints to apply by state_tag
 To lookup the Keccak256 input to the output, query the following columns:
 
 - `state_tag`
-- `input_len`: FQ. This is required because input \[0, 0, 0\] and \[0, 0\] have the same RLC value but different keccak hash outputs.
 - `input_rlc`: RLC
+- `input_len`: FQ. This is required because input \[0, 0, 0\] and \[0, 0\] have the same RLC value but different keccak hash outputs.
 - `output`: RLC
 
 When the lookup is needed, constrain `state_tag === 2 (Finalize)`.
