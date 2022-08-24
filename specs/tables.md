@@ -208,7 +208,7 @@ See [tx.py](src/zkevm_specs/tx.py)
 
 | IsEnabled | InputRLC   | InputLen | Output      |
 | --------- | ---------- | -------- | ----------- |
-| 1         | $input_rlc | $input_length | $output_rlc |
+| bool         | $input_rlc | $input_length | $output_rlc |
 
 Column names in circuit:
 - IsEnabled: `is_final`
