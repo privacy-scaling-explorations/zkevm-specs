@@ -4,9 +4,7 @@
 
 The `EXTCODECOPY` opcode pops `address`, `memory_offset`, `code_offset` and `size` from the stack. It then copies `size` bytes of code of `address` from an offset `code_offset` to the memory at the address `memory_offset`. For out-of-bound scenarios where `size > len(code) - code_offset`, EVM pads 0 to the end of the copied bytes.
 
-The gas cost of `CODECOPY` opcode consists of:
-
-1. A dynamic gas cost: cost of memory expansion and copying (variable depending on the `size` copied to memory) and accessing the address (variable depending on whether the `address` is warm or not)
+The gas cost of `EXTCODECOPY` opcode is dynamic and is based on the cost of memory expansion and copying (variable depending on the `size` copied to memory) and accessing the address (variable depending on whether the `address` is warm or not)
 
 ## Circuit Behaviour
 
@@ -41,4 +39,4 @@ The gadget then transits to the internal state of `CopyCodeToMemory`.
 
 ## Code
 
-Please refer to `src/zkevm_specs/evm/execution/extcodecopy.py`
+Please refer to [extcodecopy](src/zkevm_specs/evm/execution/extcodecopy.py).
