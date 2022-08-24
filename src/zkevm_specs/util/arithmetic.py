@@ -107,3 +107,14 @@ def word_to_lo_hi(word: RLC) -> Tuple[FQ, FQ]:
 def word_to_64s(word: RLC) -> Tuple[FQ, ...]:
     assert len(word.le_bytes) == 32, "Expected word to contain 32 bytes"
     return tuple(bytes_to_fq(word.le_bytes[8 * i : 8 * (i + 1)]) for i in range(4))
+
+
+def lo_hi_to_64s(lo_hi: Tuple[FQ, FQ]) -> Tuple[FQ, ...]:
+    lo_bytes = lo_hi[0].n.to_bytes(16, "little")
+    hi_bytes = lo_hi[1].n.to_bytes(16, "little")
+    return (
+        bytes_to_fq(lo_bytes[0:8]),
+        bytes_to_fq(lo_bytes[8:16]),
+        bytes_to_fq(hi_bytes[0:8]),
+        bytes_to_fq(hi_bytes[8:16]),
+    )
