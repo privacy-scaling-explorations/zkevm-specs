@@ -21,6 +21,7 @@ from .calldatacopy import *
 from .calldataload import *
 from .codecopy import *
 from .codesize import *
+from .exp import *
 from .gas import *
 from .iszero import *
 from .jump import *
@@ -79,6 +80,7 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.GASPRICE: gasprice,
     ExecutionState.EXTCODECOPY: extcodecopy,
     ExecutionState.EXTCODEHASH: extcodehash,
+    ExecutionState.EXP: exp,
     ExecutionState.LOG: log,
     ExecutionState.CALL_STATICCALL: call_staticcall,
     ExecutionState.ISZERO: iszero,

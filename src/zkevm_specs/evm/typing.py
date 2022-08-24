@@ -27,6 +27,8 @@ from ..util import (
     GAS_COST_TX_CALL_DATA_PER_NON_ZERO_BYTE,
     GAS_COST_TX_CALL_DATA_PER_ZERO_BYTE,
     EMPTY_CODE_HASH,
+    word_to_lo_hi,
+    word_to_64s,
 )
 from .table import (
     RW,
@@ -714,10 +716,12 @@ class ExpCircuit:
     def table(self) -> Sequence[ExpCircuitRow]:
         return self.rows + self.pad_rows
 
-    def add_event(self, base: int, exponent: int):
+    def add_event(self, base: int, exponent: int, randomness: FQ):
         steps: List[Tuple[int, int, int]] = []
         exponentiation = self._exp_by_squaring(base, exponent, steps)
-        self._append_steps(base, exponent, exponentiation, steps)
+        steps.reverse()
+        self._append_steps(base, exponent, exponentiation, steps, randomness)
+        return self
 
     def _exp_by_squaring(self, base: int, exponent: int, steps: List[Tuple[int, int, int]]):
         if exponent == 0:
@@ -740,10 +744,124 @@ class ExpCircuit:
                 return exp
 
     def _append_steps(
-        self, base: int, exponent: int, exponentiation: int, steps: List[Tuple[int, int, int]]
+        self,
+        base: int,
+        exponent: int,
+        exponentiation: int,
+        steps: List[Tuple[int, int, int]],
+        randomness: FQ,
     ):
-        # TODO(rohit): unimplemented
-        print("hello")
+        base_rlc = RLC(base, randomness, n_bytes=32)
+        base_limbs = word_to_64s(base_rlc)
+        for idx, step in enumerate(steps):
+            # multiplication gadget
+            a, b, d = step[0], step[1], step[2]
+            a_limbs = word_to_64s(RLC(a, randomness, n_bytes=32))
+            b_limbs = word_to_64s(RLC(b, randomness, n_bytes=32))
+            d_lo_hi = word_to_lo_hi(RLC(d, randomness, n_bytes=32))
+            # exp table
+            remainder = exponent % 2
+            exponent_lo_hi = word_to_lo_hi(RLC(exponent, randomness, n_bytes=32))
+            self._append_step(
+                FQ(idx),
+                FQ(1 if idx == 0 else 0),
+                FQ(1 if idx == len(steps) - 1 else 0),
+                FQ(remainder),
+                base_limbs,
+                exponent_lo_hi,
+                d_lo_hi,
+                a_limbs,
+                b_limbs,
+                d_lo_hi,
+            )
+            if remainder == 0:
+                # exponent is even
+                exponent = exponent // 2
+            else:
+                # exponent is odd
+                exponent = exponent - 1
+
+    def _append_step(
+        self,
+        idx: IntOrFQ,
+        is_first: IntOrFQ,
+        is_last: IntOrFQ,
+        remainder: IntOrFQ,
+        base_limbs: Tuple[FQ, ...],
+        exponent_lo_hi: Tuple[FQ, FQ],
+        exponentiation_lo_hi: Tuple[FQ, FQ],
+        a_limbs: Tuple[FQ, ...],
+        b_limbs: Tuple[FQ, ...],
+        d_lo_hi: Tuple[FQ, FQ],
+    ):
+        self.rows.append(
+            ExpCircuitRow(
+                q_step=FQ.one(),
+                idx=FQ(idx),
+                is_last=FQ(is_last),
+                remainder=FQ(remainder),
+                is_first=FQ(is_first),
+                base_limb=base_limbs[0],
+                intermediate_exponent_lo_hi=exponent_lo_hi[0],
+                intermediate_exponentiation_lo_hi=exponentiation_lo_hi[0],
+                col0=a_limbs[0],
+                col1=a_limbs[1],
+                col2=a_limbs[2],
+                col3=a_limbs[3],
+                col4=FQ.zero(),
+            )
+        )
+        self.rows.append(
+            ExpCircuitRow(
+                q_step=FQ.zero(),
+                idx=FQ.zero(),
+                is_last=FQ.zero(),
+                remainder=FQ.zero(),
+                is_first=FQ.zero(),
+                base_limb=base_limbs[1],
+                intermediate_exponent_lo_hi=exponent_lo_hi[1],
+                intermediate_exponentiation_lo_hi=exponentiation_lo_hi[1],
+                col0=b_limbs[0],
+                col1=b_limbs[0],
+                col2=b_limbs[0],
+                col3=b_limbs[0],
+                col4=FQ.zero(),
+            )
+        )
+        self.rows.append(
+            ExpCircuitRow(
+                q_step=FQ.zero(),
+                idx=FQ.zero(),
+                is_last=FQ.zero(),
+                remainder=FQ.zero(),
+                is_first=FQ.zero(),
+                base_limb=base_limbs[2],
+                intermediate_exponent_lo_hi=FQ.zero(),
+                intermediate_exponentiation_lo_hi=FQ.zero(),
+                col0=FQ.zero(),
+                col1=FQ.zero(),
+                col2=d_lo_hi[0],
+                col3=d_lo_hi[1],
+                col4=FQ.zero(),
+            )
+        )
+        self.rows.append(
+            ExpCircuitRow(
+                q_step=FQ.zero(),
+                idx=FQ.zero(),
+                is_last=FQ.zero(),
+                remainder=FQ.zero(),
+                is_first=FQ.zero(),
+                base_limb=base_limbs[3],
+                intermediate_exponent_lo_hi=FQ.zero(),
+                intermediate_exponentiation_lo_hi=FQ.zero(),
+                col0=FQ.zero(),
+                col1=FQ.zero(),
+                col2=FQ.zero(),
+                col3=FQ.zero(),
+                col4=FQ.zero(),
+            )
+        )
 
 
 class CopyCircuit:

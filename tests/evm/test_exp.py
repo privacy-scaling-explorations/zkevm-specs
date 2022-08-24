@@ -7,13 +7,15 @@ from zkevm_specs.evm import (
     Bytecode,
     ExecutionState,
     ExpCircuit,
+    Opcode,
     RWDictionary,
     StepState,
     Tables,
-    verify_exp_circuit,
     verify_steps,
 )
+from zkevm_specs.exp_circuit import verify_exp_circuit
 from zkevm_specs.util import (
+    byte_size,
     rand_fq,
     RLC,
 )
@@ -25,17 +27,17 @@ TESTING_DATA = (
     (0, 0),
     (1, 0),
     (0xCAFE, 0),
-    (POW2, 0),
+    (POW2 - 1, 0),
     (0, 1),
     (1, 1),
     (0xCAFE, 1),
-    (POW2, 1),
+    (POW2 - 1, 1),
     (2, 5),
     (3, 101),
     (5, 259),
     (7, 1023),
-    (POW2, 2),
-    (POW2, 3),
+    (POW2 - 1, 2),
+    (POW2 - 1, 3),
 )
 
 
@@ -61,7 +63,7 @@ def test_exp(base: int, exponent: int):
         .stack_write(CALL_ID, 1023, exponentiation_rlc)
     )
 
-    exp_circuit = ExpCircuit().add_event(base, exponent)
+    exp_circuit = ExpCircuit().add_event(base, exponent, randomness)
 
     tables = Tables(
         block_table=set(Block().table_assignments(randomness)),
@@ -91,7 +93,7 @@ def test_exp(base: int, exponent: int):
             ),
             StepState(
                 execution_state=ExecutionState.STOP,
-                rw_counter=rw_dictionary.rw_counter,
+                rw_counter=rw_dict.rw_counter,
                 call_id=CALL_ID,
                 is_root=True,
                 is_create=False,

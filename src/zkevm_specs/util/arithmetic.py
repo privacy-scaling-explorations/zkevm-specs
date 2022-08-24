@@ -1,7 +1,8 @@
 from __future__ import annotations
-from typing import Sequence, Protocol, Type, TypeVar, Union
+from typing import Sequence, Protocol, Tuple, Type, TypeVar, Union
 from py_ecc import bn128
 from py_ecc.utils import prime_field_inv
+from .param import MAX_N_BYTES
 
 
 def linear_combine(seq: Sequence[Union[int, FQ]], base: FQ, range_check: bool = True) -> FQ:
@@ -84,3 +85,25 @@ def cast_expr(expression: Expression, ty: Type[ExpressionImpl]) -> ExpressionImp
     if not isinstance(expression, ty):
         raise TypeError(f"Casting Expression to {ty}, but got {type(expression)}")
     return expression
+
+
+def byte_size(value: Union[int, RLC]) -> int:
+    if isinstance(value, RLC):
+        return len(bytearray(value.le_bytes).rstrip(b"\x00"))
+    else:
+        return (value.bit_length() + 7) // 8
+
+
+def bytes_to_fq(value: bytes):
+    assert len(value) <= MAX_N_BYTES
+    return FQ(int.from_bytes(value, "little"))
+
+
+def word_to_lo_hi(word: RLC) -> Tuple[FQ, FQ]:
+    assert len(word.le_bytes) == 32, "Expected word to contain 32 bytes"
+    return bytes_to_fq(word.le_bytes[:16]), bytes_to_fq(word.le_bytes[16:])
+
+
+def word_to_64s(word: RLC) -> Tuple[FQ, ...]:
+    assert len(word.le_bytes) == 32, "Expected word to contain 32 bytes"
+    return tuple(bytes_to_fq(word.le_bytes[8 * i : 8 * (i + 1)]) for i in range(4))
