@@ -862,6 +862,25 @@ class ExpCircuit:
                 col4=FQ.zero(),
             )
         )
+        # pad empty rows to make up for 7 rows per step.
+        for _ in range(3):
+            self.rows.append(
+                ExpCircuitRow(
+                    q_step=FQ.zero(),
+                    idx=FQ.zero(),
+                    is_last=FQ.zero(),
+                    remainder=FQ.zero(),
+                    is_first=FQ.zero(),
+                    base_limb=FQ.zero(),
+                    intermediate_exponent_lo_hi=FQ.zero(),
+                    intermediate_exponentiation_lo_hi=FQ.zero(),
+                    col0=FQ.zero(),
+                    col1=FQ.zero(),
+                    col2=FQ.zero(),
+                    col3=FQ.zero(),
+                    col4=FQ.zero(),
+                )
+            )
 
 
 class CopyCircuit:
