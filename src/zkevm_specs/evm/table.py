@@ -476,15 +476,27 @@ class ExpCircuitRow(TableRow):
     remainder: FQ
     # columns from the exponentiation table
     is_first: FQ
-    base_limb: FQ
-    intermediate_exponent_lo_hi: FQ
-    intermediate_exponentiation_lo_hi: FQ
+    base_limb0: FQ
+    base_limb1: FQ
+    base_limb2: FQ
+    base_limb3: FQ
+    intermediate_exponent_lo: FQ
+    intermediate_exponent_hi: FQ
+    intermediate_exponentiation_lo: FQ
+    intermediate_exponentiation_hi: FQ
     # columns from the MulGadget
-    col0: FQ
-    col1: FQ
-    col2: FQ
-    col3: FQ
-    col4: FQ
+    a_limb0: FQ
+    a_limb1: FQ
+    a_limb2: FQ
+    a_limb3: FQ
+    b_limb0: FQ
+    b_limb1: FQ
+    b_limb2: FQ
+    b_limb3: FQ
+    c_lo: FQ
+    c_hi: FQ
+    d_lo: FQ
+    d_hi: FQ
 
 
 @dataclass(frozen=True)
@@ -566,7 +578,20 @@ class Tables:
 
     def _convert_exp_circuit_to_table(self, exp_circuit: Sequence[ExpCircuitRow]):
         rows: List[ExpTableRow] = []
-        # TODO(rohit): unimplemented
+        for i, row in enumerate(exp_circuit):
+            rows.append(
+                ExpTableRow(
+                    is_first=row.is_first,
+                    base_limb0=row.base_limb0,
+                    base_limb1=row.base_limb1,
+                    base_limb2=row.base_limb2,
+                    base_limb3=row.base_limb3,
+                    exponent_lo=row.intermediate_exponent_lo,
+                    exponent_hi=row.intermediate_exponent_hi,
+                    exponentiation_lo=row.intermediate_exponentiation_lo,
+                    exponentiation_hi=row.intermediate_exponentiation_hi,
+                )
+            )
         return set(rows)
 
     def fixed_lookup(

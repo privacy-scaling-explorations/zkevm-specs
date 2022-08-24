@@ -801,86 +801,28 @@ class ExpCircuit:
                 is_last=FQ(is_last),
                 remainder=FQ(remainder),
                 is_first=FQ(is_first),
-                base_limb=base_limbs[0],
-                intermediate_exponent_lo_hi=exponent_lo_hi[0],
-                intermediate_exponentiation_lo_hi=exponentiation_lo_hi[0],
-                col0=a_limbs[0],
-                col1=a_limbs[1],
-                col2=a_limbs[2],
-                col3=a_limbs[3],
-                col4=FQ.zero(),
+                base_limb0=base_limbs[0],
+                base_limb1=base_limbs[1],
+                base_limb2=base_limbs[2],
+                base_limb3=base_limbs[3],
+                intermediate_exponent_lo=exponent_lo_hi[0],
+                intermediate_exponent_hi=exponent_lo_hi[1],
+                intermediate_exponentiation_lo=exponentiation_lo_hi[0],
+                intermediate_exponentiation_hi=exponentiation_lo_hi[1],
+                a_limb0=a_limbs[0],
+                a_limb1=a_limbs[1],
+                a_limb2=a_limbs[2],
+                a_limb3=a_limbs[3],
+                b_limb0=b_limbs[0],
+                b_limb1=b_limbs[1],
+                b_limb2=b_limbs[2],
+                b_limb3=b_limbs[3],
+                c_lo=FQ.zero(),
+                c_hi=FQ.zero(),
+                d_lo=d_lo_hi[0],
+                d_hi=d_lo_hi[1],
             )
         )
-        self.rows.append(
-            ExpCircuitRow(
-                q_step=FQ.zero(),
-                idx=FQ.zero(),
-                is_last=FQ.zero(),
-                remainder=FQ.zero(),
-                is_first=FQ.zero(),
-                base_limb=base_limbs[1],
-                intermediate_exponent_lo_hi=exponent_lo_hi[1],
-                intermediate_exponentiation_lo_hi=exponentiation_lo_hi[1],
-                col0=b_limbs[0],
-                col1=b_limbs[0],
-                col2=b_limbs[0],
-                col3=b_limbs[0],
-                col4=FQ.zero(),
-            )
-        )
-        self.rows.append(
-            ExpCircuitRow(
-                q_step=FQ.zero(),
-                idx=FQ.zero(),
-                is_last=FQ.zero(),
-                remainder=FQ.zero(),
-                is_first=FQ.zero(),
-                base_limb=base_limbs[2],
-                intermediate_exponent_lo_hi=FQ.zero(),
-                intermediate_exponentiation_lo_hi=FQ.zero(),
-                col0=FQ.zero(),
-                col1=FQ.zero(),
-                col2=d_lo_hi[0],
-                col3=d_lo_hi[1],
-                col4=FQ.zero(),
-            )
-        )
-        self.rows.append(
-            ExpCircuitRow(
-                q_step=FQ.zero(),
-                idx=FQ.zero(),
-                is_last=FQ.zero(),
-                remainder=FQ.zero(),
-                is_first=FQ.zero(),
-                base_limb=base_limbs[3],
-                intermediate_exponent_lo_hi=FQ.zero(),
-                intermediate_exponentiation_lo_hi=FQ.zero(),
-                col0=FQ.zero(),
-                col1=FQ.zero(),
-                col2=FQ.zero(),
-                col3=FQ.zero(),
-                col4=FQ.zero(),
-            )
-        )
-        # pad empty rows to make up for 7 rows per step.
-        for _ in range(3):
-            self.rows.append(
-                ExpCircuitRow(
-                    q_step=FQ.zero(),
-                    idx=FQ.zero(),
-                    is_last=FQ.zero(),
-                    remainder=FQ.zero(),
-                    is_first=FQ.zero(),
-                    base_limb=FQ.zero(),
-                    intermediate_exponent_lo_hi=FQ.zero(),
-                    intermediate_exponentiation_lo_hi=FQ.zero(),
-                    col0=FQ.zero(),
-                    col1=FQ.zero(),
-                    col2=FQ.zero(),
-                    col3=FQ.zero(),
-                    col4=FQ.zero(),
-                )
-            )
 
 
 class CopyCircuit:

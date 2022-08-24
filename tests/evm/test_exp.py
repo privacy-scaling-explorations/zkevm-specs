@@ -22,7 +22,7 @@ from zkevm_specs.util import (
 
 
 CALL_ID = 1
-POW2 = 2**256 - 1
+POW2 = 2**256
 TESTING_DATA = (
     (0, 0),
     (1, 0),

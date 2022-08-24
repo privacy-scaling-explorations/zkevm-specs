@@ -16,7 +16,7 @@ def exp(instruction: Instruction):
     if instruction.is_zero(exponent_rlc) == FQ.one():
         instruction.constrain_equal(exponentiation_lo, FQ.one())
         instruction.constrain_zero(exponentiation_hi)
-    elif instruction.is_equal(exponent_rlc, FQ.one()):
+    elif instruction.is_equal(exponent_rlc, FQ.one()) == FQ.one():
         instruction.constrain_equal(exponentiation_lo, base_lo)
         instruction.constrain_equal(exponentiation_hi, base_hi)
     else:
