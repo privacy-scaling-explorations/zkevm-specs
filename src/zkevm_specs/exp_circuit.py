@@ -49,6 +49,7 @@ def verify_step(cs: ConstraintSystem, rows: List[ExpCircuitRow]):
         cs.constrain_zero(rows[0].c_lo)
         # remainder is a boolean.
         cs.constrain_bool(rows[0].remainder)
+        # TODO(rohit): remainder is correct, i.e. remainder == intermediate_exponent % 2
 
     # for all rows (except the last), where remainder == 1 (intermediate exponent -> odd)
     with cs.condition(rows[0].q_step * (1 - rows[0].is_last) * rows[0].remainder) as cs:
