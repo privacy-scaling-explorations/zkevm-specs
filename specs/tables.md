@@ -211,10 +211,10 @@ See [tx.py](src/zkevm_specs/tx.py)
 | 1         | $input_rlc | $input_length | $output_rlc |
 
 Column names in circuit:
-- IsEnabled: `is_enabled`
-- InputRLC: `input_rlc`
-- InputLen: `input_len`
-- Output: `output_rlc`
+- IsEnabled: `is_final`
+- InputRLC: `data_rlc`
+- InputLen: `length`
+- Output: `hash_rlc`
 
 ### Nonce update
 
