@@ -61,8 +61,8 @@ def test_extcodecopy(
         + (not is_warm) * EXTRA_GAS_COST_ACCOUNT_COLD_ACCESS
     )
 
-    tx_id = 1
-    call_id = 1
+    tx_id = rand_fq()
+    call_id = rand_fq()
 
     rw_counter_end_of_reversion = 0 if is_persistent else 9
     reversible_write_counter = 0
@@ -73,11 +73,11 @@ def test_extcodecopy(
         .stack_read(call_id, 1021, RLC(dst_addr, randomness))
         .stack_read(call_id, 1022, RLC(src_addr, randomness))
         .stack_read(call_id, 1023, RLC(length, randomness))
-        .call_context_read(tx_id, CallContextFieldTag.TxId, tx_id)
+        .call_context_read(call_id, CallContextFieldTag.TxId, tx_id)
         .call_context_read(
-            tx_id, CallContextFieldTag.RwCounterEndOfReversion, rw_counter_end_of_reversion
+            call_id, CallContextFieldTag.RwCounterEndOfReversion, rw_counter_end_of_reversion
         )
-        .call_context_read(tx_id, CallContextFieldTag.IsPersistent, is_persistent)
+        .call_context_read(call_id, CallContextFieldTag.IsPersistent, is_persistent)
         .tx_access_list_account_write(
             tx_id,
             address,
