@@ -262,7 +262,7 @@ def check_account(row: Row, row_prev: Row, row_next: Row, tables: Tables):
     assert row.id() == 0
     assert row.storage_key() == 0
 
-    # 6.2. MPT storage lookup with incremental counter
+    # 6.2. MPT storage lookup for last access to (address, field_tag)
     if not all_keys_eq(row, row_next):
         tables.mpt_lookup(
             get_addr(row),
