@@ -193,6 +193,9 @@ def check_memory(row: Row, row_prev: Row):
     # 2.3. value is a byte
     assert_in_range(row.value, 0, 2**8 - 1)
 
+    # 2.4 state root does not change
+    assert row.root == row_prev.root
+
 
 @is_circuit_code
 def check_stack(row: Row, row_prev: Row):
@@ -222,6 +225,9 @@ def check_stack(row: Row, row_prev: Row):
         stack_ptr_diff = get_stack_ptr(row) - get_stack_ptr(row_prev)
         assert_in_range(stack_ptr_diff, 0, 1)
 
+    # 3.4 state root does not change
+    assert row.root == row_prev.root
+
 
 @is_circuit_code
 def check_storage(row: Row, row_prev: Row, row_next: Row, tables: Tables):
@@ -239,6 +245,8 @@ def check_storage(row: Row, row_prev: Row, row_next: Row, tables: Tables):
             row.root,
             row_prev.root,
         )
+    else:
+        assert row.root == row_prev.root
 
 
 @is_circuit_code
@@ -249,6 +257,9 @@ def check_call_context(row: Row, row_prev: Row):
     # 5.0. Unused keys are 0
     assert row.address() == 0
     assert row.storage_key() == 0
+
+    # 5.1 state root does not change
+    assert row.root == row_prev.root
 
     # TODO: Missing constraints
 
@@ -273,6 +284,8 @@ def check_account(row: Row, row_prev: Row, row_next: Row, tables: Tables):
             row.root,
             row_prev.root,
         )
+    else:
+        assert row.root == row_prev.root
 
     # NOTE: Value transition rules are constrained via the EVM circuit: for example,
     # Nonce only increases by 1 or decreases by 1 (on revert).
@@ -287,6 +300,9 @@ def check_tx_refund(row: Row, row_prev: Row):
     assert row.field_tag() == 0
     assert row.storage_key() == 0
 
+    # 7.1 state root does not change
+    assert row.root == row_prev.root
+
     # TODO: Missing constraints
     # - When keys change, value must be 0
 
@@ -299,6 +315,9 @@ def check_tx_access_list_account(row: Row, row_prev: Row):
     # 9.0. Unused keys are 0
     assert row.field_tag() == 0
     assert row.storage_key() == 0
+
+    # 9.1 state root does not change
+    assert row.root == row_prev.root
 
     # TODO: Missing constraints
     # - When keys change, value must be 0
@@ -313,7 +332,10 @@ def check_tx_access_list_account_storage(row: Row, row_prev: Row):
     # 8.0. Unused keys are 0
     assert row.field_tag() == 0
 
-    # TODO: Missing constraints
+    # 8.1 State root cannot change
+    assert row.root == row_prev.root
+
+    # TODO: state root does not change
     # - When keys change, value must be 0
 
 
@@ -329,6 +351,8 @@ def check_account_destructed(row: Row, row_prev: Row):
     # TODO: Missing constraints
     # - When keys change, value must be 0
 
+    # TODO: add MPT lookup
+
 
 @is_circuit_code
 def check_tx_log(row: Row, row_prev: Row):
@@ -338,6 +362,9 @@ def check_tx_log(row: Row, row_prev: Row):
 
     # 12.0 is_write is always true
     assert row.is_write == 1
+
+    # 12.1 state root does not change
+    assert row.root == row_prev.root
 
     # removed field_tag-specific constraints as issue
     # https://github.com/privacy-scaling-explorations/zkevm-specs/issues/221
@@ -368,6 +395,9 @@ def check_tx_receipt(row: Row, row_prev: Row):
         assert tx_id == FQ(1)
 
     assert_in_range(tx_id, 1, 2**11)
+
+    # 11.4 state root does not change
+    assert row.root == row_prev.root
 
 
 @is_circuit_code
