@@ -1,6 +1,6 @@
 from ..instruction import Instruction, Transition
 from ...util.param import EXTRA_GAS_COST_ACCOUNT_COLD_ACCESS
-from ...util import N_BYTES_MEMORY_ADDRESS, FQ
+from ...util import N_BYTES_MEMORY_ADDRESS, N_BYTES_ACCOUNT_ADDRESS, FQ
 from ..table import AccountFieldTag, CallContextFieldTag, CopyDataTypeTag
 
 
@@ -8,7 +8,7 @@ def extcodecopy(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
 
     address, memory_offset_word, code_offset, size_word = (
-        instruction.rlc_to_fq(instruction.stack_pop(), 20),
+        instruction.rlc_to_fq(instruction.stack_pop(), N_BYTES_ACCOUNT_ADDRESS),
         instruction.stack_pop(),
         instruction.rlc_to_fq(instruction.stack_pop(), N_BYTES_MEMORY_ADDRESS),
         instruction.stack_pop(),

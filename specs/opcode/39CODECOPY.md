@@ -14,8 +14,6 @@ The gas cost of `CODECOPY` opcode consists of two parts:
 
 The `CODECOPY` circuit constrains the values popped from stack, call context/account read lookups and CopyTable lookups to verify the copy of bytes. The copy of a dynamic number of bytes is verified by the CopyCircuit outside the `CODECOPY` gadget.
 
-The gadget then transits to the internal state of `CopyCodeToMemory`.
-
 ## Constraints
 
 1. opId = 0x39
