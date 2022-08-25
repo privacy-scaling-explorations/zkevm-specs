@@ -206,14 +206,13 @@ From this table, the following columns contain values using the RLC encoding:
 - RootPrev
 - Root
 
-There are four types of MPT updates which the circuit proves are correct: account nonce,
-balance, or code hash updates, or account storage updates.
+The circuit can prove that updates to account nonces, balances, or storage slots are correct, or that an account's code hash is some particular value. Note that it is not possible to change the code hash for an account without deleting it and then recreating it.
 
 | Address | FieldTag | Key | ValuePrev | Value | RootPrev | Root |
 | - | - | - | - | - | - | - |
 | $addr | Nonce | 0 | $noncePrev | $nonceCur | $rootPrev | $root |
 | $addr | Balance | 0 | $balancePrev | $balanceCur | $rootPrev | $root |
-| $addr | CodeHash | 0 |$codeHashPrev | $codeHash | $rootPrev | $root |
+| $addr | CodeHash | 0 |$codeHash | $codeHash | $rootPrev | $root |
 | $addr | Storage | $key | $valuePrev | $value | $rootPrev | $root |
 
 ## Keccak Table
@@ -222,7 +221,7 @@ See [tx.py](src/zkevm_specs/tx.py)
 
 | IsEnabled | InputRLC   | InputLen | Output      |
 | --------- | ---------- | -------- | ----------- |
-| bool         | $input_rlc | $input_length | $output_rlc |
+| bool      | $input_rlc | $input_length | $output_rlc |
 
 Column names in circuit:
 - IsEnabled: `is_final`
