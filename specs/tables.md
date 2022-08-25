@@ -214,7 +214,7 @@ balance, or code hash updates, or account storage updates.
 | $addr | Nonce | 0 | $noncePrev | $nonceCur | $rootPrev | $root |
 | $addr | Balance | 0 | $balancePrev | $balanceCur | $rootPrev | $root |
 | $addr | CodeHash | 0 |$codeHashPrev | $codeHash | $rootPrev | $root |
-| $addr | 0 | $key | $valuePrev | $value | $rootPrev | $root |
+| $addr | Storage | $key | $valuePrev | $value | $rootPrev | $root |
 
 ## Keccak Table
 
