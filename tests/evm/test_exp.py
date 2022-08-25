@@ -18,6 +18,9 @@ from zkevm_specs.util import (
     byte_size,
     rand_fq,
     RLC,
+    # hi
+    word_to_lo_hi,
+    word_to_64s,
 )
 
 

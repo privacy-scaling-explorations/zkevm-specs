@@ -27,8 +27,6 @@ from ..util import (
     GAS_COST_TX_CALL_DATA_PER_NON_ZERO_BYTE,
     GAS_COST_TX_CALL_DATA_PER_ZERO_BYTE,
     EMPTY_CODE_HASH,
-    word_to_lo_hi,
-    word_to_64s,
 )
 from .table import (
     RW,
@@ -752,27 +750,24 @@ class ExpCircuit:
         randomness: FQ,
     ):
         base_rlc = RLC(base, randomness, n_bytes=32)
-        base_limbs = word_to_64s(base_rlc)
         for idx, step in enumerate(steps):
             # multiplication gadget
             a, b, d = step[0], step[1], step[2]
-            a_limbs = word_to_64s(RLC(a, randomness, n_bytes=32))
-            b_limbs = word_to_64s(RLC(b, randomness, n_bytes=32))
-            d_lo_hi = word_to_lo_hi(RLC(d, randomness, n_bytes=32))
             # exp table
             remainder = exponent % 2
-            exponent_lo_hi = word_to_lo_hi(RLC(exponent, randomness, n_bytes=32))
+            exponent_rlc = RLC(exponent, randomness, n_bytes=32)
             self._append_step(
                 FQ(idx),
                 FQ(1 if idx == 0 else 0),
                 FQ(1 if idx == len(steps) - 1 else 0),
                 FQ(remainder),
-                base_limbs,
-                exponent_lo_hi,
-                d_lo_hi,
-                a_limbs,
-                b_limbs,
-                d_lo_hi,
+                base_rlc,
+                exponent_rlc,
+                RLC(d, randomness, n_bytes=32),
+                RLC(a, randomness, n_bytes=32),
+                RLC(b, randomness, n_bytes=32),
+                RLC(0, randomness, n_bytes=32),
+                RLC(d, randomness, n_bytes=32),
             )
             if remainder == 0:
                 # exponent is even
@@ -787,12 +782,13 @@ class ExpCircuit:
         is_first: IntOrFQ,
         is_last: IntOrFQ,
         remainder: IntOrFQ,
-        base_limbs: Tuple[FQ, ...],
-        exponent_lo_hi: Tuple[FQ, FQ],
-        exponentiation_lo_hi: Tuple[FQ, FQ],
-        a_limbs: Tuple[FQ, ...],
-        b_limbs: Tuple[FQ, ...],
-        d_lo_hi: Tuple[FQ, FQ],
+        base: RLC,
+        exponent: RLC,
+        exponentiation: RLC,
+        a: RLC,
+        b: RLC,
+        c: RLC,
+        d: RLC,
     ):
         self.rows.append(
             ExpCircuitRow(
@@ -801,26 +797,13 @@ class ExpCircuit:
                 is_last=FQ(is_last),
                 remainder=FQ(remainder),
                 is_first=FQ(is_first),
-                base_limb0=base_limbs[0],
-                base_limb1=base_limbs[1],
-                base_limb2=base_limbs[2],
-                base_limb3=base_limbs[3],
-                intermediate_exponent_lo=exponent_lo_hi[0],
-                intermediate_exponent_hi=exponent_lo_hi[1],
-                intermediate_exponentiation_lo=exponentiation_lo_hi[0],
-                intermediate_exponentiation_hi=exponentiation_lo_hi[1],
-                a_limb0=a_limbs[0],
-                a_limb1=a_limbs[1],
-                a_limb2=a_limbs[2],
-                a_limb3=a_limbs[3],
-                b_limb0=b_limbs[0],
-                b_limb1=b_limbs[1],
-                b_limb2=b_limbs[2],
-                b_limb3=b_limbs[3],
-                c_lo=FQ.zero(),
-                c_hi=FQ.zero(),
-                d_lo=d_lo_hi[0],
-                d_hi=d_lo_hi[1],
+                base=base,
+                intermediate_exponent=exponent,
+                intermediate_exponentiation=exponentiation,
+                a=a,
+                b=b,
+                c=c,
+                d=d,
             )
         )
 

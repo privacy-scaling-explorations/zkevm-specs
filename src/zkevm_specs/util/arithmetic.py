@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Sequence, Protocol, Tuple, Type, TypeVar, Union
+from typing import List, Protocol, Sequence, Tuple, Type, TypeVar, Union
 from py_ecc import bn128
 from py_ecc.utils import prime_field_inv
 from .param import MAX_N_BYTES
@@ -118,3 +118,47 @@ def lo_hi_to_64s(lo_hi: Tuple[FQ, FQ]) -> Tuple[FQ, ...]:
         bytes_to_fq(hi_bytes[0:8]),
         bytes_to_fq(hi_bytes[8:16]),
     )
+
+
+def sum_values(values: Sequence[IntOrFQ]) -> FQ:
+    return FQ(sum(values))
+
+
+def add_words(addends: Sequence[RLC], randomness: FQ) -> Tuple[RLC, FQ]:
+    addends_lo, addends_hi = list(zip(*map(word_to_lo_hi, addends)))
+    carry_lo, sum_lo = divmod(sum_values(addends_lo).n, 1 << 128)
+    carry_hi, sum_hi = divmod((sum_values(addends_hi) + carry_lo).n, 1 << 128)
+    sum_bytes = sum_lo.to_bytes(16, "little") + sum_hi.to_bytes(16, "little")
+    return RLC(sum_bytes, randomness, n_bytes=len(sum_bytes)), FQ(carry_hi)
+
+
+def mul_add_words(a: RLC, b: RLC, c: RLC, d: RLC) -> Tuple[FQ, Tuple[FQ, FQ], List[Tuple[FQ, FQ]]]:
+    """
+    The function constrains a * b + c == d, where a, b, c, d are 256-bit words.
+    It returns the overflow part of a * b + c.
+    """
+    a64s = word_to_64s(a)
+    b64s = word_to_64s(b)
+    c_lo, c_hi = word_to_lo_hi(c)
+    d_lo, d_hi = word_to_lo_hi(d)
+
+    t0 = a64s[0] * b64s[0]
+    t1 = a64s[0] * b64s[1] + a64s[1] * b64s[0]
+    t2 = a64s[0] * b64s[2] + a64s[1] * b64s[1] + a64s[2] * b64s[0]
+    t3 = a64s[0] * b64s[3] + a64s[1] * b64s[2] + a64s[2] * b64s[1] + a64s[3] * b64s[0]
+    carry_lo = (t0 + (t1 * 2**64) + c_lo - d_lo) / (2**128)
+    carry_hi = (t2 + (t3 * 2**64) + c_hi + carry_lo - d_hi) / (2**128)
+    overflow = (
+        carry_hi
+        + a64s[1] * b64s[3]
+        + a64s[2] * b64s[2]
+        + a64s[3] * b64s[1]
+        + a64s[2] * b64s[3]
+        + a64s[3] * b64s[2]
+        + a64s[3] * b64s[3]
+    )
+
+    constraint1 = (t0 + t1 * (2**64) + c_lo, d_lo + carry_lo * (2**128))
+    constraint2 = (t2 + t3 * (2**64) + c_hi + carry_lo, d_hi + carry_hi * (2**128))
+
+    return overflow, (carry_lo, carry_hi), [constraint1, constraint2]

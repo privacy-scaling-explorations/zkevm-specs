@@ -6,7 +6,7 @@ from dataclasses import dataclass, field, fields
 
 from .opcode import constant_gas_cost_pairs
 
-from ..util import Expression, FQ
+from ..util import Expression, FQ, RLC, word_to_lo_hi, word_to_64s
 from .execution_state import ExecutionState
 
 
@@ -476,27 +476,14 @@ class ExpCircuitRow(TableRow):
     remainder: FQ
     # columns from the exponentiation table
     is_first: FQ
-    base_limb0: FQ
-    base_limb1: FQ
-    base_limb2: FQ
-    base_limb3: FQ
-    intermediate_exponent_lo: FQ
-    intermediate_exponent_hi: FQ
-    intermediate_exponentiation_lo: FQ
-    intermediate_exponentiation_hi: FQ
+    base: RLC
+    intermediate_exponent: RLC
+    intermediate_exponentiation: RLC
     # columns from the MulGadget
-    a_limb0: FQ
-    a_limb1: FQ
-    a_limb2: FQ
-    a_limb3: FQ
-    b_limb0: FQ
-    b_limb1: FQ
-    b_limb2: FQ
-    b_limb3: FQ
-    c_lo: FQ
-    c_hi: FQ
-    d_lo: FQ
-    d_hi: FQ
+    a: RLC
+    b: RLC
+    c: RLC
+    d: RLC
 
 
 @dataclass(frozen=True)
@@ -579,17 +566,20 @@ class Tables:
     def _convert_exp_circuit_to_table(self, exp_circuit: Sequence[ExpCircuitRow]):
         rows: List[ExpTableRow] = []
         for i, row in enumerate(exp_circuit):
+            base_limbs = word_to_64s(row.base)
+            intermediate_exponent_lo_hi = word_to_lo_hi(row.intermediate_exponent)
+            intermediate_exponentiation_lo_hi = word_to_lo_hi(row.intermediate_exponentiation)
             rows.append(
                 ExpTableRow(
                     is_first=row.is_first,
-                    base_limb0=row.base_limb0,
-                    base_limb1=row.base_limb1,
-                    base_limb2=row.base_limb2,
-                    base_limb3=row.base_limb3,
-                    exponent_lo=row.intermediate_exponent_lo,
-                    exponent_hi=row.intermediate_exponent_hi,
-                    exponentiation_lo=row.intermediate_exponentiation_lo,
-                    exponentiation_hi=row.intermediate_exponentiation_hi,
+                    base_limb0=base_limbs[0],
+                    base_limb1=base_limbs[1],
+                    base_limb2=base_limbs[2],
+                    base_limb3=base_limbs[3],
+                    exponent_lo=intermediate_exponent_lo_hi[0],
+                    exponent_hi=intermediate_exponent_lo_hi[1],
+                    exponentiation_lo=intermediate_exponentiation_lo_hi[0],
+                    exponentiation_hi=intermediate_exponentiation_lo_hi[1],
                 )
             )
         return set(rows)

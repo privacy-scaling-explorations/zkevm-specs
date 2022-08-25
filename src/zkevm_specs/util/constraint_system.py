@@ -1,6 +1,7 @@
 from typing import Optional
 
 from .arithmetic import Expression, FQ
+from .param import MAX_N_BYTES
 
 
 class ConstraintUnsatFailure(Exception):
@@ -45,6 +46,13 @@ class ConstraintSystem:
 
     def is_zero(self, value: Expression) -> FQ:
         return FQ(value.expr() == 0)
+
+    def range_check(self, value: Expression, n_bytes: int) -> bytes:
+        assert n_bytes <= MAX_N_BYTES, "Too many bytes to composite an integer in field"
+        try:
+            return value.expr().n.to_bytes(n_bytes, "little")
+        except OverflowError:
+            raise ConstraintUnsatFailure(f"Value {value} has too many bytes to fit {n_bytes} bytes")
 
     def condition(self, cond: Expression):
         assert self.cond is None, "Don't support recursive conditions"
