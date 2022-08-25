@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Tuple, List
+from typing import Tuple, List, Union
 
 from .util import (
     FQ,
@@ -10,6 +10,8 @@ from .util import (
     PUBLIC_INPUTS_BLOCK_LEN as BLOCK_LEN,
     PUBLIC_INPUTS_EXTRA_LEN as EXTRA_LEN,
     PUBLIC_INPUTS_TX_LEN as TX_LEN,
+    GAS_COST_TX_CALL_DATA_PER_NON_ZERO_BYTE,
+    GAS_COST_TX_CALL_DATA_PER_ZERO_BYTE,
 )
 from .encoding import is_circuit_code
 from .tx import Tag as TxTag
@@ -180,7 +182,7 @@ class Transaction:
     gas_price: U256
     gas: U64
     from_addr: U160
-    to_addr: U160
+    to_addr: Union[None, U160]
     value: U256
     data: bytes
     tx_sign_hash: U256
@@ -195,13 +197,22 @@ class Transaction:
         column.append(FQ(self.nonce))  # Nonce
         column.append(FQ(self.gas))  # Gas
         column.append(FQ(self.gas_price))  # GasPrice
-        column.append(FQ(0))  # GasTipCap
-        column.append(FQ(0))  # GasFeeCap
         column.append(FQ(self.from_addr))  # CallerAddress
-        column.append(FQ(self.to_addr))  # CalleeAddress
-        column.append(FQ(1 if self.to_addr == FQ(0) else 0))  # IsCreate
+        column.append(FQ(self.to_addr or 0))  # CalleeAddress
+        column.append(FQ(1 if self.to_addr is None else 0))  # IsCreate
         column.append(FQ(self.value))  # Value
-        column.append(FQ(len(self.data)))  # CallData
+        column.append(FQ(len(self.data)))  # CallDataLength
+        call_data_gas_cost = sum(
+            [
+                (
+                    GAS_COST_TX_CALL_DATA_PER_ZERO_BYTE
+                    if byte == 0
+                    else GAS_COST_TX_CALL_DATA_PER_NON_ZERO_BYTE
+                )
+                for byte in self.data
+            ]
+        )
+        column.append(FQ(call_data_gas_cost))  # CallDataCost
         column.append(FQ(self.tx_sign_hash))  # TxSignHash
         return column
 

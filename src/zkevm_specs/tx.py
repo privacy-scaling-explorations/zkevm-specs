@@ -1,5 +1,5 @@
 from .encoding import is_circuit_code
-from typing import NamedTuple, Tuple, List, Set
+from typing import NamedTuple, Tuple, List, Set, Union
 from .util import (
     FQ,
     RLC,
@@ -292,12 +292,17 @@ class Transaction(NamedTuple):
     nonce: U64
     gas_price: U256
     gas: U64
-    to: U160
+    to: Union[None, U160]
     value: U256
     data: bytes
     sig_v: U64
     sig_r: U256
     sig_s: U256
+
+    def encode_to(self):
+        if self.to is None:
+            return bytes(0)
+        return self.to.to_bytes(20, "big")
 
 
 def tx2witness(
@@ -310,7 +315,7 @@ def tx2witness(
     """
 
     tx_sign_data = rlp.encode(
-        [tx.nonce, tx.gas_price, tx.gas, tx.to, tx.value, tx.data, chain_id, 0, 0]
+        [tx.nonce, tx.gas_price, tx.gas, tx.encode_to(), tx.value, tx.data, chain_id, 0, 0]
     )
     tx_sign_hash = keccak(tx_sign_data)
 
@@ -342,8 +347,8 @@ def tx2witness(
     rows.append(Row(tx_id, FQ(Tag.Gas), FQ(0), FQ(tx.gas)))
     rows.append(Row(tx_id, FQ(Tag.GasPrice), FQ(0), RLC(tx.gas_price, randomness).expr()))
     rows.append(Row(tx_id, FQ(Tag.CallerAddress), FQ(0), FQ(int.from_bytes(addr, "big"))))
-    rows.append(Row(tx_id, FQ(Tag.CalleeAddress), FQ(0), FQ(tx.to)))
-    rows.append(Row(tx_id, FQ(Tag.IsCreate), FQ(0), FQ(1) if tx.to == FQ(0) else FQ(0)))
+    rows.append(Row(tx_id, FQ(Tag.CalleeAddress), FQ(0), FQ(tx.to or 0)))
+    rows.append(Row(tx_id, FQ(Tag.IsCreate), FQ(0), FQ(1) if tx.to is None else FQ(0)))
     rows.append(Row(tx_id, FQ(Tag.Value), FQ(0), RLC(tx.value, randomness).expr()))
     rows.append(Row(tx_id, FQ(Tag.CallDataLength), FQ(0), FQ(len(tx.data))))
     rows.append(Row(tx_id, FQ(Tag.CallDataGasCost), FQ(0), FQ(call_data_gas_cost)))
