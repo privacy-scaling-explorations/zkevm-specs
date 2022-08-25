@@ -19,6 +19,7 @@ from zkevm_specs.evm import (
 )
 from zkevm_specs.evm.typing import RWDictionary
 from zkevm_specs.util import (
+    rand_bytes,
     rand_fq,
     keccak256,
     EXTRA_GAS_COST_ACCOUNT_COLD_ACCESS,
@@ -28,10 +29,18 @@ from zkevm_specs.util import (
 )
 
 TESTING_DATA = (
-    (bytes(), True, True, 0x30000, 0x00, 0x00, 54),  # warm account with empty code
-    (bytes(), False, True, 0x30000, 0x00, 0x00, 54),  # cold account with empty code
+    # empty code
+    (bytes(), True, True, 0x30000, 0x00, 0x00, 54),  # warm account
+    (bytes(), False, True, 0x30000, 0x00, 0x00, 54),  # cold account
+    # non-empty code
     (bytes([10, 40]), True, True, 0x30000, 0x00, 0x00, 54),  # warm account
     (bytes([10, 10]), False, True, 0x30000, 0x00, 0x00, 54),  # cold account
+    # code length > 256
+    (rand_bytes(64), True, True, 0x30000, 0x00, 0x00, 54),  # warm account
+    (rand_bytes(64), False, True, 0x30000, 0x00, 0x00, 54),  # cold account
+    # out of bound cases
+    (rand_bytes(64), True, True, 0x30000, 0x20, 0x00, 260),  # warm account
+    (rand_bytes(64), False, True, 0x30000, 0x20, 0x00, 260),  # cold account
 )
 
 
