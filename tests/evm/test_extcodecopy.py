@@ -36,8 +36,8 @@ TESTING_DATA = (
     (bytes([10, 40]), True, True, 0x30000, 0x00, 0x00, 54),  # warm account
     (bytes([10, 10]), False, True, 0x30000, 0x00, 0x00, 54),  # cold account
     # code length > 256
-    (rand_bytes(64), True, True, 0x30000, 0x00, 0x00, 54),  # warm account
-    (rand_bytes(64), False, True, 0x30000, 0x00, 0x00, 54),  # cold account
+    (rand_bytes(256), True, True, 0x30000, 0x00, 0x00, 54),  # warm account
+    (rand_bytes(256), False, True, 0x30000, 0x00, 0x00, 54),  # cold account
     # out of bound cases
     (rand_bytes(64), True, True, 0x30000, 0x20, 0x00, 260),  # warm account
     (rand_bytes(64), False, True, 0x30000, 0x20, 0x00, 260),  # cold account
@@ -70,8 +70,8 @@ def test_extcodecopy(
         + (not is_warm) * EXTRA_GAS_COST_ACCOUNT_COLD_ACCESS
     )
 
-    tx_id = rand_fq()
-    call_id = rand_fq()
+    tx_id = 2
+    call_id = 3
 
     rw_counter_end_of_reversion = 0 if is_persistent else 9
     reversible_write_counter = 0
