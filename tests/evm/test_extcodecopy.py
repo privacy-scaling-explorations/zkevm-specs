@@ -22,9 +22,9 @@ from zkevm_specs.util import (
     rand_fq,
     keccak256,
     EXTRA_GAS_COST_ACCOUNT_COLD_ACCESS,
-    MEMORY_EXPANSION_LINEAR_COEFF,
-    MEMORY_EXPANSION_QUAD_DENOMINATOR,
     GAS_COST_COPY,
+    memory_word_size,
+    memory_expansion,
 )
 
 TESTING_DATA = (
@@ -33,24 +33,6 @@ TESTING_DATA = (
     (bytes([10, 40]), True, True, 0x30000, 0x00, 0x00, 54),  # warm account
     (bytes([10, 10]), False, True, 0x30000, 0x00, 0x00, 54),  # cold account
 )
-
-
-def to_word_size(addr: int) -> int:
-    return (addr + 31) // 32
-
-
-def memory_gas_cost(memory_word_size: int) -> int:
-    quad_cost = memory_word_size * memory_word_size // MEMORY_EXPANSION_QUAD_DENOMINATOR
-    linear_cost = memory_word_size * MEMORY_EXPANSION_LINEAR_COEFF
-    return quad_cost + linear_cost
-
-
-def memory_copier_gas_cost(
-    curr_memory_word_size: int, next_memory_word_size: int, length: int
-) -> int:
-    curr_memory_cost = memory_gas_cost(curr_memory_word_size)
-    next_memory_cost = memory_gas_cost(next_memory_word_size)
-    return to_word_size(length) * GAS_COST_COPY + next_memory_cost - curr_memory_cost
 
 
 @pytest.mark.parametrize(
@@ -69,11 +51,13 @@ def test_extcodecopy(
 
     code_hash = int.from_bytes(keccak256(code), "big")
 
-    next_memory_word_size = to_word_size(dst_addr + length)
+    next_memory_word_size = memory_word_size(dst_addr + length)
+    _, memory_expansion_cost = memory_expansion(0, dst_addr + length if length else 0)
+    memory_gas_cost = memory_expansion_cost + memory_word_size(length) * GAS_COST_COPY
 
     gas_cost_extcodecopy = (
         Opcode.EXTCODECOPY.constant_gas_cost()
-        + memory_copier_gas_cost(0, next_memory_word_size, length)
+        + memory_gas_cost
         + (not is_warm) * EXTRA_GAS_COST_ACCOUNT_COLD_ACCESS
     )
 

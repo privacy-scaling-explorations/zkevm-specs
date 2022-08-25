@@ -7,14 +7,14 @@ from ..table import AccountFieldTag, CallContextFieldTag, CopyDataTypeTag
 def extcodecopy(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
 
-    address, memory_offset_word, code_offset, size_word = (
+    address, memory_offset_rlc, code_offset, size_rlc = (
         instruction.rlc_to_fq(instruction.stack_pop(), N_BYTES_ACCOUNT_ADDRESS),
         instruction.stack_pop(),
         instruction.rlc_to_fq(instruction.stack_pop(), N_BYTES_MEMORY_ADDRESS),
         instruction.stack_pop(),
     )
 
-    memory_offset, size = instruction.memory_offset_and_length(memory_offset_word, size_word)
+    memory_offset, size = instruction.memory_offset_and_length(memory_offset_rlc, size_rlc)
 
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
     is_warm = instruction.add_account_to_access_list(tx_id, address, instruction.reversion_info())
