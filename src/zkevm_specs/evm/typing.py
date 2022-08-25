@@ -754,13 +754,14 @@ class ExpCircuit:
             # multiplication gadget
             a, b, d = step[0], step[1], step[2]
             # exp table
-            remainder = exponent % 2
+            quotient, remainder = divmod(exponent, 2)
             exponent_rlc = RLC(exponent, randomness, n_bytes=32)
             self._append_step(
                 FQ(idx),
                 FQ(1 if idx == 0 else 0),
                 FQ(1 if idx == len(steps) - 1 else 0),
                 FQ(remainder),
+                RLC(quotient, randomness, n_bytes=32),
                 base_rlc,
                 exponent_rlc,
                 RLC(d, randomness, n_bytes=32),
@@ -782,6 +783,7 @@ class ExpCircuit:
         is_first: IntOrFQ,
         is_last: IntOrFQ,
         remainder: IntOrFQ,
+        quotient: RLC,
         base: RLC,
         exponent: RLC,
         exponentiation: RLC,
@@ -796,6 +798,7 @@ class ExpCircuit:
                 idx=FQ(idx),
                 is_last=FQ(is_last),
                 remainder=FQ(remainder),
+                quotient=quotient,
                 is_first=FQ(is_first),
                 base=base,
                 intermediate_exponent=exponent,

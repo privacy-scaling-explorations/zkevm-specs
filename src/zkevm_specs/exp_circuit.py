@@ -6,6 +6,7 @@ from .evm import (
 from .util import (
     ConstraintSystem,
     FQ,
+    RLC,
     mul_add_words,
     word_to_lo_hi,
 )
@@ -43,7 +44,17 @@ def verify_step(cs: ConstraintSystem, rows: List[ExpCircuitRow]):
         cs.constrain_zero(rows[0].c)
         # remainder is a boolean.
         cs.constrain_bool(rows[0].remainder)
-        # TODO(rohit): remainder is correct, i.e. remainder == intermediate_exponent % 2
+        # remainder is correct, i.e. quotient * 2 + remainder == intermediate_exponent
+        _overflow, carry_lo_hi, additional_constraints = mul_add_words(
+            rows[0].quotient,
+            RLC(2, n_bytes=32),
+            RLC(rows[0].remainder.n, n_bytes=32),
+            rows[0].intermediate_exponent,
+        )
+        cs.range_check(carry_lo_hi[0], 9)
+        cs.range_check(carry_lo_hi[1], 9)
+        cs.constrain_equal(additional_constraints[0][0], additional_constraints[0][1])
+        cs.constrain_equal(additional_constraints[1][0], additional_constraints[1][1])
 
     # for all rows (except the last), where remainder == 1 (intermediate exponent -> odd)
     with cs.condition(rows[0].q_step * (1 - rows[0].is_last) * rows[0].remainder) as cs:

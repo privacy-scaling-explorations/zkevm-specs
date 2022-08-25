@@ -473,7 +473,9 @@ class ExpCircuitRow(TableRow):
     q_step: FQ
     idx: FQ
     is_last: FQ
+    # division of intermediate exponent by 2
     remainder: FQ
+    quotient: RLC
     # columns from the exponentiation table
     is_first: FQ
     base: RLC
