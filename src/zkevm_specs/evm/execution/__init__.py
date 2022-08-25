@@ -9,8 +9,10 @@ from .end_block import *
 # Opcode's successful cases
 from .add_sub import *
 from .addmod import *
+from .address import *
 from .mulmod import *
 from .block_ctx import *
+from .blockhash import *
 from .call import *
 from .calldatasize import *
 from .caller import *
@@ -26,6 +28,7 @@ from .jumpi import *
 from .mul_div_mod import *
 from .origin import *
 from .push import *
+from .returndatasize import *
 from .slt_sgt import *
 from .gas import *
 from .gasprice import *
@@ -33,10 +36,10 @@ from .storage import *
 from .selfbalance import *
 from .extcodehash import *
 from .log import *
-from .sha3 import sha3
-from .shr import shr
 from .bitwise import not_opcode
 from .sdiv_smod import sdiv_smod
+from .sha3 import sha3
+from .shl_shr import shl_shr
 from .stop import stop
 from .return_ import *
 
@@ -47,6 +50,7 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.EndBlock: end_block,
     ExecutionState.ADD: add_sub,
     ExecutionState.ADDMOD: addmod,
+    ExecutionState.ADDRESS: address,
     ExecutionState.MULMOD: mulmod,
     ExecutionState.MUL: mul_div_mod,
     ExecutionState.NOT: not_opcode,
@@ -59,9 +63,11 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.CODECOPY: codecopy,
     ExecutionState.CODESIZE: codesize,
     ExecutionState.BlockCtx: blockctx,
+    ExecutionState.BLOCKHASH: blockhash,
     ExecutionState.JUMP: jump,
     ExecutionState.JUMPI: jumpi,
     ExecutionState.PUSH: push,
+    ExecutionState.RETURNDATASIZE: returndatasize,
     ExecutionState.SCMP: scmp,
     ExecutionState.GAS: gas,
     ExecutionState.SHA3: sha3,
@@ -73,8 +79,8 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.LOG: log,
     ExecutionState.CALL: call,
     ExecutionState.ISZERO: iszero,
-    ExecutionState.SHR: shr,
     ExecutionState.SDIV_SMOD: sdiv_smod,
+    ExecutionState.SHL_SHR: shl_shr,
     ExecutionState.STOP: stop,
     ExecutionState.RETURN: return_,
 }

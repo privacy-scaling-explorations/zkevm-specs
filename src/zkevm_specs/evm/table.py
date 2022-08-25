@@ -70,7 +70,15 @@ class FixedTableTag(IntEnum):
                 )
             ]
         elif self == FixedTableTag.Pow2:
-            return [FixedTableRow(FQ(self), FQ(value), FQ(1 << value)) for value in range(65)]
+            return [
+                FixedTableRow(
+                    FQ(self),
+                    FQ(value),
+                    FQ(1 << value) if value < 128 else FQ(0),
+                    FQ(0) if value < 128 else FQ(1 << (value - 128)),
+                )
+                for value in range(256)
+            ]
         else:
             raise ValueError("Unreacheable")
 
@@ -130,7 +138,9 @@ class TxContextFieldTag(IntEnum):
     Value = auto()
     CallDataLength = auto()
     CallDataGasCost = auto()
+    TxSignHash = auto()
     CallData = auto()
+    Pad = auto()
 
 
 class BytecodeFieldTag(IntEnum):
@@ -153,6 +163,8 @@ class RWTableTag(IntEnum):
     prover, which will be part of State circuit and each unit read-write data
     will be verified to be consistent between each write.
     """
+
+    Start = auto()  # Used for upper rows padding
 
     TxAccessListAccount = auto()
     TxAccessListAccountStorage = auto()

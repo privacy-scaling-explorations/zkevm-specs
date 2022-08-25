@@ -14,14 +14,18 @@ Proved by the tx circuit.
 | $TxID  | Nonce               | 0          | $value  |
 | $TxID  | Gas                 | 0          | $value  |
 | $TxID  | GasPrice            | 0          | $value  |
-| $TxID  | GasTipCap           | 0          | $value  |
-| $TxID  | GasFeeCap           | 0          | $value  |
 | $TxID  | CallerAddress       | 0          | $value  |
 | $TxID  | CalleeAddress       | 0          | $value  |
 | $TxID  | IsCreate            | 0          | $value  |
 | $TxID  | Value               | 0          | $value  |
 | $TxID  | CallDataLength      | 0          | $value  |
+| $TxID  | CallDataGasCost     | 0          | $value  |
+| $TxID  | TxSignHash          | 0          | $value  |
 | $TxID  | CallData            | $ByteIndex | $value  |
+| $TxID  | Pad                 | 0          | $value  |
+
+NOTE: `CallDataGasCost` and `TxSignHash` are values calculated by the verifier
+and used to reduce the circuit complexity.  They may be removed in the future.
 
 ## `rw_table`
 
@@ -211,6 +215,94 @@ balance, or code hash updates, or account storage updates.
 | $addr | Balance | 0 | $balancePrev | $balanceCur | $rootPrev | $root |
 | $addr | CodeHash | 0 |$codeHashPrev | $codeHash | $rootPrev | $root |
 | $addr | 0 | $key | $valuePrev | $value | $rootPrev | $root |
+
+## Keccak Table
+
+See [tx.py](src/zkevm_specs/tx.py)
+
+| IsEnabled | InputRLC   | InputLen | Output      |
+| --------- | ---------- | -------- | ----------- |
+| bool         | $input_rlc | $input_length | $output_rlc |
+
+Column names in circuit:
+- IsEnabled: `is_final`
+- InputRLC: `data_rlc`
+- InputLen: `length`
+- Output: `hash_rlc`
+
+### Nonce update
+
+| Enable | Counter  | Address | ValuePrev  | ValueCur  |
+| ------ | -------- | ------- | ---------- | --------- |
+| 1      | $counter | $addr   | $noncePrev | $nonceCur |
+
+Column names in circuit:
+- Enable: `is_nonce_mod`
+- Counter: `counter`
+- Address: `address_rlc`
+- ValuePrev: `sel1`
+- ValueCur: `s_mod_node_hash_rlc`
+
+### Balance update
+
+| Enable | Counter  | Address | ValuePrev    | ValueCur    |
+| ------ | -------- | ------- | ------------ | ----------- |
+| 1      | $counter | $addr   | $balancePrev | $balanceCur |
+
+Column names in circuit:
+- Enable: `is_balance_mod`
+- Counter: `counter`
+- Address: `address_rlc`
+- ValuePrev: `sel2`
+- ValueCur: `c_mod_node_hash_rlc`
+
+### CodeHash update
+
+| Enable | Counter  | Address | ValuePrev     | ValueCur     |
+| ------ | -------- | ------- | ------------- | ------------ |
+| 1      | $counter | $addr   | $codeHashPrev | $codeHashCur |
+
+Column names in circuit:
+- Enable: `is_codehash_mod`
+- Counter: `counter`
+- Address: `address_rlc`
+- ValuePrev: `sel2`
+- ValueCur: `c_mod_node_hash_rlc`
+
+### Storage update
+
+| Enable | Counter  | Address | Key  | ValuePrev  | ValueCur  |
+| ------ | -------- | ------- | ---- | ---------- | --------- |
+| 1      | $counter | $addr   | $key | $valuePrev | $valueCur |
+
+Column names in circuit:
+- Enable: `is_storage_mod`
+- Counter: `counter`
+- Address: `address_rlc`
+- Key: `key_rlc_mult`
+- ValuePrev: `mult_diff`
+- ValueCur: `acc_c`
+
+### Unified table proposal
+
+We can compress the 4 tables into one at the expense of adding new columns in the MPT circuit.  We still need to analyze the tradeoff of adding columns to the circuit VS merging all the lookups into one.
+
+A unified MPT table would look like this:
+
+| Target   | Counter  | Address | Key  | ValuePrev     | ValueCur     |
+| -------- | -------- | ------- | ---- | ------------- | ------------ |
+| Nonce    | $counter | $addr   | 0    | $noncePrev    | $nonceCur    |
+| Balance  | $counter | $addr   | 0    | $balancePrev  | $balanceCur  |
+| CodeHash | $counter | $addr   | 0    | $codeHashPrev | $codeHashCur |
+| Storage  | $counter | $addr   | $key | $valuePrev    | $valueCur    |
+
+Columns expressions in circuit:
+- Target: `1 * is_nonce_mod + 2 * is_balance_mod + 4 * is_codehash_mod + 8 * is_storage_mod`
+- Counter: `counter`
+- Address: `address_rlc`
+- Key: `key_rlc_mult`
+- ValuePrev: `is_nonce_mod * sel1 + is_balance_mod * sel2 + is_codehash_mod * sel2 + is_storage_mod * mult_diff`
+- ValueCur: `is_nonce_mod * s_mod_node_hash_rlc + is_balance_mod * c_mod_node_hash_rlc + is_codehash_mod * c_mod_node_hash_rlc + is_storage_mod * acc_c`
 
 ## `copy_table`
 
