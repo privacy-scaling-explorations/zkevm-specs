@@ -42,6 +42,7 @@ from .sha3 import sha3
 from .shl_shr import shl_shr
 from .stop import stop
 from .return_ import *
+from .extcodecopy import *
 
 
 EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
@@ -75,6 +76,7 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.SSTORE: sstore,
     ExecutionState.SELFBALANCE: selfbalance,
     ExecutionState.GASPRICE: gasprice,
+    ExecutionState.EXTCODECOPY: extcodecopy,
     ExecutionState.EXTCODEHASH: extcodehash,
     ExecutionState.LOG: log,
     ExecutionState.CALL: call,

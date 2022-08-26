@@ -12,9 +12,7 @@ The gas cost of `CODECOPY` opcode consists of two parts:
 
 ## Circuit Behaviour
 
-`CODECOPY` makes use of the internal execution step `CopyCodeToMemory` and loops over these steps iteratively until there are no more bytes to be copied. The `CODECOPY` circuit itself only constrains the values popped from stack and call context/account read lookups.
-
-The gadget then transits to the internal state of `CopyCodeToMemory`.
+The `CODECOPY` circuit constrains the values popped from stack, call context/account read lookups and CopyTable lookups to verify the copy of bytes. The copy of a dynamic number of bytes is verified by the CopyCircuit outside the `CODECOPY` gadget.
 
 ## Constraints
 
