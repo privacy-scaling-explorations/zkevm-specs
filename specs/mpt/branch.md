@@ -39,7 +39,9 @@ Note that when `BRANCH.IS_CHILD` row presents a nil node, there is only one byte
 
 ## Branch
 
-The gate `Branch S and C equal at NON modified_node position` ensures that the only change in
+The gate
+`Branch S and C equal at NON modified_node position & only two non-nil nodes when placeholder`
+ensures that the only change in
 `S` and `C` proof occur at `modified_node` (denoting which child of the branch is changed) position.
 This is needed because the circuit allows only one change at at time. The gate has the following
 constraints:
@@ -57,8 +59,71 @@ about branch. We use `rlp1` to store information about `S` branch and
 Similarly as above for `rlp2` we check here that `s_main.bytes[i] = c_main.bytes[i]`
 except at `modified_node`.
 
-### 
+### Only two nil-nodes when placeholder branch
+ 
+ This constraint applies for when we have a placeholder branch.
+In this case, both branches are the same - the placeholder branch and its
+parallel counterpart, which is not a placeholder, but a regular branch (newly added branch).
+The regular branch has only two non-nil nodes, because the placeholder branch
+appears only when an existing leaf drifts down into a newly added branch.
+Besides an existing leaf, we have a leaf that was being added and that caused
+a new branch to be added. So we need to check that there are exactly two non-nil nodes
+(otherwise the attacker could add two or more new leaves at the same time).
 
+The non-nil nodes need to be at `is_modified` and `is_at_drifted_pos`, elsewhere
+there have to be zeros. When there is no placeholder branch, this constraint is ignored.
+
+### RLP length
+
+We need to check that the length of the branch corresponds to the bytes at the beginning of
+the RLP stream that specify the length of the RLP stream. There are three possible scenarios:
+
+  1. Branch (length `21 = 213 - 192`) with one byte of RLP meta data
+     ```
+     [213,128,194,32,1,128,194,32,1,128,128,128,128,128,128,128,128,128,128,128,128,128]
+     ```
+
+  2. Branch (length 83) with two bytes of RLP meta data
+     ```
+     [248,81,128,128,...
+     ```
+
+  3. Branch (length 340) with three bytes of RLP meta data
+     ```
+     249,1,81,128,16,...
+     ```
+
+We specify which of the scenarios is in the current row as (note that `S` branch and
+`C` branch could be of different length. `s_rlp1, s_rlp2` is used for `S` and
+`s_main.bytes[0], s_main.bytes[1]` is used for `C`):
+```
+rlp1, rlp2: 1, 1 means 1 RLP byte
+rlp1, rlp2: 1, 0 means 2 RLP bytes
+rlp1, rlp2: 0, 1 means 3 RLP bytes
+```
+
+### Not both zeros: rlp1, rlp2
+
+There should never be `rlp1, rlp2: 0, 0` for `S` (we only have three cases, there is no case with
+both being 0).
+
+### First branch children one RLP meta byte
+
+We check that the first branch children has properly stored the number of the remaining
+bytes. For example, if there are 81 bytes in the branch and the first branch child
+contains 1 byte, then it needs to store the value `80 = 81 - 1`.
+
+### Branch children node_index > 0 RLP
+
+We check that the non-first branch children has properly stored the number of the remaining
+bytes. For example, if there are 81 bytes in the branch, the first branch child
+contains 1 byte, the second child contains 33 bytes, then the third child
+needs to store the value `81 - 1 - 33`.
+
+### Branch last child RLP length
+
+ In the final branch child `s_rlp1` and `c_rlp1` need to be 1 (because RLP length
+specifies also ValueNode which occupies 1 byte).
 
 ### Range lookups
 

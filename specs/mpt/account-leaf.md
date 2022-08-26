@@ -139,6 +139,12 @@ that is parallel to the placeholder branch.
 Note that there is a similar constraint for the cases when the account leaf is in the first level, but
 here we do not fetch for the intermediate RLC from the branch above as there is no branch above.
 
+### Total number of address nibbles
+
+Total number of account address nibbles nees to be 64. This is to prevent having short addresses
+which could lead to a root node which would be shorter than 32 bytes and thus not hashed. That
+means the trie could be manipulated to reach a desired root.
+
 ### Previous key RLC
 
 When there is an account leaf after a placeholder branch, the intermediate key RLC needs to be
@@ -935,7 +941,7 @@ Note that the constraints in `branch.rs` ensure that `sel1` is 1 if and only if 
 at `modified_node` position. We check that in case of no wrong leaf in
 the non-existing-account proof, `sel1` is 1.
 
-### Non existing account proof leaf address RLC (leaf in first level)
+### Non existing account proof leaf address RLC
 
 Ensuring that the account does not exist when there is only one account in the state trie.
 Similarly as `Account address RLC` constraint but for the first level.
@@ -944,6 +950,11 @@ Note 1: The hash of the only account is checked to be the state root in `account
 Note 2: There is no nil_object case checked in this gate, because it is covered in the gate
 above. That is because when there is a branch (with nil object) in the first level,
 it automatically means the account leaf is not in the first level.
+
+### Address of wrong leaf and the enquired address are of the same length
+
+This constraint is to prevent the attacker to prove that some account does not exist by setting
+some arbitrary number of nibbles in the account leaf which would lead to a desired RLC.
 
 ### s_main.bytes[i] = 0 when key ends
 
