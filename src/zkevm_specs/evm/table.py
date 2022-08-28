@@ -157,17 +157,6 @@ class RW(IntEnum):
     Write = 1
 
 
-class MPTTableTag(IntEnum):
-    """
-    Tag for MPTTable lookup
-    """
-
-    Nonce = 1
-    Balance = 2
-    CodeHash = 4
-    Storage = 8
-
-
 class RWTableTag(IntEnum):
     """
     Tag for RWTable lookup, where the RWTable an advice-column table built by
@@ -390,10 +379,11 @@ class RWTableRow(TableRow):
 
 @dataclass(frozen=True)
 class MPTTableRow(TableRow):
-    counter: Expression
-    target: Expression  # MPTTableTag
     address: Expression
-    key: Expression
+    field_tag: Expression
+    storage_key: Expression
+    root: Expression
+    root_prev: Expression
     value: Expression
     value_prev: Expression
 
