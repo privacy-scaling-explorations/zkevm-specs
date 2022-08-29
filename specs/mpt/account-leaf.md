@@ -66,14 +66,16 @@ In the last section, we give an example of the nonce modification proof.
 
 ## Account key constraints
 
-### Account leaf key s_main.rlp1 = 248
+### Account leaf RLC after key
+
+#### Account leaf key s_main.rlp1 = 248
 
 Account leaf always starts with 248 because its length is always longer than 55 bytes due to
 containing two hashes - storage root and codehash, which are both of 32 bytes. 
 248 is RLP byte which means there is `1 = 248 - 247` byte specifying the length of the remaining
 list. For example, in `[248,112,157,59,...]`, there are 112 byte after the second byte.
 
-### Leaf key RLC
+#### Leaf key RLC
 
 In each row of the account leaf we compute an intermediate RLC of the whole leaf.
 The RLC after account leaf key row is stored in `acc` column. We check the stored value
@@ -109,11 +111,13 @@ So the multiplier to be used in the next row is `r^{key_len + 2}`.
 `mult_diff` needs to correspond to the key length + 2 RLP bytes + 1 byte for byte that contains the key length.
 That means `mult_diff` needs to be `r^{key_len+1}` where `key_len = s_main.bytes[0] - 128`.
 
-### Account leaf key with even nibbles: s_main.bytes[1] = 32
+### Account leaf address RLC & nibbles count (leaf not in first level, branch not placeholder)
+
+#### Account leaf key with even nibbles: s_main.bytes[1] = 32
 
 If there is an even number of nibbles in the leaf, `s_main.bytes[1]` need to be 32.
 
-### Address RLC
+#### Address RLC
 
 Account leaf contains the remaining nibbles of the account address. Combining the path 
 of the leaf in the trie and these remaining nibbles needs to be the same as the account
@@ -127,7 +131,7 @@ The intermediate RLC is retrieved from the last branch above the account leaf - 
 presents the RLC after the path to the leaf is considered. After this, the bytes (nibbles
 in a compacted form) in the leaf have to be added to the RLC.
 
-### Computed account address RLC same as value in address_rlc column
+#### Computed account address RLC same as value in address_rlc column
 
 The computed key RLC needs to be the same as the value in `address_rlc` column.
 This seems to be redundant (we could write one constraint instead of two:
@@ -139,13 +143,19 @@ that is parallel to the placeholder branch.
 Note that there is a similar constraint for the cases when the account leaf is in the first level, but
 here we do not fetch for the intermediate RLC from the branch above as there is no branch above.
 
-### Total number of address nibbles
+#### Total number of address nibbles
 
 Total number of account address nibbles nees to be 64. This is to prevent having short addresses
 which could lead to a root node which would be shorter than 32 bytes and thus not hashed. That
 means the trie could be manipulated to reach a desired root.
 
-### Previous key RLC
+### Account leaf address RLC & nibbles count (leaf in first level)
+
+Similar constraints as in the gate described above, but for account leaf being in the first level.
+
+### Previous level address RLC
+
+#### Previous key RLC
 
 When there is an account leaf after a placeholder branch, the intermediate key RLC needs to be
 fetched from the branch above the placeholder branch. That would require a rotation over two
@@ -159,12 +169,16 @@ to `accs.acc_c.rlc`. This enables us to compute the address RLC after a branch p
 (see the constraint below) by not using rotations over two levels (we have the intermediate
 RLC in the current row).
 
-### Previous key RLC mult
+#### Previous key RLC mult
 
 We need to ensure that the key RLC mult from the branch above the placeholder branch is copied
 to `accs.acc_c.mult`.
 
-### Account address RLC after branch placeholder
+### Account leaf address RLC & nibbles count (after placeholder)
+
+This gate is again similar to the gate `Account leaf address RLC & nibbles count (leaf not in first level, branch not placeholder)`, but with a leaf being after a branch placeholder.
+
+#### Account address RLC after branch placeholder
 
 The example layout for a branch placeholder looks like (placeholder could be in `C` proof too):
 ```
@@ -184,7 +198,9 @@ we still need properly computed `key_rlc` to reuse it in `account_leaf_key_in_ad
 
 Note: `key_rlc - address_rlc != 0` when placeholder branch.
 
-### If account delete, there is either a placeholder leaf or a placeholder branch
+### Account delete
+
+#### If account delete, there is either a placeholder leaf or a placeholder branch
 
 We need to make sure there is no leaf when account is deleted. Two possible cases:
 1. Account leaf is deleted and there is a nil object in branch. In this case we have 
@@ -235,7 +251,9 @@ and `C` balance in `c_main`. We can see nonce in `C` proof is `1`.
 The constraints for the first gate of `AccountLeafNonceBalanceChip` which is named
 `Account leaf nonce balance RLC & RLP` are given below.
 
-### Bool check is_nonce_long & Bool check is_balance_long
+### Account leaf nonce balance RLC & RLP
+
+#### Bool check is_nonce_long & Bool check is_balance_long
 
 If nonce (same holds for balance) is smaller or equal to 128, then it will occupy only one byte:
 `s_main.bytes[0]` (`c_main.bytes[0]` for balance).
@@ -260,7 +278,7 @@ is used to mark whether nonce is of 1 byte (short) or more than 1 byte (long).
 Analogously, `sel2` holds the information whether balance is long or short.
 Bool check `is_balance_long` constraint ensures the `sel2` value is boolean.
 
-### s_main.bytes[i] = 0 for i > 0 when is_nonce_short
+#### s_main.bytes[i] = 0 for i > 0 when is_nonce_short
 
 It is important that there are 0s in `s_main.bytes` after the nonce bytes end.
 When nonce is short (1 byte), like in `[184,70,1,0,...]`, the constraint is simple:
@@ -281,12 +299,12 @@ But instead of 129 we could have 130 or some other value in `s_main.bytes[0]`. F
 reason, the constraints are implemented using `key_len_lookup`, more about this approach
 in what follows.
 
-### c_main.bytes[i] = 0 for i > 0 when is_balance_short
+#### c_main.bytes[i] = 0 for i > 0 when is_balance_short
 
 The balance constraints are analogous to the nonce constraints described above.
 The difference is that balance is stored in `c_main.bytes`.
 
-### is_wrong_leaf is bool
+#### is_wrong_leaf is bool
 
 When `non_existing_account_proof` proof type (which can be of two subtypes: with wrong leaf
 and without wrong leaf, more about it below), the `is_wrong_leaf` flag specifies whether
@@ -300,11 +318,11 @@ leaf for lookups and to know when to check that parent branch has a nil.
 In `is_wrong_leaf is bool` we only check that `is_wrong_leaf` is a boolean values.
 Other wrong leaf related constraints are in other gates.
 
-### is_wrong_leaf needs to be 0 when not in non_existing_account proof
+#### is_wrong_leaf needs to be 0 when not in non_existing_account proof
 
 `is_wrong_leaf` can be set to 1 only when the proof is not non_existing_account proof.
 
-### Nonce RLC long 
+#### Nonce RLC long 
 
 Besides having nonce (its bytes) stored in `s_main.bytes`, we also have the RLC
 of nonce bytes stored in `s_mod_node_hash_rlc` column. The value in this column
@@ -312,13 +330,13 @@ is to be used by lookups.
 `Nonce RLP long` constraint ensures the RLC of a nonce is computed properly when
 nonce is long.
 
-### Nonce RLC short
+#### Nonce RLC short
 
 Similarly as in `Nonce RLP long` constraint, 
 `Nonce RLP short` constraint ensures the RLC of a nonce is computed properly when
 nonce is short.
 
-### Balance RLC long 
+#### Balance RLC long 
 
 Besides having balance (its bytes) stored in `c_main.bytes`, we also have the RLC
 of nonce bytes stored in `c_mod_node_hash_rlc` column. The value in this column
@@ -326,35 +344,39 @@ is to be used by lookups.
 `Balance RLP long` constraint ensures the RLC of a balance is computed properly when
 balance is long.
 
-### Balance RLC short
+#### Balance RLC short
 
 Similarly as in `Balance RLP long` constraint, 
 `Balance RLP short` constraint ensures the RLC of a balance is computed properly when
 balance is short.
 
-### S nonce RLC is correctly copied to C row
+#### S nonce RLC is correctly copied to C row
 
 To enable lookup for nonce modification we need to have `S` nonce and `C` nonce
 in the same row. For this reason, `S` nonce RLC is copied to `sel1` column in `C` row.
 This constraint checks whether the value is properly copied.
 
-### S balance RLC is correctly copied to C row
+#### S balance RLC is correctly copied to C row
 
 To enable lookup for balance modification we need to have `S` balance and `C` balance
 in the same row. For this reason, `S` balance RLC is copied to `sel2` column in `C` row.
 This constraint checks whether the value is properly copied.
 
-### If storage or balance modification: S nonce = C nonce
+#### If storage or balance modification: S nonce = C nonce
 
 We need to ensure there is only one modification at a time. If there is storage or
 balance modification, we need to ensure `S` nonce and `C` nonce are the same.
 
-### If storage or nonce modification: S balance = C balance
+#### If storage or nonce modification: S balance = C balance
 
 We need to ensure there is only one modification at a time. If there is storage or
 nonce modification, we need to ensure `S` balance and `C` balance are the same.
 
-### Leaf nonce acc mult (nonce long)
+#### Leaf nonce balance RLC
+
+Computed RLC after nonce balance row is the same as the stored RLC value.
+
+#### Leaf nonce RLC mult (nonce long)
 
 When adding nonce bytes to the account leaf RLC we do:
 
@@ -411,12 +433,12 @@ And we continue computing the RLC:
 rlc_after_nonce + 135 * mult_tmp * mult_diff_nonce + 28 + mult_tmp * mult_diff_nonce * r + ...
 ```
 
-### Leaf nonce acc mult (nonce short)
+#### Leaf nonce RLC mult (nonce short)
 
 When nonce is short (occupying only one byte), we know in advance that `mult_diff_nonce = r^5`
 as there are `s_main.rlp1`, `s_main.rlp2`, `c_main.rlp1`, `c_main.rlp2`, and `s_main.bytes[0]` bytes to be taken into account.
 
-### Leaf balance acc mult (balance long)
+#### Leaf balance RLC mult (balance long)
 
 We need to prepare the multiplier that will be needed in the next row: `acc_mult_final`.
 We have the multiplier after nonce bytes were added to the RLC: `acc_mult_after_nonce`.
@@ -436,12 +458,12 @@ acc_mult_final = acc_mult_after_nonce * mult_diff_balance
 Note that `mult_diff_balance` is not the last multiplier in this row, but the first in
 the next row (this is why there is `r^l` instead of `r^{l-1}`).
 
-### Leaf balance acc mult (balance short)
+#### Leaf balance RLC mult (balance short)
 
 When balance is short, there is only one balance byte and we know in advance that the
 multiplier changes only by factor `r`.
 
-### Leaf nonce balance s_main.rlp1 = 184
+#### Leaf nonce balance s_main.rlp1 = 184
 
 `s_main.rlp1` needs always be 184. This is RLP byte meaning that behind this byte
 there is a string of length more than 55 bytes and that only `1 = 184 - 183` byte is reserved
@@ -454,7 +476,7 @@ does not use `s_main.rlp1` and `s_main.rlp2`. Note that it uses `s_main` for nib
 because the account address is computed using nibbles and this account address needs
 to be as required by a lookup.
 
-### Leaf nonce balance c_main.rlp1 = 248
+#### Leaf nonce balance c_main.rlp1 = 248
 
 `c_main.rlp1` needs to always be 248. This is RLP byte meaning that behind this byte
 there is a list which has one byte that specifies the length - `at c_main.rlp2`.
@@ -472,7 +494,7 @@ Example:
 ```
 248 at c_main.rlp1 means one byte for length. This byte is 76, meaning there are 76 bytes after it.
 
-### Leaf nonce balance s_main.rlp2 - c_main.rlp2
+#### Leaf nonce balance s_main.rlp2 - c_main.rlp2
 
 `c_main.rlp2` specifies the length of the remaining RLP string. Note that the string
 is `s_main.rlp1`, `s_main.rlp2`, `c_main.rlp1`, `c_main.rlp2`, nonce bytes, balance bytes.
@@ -485,12 +507,12 @@ Example:
 ```
 We can see: `78 - 76 - 1 - 1 = 0`.
 
-### Lean nonce balance c_main.rlp2
+#### Lean nonce balance c_main.rlp2
 
 `c_main.rlp2 = #(nonce bytes) + #(balance bytes) + 32 + 32`.
 Note that `32 + 32` means the number of codehash bytes + the number of storage root bytes.
 
-### Account leaf RLP length 
+#### Account leaf RLP length 
 
 The whole RLP length of the account leaf is specified in the account leaf key row with
 `s_main.rlp1 = 248` and `s_main.rlp2`. `s_main.rlp2` in key row actually specifies the length.
@@ -562,24 +584,26 @@ We can see `s_main.rlp2 = 160` which specifies that the length of the following 
 In `ACCOUNT_LEAF_STORAGE_CODEHASH_C` example row, there is `C` storage root stored in `s_main.bytes`
 and `C` codehash in `c_main.bytes`. Both these values are hash outputs.
 
-### Account leaf storage codehash s_main.rlp2 = 160
+### Account leaf storage codehash
+
+#### Account leaf storage codehash s_main.rlp2 = 160
 
 `s_main.rlp2` stores the RLP length of the hash of storage root. The hash output length is 32
 and thus `s_main.rlp2` needs to be `160 = 128 + 32`. 
 
-### Account leaf storage codehash c_main.rlp2 = 160
+#### Account leaf storage codehash c_main.rlp2 = 160
 
 `c_main.rlp2` stores the RLP length of the codehash. The hash output length is 32
 and thus `c_main.rlp2` needs to be `160 = 128 + 32`. 
 
-### Storage root RLC 
+#### Storage root RLC 
 
 `s_main.bytes` contain storage root hash, but to simplify lookups we need to have
 the RLC of storage root hash stored in some column too. The RLC is stored in
 `s_mod_node_hash_rlc`. We need to ensure that this value corresponds to the RLC
 of `s_main.bytes`.
 
-### Codehash RLC
+#### Codehash RLC
 
 `c_main.bytes` contain codehash, but to simplify lookups we need to have
 the RLC of the codehash stored in some column too. The RLC is stored in
@@ -594,14 +618,14 @@ For this reason, S storage root RLC is copied to `sel1` column in C row.
 
 Note: we do not need such constraint for codehash as the codehash never changes.
 
-### If nonce / balance: storage_root_s = storage_root_c
+#### If nonce / balance: storage_root_s = storage_root_c
 
 If the modification is nonce or balance modification, the storage root needs to 
 stay the same.
 
 Note: `is_non_existing_account_proof` uses only `S` proof.
 
-### If nonce / balance / storage mod: codehash_s = codehash_c
+#### If nonce / balance / storage mod: codehash_s = codehash_c
 
 If the modification is nonce or balance or storage modification (that means
 always except for `is_account_delete_mod` and `is_non_existing_account_proof`),
@@ -609,12 +633,11 @@ the storage root needs to stay the same.
 
 Note: `is_non_existing_account_proof` uses only `S` proof.
 
-### Account leaf storage codehash RLC
+#### Account leaf storage codehash RLC
 
 The RLC of the account leaf needs to be properly computed. We take the intermediate RLC
 computed in the `ACCOUNT_LEAF_NONCE_BALANCE_*` row and add the bytes from the current row.
 The computed RLC needs to be the same as the stored value in `acc_s` row.
-
 
 ### Account first level leaf without branch - compared to state root
 
@@ -787,13 +810,13 @@ are compressed as: `[55, 236, 125, ...]`. In the last row, the nibbles are compr
 This nibble is not present in the account `A` when moved down into `Branch2` because 7 is the position
 where the account `A` is placed in `Branch2`.
 
-The constraints for a drifted leaf are presented below.
+### Account drifted leaf: intermediate leaf RLC after key"
 
-### Account leaf key s_rlp1 = 248
+#### Account leaf key s_rlp1 = 248
 
 `s_rlp1` is always 248 because the account leaf is always longer than 55 bytes.
 
-### Leaf key intermediate RLC
+#### Account leaf key intermediate RLC
 
 We check that the leaf RLC is properly computed. RLC is then taken and
 nonce/balance & storage root / codehash values are added to the RLC (note that nonce/balance
@@ -822,7 +845,9 @@ That means `mult_diff` needs to be `r^{key_len+1}` where `key_len = s_main.bytes
 Note that the key length is different than the on of the leaf before it drifted (by one nibble
 if a branch is added, by multiple nibbles if extension node is added).
 
-### Drifted leaf key RLC same as the RLC of the leaf before drift
+### Account drifted leaf key RLC
+
+#### Drifted leaf key RLC same as the RLC of the leaf before drift
 
 The key RLC of the drifted leaf needs to be the same as the key RLC of the leaf before
 the drift - the nibbles are the same in both cases, the difference is that before the
@@ -905,7 +930,13 @@ in the rows above (except for the `ACCOUNT_NON_EXISTING` row) and continues with
 
 Note that the selector (being 1 in this case) at `s_main.rlp1` specifies whether it is wrong leaf or nil case.
 
-### Account address RLC
+### Non existing account proof leaf address RLC (leaf not in first level, branch not placeholder)
+
+#### Account leaf key acc s_advice1
+
+If there is an even number of nibbles stored in a leaf, `s_advice1` needs to be 32.
+
+#### Account address RLC
 
 Differently as for the other proofs, the account-non-existing proof compares `address_rlc` with the address
 stored in `ACCOUNT_NON_EXISTING` row, not in `ACCOUNT_LEAF_KEY` row.
@@ -919,22 +950,22 @@ There is a complementary constraint that makes sure the remaining nibbles are di
 and the non-existing account (in the case of wrong leaf, while the case with nil being in branch
 is different).
 
-### Wrong leaf sum check
+#### Wrong leaf sum check
 
 We compute the RLC of the key bytes in the `ACCOUNT_NON_EXISTING` row. We check whether the computed
 value is the same as the one stored in `accs.key.rlc` column.
 
-### Wrong leaf sum_prev check
+#### Wrong leaf sum_prev check
 
 We compute the RLC of the key bytes in the `ACCOUNT_NON_EXISTING` row. We check whether the computed
 value is the same as the one stored in `accs.key.mult` column.
 
-### Address of a leaf is different than address being inquired (corresponding to address_rlc)
+#### Address of a leaf is different than address being inquired (corresponding to address_rlc)
 
 The address in the `ACCOUNT_LEAF_KEY` row and the address in the `ACCOUNT_NON_EXISTING` row
 are indeed different.
 
-### Nil object in parent branch
+#### Nil object in parent branch
 
 In case when there is no wrong leaf, we need to check there is a nil object in the parent branch.
 Note that the constraints in `branch.rs` ensure that `sel1` is 1 if and only if there is a nil object
@@ -950,6 +981,10 @@ Note 1: The hash of the only account is checked to be the state root in `account
 Note 2: There is no nil_object case checked in this gate, because it is covered in the gate
 above. That is because when there is a branch (with nil object) in the first level,
 it automatically means the account leaf is not in the first level.
+
+### Non existing account proof leaf address RLC (leaf in first level)
+
+Similarly as the gate above, but for the account leaf being in the first level.
 
 ### Address of wrong leaf and the enquired address are of the same length
 

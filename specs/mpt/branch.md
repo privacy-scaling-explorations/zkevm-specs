@@ -39,14 +39,15 @@ Note that when `BRANCH.IS_CHILD` row presents a nil node, there is only one byte
 
 ## Branch
 
+### Branch S and C equal at NON modified_node position & only two non-nil nodes when placeholder
+
 The gate
 `Branch S and C equal at NON modified_node position & only two non-nil nodes when placeholder`
 ensures that the only change in
 `S` and `C` proof occur at `modified_node` (denoting which child of the branch is changed) position.
-This is needed because the circuit allows only one change at at time. The gate has the following
-constraints:
+This is needed because the circuit allows only one change at at time. 
 
-### rlp2
+#### rlp2
 
 We check `s_main.rlp2 = c_main.rlp2` everywhere except at `modified_node`.
 
@@ -54,12 +55,12 @@ Note: We do not compare `s_main.rlp1 = c_main.rlp1` because there is no informat
 about branch. We use `rlp1` to store information about `S` branch and
 `C` branch RLP length (see the gate below).
 
-### s = c when NOT is_modified
+#### s = c when NOT is_modified
 
 Similarly as above for `rlp2` we check here that `s_main.bytes[i] = c_main.bytes[i]`
 except at `modified_node`.
 
-### Only two nil-nodes when placeholder branch
+#### Only two nil-nodes when placeholder branch
  
  This constraint applies for when we have a placeholder branch.
 In this case, both branches are the same - the placeholder branch and its
@@ -102,28 +103,43 @@ rlp1, rlp2: 1, 0 means 2 RLP bytes
 rlp1, rlp2: 0, 1 means 3 RLP bytes
 ```
 
-### Not both zeros: rlp1, rlp2
+#### Not both zeros: rlp1, rlp2
 
 There should never be `rlp1, rlp2: 0, 0` for `S` (we only have three cases, there is no case with
 both being 0).
 
-### First branch children one RLP meta byte
+#### First branch children one RLP meta byte
 
 We check that the first branch children has properly stored the number of the remaining
 bytes. For example, if there are 81 bytes in the branch and the first branch child
 contains 1 byte, then it needs to store the value `80 = 81 - 1`.
 
-### Branch children node_index > 0 RLP
+#### Branch children node_index > 0 RLP
 
 We check that the non-first branch children has properly stored the number of the remaining
 bytes. For example, if there are 81 bytes in the branch, the first branch child
 contains 1 byte, the second child contains 33 bytes, then the third child
 needs to store the value `81 - 1 - 33`.
 
-### Branch last child RLP length
+#### Branch last child RLP length
 
- In the final branch child `s_rlp1` and `c_rlp1` need to be 1 (because RLP length
+In the final branch child `s_rlp1` and `c_rlp1` need to be 1 (because RLP length
 specifies also ValueNode which occupies 1 byte).
+
+### Branch children selectors
+
+#### is_branch_child after is_branch_init
+
+If we have `is_branch_init` in the previous row, we have `is_branch_child = 1` in the current row.
+
+#### node_index = 0 after is_branch_init
+
+We could have only one constraint using sum, but then we would need
+to limit `node_index` (to prevent values like -1). Now, `node_index` is
+limited by ensuring its first value is 0, its last value is 15,
+and it is being increased by 1.
+If we have `is_branch_init` in the previous row, we have
+`node_index = 0` in the current row.
 
 ### Range lookups
 
