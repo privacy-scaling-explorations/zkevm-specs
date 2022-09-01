@@ -45,6 +45,7 @@ p_lo = 1 << shf_mod64
 p_hi = 1 << (64 - shf_mod64)
 # The new bits are set to 1 if negative.
 p_top = is_neg * (0xFFFFFFFFFFFFFFFF - p_hi + 1))
+shf_lt256 = is_zero(sum(shift[1:]))
 a64s = word_to_64s(a)
 a64s_lo[idx] = a64s[idx] % p_lo
 a64s_hi[idx] = a64s[idx] / p_lo
