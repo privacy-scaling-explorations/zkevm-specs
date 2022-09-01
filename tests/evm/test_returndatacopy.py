@@ -114,9 +114,9 @@ def test_returndatacopy(
         CALL_ID,
         CopyDataTypeTag.Memory,
         return_data_offset,
-        len(code.code),
+        return_data_offset + size,
         dest_offset,
-        size,
+        dest_offset + size,
         src_data,
     )
 
@@ -138,7 +138,6 @@ def test_returndatacopy(
         )
     )
 
-    print(f"rw_dictionary.rws = {rw_dictionary.rws}")
     tables = Tables(
         block_table=set(),
         tx_table=set(),
