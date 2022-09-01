@@ -17,8 +17,13 @@ The `RETURNDATACOPY` opcode Copy output data from the previous call to memory.
 ### Circuit behaviour
 
 1. Construct call context table in rw table.
-2. Do a busmapping lookup for CallContext last Call's ReturnDataLength  read.
-3. Do a busmapping lookup for a stack write operation corresponding to the RETURNDATACOPY result.
+2. Do a busmapping lookup for a stack read of dest_offset.
+3. Do a busmapping lookup for a stack read of offset.
+4. Do a busmapping lookup for a stack read of size.
+5. Do a busmapping lookup for CallContext last Callee's Call_ID read.
+4. Do a busmapping lookup for CallContext last Callee's ReturnDataLength read.
+5. Do a busmapping lookup for CallContext last Callee's ReturnDataOffset read.
+6. The copy of a dynamic number of bytes is verified by the CopyCircuit outside the `CODECOPY` gadget.
 
 ## Constraints
 
@@ -46,4 +51,4 @@ The `RETURNDATACOPY` opcode Copy output data from the previous call to memory.
 
 ## Code
 
-Please refer to [RETURNDATACOPY.py](src/zkevm_specs/evm/execution/RETURNDATACOPY.py).
+Please refer to [returndatacopy.py](src/zkevm_specs/evm/execution/returndatacopy.py).
