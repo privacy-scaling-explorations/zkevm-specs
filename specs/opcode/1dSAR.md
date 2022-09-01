@@ -8,7 +8,7 @@ The `SAR` opcode also shifts the bits towards the least significant one, and the
 
 Pop two EVM words `a` and `shift` from the stack, and push `b` to the stack, where `b` is calculated as `b = a >> shift`.
 
-- For opcode `SAR`，both `a` and `b` are considered as `signed` 256-bit values.
+Both `a` and `b` are considered as `signed` 256-bit values.
 
 ### Circuit behavior
 
