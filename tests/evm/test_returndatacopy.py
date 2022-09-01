@@ -36,15 +36,18 @@ CALLEE_MEMORY = [0x00] * 32 + [0x11] * 32
 TESTING_DATA = (
     # simple cases
     (0, 0, 32, 0, 32),
+    (100, 0, 32, 0, 32),
+    (0, 0, 32, 100, 32),
+    (100, 31, 1, 100, 32),
 )
 
 
 @pytest.mark.parametrize(
-    "dest_offset, memory_offset, size, return_data_offset, return_data_length", TESTING_DATA
+    "dest_offset, offset, size, return_data_offset, return_data_length", TESTING_DATA
 )
 def test_returndatacopy(
     dest_offset: int,
-    memory_offset: int,
+    offset: int,
     size: int,
     return_data_offset: int,
     return_data_length: int,
@@ -52,7 +55,7 @@ def test_returndatacopy(
     randomness = rand_fq()
 
     dest_offset_rlc = RLC(dest_offset, randomness)
-    memory_offset_rlc = RLC(memory_offset, randomness)
+    memory_offset_rlc = RLC(offset, randomness)
     size_rlc = RLC(size, randomness)
 
     code = (
@@ -65,7 +68,9 @@ def test_returndatacopy(
     )
     code_hash = RLC(code.hash(), randomness)
 
-    next_mem_size, memory_gas_cost = memory_expansion(0, memory_offset + size)
+    # assume return data is at the current largest memory pos
+    curr_mem_size = memory_word_size(return_data_offset + return_data_length)
+    next_mem_size, memory_gas_cost = memory_expansion(curr_mem_size, dest_offset + size)
     gas = (
         Opcode.RETURNDATACOPY.constant_gas_cost()
         + memory_gas_cost
@@ -98,6 +103,7 @@ def test_returndatacopy(
             code_hash=code_hash,
             program_counter=99,
             stack_pointer=1021,
+            memory_size=curr_mem_size,
             gas_left=gas,
         ),
     ]
@@ -118,7 +124,7 @@ def test_returndatacopy(
         return_data_offset,
         return_data_offset + size,
         dest_offset,
-        dest_offset + size,
+        size,
         src_data,
     )
 

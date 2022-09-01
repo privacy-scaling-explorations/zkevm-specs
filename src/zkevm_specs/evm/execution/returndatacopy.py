@@ -34,7 +34,7 @@ def returndatacopy(instruction: Instruction):
         return_data_offset,
         return_data_offset + size,
         memory_offset,
-        memory_offset + size,
+        size,
         instruction.curr.rw_counter + instruction.rw_counter_offset,
     )
 
