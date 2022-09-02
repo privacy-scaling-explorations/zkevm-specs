@@ -127,8 +127,8 @@ def __check_witness(
     )
 
     # `p_lo == pow(2, shf_mod64)` and `p_hi == pow(2, 64 - shf_mod64)`.
-    instruction.pow2_lookup(shf_mod64, p_lo)
-    instruction.pow2_lookup(64 - shf_mod64, p_hi)
+    instruction.pow2_lookup(shf_mod64, p_lo, 0)
+    instruction.pow2_lookup(64 - shf_mod64, p_hi, 0)
 
 
 def __gen_witness(instruction: Instruction, opcode: FQ, a: RLC, shift: RLC):
