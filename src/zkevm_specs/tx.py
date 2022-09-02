@@ -1,31 +1,19 @@
 from .encoding import is_circuit_code
-from typing import NamedTuple, Tuple, List, Set
-from .util import FQ, RLC, U160, U256, U64, linear_combine
-from enum import IntEnum
+from typing import NamedTuple, Tuple, List, Set, Union
+from .util import (
+    FQ,
+    RLC,
+    U160,
+    U256,
+    U64,
+    linear_combine,
+    GAS_COST_TX_CALL_DATA_PER_NON_ZERO_BYTE,
+    GAS_COST_TX_CALL_DATA_PER_ZERO_BYTE,
+)
 from eth_keys import KeyAPI  # type: ignore
 import rlp  # type: ignore
 from eth_utils import keccak
-
-
-class Tag(IntEnum):
-    """
-    Tag used as second key in the Tx Circuit Rows to "select" the transaction field target.
-    Can be encoded in 4 bits.
-    """
-
-    Nonce = 1
-    Gas = 2
-    GasPrice = 3
-    GasTipCap = 4
-    GasFeeCap = 5
-    CallerAddress = 6
-    CalleeAddress = 7
-    IsCreate = 8
-    Value = 9
-    CallDataLength = 10
-    TxSignHash = 11
-    CallData = 12
-    Pad = 13
+from .evm import TxContextFieldTag as Tag
 
 
 class Row:
@@ -304,12 +292,17 @@ class Transaction(NamedTuple):
     nonce: U64
     gas_price: U256
     gas: U64
-    to: U160
+    to: Union[None, U160]
     value: U256
     data: bytes
     sig_v: U64
     sig_r: U256
     sig_s: U256
+
+    def encode_to(self):
+        if self.to is None:
+            return bytes(0)
+        return self.to.to_bytes(20, "big")
 
 
 def tx2witness(
@@ -322,7 +315,7 @@ def tx2witness(
     """
 
     tx_sign_data = rlp.encode(
-        [tx.nonce, tx.gas_price, tx.gas, tx.to, tx.value, tx.data, chain_id, 0, 0]
+        [tx.nonce, tx.gas_price, tx.gas, tx.encode_to(), tx.value, tx.data, chain_id, 0, 0]
     )
     tx_sign_hash = keccak(tx_sign_data)
 
@@ -337,18 +330,28 @@ def tx2witness(
 
     sign_verification = SignVerifyChip.assign(sig, pk, tx_sign_hash, randomness)
 
+    call_data_gas_cost = sum(
+        [
+            (
+                GAS_COST_TX_CALL_DATA_PER_ZERO_BYTE
+                if byte == 0
+                else GAS_COST_TX_CALL_DATA_PER_NON_ZERO_BYTE
+            )
+            for byte in tx.data
+        ]
+    )
+
     tx_id = FQ(index + 1)
     rows: List[Row] = []
     rows.append(Row(tx_id, FQ(Tag.Nonce), FQ(0), FQ(tx.nonce)))
     rows.append(Row(tx_id, FQ(Tag.Gas), FQ(0), FQ(tx.gas)))
     rows.append(Row(tx_id, FQ(Tag.GasPrice), FQ(0), RLC(tx.gas_price, randomness).expr()))
-    rows.append(Row(tx_id, FQ(Tag.GasTipCap), FQ(0), FQ(0)))
-    rows.append(Row(tx_id, FQ(Tag.GasFeeCap), FQ(0), FQ(0)))
     rows.append(Row(tx_id, FQ(Tag.CallerAddress), FQ(0), FQ(int.from_bytes(addr, "big"))))
-    rows.append(Row(tx_id, FQ(Tag.CalleeAddress), FQ(0), FQ(tx.to)))
-    rows.append(Row(tx_id, FQ(Tag.IsCreate), FQ(0), FQ(1) if tx.to == FQ(0) else FQ(0)))
+    rows.append(Row(tx_id, FQ(Tag.CalleeAddress), FQ(0), FQ(tx.to or 0)))
+    rows.append(Row(tx_id, FQ(Tag.IsCreate), FQ(0), FQ(1) if tx.to is None else FQ(0)))
     rows.append(Row(tx_id, FQ(Tag.Value), FQ(0), RLC(tx.value, randomness).expr()))
     rows.append(Row(tx_id, FQ(Tag.CallDataLength), FQ(0), FQ(len(tx.data))))
+    rows.append(Row(tx_id, FQ(Tag.CallDataGasCost), FQ(0), FQ(call_data_gas_cost)))
     tx_sign_hash_rlc = RLC(int.from_bytes(tx_sign_hash, "big"), randomness).expr()
     rows.append(Row(tx_id, FQ(Tag.TxSignHash), FQ(0), tx_sign_hash_rlc))
     for byte_index, byte in enumerate(tx.data):
@@ -397,11 +400,16 @@ def txs2witness(
     assert len(tx_dyn_rows) <= MAX_CALLDATA_BYTES
 
     # Fill all the rows in the fixed region to reach MAX_TXS * Tag.TxSignHash
-    # with pad rows.  And fill all the rows in the dynamic region to reach
-    # MAX_CALLDATA_BYTES with pad rows.
+    # with pad rows in the front.  These front padding rows use a sequential id
+    # starting at 1 in the tx_id field used to prove a lower bound on the
+    # number padding rows in the fixed region.   And fill all the rows in the
+    # dynamic region to reach MAX_CALLDATA_BYTES with pad rows in the back.
     rows = (
-        tx_fixed_rows
-        + [Row(FQ(0), FQ(Tag.Pad), FQ(0), FQ(0))] * (MAX_TXS - len(txs)) * Tag.TxSignHash
+        [
+            Row(FQ(i + 1), FQ(Tag.Pad), FQ(0), FQ(0))
+            for i in range((MAX_TXS - len(txs)) * Tag.TxSignHash)
+        ]
+        + tx_fixed_rows
         + tx_dyn_rows
         + [Row(FQ(0), FQ(Tag.Pad), FQ(0), FQ(0))] * (MAX_CALLDATA_BYTES - len(tx_dyn_rows))
     )
@@ -419,6 +427,6 @@ def txs2witness(
     )
     # Fill the rest of sign_verifications with the witnessess assigned to 0s
     # and dummy ecdsa vefification values to disable the verification.
-    sign_verifications = sign_verifications + [padding_sign_verification] * (MAX_TXS - len(txs))
+    sign_verifications = [padding_sign_verification] * (MAX_TXS - len(txs)) + sign_verifications
 
     return Witness(rows, keccak_table, sign_verifications)

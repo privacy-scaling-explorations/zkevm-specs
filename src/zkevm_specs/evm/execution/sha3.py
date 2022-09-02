@@ -16,19 +16,22 @@ def sha3(instruction: Instruction):
     # convert RLC encoded stack elements to FQ.
     memory_offset, length = instruction.memory_offset_and_length(offset, size)
 
-    copy_rwc_inc, rlc_acc = instruction.copy_lookup(
-        instruction.curr.call_id,
-        CopyDataTypeTag.Memory,
-        instruction.curr.call_id,
-        CopyDataTypeTag.RlcAcc,
-        memory_offset,
-        memory_offset + length,
-        FQ.zero(),
-        length,
-        instruction.curr.rw_counter + instruction.rw_counter_offset,
-    )
-    keccak256_rlc_acc = instruction.keccak_lookup(length, rlc_acc)
+    if instruction.is_zero(length) == FQ.zero():
+        copy_rwc_inc, rlc_acc = instruction.copy_lookup(
+            instruction.curr.call_id,
+            CopyDataTypeTag.Memory,
+            instruction.curr.call_id,
+            CopyDataTypeTag.RlcAcc,
+            memory_offset,
+            memory_offset + length,
+            FQ.zero(),
+            length,
+            instruction.curr.rw_counter + instruction.rw_counter_offset,
+        )
+    else:
+        copy_rwc_inc, rlc_acc = FQ.zero(), FQ.zero()
 
+    keccak256_rlc_acc = instruction.keccak_lookup(length, rlc_acc)
     instruction.constrain_equal(
         keccak256_rlc_acc,
         sha3_value.expr(),
