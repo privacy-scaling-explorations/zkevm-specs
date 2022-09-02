@@ -122,8 +122,9 @@ MPT circuit supports the following proofs:
  - Storage modification
  - Nonce modification
  - Balance modification
- - Account delete
- - Non existing account
+ - Codehash proof
+ - Account delete modification
+ - Non existing account proof
 
 There is a struct `ProofTypeCols` that is to be used to specify the type of a proof:
 ```
@@ -131,10 +132,21 @@ struct ProofTypeCols {
     is_storage_mod: Column<Advice>,
     is_nonce_mod: Column<Advice>,
     is_balance_mod: Column<Advice>,
+    is_codehash_proof: Column<Advice>,
     is_account_delete_mod: Column<Advice>,
     is_non_existing_account_proof: Column<Advice>,
 }
 ```
+
+The lookup for nonce modification would thus look like:
+
+```
+| Address | is_storage_mod | is_nonce_mod | is_balance_mod | is_codehash_proof | is_account_delete_mod | is_non_existing_account_proof | Key | ValuePrev | Value | RootPrev | Root |
+| - | - | - | - | - | - | - |
+| $addr | 0 | 1 | 0 | 0 | 0 | 0 | 0 | $noncePrev | $nonceCur | $rootPrev | $root |
+```
+
+For `is_account_delete_mod` and `is_non_existing_account_proof` we use 0 for `ValuePrev` and `Value`. Note that there is no `is_account_create_proof` because we can create the account implicitly by `is_nonce_mod` or `is_balance_mod` (and in this case we do not need to check that the account previously did no exist, while for `is_account_delete_mod` the MPT circuit checks whether there really is not an account with the specified address anymore).
 
 The columns in the struct falls into selectors category (as opposed to `MainCols` columns).
 `SelectorsChip` ensures there is exactly one type of proof selected.

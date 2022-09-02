@@ -262,15 +262,18 @@ Range lookups for extension node rows are in `extension_node_key.rs`.
 ## Branch hash in parent
 
 A branch occupies 19 rows:
+```
 BRANCH.IS_INIT
 BRANCH.IS_CHILD 0
 ...
 BRANCH.IS_CHILD 15
 BRANCH.IS_EXTENSION_NODE_S
 BRANCH.IS_EXTENSION_NODE_C
+```
 
 Example:
 
+```
 [1 0 1 0 248 241 0 248 241 0 1 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]
 [0 0 128 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 128 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1]
 [0 160 164 92 78 34 81 137 173 236 78 208 145 118 128 60 46 5 176 8 229 165 42 222 110 4 252 228 93 243 26 160 241 85 0 160 95 174 59 239 229 74 221 53 227 115 207 137 94 29 119 126 56 209 55 198 212 179 38 213 219 36 111 62 46 43 176 168 1]
@@ -290,6 +293,7 @@ Example:
 [0 0 128 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 128 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1]
 [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 16]
 [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 17]
+```
 
 The constraints in this file check whether the RLC of the whole branch is in its parent node
 at the proper position. The RLC is computed over the first 17 rows (the last 2 rows are reserved
@@ -338,15 +342,18 @@ Instead of checking `hash(branch) = parent_branch_modified_node`, we check wheth
 ## Branch init
 
 A branch occupies 19 rows:
+```
 BRANCH.IS_INIT
 BRANCH.IS_CHILD 0
 ...
 BRANCH.IS_CHILD 15
 BRANCH.IS_EXTENSION_NODE_S
 BRANCH.IS_EXTENSION_NODE_C
+```
 
 Example:
 
+```
 [1 0 1 0 248 241 0 248 241 0 1 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]
 [0 0 128 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 128 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1]
 [0 160 164 92 78 34 81 137 173 236 78 208 145 118 128 60 46 5 176 8 229 165 42 222 110 4 252 228 93 243 26 160 241 85 0 160 95 174 59 239 229 74 221 53 227 115 207 137 94 29 119 126 56 209 55 198 212 179 38 213 219 36 111 62 46 43 176 168 1]
@@ -366,6 +373,7 @@ Example:
 [0 0 128 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 128 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1]
 [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 16]
 [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 17]
+```
 
 The constraints in `branch_init.rs` check whether the RLC of the branch init row (first branch row)
 is computed correctly.
@@ -410,8 +418,154 @@ The RLC of the init branch comprises 1, 2, or 3 bytes. This gate ensures the RLC
 is computed properly in each of the three cases. It also ensures that the values
 that specify the case are boolean.
 
-
 ### Range lookups
 
 Range lookups ensure that the values in the used columns are all bytes (between 0 - 255).
 Note: range lookups for extension node rows are in `extension_node_key.rs`.
+
+## Branch key
+
+The constraints in this `branch_key.rs` checks whether the key RLC is being properly
+computed using `modified_node`. Note that `modified_node` presents the branch node
+to be modified and is one of the nibbles of a key.
+
+Let us have the following scenario:
+
+```
+Branch1:
+  node1_0
+  node1_1     <- modified_node
+  ...
+  node1_15
+Branch2
+  node2_0
+  ...
+  node2_7    <- modified_node
+  ...
+  node2_15
+Branch3
+  node3_0
+  ...
+  node3_5    <- modified_node
+  ...
+  node3_15
+Branch4
+  node4_0
+  ...
+  node4_11    <- modified_node
+  ...
+  node4_15
+Leaf1
+```
+
+We have four branches and finally a leaf in the fourth branch. The modified nodes are: `1, 7, 5, 11`.
+The modified nodes occupy two bytes, the remaining 30 bytes are stored in `Leaf1`:
+`b_0, ..., b_29`.
+
+The key at which the change occurs is thus: `1 * 16 + 7, 5 * 16 + 11, b_0, ..., b_29`.
+The RLC of the key is: `(1 * 16 + 7) + (5 * 16 + 11) * r + b_0 * r^2 + b_29 * r^31`.
+
+In each branch we check whether the intermediate RLC is computed correctly. The intermediate
+values are stored in `accumulators.key`. There is always the actual RLC value and the multiplied
+that is to be used when adding the next summand: `accumulators.key.rlc, accumulators.key.mult`.
+
+For example, in `Branch1` we check whether the intermediate RLC is `1 * 16`.
+In `Branch2`, we check whether the intermediate RLC is `rlc_prev_branch_init_row + 7`.
+In `Branch3`, we check whether the intermediate RLC is `rlc_prev_branch_init_row + 5 * 16 * r`.
+In `Branch4`, we check whether the intermediate RLC is `rlc_prev_branch_init_row + 11 * r`.
+
+There are auxiliary columns `sel1` and `sel2` which specify whether we are in branch where
+the nibble has to be multiplied by 16 or by 1. `sel1 = 1` means multiplying by 16,
+`sel2 = 1` means multiplying by 1.
+
+### Branch key RLC
+
+#### Key RLC sel1 not first level
+
+When we are not in the first level and when sel1, the intermediate key RLC needs to be
+computed by adding `modified_node * 16 * mult_prev` to the previous intermediate key RLC.
+
+#### Key RLC sel2 not first level
+
+When we are not in the first level and when sel2, the intermediate key RLC needs to be
+computed by adding `modified_node * mult_prev` to the previous intermediate key RLC.
+
+#### Key RLC sel1 not first level mult
+When we are not in the first level and when sel1, the intermediate key RLC mult needs to
+stay the same - `modified_node` in the next branch will be multiplied by the same mult
+when computing the intermediate key RLC.
+
+#### Key RLC sel2 not first level mult
+
+When we are not in the first level and when sel1, the intermediate key RLC mult needs to
+be multiplied by `r` - `modified_node` in the next branch will be multiplied
+by `mult * r`.
+
+#### Account address RLC first level
+
+In the first level, address RLC is simply `modified_node * 16`.
+
+#### Account address RLC mult first level
+
+In the first level, address RLC mult is simply 1.
+
+#### Storage key RLC first level
+
+In the first level, storage key RLC is simply `modified_node * 16`.
+
+#### Storage key RLC first level mult
+
+In the first level, storage key RLC mult is simply 1.
+
+#### sel1, sel2
+
+Selectors `sel1` and `sel2` need to be boolean and `sel1 + sel2 = 1`.
+
+#### Account first level sel1 (regular branch)
+
+`sel1` in the first level is 1.
+
+#### Account first level sel1 = 1 (extension node even key)
+
+`sel1/sel2` present with what multiplier (16 or 1) is to be multiplied
+the `modified_node` in a branch, so when we have an extension node as a parent of
+a branch, we need to take account the nibbles of the extension node.
+
+If extension node, `sel1` and `sel2` in the first level depend on the extension key
+(whether it is even or odd). If key is even, the constraints stay the same. If key
+is odd, the constraints get turned around. Note that even/odd
+presents the number of key nibbles (what we actually need here) and
+not key byte length (how many bytes key occupies in RLP).
+
+####  Account first level sel1 = 0 (extension node odd key)
+
+`sel1/sel2` get turned around when odd number of nibbles. 
+
+#### Storage first level sel1 = 1 (regular branch)
+
+Similarly as for the account first level above.
+
+#### Storage first level sel1 = 1 (extension node even key)
+
+Similarly as for the account first level above (extension node even key).
+               
+#### Storage first level sel1 = 0 (extension node odd key)
+
+Similarly as for the account first level above (extension node odd key).
+
+#### sel1 0->1->0->...
+
+`sel1` alernates between 0 and 1 for regular branches.
+Note that `sel2` alternates implicitly because of `sel1 + sel2 = 1`.
+
+#### sel1 0->1->0->... (extension node even key)
+
+`sel1` alernates between 0 and 1 for extension nodes with even number of nibbles.
+
+####  sel1 stays the same (extension node odd key)
+
+`sel1` stays the same for extension nodes with odd number of nibbles.
+
+
+
+             
