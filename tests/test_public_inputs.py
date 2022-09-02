@@ -68,7 +68,7 @@ def rand_block() -> Block:
         parent_hash=rand_u256(),
         uncle_hash=rand_u256(),
         coinbase=rand_u160(),
-        root=rand_u256(),
+        state_root=rand_u256(),
         tx_hash=rand_u256(),
         receipt_hash=rand_u256(),
         bloom=randbytes(256),
@@ -100,12 +100,12 @@ def rand_tx(calldata_len: int) -> Transaction:
 def rand_public_data(txs_len: int, MAX_CALLDATA_BYTES: int) -> PublicData:
     chain_id = U64(randrange(1, 128))
     block = rand_block()
-    block_prev_root = rand_u256()
+    state_root_prev = rand_u256()
     block_hashes = [rand_u256() for _ in range(256)]
     txs = []
     for i in range(txs_len):
         txs.append(rand_tx(randrange(0, MAX_CALLDATA_BYTES // txs_len)))
-    return PublicData(chain_id, block, block_prev_root, block_hashes, txs)
+    return PublicData(chain_id, block, state_root_prev, block_hashes, txs)
 
 
 def test_basic():
