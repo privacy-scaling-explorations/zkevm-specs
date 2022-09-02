@@ -12,7 +12,7 @@ The gas cost of `RETURNDATACOPY` opcode consists of two parts:
 
 ### EVM behaviour
 
-The `RETURNDATACOPY` opcode Copy output data from the previous call to memory.
+The `RETURNDATACOPY` opcode copies output data from the previous call to memory.
 
 ### Circuit behaviour
 
@@ -48,7 +48,7 @@ The `RETURNDATACOPY` opcode Copy output data from the previous call to memory.
 
 1. stack overflow: stack is full, stack pointer = 0
 2. out of gas: remaining gas is not enough
-3. copy overflos: data_offset + size > return_data_size
+3. copy overflow: data_offset + size > return_data_size
 
 ## Code
 
