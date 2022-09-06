@@ -49,6 +49,8 @@ from .table import (
 )
 from .opcode import get_push_size, Opcode
 
+POW2 = 2**256
+
 
 class Block:
     coinbase: U160
@@ -722,24 +724,23 @@ class ExpCircuit:
         return self
 
     def _exp_by_squaring(self, base: int, exponent: int, steps: List[Tuple[int, int, int]]):
+        # we assume that base and exponent are both < 2**256
         if exponent == 0:
             return 1
-        elif exponent == 1:
+        if exponent == 1:
             return base
+
+        exp1 = self._exp_by_squaring(base, exponent // 2, steps)
+        exp2 = (exp1 * exp1) % POW2
+        steps.append((exp1, exp1, exp2))
+        if exponent % 2 == 0:
+            # exponent is even
+            return exp2
         else:
-            pow2 = 2**256
-            base2 = (base * base) % pow2
-            if exponent % 2 == 0:
-                # exponent is even
-                steps.append((base, base, base2))
-                return self._exp_by_squaring(base2, exponent // 2, steps)
-            else:
-                # exponent is odd
-                steps.append((base, base, base2))
-                exp1 = self._exp_by_squaring(base2, (exponent - 1) // 2, steps)
-                exp = (base * exp1) % pow2
-                steps.append((exp1, base, exp))
-                return exp
+            # exponent is odd
+            exp = (base * exp2) % POW2
+            steps.append((exp2, base, exp))
+            return exp
 
     def _append_steps(
         self,

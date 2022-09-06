@@ -21,13 +21,6 @@ def verify_step(cs: ConstraintSystem, rows: List[ExpCircuitRow]):
         # the first multiplicand in the "cur" row `a`
         cs.constrain_equal(rows[0].a, rows[1].d)
 
-    # for the last row, we have: base * base == base^2
-    with cs.condition(rows[0].q_step * rows[0].is_last) as cs:
-        # a == base
-        cs.constrain_equal(rows[0].base, rows[0].a)
-        # b == base
-        cs.constrain_equal(rows[0].base, rows[0].b)
-
     # for every step
     with cs.condition(rows[0].q_step) as cs:
         # multiplication is assigned correctly
@@ -65,6 +58,8 @@ def verify_step(cs: ConstraintSystem, rows: List[ExpCircuitRow]):
         cs.constrain_equal(next_lo, cur_lo - 1)
         # hi::next == hi::cur
         cs.constrain_equal(next_hi, cur_hi)
+        # b == base
+        cs.constrain_equal(rows[0].base, rows[0].b)
 
     # for all rows (except the last), where remainder == 0 (intermediate exponent -> even)
     with cs.condition(rows[0].q_step * (1 - rows[0].is_last) * (1 - rows[0].remainder)) as cs:
@@ -73,10 +68,17 @@ def verify_step(cs: ConstraintSystem, rows: List[ExpCircuitRow]):
         next_lo, next_hi = word_to_lo_hi(rows[1].intermediate_exponent)
         cs.constrain_equal(next_lo * 2, cur_lo)
         cs.constrain_equal(next_hi * 2, cur_hi)
+        # a == b
+        cs.constrain_equal(rows[0].a, rows[0].b)
 
-    # for the last step, intermediate exponent == 2
+    # for the last step
     with cs.condition(rows[0].q_step * rows[0].is_last) as cs:
+        # intermediate exponent == 2
         cs.constrain_equal(rows[0].intermediate_exponent.expr(), FQ(2))
+        # a == base
+        cs.constrain_equal(rows[0].base, rows[0].a)
+        # b == base
+        cs.constrain_equal(rows[0].base, rows[0].b)
 
 
 def verify_exp_circuit(exp_circuit: ExpCircuit):
