@@ -18,7 +18,7 @@ from zkevm_specs.util import rand_fq, RLC
 
 BYTECODE = Bytecode().push1(0x40)
 
-TESTING_DATA_IS_ROOT = (Transaction(), BYTECODE)
+TESTING_DATA_IS_ROOT = ((Transaction(), BYTECODE),)
 
 
 @pytest.mark.parametrize("tx, bytecode", TESTING_DATA_IS_ROOT)
