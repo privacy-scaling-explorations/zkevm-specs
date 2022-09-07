@@ -47,6 +47,9 @@ class ConstraintSystem:
     def is_zero(self, value: Expression) -> FQ:
         return FQ(value.expr() == 0)
 
+    def is_equal(self, lhs: Expression, rhs: Expression) -> FQ:
+        return self.is_zero(lhs.expr() - rhs.expr())
+
     def range_check(self, value: Expression, n_bytes: int) -> bytes:
         assert n_bytes <= MAX_N_BYTES, "Too many bytes to composite an integer in field"
         try:

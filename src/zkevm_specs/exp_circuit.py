@@ -71,14 +71,22 @@ def verify_step(cs: ConstraintSystem, rows: List[ExpCircuitRow]):
         # a == b
         cs.constrain_equal(rows[0].a, rows[0].b)
 
-    # for the last step
-    with cs.condition(rows[0].q_step * rows[0].is_last) as cs:
-        # intermediate exponent == 2
-        cs.constrain_equal(rows[0].intermediate_exponent.expr(), FQ(2))
-        # a == base
-        cs.constrain_equal(rows[0].base, rows[0].a)
-        # b == base
-        cs.constrain_equal(rows[0].base, rows[0].b)
+    # if idx remains the same, we have not yet reached the last step. Ignore padding rows.
+    with cs.condition(1 - rows[0].is_pad) as cs:
+        if cs.is_equal(rows[0].idx, rows[1].idx) == FQ.one():
+            cs.constrain_zero(rows[0].is_last)
+        # if idx has changed
+        if cs.is_equal(rows[0].idx, rows[1].idx) == FQ.zero():
+            # it MUST have incremented.
+            cs.constrain_equal(rows[0].idx + 1, rows[1].idx)
+            # this MUST be the last step of this EXP trace.
+            cs.constrain_equal(rows[0].is_last, FQ.one())
+            # intermediate exponent == 2
+            cs.constrain_equal(rows[0].intermediate_exponent.expr(), FQ(2))
+            # a == base
+            cs.constrain_equal(rows[0].base, rows[0].a)
+            # b == base
+            cs.constrain_equal(rows[0].base, rows[0].b)
 
 
 def verify_exp_circuit(exp_circuit: ExpCircuit):

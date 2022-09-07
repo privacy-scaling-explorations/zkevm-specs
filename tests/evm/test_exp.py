@@ -66,7 +66,7 @@ def test_exp(base: int, exponent: int):
         .stack_write(CALL_ID, 1023, exponentiation_rlc)
     )
 
-    exp_circuit = ExpCircuit().add_event(base, exponent, randomness)
+    exp_circuit = ExpCircuit().add_event(base, exponent, randomness).append_padding_rows()
 
     tables = Tables(
         block_table=set(Block().table_assignments(randomness)),
