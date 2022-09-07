@@ -16,17 +16,13 @@ from zkevm_specs.evm import (
 )
 from zkevm_specs.util import rand_fq, RLC
 
-BYTECODE_ROOT = Bytecode().push1(0x40)
-# BYTECODE_END_WITH_STOP = Bytecode().push(0, n_bytes=1).stop()
+BYTECODE = Bytecode().push1(0x40)
 
-TESTING_DATA_IS_ROOT = (
-    (Transaction(), BYTECODE_ROOT),
-    # (Transaction(), BYTECODE_END_WITH_STOP),
-)
+TESTING_DATA_IS_ROOT = (Transaction(), BYTECODE)
 
 
 @pytest.mark.parametrize("tx, bytecode", TESTING_DATA_IS_ROOT)
-def test_oog_constant_is_root(tx: Transaction, bytecode: Bytecode):
+def test_oog_constant_root(tx: Transaction, bytecode: Bytecode):
     randomness = rand_fq()
 
     block = Block()
@@ -88,24 +84,22 @@ CallContext = namedtuple(
         "memory_size",
         "reversible_write_counter",
     ],
-    defaults=[True, False, 232, 1023, 0, 0, 0],
+    defaults=[True, False, 232, 1023, 10, 0, 0],
 )
 
-TESTING_DATA_NOT_ROOT = (
-    # (CallContext(), BYTECODE_END_WITHOUT_STOP),
-    # (CallContext(), BYTECODE_END_WITH_STOP),
-)
+TESTING_DATA_NOT_ROOT = ((CallContext(), BYTECODE),)
 
 
 @pytest.mark.parametrize("caller_ctx, callee_bytecode", TESTING_DATA_NOT_ROOT)
-def test_stop_not_root(caller_ctx: CallContext, callee_bytecode: Bytecode):
+def test_oog_constant_not_root(caller_ctx: CallContext, callee_bytecode: Bytecode):
     randomness = rand_fq()
 
     caller_bytecode = Bytecode().call(0, 0xFF, 0, 0, 0, 0, 0).stop()
     caller_bytecode_hash = RLC(caller_bytecode.hash(), randomness)
     callee_bytecode_hash = RLC(callee_bytecode.hash(), randomness)
-    callee_gas_left = 400
-    callee_reversible_write_counter = 2
+    # gas is insufficient
+    callee_gas_left = 2
+    callee_reversible_write_counter = 0
 
     tables = Tables(
         block_table=set(Block().table_assignments(randomness)),
@@ -119,8 +113,8 @@ def test_stop_not_root(caller_ctx: CallContext, callee_bytecode: Bytecode):
         rw_table=set(
             # fmt: off
             RWDictionary(69)
-            .call_context_read(24, CallContextFieldTag.IsSuccess, 1)
-            .call_context_read(24, CallContextFieldTag.CallerId, 1)
+            .call_context_read(2, CallContextFieldTag.IsSuccess, 0)
+            .call_context_read(2, CallContextFieldTag.CallerId, 1)
             .call_context_read(1, CallContextFieldTag.IsRoot, caller_ctx.is_root)
             .call_context_read(1, CallContextFieldTag.IsCreate, caller_ctx.is_create)
             .call_context_read(1, CallContextFieldTag.CodeHash, caller_bytecode_hash)
@@ -129,7 +123,7 @@ def test_stop_not_root(caller_ctx: CallContext, callee_bytecode: Bytecode):
             .call_context_read(1, CallContextFieldTag.GasLeft, caller_ctx.gas_left)
             .call_context_read(1, CallContextFieldTag.MemorySize, caller_ctx.memory_size)
             .call_context_read(1, CallContextFieldTag.ReversibleWriteCounter, caller_ctx.reversible_write_counter)
-            .call_context_write(1, CallContextFieldTag.LastCalleeId, 24)
+            .call_context_write(1, CallContextFieldTag.LastCalleeId, 2)
             .call_context_write(1, CallContextFieldTag.LastCalleeReturnDataOffset, 0)
             .call_context_write(1, CallContextFieldTag.LastCalleeReturnDataLength, 0)
             .rws
@@ -142,9 +136,9 @@ def test_stop_not_root(caller_ctx: CallContext, callee_bytecode: Bytecode):
         tables=tables,
         steps=[
             StepState(
-                execution_state=ExecutionState.STOP,
+                execution_state=ExecutionState.ErrorOutOfGasConstant,
                 rw_counter=69,
-                call_id=24,
+                call_id=2,
                 is_root=False,
                 is_create=False,
                 code_hash=callee_bytecode_hash,
@@ -152,6 +146,7 @@ def test_stop_not_root(caller_ctx: CallContext, callee_bytecode: Bytecode):
                 stack_pointer=1023,
                 gas_left=callee_gas_left,
                 reversible_write_counter=callee_reversible_write_counter,
+                aux_data=Opcode.PUSH1,
             ),
             StepState(
                 execution_state=ExecutionState.STOP,
@@ -162,7 +157,7 @@ def test_stop_not_root(caller_ctx: CallContext, callee_bytecode: Bytecode):
                 code_hash=caller_bytecode_hash,
                 program_counter=caller_ctx.program_counter,
                 stack_pointer=caller_ctx.stack_pointer,
-                gas_left=caller_ctx.gas_left + callee_gas_left,
+                gas_left=caller_ctx.gas_left,
                 memory_size=caller_ctx.memory_size,
                 reversible_write_counter=caller_ctx.reversible_write_counter
                 + callee_reversible_write_counter,
