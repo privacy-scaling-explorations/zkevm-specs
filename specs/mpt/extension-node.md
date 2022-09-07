@@ -190,12 +190,11 @@ however, sometimes extension node can be replaced by a shorter extension node
 Same as above but for the multiplier that is to be used for the first nibble 
 of the extension node.
 
-#### Long even sel1 extension node RLC
+#### Long even sel1 extension node key RLC
 
 We check the extension node intermediate RLC for the case when we have
-long even nibbles (meaning there is an even number of nibbles > 1)
-and sel1 (branch modified_node needs to be multiplied by 16).
-
+long even nibbles (meaning there is an even number of nibbles and this number is bigger than 1)
+and sel1 (branch `modified_node` needs to be multiplied by 16).
 
 #### Long even sel1 extension node > branch key RLC
 
@@ -225,3 +224,159 @@ We need to check that the multiplier stored in a branch is:
 While we can use the expression `mult_prev * mult_diff` in the constraints in this file,
 we need to have `key_rlc_mult_branch` properly stored because it is accessed from the
 child nodes when computing the key RLC in child nodes.
+
+#### Long odd sel2 first_nibble second_nibble
+
+In some cases we need to store some helper values in `BRANCH.IS_EXTENSION_NODE_C` row.
+
+For example in `long odd sel2` case. Long odd means there are odd number of nibbles and this
+number is bigger than 1. `sel2` means there are odd number of nibbles above the branch. As long odd
+means there are odd number of nibbles in the extension node, there are even
+number of nibbles above the extension node:
+`nibbles_above_branch = nibbles_above_ext_node + ext_node_nibbles`.
+
+The example could be:
+[228, 130, 16 + 3, 9*16 + 5, 0, ...]
+
+In this example, we have three nibbles: `[3, 9, 5]`. Because the number of nibbles
+is odd, we have the first nibble already at position `s_main.bytes[0]` (16 is added to the
+first nibble in `hexToCompact` function). As opposed, in the example below where we have
+two nibbles, we have 0 at `s_main.bytes[0]`:
+[228,130,0,149,160,114,253,150,133,18,192,156,19,241,162,51,210,24,1,151,16,48,7,177,42,60,49,34,230,254,242,79,132,165,90,75,249]
+
+To get the first nibble we need to compute `s_main.bytes[0] - 16`.
+
+The additional helper values are needed in this case because
+we have odd number of nibbles in the extension node.
+When we have an even number of nibbles this is not needed, because all we need
+is `n1 * 16 + n2`, `n3 * 16 + n4`, ... and we already have nibbles stored in that format
+in the extension node.
+When odd number, we have `n1 + 16`, `n2 * 16 + n3`, `n4 * 16 + n5`,...,
+but we need `n1 * 16 + n2`, `n3 * 16 + n4`,... (actually we need this only if there
+are also even number of nibbles above the extension node as is the case in long odd sel2).
+
+To get `n1 * 16 + n2`, `n3 * 16 + n4`,...
+from
+`n1 + 16`, `n2 * 16 + n3`, `n4 * 16 + n5`,...
+we store the nibbles `n3`, `n5`,... in
+`BRANCH.IS_EXTENSION_NODE_C` row.
+
+`BRANCH.IS_EXTENSION_NODE_S` and `BRANCH.IS_EXTENSION_NODE_C` rows of our example are thus:
+[228, 130, 16 + 3, 9*16 + 5, 0, ...]
+[5, 0, ...]
+
+We name the values in `BRANCH.IS_EXTENSION_NODE_C` as `second_nibbles`.
+Using the knowledge of `second_nibble` of the pair, we can compute `first_nibble`.
+Having a list of `first_nibble` and `second_nibble`, we can compute the key RLC.
+
+However, we need to check that the list of `second_nibbles` is correct. For example having
+`first_nibble = 9 = ((9*16 + 5) - 5) / 16`
+we check:
+`first_nibble * 16 + 5 = s_main.bytes[1]`.
+
+#### Long odd sel2 extension node key RLC
+
+We check the extension node intermediate RLC for the case when we have
+long odd nibbles (meaning there is an odd number of nibbles and this number is bigger than 1)
+and sel2 (branch `modified_node` needs to be multiplied by 1).
+
+Note that for the computation of the intermediate RLC we need `first_nibbles` and
+`second_nibbles` mentioned in the constraint above.
+
+#### Long odd sel2 extension node > branch key RLC
+
+Once we have extension node key RLC computed we need to take into account also the nibble
+corresponding to the branch (this nibble is `modified_node`):
+```
+key_rlc_branch = key_rlc_ext_node + modified_node * mult_prev * mult_diff * 1
+```
+
+#### Long odd sel2 extension node > branch key RLC mult
+
+We need to check that the multiplier stored in a branch is:
+`key_rlc_mult_branch = mult_prev * mult_diff * r_table[0]`.
+
+Note that compared to `Long even sel1` case, we have an additional factor
+`r` here. This is because we have even number of nibbles above the extension node
+and then we have odd number of nibbles in the extension node: this means the multiplier
+for `n1` (which is stored in `s_main.bytes[0]`) will need a multiplier  `key_rlc_mult_branch * r`.
+For `n3` we will need a multiplier  `key_rlc_mult_branch * r^2`,...
+The difference with `Long even sel1` is that here we have an additional nibble in
+`s_main.bytes[0]` which requires an increased multiplier.
+
+#### Short sel1 extension node key RLC
+
+Short means there is one nibble in the extension node
+sel1 means there are even number of nibbles above the branch,
+so there are odd number of nibbles above the extension node in this case:
+`nibbles_above_branch = nibbles_above_ext_node + 1`.
+
+We check the extension node intermediate RLC for the case when we have
+one nibble and sel1 (branch `modified_node` needs to be multiplied by 16).
+
+#### Short sel1 extension node > branch key RLC
+
+Once we have extension node key RLC computed we need to take into account also the nibble
+corresponding to the branch (this nibble is `modified_node`):
+`key_rlc_branch = key_rlc_ext_node + modified_node * mult_prev * mult_diff * 16`.
+
+Note: `mult_diff = r` because we only have one nibble in the extension node.
+
+#### Short sel1 extension node > branch key RLC mult
+
+We need to check that the multiplier stored in a branch is:
+`key_rlc_mult_branch = mult_prev * r_table[0]`.
+
+#### Long even sel2 first_nibble second_nibble
+
+`Long even sel2` case is similar to `Long odd sel1` case above - similar in a way
+that we need helper values for `first_nibbles`.
+
+Here we have an even number of nibbles in the extension node and this number is bigger than 1.
+And `sel2` means branch `modified_node` needs to be multiplied by 1, which is the same as
+saying there are odd number of nibbles above the branch.
+It holds: `nibbles_above_branch = nibbles_above_ext_node + ext_node_nibbles`.
+That means we have an odd number of nibbles above extension node.
+
+Example:
+`[228, 130, 0, 9*16 + 5, 0, ...]` // we only have two nibbles here (`even`)
+`[5, 0, ...]`
+
+We cannot use directly `n1 * 16 + n2` (`9*16 + 5` in the example) when computing the key RLC
+because there is an odd number of nibbles above the extension node.
+So we first need to compute: `key_rlc_prev_branch + n1 * key_rlc_mult_prev_branch`.
+Which is the same as:
+`key_rlc_prev_branch + (s_main.bytes[1] - second_nibble)/16 * key_rlc_mult_prev_branch`.
+
+We then continue adding the rest of the nibbles.
+In our example there is only one more nibble, so the extension node key RLC is:
+`key_rlc_prev_branch + (s_main.bytes[1] - second_nibble)/16 * key_rlc_mult_prev_branch + first_nibble * key_rlc_mult_prev_branch * r * 16`.
+Note that we added a factor `r` because we moved to a new pair of nibbles (a new byte).
+
+In this constraints we check whether the list of `second_nibbles` is correct.
+
+#### Long even sel2 extension node key RLC
+
+We check the extension node intermediate RLC for the case when we have
+long even nibbles (meaning there is an even number of nibbles and this number is bigger than 1)
+and `sel2` (branch `modified_node` needs to be multiplied by 1).
+
+Note that for the computation of the intermediate RLC we need `first_nibbles` and
+`second_nibbles` mentioned in the constraint above.
+
+#### Long even sel2 extension node > branch key RLC
+
+Once we have extension node key RLC computed we need to take into account also the nibble
+corresponding to the branch (this nibble is `modified_node`):
+```
+key_rlc_branch = key_rlc_ext_node + modified_node * key_rlc_mult_prev_branch * mult_diff * 1
+```
+
+#### Long even sel2 extension node > branch key RLC mult
+
+We need to check that the multiplier stored in a branch is:
+`key_rlc_mult_branch = key_rlc_mult_prev_branch * mult_diff * r_table[0]`.
+
+
+
+
