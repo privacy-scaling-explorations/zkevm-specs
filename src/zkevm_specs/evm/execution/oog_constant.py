@@ -2,10 +2,19 @@ from ...util import FQ
 from ..instruction import Instruction, Transition
 from ..table import CallContextFieldTag
 from ..execution_state import ExecutionState
+from ..opcode import Opcode
+from ...util import N_BYTES_GAS
 
 
 def oog_constant(instruction: Instruction):
-    # check gas left is less than gas required
+    # retrieve op code associated to oog constant error
+    opcode = instruction.curr.aux_data
+
+    # check gas left is less than const gas required
+    lt, _ = instruction.compare(
+        instruction.curr.gas_left, FQ(Opcode(opcode.expr().n).constant_gas_cost()), N_BYTES_GAS
+    )
+    instruction.constrain_equal(lt, FQ(1))
 
     # current call must be failed.
     is_success = instruction.call_context_lookup(CallContextFieldTag.IsSuccess)
@@ -16,7 +25,7 @@ def oog_constant(instruction: Instruction):
     instruction.constrain_equal(FQ(instruction.curr.is_root), is_to_end_tx)
 
     if instruction.curr.is_root:
-        # When a transaction ends with STOP, this call must not be persistent
+        # When a transaction ends with this error state, this call must not be persistent
         is_persistent = instruction.call_context_lookup(CallContextFieldTag.IsPersistent)
         instruction.constrain_equal(is_persistent, FQ(0))
 

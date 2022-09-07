@@ -12,10 +12,11 @@ from zkevm_specs.evm import (
     Transaction,
     Bytecode,
     RWDictionary,
+    Opcode,
 )
 from zkevm_specs.util import rand_fq, RLC
 
-BYTECODE_ROOT = Bytecode().push1(0x80).push1(0x40)
+BYTECODE_ROOT = Bytecode().push1(0x40)
 # BYTECODE_END_WITH_STOP = Bytecode().push(0, n_bytes=1).stop()
 
 TESTING_DATA_IS_ROOT = (
@@ -62,8 +63,9 @@ def test_oog_constant_is_root(tx: Transaction, bytecode: Bytecode):
                 code_hash=bytecode_hash,
                 program_counter=2,
                 stack_pointer=1023,
-                gas_left=5,
+                gas_left=2,
                 reversible_write_counter=2,
+                aux_data=Opcode.PUSH1,
             ),
             StepState(
                 execution_state=ExecutionState.EndTx,
