@@ -89,7 +89,7 @@ It then checks the new call `is_persistent` only if current `is_persistent` and 
 
 Finally it stores current call context by writting to `rw_table` and checks the new call context is setup correctly by reading to `rw_table`, then does step state transition to a initialized one and begin the execution.
 
-In the end of execution, the [terminating]() `ExecutionState` like `RETURN`, `REVERT` will copy the `return_data` to caller specified chunk.
+In the end of execution, the terminating `ExecutionState` like `RETURN`, `REVERT` will copy the `return_data` to caller specified chunk.
 
 ## Code
 
