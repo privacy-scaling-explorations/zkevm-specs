@@ -8,7 +8,7 @@ The `CALL` opcode transfer specified amount of ether to callee and creates a new
 
 1. `gas` - The amount of gas caller want to give to callee (capped by rule in EIP150)
 2. `callee_address` - The ether recipient whose code is to be executed (by taking the 20 LSB of popped word)
-3. `value` - The amount of ether to be transfered
+3. `value` - The amount of ether to be transferred
 4. `call_data_offset` - The offset of call_data chunk in caller's memory as call_data for callee
 5. `call_data_length` - The length of call_data chunk
 6. `return_data_offset` - The offset of return_data chunk in caller's memory, which will be set to return_data from callee after call
