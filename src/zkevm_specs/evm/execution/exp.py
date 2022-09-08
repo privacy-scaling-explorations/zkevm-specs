@@ -1,5 +1,5 @@
 from ..instruction import Instruction, Transition
-from zkevm_specs.util import FQ, GAS_COST_EXP_PER_BYTE
+from zkevm_specs.util import FQ, GAS_COST_EXP_PER_BYTE, RLC
 
 
 def exp(instruction: Instruction):
@@ -21,7 +21,29 @@ def exp(instruction: Instruction):
         instruction.constrain_equal(exponentiation_hi, base_hi)
     else:
         base_limbs = instruction.word_to_64s(base_rlc)
-        res_lo, res_hi = instruction.exp_lookup(base_limbs, (exponent_lo, exponent_hi))
+        if instruction.is_equal(exponent_rlc, FQ(2)) == FQ.one():
+            # lookup to enforce the is_first and is_last step
+            res_lo, res_hi = instruction.exp_lookup(
+                FQ.one(), FQ.one(), base_limbs, (exponent_lo, exponent_hi)
+            )
+        else:
+            # lookup to enforce the is_first step
+            res_lo, res_hi = instruction.exp_lookup(
+                FQ.one(), FQ.zero(), base_limbs, (exponent_lo, exponent_hi)
+            )
+            # lookup to enforce the is_last step
+            int_res_lo, int_res_hi = instruction.exp_lookup(
+                FQ.zero(), FQ.one(), base_limbs, (FQ(2), FQ.zero())
+            )
+            # intermediary result should be base^2
+            int_res = instruction.rlc_encode(
+                int_res_lo.n.to_bytes(16, "little") + int_res_hi.n.to_bytes(16, "little"),
+                n_bytes=32,
+            )
+            # constrain base * base + 0 == base^2
+            instruction.mul_add_words(base_rlc, base_rlc, RLC(0, n_bytes=32), int_res)
+
+        # constrain exponentiation result to what we looked up from the exp table.
         instruction.constrain_equal(res_lo, exponentiation_lo)
         instruction.constrain_equal(res_hi, exponentiation_hi)
 

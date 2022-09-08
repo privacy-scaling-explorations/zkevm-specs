@@ -717,33 +717,10 @@ class ExpCircuit:
         return self.rows + self.pad_rows
 
     def add_event(self, base: int, exponent: int, randomness: FQ):
-        idx = FQ.one() if not self.rows else self.rows[-1].idx + 1
         steps: List[Tuple[int, int, int]] = []
         exponentiation = self._exp_by_squaring(base, exponent, steps)
         steps.reverse()
-        self._append_steps(idx, base, exponent, exponentiation, steps, randomness)
-        return self
-
-    def append_padding_rows(self):
-        idx = FQ.one() if not self.rows else self.rows[-1].idx + 1
-        self.pad_rows.append(
-            ExpCircuitRow(
-                q_step=FQ.zero(),
-                idx=FQ(idx),
-                is_last=FQ.zero(),
-                is_pad=FQ.one(),
-                remainder=FQ.zero(),
-                quotient=RLC(0),
-                is_first=FQ.zero(),
-                base=RLC(0),
-                intermediate_exponent=RLC(0),
-                intermediate_exponentiation=RLC(0),
-                a=RLC(0),
-                b=RLC(0),
-                c=RLC(0),
-                d=RLC(0),
-            )
-        )
+        self._append_steps(base, exponent, exponentiation, steps, randomness)
         return self
 
     def _exp_by_squaring(self, base: int, exponent: int, steps: List[Tuple[int, int, int]]):
@@ -767,7 +744,6 @@ class ExpCircuit:
 
     def _append_steps(
         self,
-        idx: IntOrFQ,
         base: int,
         exponent: int,
         exponentiation: int,
@@ -782,7 +758,6 @@ class ExpCircuit:
             quotient, remainder = divmod(exponent, 2)
             exponent_rlc = RLC(exponent, randomness, n_bytes=32)
             self._append_step(
-                FQ(idx),
                 FQ(1 if i == 0 else 0),
                 FQ(1 if i == len(steps) - 1 else 0),
                 FQ(remainder),
@@ -804,7 +779,6 @@ class ExpCircuit:
 
     def _append_step(
         self,
-        idx: IntOrFQ,
         is_first: IntOrFQ,
         is_last: IntOrFQ,
         remainder: IntOrFQ,
@@ -820,12 +794,10 @@ class ExpCircuit:
         self.rows.append(
             ExpCircuitRow(
                 q_step=FQ.one(),
-                idx=FQ(idx),
-                is_last=FQ(is_last),
-                is_pad=FQ.zero(),
                 remainder=FQ(remainder),
                 quotient=quotient,
                 is_first=FQ(is_first),
+                is_last=FQ(is_last),
                 base=base,
                 intermediate_exponent=exponent,
                 intermediate_exponentiation=exponentiation,

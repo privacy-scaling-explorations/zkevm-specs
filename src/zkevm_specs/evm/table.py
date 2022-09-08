@@ -471,14 +471,12 @@ class KeccakTableRow(TableRow):
 @dataclass
 class ExpCircuitRow(TableRow):
     q_step: FQ
-    idx: FQ
-    is_last: FQ
-    is_pad: FQ
     # division of intermediate exponent by 2
     remainder: FQ
     quotient: RLC
     # columns from the exponentiation table
     is_first: FQ
+    is_last: FQ
     base: RLC
     intermediate_exponent: RLC
     intermediate_exponentiation: RLC
@@ -492,6 +490,7 @@ class ExpCircuitRow(TableRow):
 @dataclass(frozen=True)
 class ExpTableRow(TableRow):
     is_first: FQ
+    is_last: FQ
     base_limb0: FQ
     base_limb1: FQ
     base_limb2: FQ
@@ -575,6 +574,7 @@ class Tables:
             rows.append(
                 ExpTableRow(
                     is_first=row.is_first,
+                    is_last=row.is_last,
                     base_limb0=base_limbs[0],
                     base_limb1=base_limbs[1],
                     base_limb2=base_limbs[2],
@@ -702,11 +702,14 @@ class Tables:
 
     def exp_lookup(
         self,
+        is_first: Expression,
+        is_last: Expression,
         base_limbs: Tuple[Expression, ...],
         exponent: Tuple[Expression, Expression],
     ):
         query = {
-            "is_first": FQ.one(),
+            "is_first": is_first.expr(),
+            "is_last": is_last.expr(),
             "base_limb0": base_limbs[0].expr(),
             "base_limb1": base_limbs[1].expr(),
             "base_limb2": base_limbs[2].expr(),

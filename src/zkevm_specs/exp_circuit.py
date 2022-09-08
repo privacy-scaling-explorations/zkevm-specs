@@ -23,6 +23,9 @@ def verify_step(cs: ConstraintSystem, rows: List[ExpCircuitRow]):
 
     # for every step
     with cs.condition(rows[0].q_step) as cs:
+        # is_first and is_last are boolean values
+        cs.constrain_bool(rows[0].is_first)
+        cs.constrain_bool(rows[0].is_last)
         # multiplication is assigned correctly
         _overflow, carry_lo_hi, additional_constraints = mul_add_words(
             rows[0].a, rows[0].b, rows[0].c, rows[0].d
@@ -49,7 +52,7 @@ def verify_step(cs: ConstraintSystem, rows: List[ExpCircuitRow]):
         cs.constrain_equal(additional_constraints[0][0], additional_constraints[0][1])
         cs.constrain_equal(additional_constraints[1][0], additional_constraints[1][1])
 
-    # for all rows (except the last), where remainder == 1 (intermediate exponent -> odd)
+    # for all steps (except the last), where remainder == 1 (intermediate exponent -> odd)
     with cs.condition(rows[0].q_step * (1 - rows[0].is_last) * rows[0].remainder) as cs:
         # intermediate_exponent::next == intermediate_exponent::cur - 1
         cur_lo, cur_hi = word_to_lo_hi(rows[0].intermediate_exponent)
@@ -61,7 +64,7 @@ def verify_step(cs: ConstraintSystem, rows: List[ExpCircuitRow]):
         # b == base
         cs.constrain_equal(rows[0].base, rows[0].b)
 
-    # for all rows (except the last), where remainder == 0 (intermediate exponent -> even)
+    # for all steps (except the last), where remainder == 0 (intermediate exponent -> even)
     with cs.condition(rows[0].q_step * (1 - rows[0].is_last) * (1 - rows[0].remainder)) as cs:
         # intermediate_exponent::next == intermediate_exponent::cur / 2
         cur_lo, cur_hi = word_to_lo_hi(rows[0].intermediate_exponent)
@@ -71,22 +74,14 @@ def verify_step(cs: ConstraintSystem, rows: List[ExpCircuitRow]):
         # a == b
         cs.constrain_equal(rows[0].a, rows[0].b)
 
-    # if idx remains the same, we have not yet reached the last step. Ignore padding rows.
-    with cs.condition(1 - rows[0].is_pad) as cs:
-        if cs.is_equal(rows[0].idx, rows[1].idx) == FQ.one():
-            cs.constrain_zero(rows[0].is_last)
-        # if idx has changed
-        if cs.is_equal(rows[0].idx, rows[1].idx) == FQ.zero():
-            # it MUST have incremented.
-            cs.constrain_equal(rows[0].idx + 1, rows[1].idx)
-            # this MUST be the last step of this EXP trace.
-            cs.constrain_equal(rows[0].is_last, FQ.one())
-            # intermediate exponent == 2
-            cs.constrain_equal(rows[0].intermediate_exponent.expr(), FQ(2))
-            # a == base
-            cs.constrain_equal(rows[0].base, rows[0].a)
-            # b == base
-            cs.constrain_equal(rows[0].base, rows[0].b)
+    # for the last step
+    with cs.condition(rows[0].is_last) as cs:
+        # intermediate exponent == 2
+        cs.constrain_equal(rows[0].intermediate_exponent.expr(), FQ(2))
+        # a == base
+        cs.constrain_equal(rows[0].base, rows[0].a)
+        # b == base
+        cs.constrain_equal(rows[0].base, rows[0].b)
 
 
 def verify_exp_circuit(exp_circuit: ExpCircuit):

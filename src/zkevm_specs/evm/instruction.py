@@ -1062,8 +1062,10 @@ class Instruction:
 
     def exp_lookup(
         self,
+        is_first: Expression,
+        is_last: Expression,
         base_limbs: Tuple[Expression, ...],
         exponent_lo_hi: Tuple[Expression, Expression],
     ) -> Tuple[FQ, FQ]:
-        exp_table_row = self.tables.exp_lookup(base_limbs, exponent_lo_hi)
+        exp_table_row = self.tables.exp_lookup(is_first, is_last, base_limbs, exponent_lo_hi)
         return exp_table_row.exponentiation_lo, exp_table_row.exponentiation_hi
