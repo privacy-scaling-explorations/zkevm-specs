@@ -199,7 +199,7 @@ Provided by the MPT (Merkle Patricia Trie) circuit.
 The current MPT circuit design exposes one big table where different targets require different lookups as described below.
 From this table, the following columns contain values using the RLC encoding:
 - Address
-- FieldTag
+- ProofType
 - Key
 - ValuePrev
 - Value
@@ -208,12 +208,12 @@ From this table, the following columns contain values using the RLC encoding:
 
 The circuit can prove that updates to account nonces, balances, or storage slots are correct, or that an account's code hash is some particular value. Note that it is not possible to change the code hash for an account without deleting it and then recreating it.
 
-| Address | FieldTag | Key | ValuePrev | Value | RootPrev | Root |
+| Address | ProofType | Key | ValuePrev | Value | RootPrev | Root |
 | - | - | - | - | - | - | - |
-| $addr | Nonce | 0 | $noncePrev | $nonceCur | $rootPrev | $root |
-| $addr | Balance | 0 | $balancePrev | $balanceCur | $rootPrev | $root |
-| $addr | CodeHash | 0 |$codeHash | $codeHash | $rootPrev | $root |
-| $addr | Storage | $key | $valuePrev | $value | $rootPrev | $root |
+| $addr | IsNonceMod | 0 | $noncePrev | $nonceCur | $rootPrev | $root |
+| $addr | IsBalanceMod | 0 | $balancePrev | $balanceCur | $rootPrev | $root |
+| $addr | IsCodeHashProof | 0 |$codeHash | $codeHash | $rootPrev | $root |
+| $addr | IsStorageMod | $key | $valuePrev | $value | $rootPrev | $root |
 
 ## Keccak Table
 

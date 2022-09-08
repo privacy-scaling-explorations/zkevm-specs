@@ -299,6 +299,18 @@ class CopyDataTypeTag(IntEnum):
     # the Keccak table for the SHA3 of the input bytes.
     RlcAcc = auto()
 
+class MPTProofType(IntEnum):
+    """
+    Tag for MPT lookup.
+    """
+
+    IsStorageMod = auto()
+    IsNonceMod = auto()
+    IsBalanceMod = auto()
+    IsCodeHashProof = auto()
+    IsAccountDeleteMod = auto()
+    IsNonExistingAccountProof = auto()
+
 
 class WrongQueryKey(Exception):
     def __init__(self, table_name: str, diff: Set[str]) -> None:
@@ -380,7 +392,7 @@ class RWTableRow(TableRow):
 @dataclass(frozen=True)
 class MPTTableRow(TableRow):
     address: Expression
-    field_tag: Expression
+    proof_type: Expression
     storage_key: Expression
     root: Expression
     root_prev: Expression
