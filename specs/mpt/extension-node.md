@@ -377,6 +377,81 @@ key_rlc_branch = key_rlc_ext_node + modified_node * key_rlc_mult_prev_branch * m
 We need to check that the multiplier stored in a branch is:
 `key_rlc_mult_branch = key_rlc_mult_prev_branch * mult_diff * r_table[0]`.
 
+#### Long odd sel1 extension node key RLC
 
+`Long odd` means there is an odd number of nibbles and the number is bigger than 1.
+`sel1` means there is an even number of nibbles above the branch.
+Thus, there is an odd number of nibbles above the extension node.
+Because of an odd number of nibbles in the extension node, we have the first
+nibble `n1` stored in `s_main.bytes[0]` (actually `n1 + 16`). We multiply it with 
+`key_rlc_mult_prev_branch`. Further nibbles are already paired in `s_main.bytes[i]`
+for `i > 0` and we do not need information about `second_nibbles`.
 
+#### Long odd sel1 extension node > branch key RLC
 
+Once we have extension node key RLC computed we need to take into account also the nibble
+corresponding to the branch (this nibble is `modified_node`):
+```
+key_rlc_branch = key_rlc_ext_node + modified_node * key_rlc_mult_prev_branch * mult_diff * 16
+```
+
+#### Long odd sel1 extension node > branch key RLC mult
+
+We need to check that the multiplier stored in a branch is:
+`key_rlc_mult_branch = key_rlc_mult_prev_branch * mult_diff`.
+
+#### Short sel2 extension node key RLC
+
+`Short` means there is only one nibble in the extension node.
+`sel2` means there are odd number of nibbles above the branch. 
+That means there are even number of nibbles above the extension node.
+
+Because of `short`, we have the first (and only) nibble in `s_main.rlp2`.
+We add this nibble to the previous key RLC to obtain the extension node key RLC.
+
+#### Short sel2 extension node > branch key RLC
+
+Once we have extension node key RLC computed we need to take into account also the nibble
+corresponding to the branch (this nibble is `modified_node`):
+`key_rlc_branch = key_rlc_ext_node + modified_node * key_rlc_mult_prev_branch`.
+
+Note that there is no multiplication by power of `r` needed because `modified_node`
+nibble uses the same multiplier as the nibble in the extension node as the two
+of them form a byte in a key.
+
+#### Short sel2 branch extension node > branch key RLC mult
+
+We need to check that the multiplier stored in a branch is:
+`key_rlc_mult_branch = key_rlc_mult_prev_branch * r`.
+
+Note that we only need to multiply by `r`, because only one key byte is used
+in this extension node (one nibble in extension node + modified node nibble).
+
+#### s_main.bytes[i] = 0 for short
+
+We need to ensure `s_main.bytes` are all 0 when short - the only nibble is in `s_main.rlp2`.
+For long version, the constraints to have 0s after nibbles end in `s_main.bytes` are
+implemented using `key_len_lookup`.
+
+### Extension node key mult_diff
+
+It needs to be checked that `mult_diff` value corresponds to the number
+of the extension node nibbles. The information about the number of nibbles
+is encoded in `s_main.rlp2` - except in `short` case, but in this case we only
+have one nibble and we already know what value should have `mult_diff`.
+Thus, we check whether `(RMult, s_main.rlp2, mult_diff)` is in `fixed_table`.
+
+### Extension node second_nibble
+
+It needs to be checked that `second_nibbles` stored in `IS_EXTENSION_NODE_C` row
+are all between 0 and 15.
+
+### s_main.bytes[i] = 0 after last extension node nibble
+
+Note that for a short version (only one nibble), all
+`s_main.bytes` need to be 0 (the only nibble is in `s_main.rlp2`) - this is checked
+separately.
+
+### Range lookups
+
+Range lookups ensure that the values in columns are all bytes (0 - 255).
