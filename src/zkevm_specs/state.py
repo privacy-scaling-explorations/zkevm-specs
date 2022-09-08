@@ -129,7 +129,7 @@ class Tables:
     ) -> MPTTableRow:
         query = {
             "address": address,
-            "proof_type": FQ(proof_type),
+            "proof_type": proof_type,
             "storage_key": storage_key,
             "value": value,
             "value_prev": value_prev,
@@ -240,7 +240,7 @@ def check_storage(row: Row, row_prev: Row, row_next: Row, tables: Tables):
     if not all_keys_eq(row, row_next):
         tables.mpt_lookup(
             row.address(),
-            MPTProofType.IsStorageMod,
+            FQ(MPTProofType.IsStorageMod),
             row.storage_key(),
             row.value,
             row.committed_value,
@@ -271,7 +271,7 @@ def check_account(row: Row, row_prev: Row, row_next: Row, tables: Tables):
     get_addr = lambda row: row.address()
 
     field_tag = row.field_tag()
-    proof_type = None
+    proof_type = MPTProofType.IsNonceMod
     if field_tag == AccountFieldTag.Nonce:
         proof_type = MPTProofType.IsNonceMod
     elif field_tag == AccountFieldTag.Balance:
@@ -287,7 +287,7 @@ def check_account(row: Row, row_prev: Row, row_next: Row, tables: Tables):
     if not all_keys_eq(row, row_next):
         tables.mpt_lookup(
             get_addr(row),
-            proof_type,
+            FQ(proof_type),
             row.storage_key(),
             row.value,
             row.committed_value,
@@ -827,7 +827,7 @@ def _mock_mpt_updates(ops: List[Operation], randomness: FQ) -> Dict[Tuple[FQ, FQ
             continue
 
         field_tag = op.field_tag
-        proof_type = None
+        proof_type = MPTProofType.IsStorageMod
         if field_tag == 0:
             proof_type = MPTProofType.IsStorageMod
         elif field_tag == AccountFieldTag.Nonce:
