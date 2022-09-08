@@ -716,11 +716,11 @@ class ExpCircuit:
     def table(self) -> Sequence[ExpCircuitRow]:
         return self.rows + self.pad_rows
 
-    def add_event(self, base: int, exponent: int, randomness: FQ):
+    def add_event(self, base: int, exponent: int, randomness: FQ, identifier: IntOrFQ):
         steps: List[Tuple[int, int, int]] = []
         exponentiation = self._exp_by_squaring(base, exponent, steps)
         steps.reverse()
-        self._append_steps(base, exponent, exponentiation, steps, randomness)
+        self._append_steps(base, exponent, exponentiation, steps, randomness, identifier)
         return self
 
     def _exp_by_squaring(self, base: int, exponent: int, steps: List[Tuple[int, int, int]]):
@@ -749,6 +749,7 @@ class ExpCircuit:
         exponentiation: int,
         steps: List[Tuple[int, int, int]],
         randomness: FQ,
+        identifier: IntOrFQ,
     ):
         base_rlc = RLC(base, randomness, n_bytes=32)
         for i, step in enumerate(steps):
@@ -758,6 +759,7 @@ class ExpCircuit:
             quotient, remainder = divmod(exponent, 2)
             exponent_rlc = RLC(exponent, randomness, n_bytes=32)
             self._append_step(
+                identifier,
                 FQ(1 if i == 0 else 0),
                 FQ(1 if i == len(steps) - 1 else 0),
                 FQ(remainder),
@@ -779,6 +781,7 @@ class ExpCircuit:
 
     def _append_step(
         self,
+        identifier: IntOrFQ,
         is_first: IntOrFQ,
         is_last: IntOrFQ,
         remainder: IntOrFQ,
@@ -796,6 +799,7 @@ class ExpCircuit:
                 q_step=FQ.one(),
                 remainder=FQ(remainder),
                 quotient=quotient,
+                identifier=FQ(identifier),
                 is_first=FQ(is_first),
                 is_last=FQ(is_last),
                 base=base,

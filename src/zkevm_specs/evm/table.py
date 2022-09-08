@@ -475,6 +475,7 @@ class ExpCircuitRow(TableRow):
     remainder: FQ
     quotient: RLC
     # columns from the exponentiation table
+    identifier: FQ  # (block_no || rw_counter)
     is_first: FQ
     is_last: FQ
     base: RLC
@@ -489,6 +490,7 @@ class ExpCircuitRow(TableRow):
 
 @dataclass(frozen=True)
 class ExpTableRow(TableRow):
+    identifier: FQ
     is_first: FQ
     is_last: FQ
     base_limb0: FQ
@@ -573,6 +575,7 @@ class Tables:
             intermediate_exponentiation_lo_hi = word_to_lo_hi(row.intermediate_exponentiation)
             rows.append(
                 ExpTableRow(
+                    identifier=row.identifier,
                     is_first=row.is_first,
                     is_last=row.is_last,
                     base_limb0=base_limbs[0],
@@ -702,12 +705,14 @@ class Tables:
 
     def exp_lookup(
         self,
+        identifier: Expression,
         is_first: Expression,
         is_last: Expression,
         base_limbs: Tuple[Expression, ...],
         exponent: Tuple[Expression, Expression],
     ):
         query = {
+            "identifier": identifier.expr(),
             "is_first": is_first.expr(),
             "is_last": is_last.expr(),
             "base_limb0": base_limbs[0].expr(),
