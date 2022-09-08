@@ -271,10 +271,8 @@ def check_account(row: Row, row_prev: Row, row_next: Row, tables: Tables):
     get_addr = lambda row: row.address()
 
     field_tag = row.field_tag()
-    proof_type = MPTProofType.IsNonceMod
-    if field_tag == AccountFieldTag.Nonce:
-        proof_type = MPTProofType.IsNonceMod
-    elif field_tag == AccountFieldTag.Balance:
+    proof_type = MPTProofType.IsNonceMod # type warning if None
+    if field_tag == AccountFieldTag.Balance:
         proof_type = MPTProofType.IsBalanceMod
     elif field_tag == AccountFieldTag.CodeHash:
         proof_type = MPTProofType.IsCodeHashProof
@@ -827,10 +825,8 @@ def _mock_mpt_updates(ops: List[Operation], randomness: FQ) -> Dict[Tuple[FQ, FQ
             continue
 
         field_tag = op.field_tag
-        proof_type = MPTProofType.IsStorageMod
-        if field_tag == 0:
-            proof_type = MPTProofType.IsStorageMod
-        elif field_tag == AccountFieldTag.Nonce:
+        proof_type = MPTProofType.IsStorageMod # type warning if None
+        if field_tag == AccountFieldTag.Nonce:
             proof_type = MPTProofType.IsNonceMod
         elif field_tag == AccountFieldTag.Balance:
             proof_type = MPTProofType.IsBalanceMod
