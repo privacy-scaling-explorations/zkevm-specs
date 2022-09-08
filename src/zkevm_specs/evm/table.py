@@ -299,6 +299,7 @@ class CopyDataTypeTag(IntEnum):
     # the Keccak table for the SHA3 of the input bytes.
     RlcAcc = auto()
 
+
 class MPTProofType(IntEnum):
     """
     Tag for MPT lookup.

@@ -819,7 +819,7 @@ def _mock_mpt_updates(ops: List[Operation], randomness: FQ) -> Dict[Tuple[FQ, FQ
     # makes fake mpt updates for a list of rows. the state root starts at 5 and
     # is incremented by 3 for each Account or Storage MPT update.
     mpt_map = {}
- 
+
     root = 3
     for op in ops:
         mpt_key = _mpt_key(op)
