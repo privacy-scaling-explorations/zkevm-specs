@@ -8,7 +8,7 @@ from ...util import N_BYTES_GAS
 
 def oog_constant(instruction: Instruction):
     # retrieve op code associated to oog constant error
-    opcode = instruction.curr.aux_data
+    opcode = instruction.opcode_lookup(True)
 
     # check gas left is less than const gas required
     gas_not_enough, _ = instruction.compare(
