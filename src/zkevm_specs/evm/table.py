@@ -305,12 +305,20 @@ class MPTProofType(IntEnum):
     Tag for MPT lookup.
     """
 
-    IsStorageMod = auto()
-    IsNonceMod = auto()
-    IsBalanceMod = auto()
-    IsCodeHashProof = auto()
-    IsAccountDeleteMod = auto()
-    IsNonExistingAccountProof = auto()
+    NonceMod = auto()
+    BalanceMod = auto()
+    CodeHashProof = auto()
+    AccountDeleteMod = auto()
+    NonExistingAccountProof = auto()
+    StorageMod = auto()
+
+    def from_account_field_tag(field_tag: AccountFieldTag) -> MPTProofType:
+        if field_tag == AccountFieldTag.Nonce:
+            return MPTProofType.NonceMod
+        elif field_tag == AccountFieldTag.Balance:
+            return MPTProofType.BalanceMod
+        elif field_tag == AccountFieldTag.CodeHash:
+            return MPTProofType.CodeHashProof
 
 
 class WrongQueryKey(Exception):

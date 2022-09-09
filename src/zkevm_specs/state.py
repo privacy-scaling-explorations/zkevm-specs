@@ -240,7 +240,7 @@ def check_storage(row: Row, row_prev: Row, row_next: Row, tables: Tables):
     if not all_keys_eq(row, row_next):
         tables.mpt_lookup(
             row.address(),
-            FQ(MPTProofType.IsStorageMod),
+            FQ(MPTProofType.StorageMod),
             row.storage_key(),
             row.value,
             row.committed_value,
@@ -271,11 +271,7 @@ def check_account(row: Row, row_prev: Row, row_next: Row, tables: Tables):
     get_addr = lambda row: row.address()
 
     field_tag = row.field_tag()
-    proof_type = MPTProofType.IsNonceMod  # type warning if None
-    if field_tag == AccountFieldTag.Balance:
-        proof_type = MPTProofType.IsBalanceMod
-    elif field_tag == AccountFieldTag.CodeHash:
-        proof_type = MPTProofType.IsCodeHashProof
+    proof_type = MPTProofType.from_account_field_tag(field_tag)
 
     # 6.0. Unused keys are 0
     assert row.id() == 0
@@ -825,14 +821,10 @@ def _mock_mpt_updates(ops: List[Operation], randomness: FQ) -> Dict[Tuple[FQ, FQ
             continue
 
         field_tag = op.field_tag
-        proof_type = MPTProofType.IsStorageMod  # type warning if None
-        if field_tag == AccountFieldTag.Nonce:
-            proof_type = MPTProofType.IsNonceMod
-        elif field_tag == AccountFieldTag.Balance:
-            proof_type = MPTProofType.IsBalanceMod
-        elif field_tag == AccountFieldTag.CodeHash:
-            proof_type = MPTProofType.IsCodeHashProof
-
+        proof_type = MPTProofType.StorageMod  # type warning if None
+        if isinstance(field_tag, AccountFieldTag):
+            proof_type = MPTProofType.from_account_field_tag(field_tag)
+        
         new_root = root + 5
         mpt_map[mpt_key] = MPTTableRow(
             FQ(op.address),

@@ -210,10 +210,12 @@ The circuit can prove that updates to account nonces, balances, or storage slots
 
 | Address | ProofType | Key | ValuePrev | Value | RootPrev | Root |
 | - | - | - | - | - | - | - |
-| $addr | IsNonceMod | 0 | $noncePrev | $nonceCur | $rootPrev | $root |
-| $addr | IsBalanceMod | 0 | $balancePrev | $balanceCur | $rootPrev | $root |
-| $addr | IsCodeHashProof | 0 |$codeHash | $codeHash | $rootPrev | $root |
-| $addr | IsStorageMod | $key | $valuePrev | $value | $rootPrev | $root |
+| $addr | NonceMod | 0 | $noncePrev | $nonceCur | $rootPrev | $root |
+| $addr | BalanceMod | 0 | $balancePrev | $balanceCur | $rootPrev | $root |
+| $addr | CodeHashProof | 0 | $codeHash | $codeHash | $rootPrev | $root |
+| $addr | StorageMod | $key | $valuePrev | $value | $rootPrev | $root |
+| $addr | AccountDeleteMod | 0 | 0 | 0 | $rootPrev | $root |
+| $addr | NonExistingAccountProof | 0 | 0 | 0 | $rootPrev | $root |
 
 ## Keccak Table
 
