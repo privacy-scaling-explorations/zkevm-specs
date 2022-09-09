@@ -455,3 +455,237 @@ separately.
 ### Range lookups
 
 Range lookups ensure that the values in columns are all bytes (0 - 255).
+
+## Extension node constraints
+
+### Extension node RLC
+
+#### s_main RLC
+
+The intermediate RLC after `s_main` bytes needs to be properly computed.
+
+#### c_rlp2 = 160
+
+When the branch is hashed, we have `c_rlp2 = 160` because it specifies the length of the
+hash: `32 = 160 - 128`.
+
+#### Hashed extension node RLC
+
+Check whether the extension node RLC is properly computed.
+The RLC is used to check whether the extension node is a node at the appropriate position
+in the parent node. That means, it is used in a lookup to check whether
+`(extension_node_RLC, node_hash_RLC)` is in the keccak table.
+
+#### Non-hashed extension node RLC
+
+Check whether the extension node (non-hashed) RLC is properly computed.
+The RLC is used to check whether the non-hashed extension node is a node at the appropriate position
+in the parent node. That means, there is a constraint to ensure that
+`extension_node_RLC = node_hash_RLC` for some `node` in parent branch.
+
+### Extension node selectors & RLP
+
+#### Extension node selectors are boolean
+
+We first check that the selectors in branch init row are boolean.
+
+We have the following selectors in branch init:
+```
+is_ext_short_c16
+is_ext_short_c1
+is_ext_long_even_c16
+is_ext_long_even_c1
+is_ext_long_odd_c16
+is_ext_long_odd_c1
+```
+
+`short` means there is only one nibble in the extension node, `long` means there
+are at least two. `even` means the number of nibbles is even, `odd` means the number
+of nibbles is odd. `c16` means that above the branch there are even number of
+nibbles (the same as saying that `modified_node` of the branch needs to be
+multiplied by 16 in the computation of the key RLC), `c1` means
+that above the branch there are odd number of
+nibbles (the same as saying that `modified_node` of the branch needs to be
+multiplied by 1 in the computation of the key RLC).
+
+#### Bool check extension node selectors sum
+
+Only one of the six options can appear. When we have an extension node it holds:
+`is_ext_short_c16 + is_ext_short_c1 + is_ext_long_even_c16 + is_ext_long_even_c1 + is_ext_long_odd_c16 + is_ext_long_odd_c1 = 1`.
+And when it is a regular branch:
+`is_ext_short_c16 + is_ext_short_c1 + is_ext_long_even_c16 + is_ext_long_even_c1 + is_ext_long_odd_c16 + is_ext_long_odd_c1 = 0`.
+
+Note that if the attacker sets `is_extension_node = 1`
+for a regular branch (or `is_extension_node = 0` for the extension node),
+the final key RLC check fails because key RLC is computed differently
+for extension nodes and regular branches - a regular branch occupies only one
+key nibble (`modified_node`), while extension node occupies at least one additional
+nibble (the actual extension of the extension node).
+
+#### Branch c16/c1 selector - extension c16/c1 selector
+
+`is_branch_c16` and `is_branch_c1` information is duplicated with
+extension node selectors when we have an extension node (while in case of a regular
+branch the extension node selectors do not hold this information).
+That means when we have an extension node and `is_branch_c16 = 1`,
+there is `is_ext_short_c16 = 1` or
+`is_ext_long_even_c16 = 1` or `is_ext_long_odd_c16 = 1`.
+
+We have such a duplication to reduce the expression degree - for example instead of
+using `is_ext_long_even * is_branch_c16` we just use `is_ext_long_even_c16`.
+
+But we need to check that `is_branch_c16` and `is_branch_c1` are consistent
+with extension node selectors.
+
+#### Long & even implies s_bytes0 = 0
+
+This constraint prevents the attacker to set the number of nibbles to be even
+when it is not even.
+Note that when it is not even it holds `s_bytes0 != 0` (hexToCompact adds 16).
+
+If the number of nibbles is 1, like in
+`[226,16,160,172,105,12...`
+there is no byte specifying the length.
+If the number of nibbles is bigger than 1 and it is even, like in
+`[228,130,0,149,160,114,253,150,133,18,192,156,19,241,162,51,210,24,1,151,16,48,7,177,42,60,49,34,230,254,242,79,132,165,90,75,249]`
+the second byte (`s_main.rlp2`) specifies the length (we need to subract 128 to get it),
+the third byte (`s_main.bytes[0]`) is 0.
+
+#### One nibble & hashed branch RLP
+
+We need to check that the length specified in `s_main.rlp1` corresponds to the actual
+length of the extension node.
+
+For example, in
+`[226,16,160,172,105,12...`
+we check that `226 - 192 = 1 + 32 + 1`.
+1 is for `s_main.rlp2`, 32 is for 32 bytes of the branch hash,
+1 is for the byte 160 which denotes the length
+of the hash (128 + 32).
+
+#### One nibble & non-hashed branch RLP
+
+We need to check that the length specified in `s_main.rlp1` corresponds to the actual
+length of the extension node.
+
+For example, in
+`[223,16,221,198,132,32,0,0,0,1,198,132,32,0,0,0,1,128,128,128,128,128,128,128,128,128,128,128,128,128,128,128]`
+we check that `223 - 192 = 1 + 29 + 1`.
+1 is for `s_main.rlp2`,
+29 is for the branch RLP (which is not hashed because it is shorter than 32 bytes),
+1 is for `c_main.bytes[0]` which denotes the length of the branch RLP.
+
+####  More than one nibble & hashed branch & ext not longer than 55 RLP
+
+We need to check that the length specified in `s_main.rlp1` corresponds to the actual
+length of the extension node.
+
+For example, in
+`[228,130,0,149,160,114,253...`
+we check that `228 - 192 = (130 - 128) + 1 + 32 + 1`.
+1 is for `s_main.rlp2` which specifies the length of the nibbles part,
+32 is for the branch hash,
+1 is for the byte 160 which denotes the length
+of the hash (128 + 32).
+
+#### More than one nibble & non-hashed branch & ext not longer than 55 RLP
+
+We need to check that the length specified in `s_main.rlp1` corresponds to the actual
+length of the extension node.
+
+We check that `s_main.rlp1 - 192` = `s_main.rlp2 - 128 + 1 + c_main.bytes[0] - 192 + 1`.
+
+#### Extension longer than 55 RLP: s_rlp1 = 248
+
+When extension node RLP is longer than 55 bytes, the RLP has an additional byte
+at second position and the first byte specifies the length of the substream
+that specifies the length of the RLP. The substream is always just one byte: `s_main.rlp2`.
+And `s_main.rlp1 = 248` where `248 = 247 + 1` means the length of 1 byte.
+
+Example:
+`[248,67,160,59,138,106,70,105,186,37,13,38,205,122,69,158,202,157,33,95,131,7,227,58,235,229,3,121,188,90,54,23,236,52,68,161,160,...`
+
+#### Hashed branch & ext longer than 55 RLP"
+
+We need to check that the length specified in `s_main.rlp2` corresponds to the actual
+length of the extension node.
+
+Example:
+`[248,67,160,59,138,106,70,105,186,37,13,38,205,122,69,158,202,157,33,95,131,7,227,58,235,229,3,121,188,90,54,23,236,52,68,161,160,...`
+
+We check that `s_main.rlp2 = (s_main.bytes[0] - 128) + 1 + 32 + 1`.
+`s_main.bytes[0] - 128` specifies the extension node nibbles part, 
+1 is for `s_main.rlp2` which specifies the length of the RLP stream,
+32 is for the branch hash,
+1 is for the byte 160 which denotes the length of the hash (128 + 32). 
+
+#### Non-hashed branch & ext longer than 55 RLP
+
+We need to check that the length specified in `s_main.rlp2` corresponds to the actual
+length of the extension node.
+
+We check that `s_main.rlp2 = (s_main.bytes[0] - 128) + 1 + c_main.bytes[0] - 192 + 1`.
+`s_main.bytes[0] - 128` specifies the extension node nibbles part, 
+1 is for `s_main.rlp2` which specifies the length of the RLP stream,
+`c_main.bytes[0] - 192` is for the branch RLP (which is not hashed because it is shorter than 32 bytes),
+1 is for the byte 160 which denotes the length of the hash (128 + 32). 
+                 
+### Extension node branch hash in extension row
+
+Check whether branch hash is in the extension node row - we check that the branch hash RLC
+(computed over the first 17 rows) corresponds to the extension node hash stored in
+the extension node row. That means `(branch_RLC, extension_node_hash_RLC`) needs to
+be in a keccak table.
+
+### Extension node branch hash in extension row (non-hashed branch)
+
+#### Non-hashed branch in extension node
+
+Check whether branch is in extension node row (non-hashed branch) -
+we check that the branch RLC is the same as the extension node branch part RLC
+(RLC computed over `c_main.bytes`).
+
+Note: there need to be 0s after branch ends in the extension node `c_main.bytes`
+(see below).
+
+### c_main.bytes[i] = 0 after the last non-hashed branch byte 
+
+There are 0s after non-hashed branch ends in `c_main.bytes`.
+
+### Account first level extension node hash - compared to root
+
+When we have an extension node in the first level of the account trie,
+its hash needs to be compared to the root of the trie.
+
+Note: the branch counterpart is implemented in `branch_hash_in_parent.rs`.
+
+### Extension node hash in parent branch
+
+Check whether the extension node hash is in the parent branch.
+That means we check whether
+`(extension_node_RLC, node_hash_RLC)` is in the keccak table where `node` is a parent
+brach child at `modified_node` position.
+
+Note: do not check if it is in the first storage level (see `storage_root_in_account_leaf.rs`).
+
+### Extension node in parent branch (non-hashed extension node)
+
+#### Non-hashed extension node in parent branch
+
+### Extension node number of nibbles (not first level)
+
+When an extension node is not hashed, we do not check whether it is in a parent 
+branch using a lookup (see above), instead we need to check whether the branch child
+at `modified_node` position is exactly the same as the extension node.
+
+We need to make sure the total number of nibbles is 64. This constraint ensures the number
+of nibbles used (stored in branch init) is correctly computed - nibbles up until this
+extension node + nibbles in this extension node.
+Once in a leaf, the remaining nibbles stored in a leaf need to be added to the count.
+The final count needs to be 64.
+
+
+
+
+
+
