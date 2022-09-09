@@ -824,7 +824,7 @@ def _mock_mpt_updates(ops: List[Operation], randomness: FQ) -> Dict[Tuple[FQ, FQ
         proof_type = MPTProofType.StorageMod  # type warning if None
         if isinstance(field_tag, AccountFieldTag):
             proof_type = MPTProofType.from_account_field_tag(field_tag)
-        
+
         new_root = root + 5
         mpt_map[mpt_key] = MPTTableRow(
             FQ(op.address),

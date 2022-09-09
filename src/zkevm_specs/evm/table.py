@@ -312,13 +312,13 @@ class MPTProofType(IntEnum):
     NonExistingAccountProof = auto()
     StorageMod = auto()
 
+    @staticmethod
     def from_account_field_tag(field_tag: AccountFieldTag) -> MPTProofType:
-        if field_tag == AccountFieldTag.Nonce:
-            return MPTProofType.NonceMod
-        elif field_tag == AccountFieldTag.Balance:
+        if field_tag == AccountFieldTag.Balance:
             return MPTProofType.BalanceMod
         elif field_tag == AccountFieldTag.CodeHash:
             return MPTProofType.CodeHashProof
+        return MPTProofType.NonceMod
 
 
 class WrongQueryKey(Exception):
