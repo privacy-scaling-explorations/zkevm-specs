@@ -721,6 +721,7 @@ class ExpCircuit:
         exponentiation = self._exp_by_squaring(base, exponent, steps)
         steps.reverse()
         self._append_steps(base, exponent, exponentiation, steps, randomness, identifier)
+        self._append_padding_row(identifier)
         return self
 
     def _exp_by_squaring(self, base: int, exponent: int, steps: List[Tuple[int, int, int]]):
@@ -779,6 +780,26 @@ class ExpCircuit:
                 # exponent is odd
                 exponent = exponent - 1
 
+    def _append_padding_row(self, identifier: IntOrFQ):
+        self.rows.append(
+            ExpCircuitRow(
+                q_step=FQ.zero(),
+                remainder=FQ.zero(),
+                quotient=RLC(0),
+                identifier=FQ(identifier),
+                is_first=FQ.zero(),
+                is_last=FQ.zero(),
+                base=RLC(0),
+                intermediate_exponent=RLC(0),
+                intermediate_exponentiation=RLC(0),
+                a=RLC(0),
+                b=RLC(0),
+                c=RLC(0),
+                d=RLC(0),
+                is_pad=FQ.one(),
+            )
+        )
+
     def _append_step(
         self,
         identifier: IntOrFQ,
@@ -809,6 +830,7 @@ class ExpCircuit:
                 b=b,
                 c=c,
                 d=d,
+                is_pad=FQ.zero(),
             )
         )
 

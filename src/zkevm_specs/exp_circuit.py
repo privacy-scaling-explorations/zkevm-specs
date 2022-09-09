@@ -26,6 +26,12 @@ def verify_step(cs: ConstraintSystem, rows: List[ExpCircuitRow]):
         # is_first and is_last are boolean values
         cs.constrain_bool(rows[0].is_first)
         cs.constrain_bool(rows[0].is_last)
+        # is_first is followed by is_first == 0
+        cs.constrain_zero(rows[0].is_first * rows[1].is_first)
+        # if this is an intermediate step (is_first == 0) then is_first does not change.
+        cs.constrain_zero((1 - rows[0].is_first) * rows[1].is_first)
+        # is_last is followed by padding
+        cs.constrain_zero((1 - rows[0].is_last) * rows[1].is_pad)
         # multiplication is assigned correctly
         _overflow, carry_lo_hi, additional_constraints = mul_add_words(
             rows[0].a, rows[0].b, rows[0].c, rows[0].d

@@ -471,6 +471,7 @@ class KeccakTableRow(TableRow):
 @dataclass
 class ExpCircuitRow(TableRow):
     q_step: FQ
+    is_pad: FQ
     # division of intermediate exponent by 2
     remainder: FQ
     quotient: RLC
@@ -570,6 +571,8 @@ class Tables:
     def _convert_exp_circuit_to_table(self, exp_circuit: Sequence[ExpCircuitRow]):
         rows: List[ExpTableRow] = []
         for i, row in enumerate(exp_circuit):
+            if row.is_pad == FQ.one():
+                continue
             base_limbs = word_to_64s(row.base)
             intermediate_exponent_lo_hi = word_to_lo_hi(row.intermediate_exponent)
             intermediate_exponentiation_lo_hi = word_to_lo_hi(row.intermediate_exponentiation)
