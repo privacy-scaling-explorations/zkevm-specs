@@ -2,6 +2,8 @@ from typing import NamedTuple, Tuple, List, Set, Dict, Optional
 from enum import IntEnum
 from math import log, ceil
 
+from zkevm_specs.evm.table import MPTProofType
+
 from .util import FQ, RLC, U160, U256, Expression, linear_combine
 from .encoding import U8, is_circuit_code
 from .evm import (
@@ -118,7 +120,7 @@ class Tables:
     def mpt_lookup(
         self,
         address: Expression,
-        field_tag: Expression,
+        proof_type: Expression,
         storage_key: Expression,
         value: Expression,
         value_prev: Expression,
@@ -127,7 +129,7 @@ class Tables:
     ) -> MPTTableRow:
         query = {
             "address": address,
-            "field_tag": field_tag,
+            "proof_type": proof_type,
             "storage_key": storage_key,
             "value": value,
             "value_prev": value_prev,
@@ -238,7 +240,7 @@ def check_storage(row: Row, row_prev: Row, row_next: Row, tables: Tables):
     if not all_keys_eq(row, row_next):
         tables.mpt_lookup(
             row.address(),
-            row.field_tag(),
+            FQ(MPTProofType.StorageMod),
             row.storage_key(),
             row.value,
             row.committed_value,
@@ -267,7 +269,9 @@ def check_call_context(row: Row, row_prev: Row):
 @is_circuit_code
 def check_account(row: Row, row_prev: Row, row_next: Row, tables: Tables):
     get_addr = lambda row: row.address()
-    get_field_tag = lambda row: row.field_tag()
+
+    field_tag = row.field_tag()
+    proof_type = MPTProofType.from_account_field_tag(field_tag)
 
     # 6.0. Unused keys are 0
     assert row.id() == 0
@@ -277,7 +281,7 @@ def check_account(row: Row, row_prev: Row, row_next: Row, tables: Tables):
     if not all_keys_eq(row, row_next):
         tables.mpt_lookup(
             get_addr(row),
-            get_field_tag(row),
+            FQ(proof_type),
             row.storage_key(),
             row.value,
             row.committed_value,
@@ -816,10 +820,15 @@ def _mock_mpt_updates(ops: List[Operation], randomness: FQ) -> Dict[Tuple[FQ, FQ
         if mpt_key is None or mpt_key in mpt_map:
             continue
 
+        field_tag = op.field_tag
+        proof_type = MPTProofType.StorageMod  # type warning if None
+        if isinstance(field_tag, AccountFieldTag):
+            proof_type = MPTProofType.from_account_field_tag(field_tag)
+
         new_root = root + 5
         mpt_map[mpt_key] = MPTTableRow(
             FQ(op.address),
-            FQ(op.field_tag),
+            FQ(proof_type),
             RLC(op.storage_key, randomness).expr(),
             FQ(new_root),
             FQ(root),

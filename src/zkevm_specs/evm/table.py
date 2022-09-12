@@ -300,6 +300,27 @@ class CopyDataTypeTag(IntEnum):
     RlcAcc = auto()
 
 
+class MPTProofType(IntEnum):
+    """
+    Tag for MPT lookup.
+    """
+
+    NonceMod = auto()
+    BalanceMod = auto()
+    CodeHashProof = auto()
+    AccountDeleteMod = auto()
+    NonExistingAccountProof = auto()
+    StorageMod = auto()
+
+    @staticmethod
+    def from_account_field_tag(field_tag: AccountFieldTag) -> MPTProofType:
+        if field_tag == AccountFieldTag.Balance:
+            return MPTProofType.BalanceMod
+        elif field_tag == AccountFieldTag.CodeHash:
+            return MPTProofType.CodeHashProof
+        return MPTProofType.NonceMod
+
+
 class WrongQueryKey(Exception):
     def __init__(self, table_name: str, diff: Set[str]) -> None:
         self.message = f"Lookup {table_name} with invalid keys {diff}"
@@ -380,7 +401,7 @@ class RWTableRow(TableRow):
 @dataclass(frozen=True)
 class MPTTableRow(TableRow):
     address: Expression
-    field_tag: Expression
+    proof_type: Expression
     storage_key: Expression
     root: Expression
     root_prev: Expression
