@@ -114,6 +114,7 @@ def test_oog_constant_not_root(caller_ctx: CallContext, callee_bytecode: Bytecod
             # fmt: off
             RWDictionary(69)
             .call_context_read(2, CallContextFieldTag.IsSuccess, 0)
+            .call_context_read(2, CallContextFieldTag.IsPersistent, 0)
             .call_context_read(2, CallContextFieldTag.CallerId, 1)
             .call_context_read(1, CallContextFieldTag.IsRoot, caller_ctx.is_root)
             .call_context_read(1, CallContextFieldTag.IsCreate, caller_ctx.is_create)
@@ -150,7 +151,7 @@ def test_oog_constant_not_root(caller_ctx: CallContext, callee_bytecode: Bytecod
             ),
             StepState(
                 execution_state=ExecutionState.STOP,
-                rw_counter=82,
+                rw_counter=83,
                 call_id=1,
                 is_root=caller_ctx.is_root,
                 is_create=caller_ctx.is_create,
