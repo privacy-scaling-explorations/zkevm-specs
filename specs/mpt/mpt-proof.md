@@ -159,5 +159,6 @@ boolean).
 
 The constraints are grouped according to different trie node types:
  * Account leaf constraints documentation is in [account-leaf.md](account-leaf.md).
+ * Storage leaf constraints documentation is in [storage-leaf.md](storage-leaf.md).
  * Branch constraints documentation is in [branch.md](branch.md).
  * Extension node constraints documentation is in [extension-node.md](extension-node.md).

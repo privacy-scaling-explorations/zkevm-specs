@@ -672,11 +672,11 @@ Note: do not check if it is in the first storage level (see `storage_root_in_acc
 
 #### Non-hashed extension node in parent branch
 
-### Extension node number of nibbles (not first level)
-
 When an extension node is not hashed, we do not check whether it is in a parent 
 branch using a lookup (see above), instead we need to check whether the branch child
 at `modified_node` position is exactly the same as the extension node.
+
+### Extension node number of nibbles (not first level)
 
 We need to make sure the total number of nibbles is 64. This constraint ensures the number
 of nibbles used (stored in branch init) is correctly computed - nibbles up until this
@@ -684,6 +684,64 @@ extension node + nibbles in this extension node.
 Once in a leaf, the remaining nibbles stored in a leaf need to be added to the count.
 The final count needs to be 64.
 
+#### Nibbles number when one nibble
+
+When there is only one nibble in the extension node, `nibbles_count` changes
+for 2: one nibble and `modified_node` in a branch.
+
+#### Nibbles number when even number of nibbles & ext not longer than 55
+
+When there is an even number of nibbles in the extension node,
+we compute the number of nibbles as: `(s_rlp2 - 128 - 1) * 2`.
+By `s_rlp2 - 128` we get the number of bytes where nibbles are compressed, but
+then we need to subtract 1 because `s_main.bytes[0]` does not contain any nibbles
+(it is just 0 when even number of nibbles).
+
+In the example below it is: `(130 - 128 - 1) * 2`.
+`[228,130,0,149,160,114,253...`
+
+#### Nibbles num when odd number (>1) of nibbles & ext not longer than 55
+
+When there is an odd number of nibbles in the extension node,
+we compute the number of nibbles as: `(s_rlp2 - 128) * 2`.
+By `s_rlp2 - 128` we get the number of bytes where nibbles are compressed. We
+multiply by 2 to get the nibbles, but then subtract 1 because in
+`s_main.bytes[0]` there is only 1 nibble.
+
+#### Nibbles num when even number of nibbles & ext longer than 55
+
+When there is an even number of nibbles in the extension node and the extension
+node is longer than 55 bytes, the number of bytes containing the nibbles
+is given by `s_main.bytes[0]`.
+We compute the number of nibbles as: `(s_bytes0 - 128 - 1) * 2`.
+By `s_bytes0 - 128` we get the number of bytes where nibbles are compressed, but
+then we need to subtract 1 because `s_main.bytes[1]` does not contain any nibbles
+(it is just 0 when even number of nibbles).
+
+#### Nibbles num when odd number (>1) of nibbles & ext longer than 55
+
+When there is an odd number of nibbles in the extension node and the extension,
+node is longer than 55 bytes, the number of bytes containing the nibbles
+is given by `s_main.bytes[0]`.
+We compute the number of nibbles as: `(s_main.bytes[0] - 128) * 2`.
+By `s_main.bytes[0] - 128` we get the number of bytes where nibbles are compressed. We
+multiply by 2 to get the nibbles, but then subtract 1 because in
+`s_main.bytes[1]` there is only 1 nibble.
+
+Example:
+`[248,58,159,16,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,217,128,196,130,32,0,1,128,196,130,32,0,1,128,128,128,128,128,128,128,128,128,128,128,128,128]`
+
+### Extension node number of nibbles (first level)
+
+#### Nibbles num when one nibble (first level account)
+
+When there is one nibble in the extension node and we are in the first account
+level in the trie, the nibbles count has to be 2 (1 for nibble, 1 for
+`modified_node` in a branch).
+
+Note that we distinguish between first level in the account trie and first level
+in the storage trie just because we have different selectors to trigger the
+constraint for these two cases.
 
 
 
