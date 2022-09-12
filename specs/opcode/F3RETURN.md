@@ -60,7 +60,7 @@ using a lookup to the copy circuit with the following parameters:
 
 B. If it's a root call, it transitions to `EndTx`.
 
-C. Otherwise, it restore caller's context by reading to `rw_table`, then does
+C. Otherwise, it restores caller's context by reading to `rw_table`, then does
 step state transition to it.
 
 
