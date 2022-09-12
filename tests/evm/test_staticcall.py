@@ -244,7 +244,7 @@ def test_staticcall(
         tables=tables,
         steps=[
             StepState(
-                execution_state=ExecutionState.CALL_STATICCALL,
+                execution_state=ExecutionState.STATICCALL,
                 rw_counter=22,
                 call_id=1,
                 is_root=True,
