@@ -14,7 +14,7 @@ The `CALL` opcode transfer specified amount of ether to callee and creates a new
 6. `return_data_offset` - The offset of return_data chunk in caller's memory, which will be set to return_data from callee after call
 7. `return_data_length` - The length of return_data chunk
 
-The `STATICCALL` opcode is equivalent to `CALL`, except that it does not allow any state modifying instructions (is_static == 1) or sending ether to callee in the sub context. It only pops 6 words from stack `gas`, `callee_address`, `call_data_offset`, `call_data_length`, `return_data_offset` and `return_data_length` (without the third popped word `value` for opcode `CALL`).
+The `STATICCALL` opcode is equivalent to `CALL`, except that it does not allow any state modifying instructions (is_static == 1) or sending ether to callee in the sub context. It only pops 6 words from stack `gas`, `callee_address`, `call_data_offset`, `call_data_length`, `return_data_offset` and `return_data_length` (without the third popped word `value` in opcode `CALL`).
 
 Before switching call context to the new one, it does several things:
 
