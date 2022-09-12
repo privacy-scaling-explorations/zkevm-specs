@@ -4,6 +4,8 @@ from enum import IntEnum, auto
 from itertools import chain, product
 from dataclasses import dataclass, field, fields
 
+from .opcode import constant_gas_cost_pairs
+
 from ..util import Expression, FQ
 from .execution_state import ExecutionState
 
@@ -27,6 +29,7 @@ class FixedTableTag(IntEnum):
     BitwiseXor = auto()  # lhs, rhs, lhs ^ rhs, 0
     ResponsibleOpcode = auto()  # execution_state, opcode, aux
     Pow2 = auto()  # value, value_pow
+    OpcodeConstantGas = auto()  # opcode constant gas
 
     def table_assignments(self) -> List[FixedTableRow]:
         if self == FixedTableTag.Range5:
@@ -68,6 +71,11 @@ class FixedTableTag(IntEnum):
                     lambda pair: pair if isinstance(pair, tuple) else (pair, 0),
                     execution_state.responsible_opcode(),
                 )
+            ]
+        elif self == FixedTableTag.OpcodeConstantGas:
+            return [
+                FixedTableRow(FQ(self), FQ(code[0]), FQ(code[1]), FQ(0))
+                for code in constant_gas_cost_pairs()
             ]
         elif self == FixedTableTag.Pow2:
             return [
