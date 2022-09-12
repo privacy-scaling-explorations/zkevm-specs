@@ -217,20 +217,6 @@ The circuit can prove that updates to account nonces, balances, or storage slots
 | $addr | AccountDeleteMod | 0 | 0 | 0 | $rootPrev | $root |
 | $addr | NonExistingAccountProof | 0 | 0 | 0 | $rootPrev | $root |
 
-## Keccak Table
-
-See [tx.py](src/zkevm_specs/tx.py)
-
-| IsEnabled | InputRLC   | InputLen | Output      |
-| --------- | ---------- | -------- | ----------- |
-| bool      | $input_rlc | $input_length | $output_rlc |
-
-Column names in circuit:
-- IsEnabled: `is_final`
-- InputRLC: `data_rlc`
-- InputLen: `length`
-- Output: `hash_rlc`
-
 ### Nonce update
 
 | Enable | Counter  | Address | ValuePrev  | ValueCur  |
@@ -304,6 +290,21 @@ Columns expressions in circuit:
 - Key: `key_rlc_mult`
 - ValuePrev: `is_nonce_mod * sel1 + is_balance_mod * sel2 + is_codehash_mod * sel2 + is_storage_mod * mult_diff`
 - ValueCur: `is_nonce_mod * s_mod_node_hash_rlc + is_balance_mod * c_mod_node_hash_rlc + is_codehash_mod * c_mod_node_hash_rlc + is_storage_mod * acc_c`
+
+## `Keccak Table`
+
+See [tx.py](src/zkevm_specs/tx.py)
+
+| IsEnabled | InputRLC   | InputLen | Output      |
+| --------- | ---------- | -------- | ----------- |
+| bool      | $input_rlc | $input_length | $output_rlc |
+
+Column names in circuit:
+- IsEnabled: `is_final`
+- InputRLC: `data_rlc`
+- InputLen: `length`
+- Output: `hash_rlc`
+
 
 ## `copy_table`
 
