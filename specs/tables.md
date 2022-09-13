@@ -282,3 +282,74 @@ The table below lists all of copy pairs supported in the copy table:
 |        |         |        |           |            |                |                |            |        | $rlcAcc |         |     |           |                 |
 | 1      | 0/1     | 0      | $callID   | Memory     | $memoryAddress | $memoryAddress | $bytesLeft | $value | $rlcAcc | -       | 0/1 | $counter  | $rwcIncLeft     |
 | 0      | 0       | 0/1    | $txID     | TxLog      | $byteIndex \|\| TxLogData \|\| $logID | - | - | $value | $rlcAcc | -       | 0   | $counter  | $rwcIncLeft     |
+
+## Exponentiation Table
+
+Proved by the Exponentiation circuit.
+
+The exponentiation table is a virtual table within the exponentiation circuit assignments. An exponentiation operation `a ^ b == c (mod 2^256)` is broken down into steps that perform the exponentiation by squaring.
+
+The following algorithm is used for exponentiation by squaring:
+```
+Function exp_by_squaring(x, n)
+    if n = 0  then return  1;
+    if n = 1  then return  x;
+    if n is odd:
+	return x * exp_by_squaring(x, n - 1)
+    if n is even:
+	return (exp_by_squaring(x, n / 2))^2
+```
+
+Using the above algorithm, `3 ^ 13 == 1594323 (mod 2^256)` is broken down into the following steps:
+```
+3      * 3   = 9
+9      * 3   = 27
+27     * 27  = 729
+729    * 729 = 531441
+531441 * 3   = 1594323
+```
+
+We assign the above steps to the exponentiation table in the reverse order, so that the first step is `531441 * 3 = 1594323`. From here on, the RHS in the above steps is termed as `intermediate_exponentiation`. We define another term `intermediate_exponent` as a value that starts at the integer exponent of the operation, i.e. `13` in the above case, and reduces down to `2` such that:
+```
+if intermediate_exponent::cur is even:
+	intermediate_exponent::next = intermediate_exponent::cur // 2
+else:
+	intermediate_exponent::next == intermediate_exponent::cur - 1
+```
+
+The exponentiation table consist of 4 columns, namely:
+1. `identifier`: An identifier (currently read-write counter at which the exponentiation table is looked up) to uniquely identify an exponentiation trace.
+2. `is_first`: A boolean value to indicate the first row of the exponentiation trace's table assignments.
+3. `is_last`: A boolean value to indicate the last row of the exponentiation trace's table assignments.
+4. `base_limb`: 64-bit limb representing the integer base of the exponentiation operation.
+5. `exponent_lo_hi`: 128-bit low/high parts of an intermediate value that starts at the integer exponent.
+6. `lsb_exponent`: The least-significant byte in the exponent. For instance, if `exponent == 300`, then `lsb_exponent == 44`.
+7. `exponentiation_lo_hi`: 128-bit low/high parts of an intermediate value that starts at the result of the exponentation operation.
+
+The lookup entry is not a single row in the table, and not every row corresponds to a lookup entry. Instead, a lookup entry is constructed from the first 4 rows in each exponentiation event. For simplicity in the `specs` implementation, we combine all those rows into a single row. But in the `circuits` implementation, we try to lower the number of columns in exchange of increased number of rows.
+
+Depending on the value of the `exponent` within the exponentiation operation, the `EXP` gadget will either:
+1. Do no lookup if `exponent == 0` since `base ^ 0 == 1 (mod 2^256)`
+2. Do no lookup if `exponent == 1` since `base ^ 1 == base (mod 2^256)`
+3. Do 1 lookup to a row if `exponent == 2` since there is a single step in the exponentiation trace, i.e. `base ^ 2 == base * base (mod 2^256)`, implying that `is_first == is_last == 1` for this row.
+4. Do 2 lookups to 2 different rows if `exponent > 2` since there are more than one steps in the exponentiation trace, i.e. a lookup to `is_first == 1 && is_last == 0` and a lookup to `is_first == 0 && is_last == 1`.
+
+Consider `3 ^ 13 == 1594323 (mod 2^256)`. The exponentiation table assignment looks as follows:
+
+| identifier | is_first | is_last | base_limb0 | base_limb1 | base_limb2 | base_limb3 | exponent_lo | exponent_hi | lsb_exponent | exponentiation_lo | exponentiation_hi |
+|------------|----------|---------|------------|------------|------------|------------|-------------|-------------|--------------|-------------------|-------------------|
+| $rwc       | 1        | 0       | 3          | 0          | 0          | 0          | 13          | 0           | 13           | 1594323           | 0                 |
+| $rwc       | 0        | 0       | 3          | 0          | 0          | 0          | 12          | 0           | 12           | 531441            | 0                 |
+| $rwc       | 0        | 0       | 3          | 0          | 0          | 0          | 6           | 0           | 6            | 729               | 0                 |
+| $rwc       | 0        | 0       | 3          | 0          | 0          | 0          | 3           | 0           | 3            | 27                | 0                 |
+| $rwc       | 0        | 1       | 3          | 0          | 0          | 0          | 2           | 0           | 2            | 9                 | 0                 |
+
+For `exponent == 13`, i.e. scenario #4 we do two lookups:
+1. Lookup to first row:
+```
+Row(identifier=rwc, is_first=1, is_last=0, base_limbs=[3, 0, 0, 0], exponent_lo_hi=[13, 0], lsb_exponent=13, exponentiation_lo_hi=[1594323, 0])
+```
+2. Lookup to last row:
+```
+Row(identifier=rwc, is_first=0, is_last=1, base_limbs=[3, 0, 0, 0], exponent_lo_hi=[2, 0], lsb_exponent=2, exponentiation_lo_hi=[9, 0])
+```
