@@ -1,4 +1,5 @@
-from typing import List
+from enum import IntEnum, auto
+from typing import List, Set, Tuple
 from .evm import (
     ExpCircuit,
     ExpCircuitRow,
@@ -6,13 +7,28 @@ from .evm import (
 from .util import (
     ConstraintSystem,
     FQ,
-    RLC,
     mul_add_words,
     word_to_lo_hi,
 )
 
 
-def verify_step(cs: ConstraintSystem, rows: List[ExpCircuitRow]):
+class FixedTableTag(IntEnum):
+    Odd = auto()
+    Even = auto()
+
+
+def _gen_fixed_table() -> Set[Tuple[FQ, FQ]]:
+    table: List[Tuple[FQ, FQ]] = []
+    # odd
+    for i in range(1, 256, 2):
+        table.append((FQ(FixedTableTag.Odd), FQ(i)))
+    # even
+    for i in range(0, 256, 2):
+        table.append((FQ(FixedTableTag.Even), FQ(i)))
+    return set(table)
+
+
+def verify_step(cs: ConstraintSystem, rows: List[ExpCircuitRow], fixed_table: Set[Tuple[FQ, FQ]]):
     # for every step except the last
     with cs.condition(rows[0].q_step * (1 - rows[0].is_last)) as cs:
         # base is the same across rows.
@@ -44,22 +60,17 @@ def verify_step(cs: ConstraintSystem, rows: List[ExpCircuitRow]):
         cs.constrain_equal(rows[0].intermediate_exponentiation, rows[0].d)
         # the c in multiply-add (a * b + c == d) should be 0 since we are only multiplying.
         cs.constrain_zero(rows[0].c)
-        # remainder is a boolean.
-        cs.constrain_bool(rows[0].remainder)
-        # remainder is correct, i.e. quotient * 2 + remainder == intermediate_exponent
-        _overflow, carry_lo_hi, additional_constraints = mul_add_words(
-            rows[0].quotient,
-            RLC(2, n_bytes=32),
-            RLC(rows[0].remainder.n, n_bytes=32),
-            rows[0].intermediate_exponent,
-        )
-        cs.range_check(carry_lo_hi[0], 9)
-        cs.range_check(carry_lo_hi[1], 9)
-        cs.constrain_equal(additional_constraints[0][0], additional_constraints[0][1])
-        cs.constrain_equal(additional_constraints[1][0], additional_constraints[1][1])
+        # is_odd, i.e. odd/even parity is a boolean.
+        cs.constrain_bool(rows[0].is_odd)
 
-    # for all steps (except the last), where remainder == 1 (intermediate exponent -> odd)
-    with cs.condition(rows[0].q_step * (1 - rows[0].is_last) * rows[0].remainder) as cs:
+    # lookup odd/even parity
+    if rows[0].is_odd == FQ.one():
+        assert (FQ(FixedTableTag.Odd), FQ(rows[0].lsb_intermediate_exponent)) in fixed_table
+    else:
+        assert (FQ(FixedTableTag.Even), FQ(rows[0].lsb_intermediate_exponent)) in fixed_table
+
+    # for all steps (except the last), where exponent is odd
+    with cs.condition(rows[0].q_step * (1 - rows[0].is_last) * rows[0].is_odd) as cs:
         # intermediate_exponent::next == intermediate_exponent::cur - 1
         cur_lo, cur_hi = word_to_lo_hi(rows[0].intermediate_exponent)
         next_lo, next_hi = word_to_lo_hi(rows[1].intermediate_exponent)
@@ -70,8 +81,8 @@ def verify_step(cs: ConstraintSystem, rows: List[ExpCircuitRow]):
         # b == base
         cs.constrain_equal(rows[0].base, rows[0].b)
 
-    # for all steps (except the last), where remainder == 0 (intermediate exponent -> even)
-    with cs.condition(rows[0].q_step * (1 - rows[0].is_last) * (1 - rows[0].remainder)) as cs:
+    # for all steps (except the last), where exponent is even
+    with cs.condition(rows[0].q_step * (1 - rows[0].is_last) * (1 - rows[0].is_odd)) as cs:
         # intermediate_exponent::next == intermediate_exponent::cur / 2
         cur_lo, cur_hi = word_to_lo_hi(rows[0].intermediate_exponent)
         next_lo, next_hi = word_to_lo_hi(rows[1].intermediate_exponent)
@@ -94,9 +105,10 @@ def verify_exp_circuit(exp_circuit: ExpCircuit):
     cs = ConstraintSystem()
     exp_table = exp_circuit.table()
     n = len(exp_table)
+    fixed_table = _gen_fixed_table()
     for i, row in enumerate(exp_table):
         rows = [
             row,
             exp_table[(i + 1) % n],
         ]
-        verify_step(cs, rows)
+        verify_step(cs, rows, fixed_table)

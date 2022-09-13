@@ -472,15 +472,14 @@ class KeccakTableRow(TableRow):
 class ExpCircuitRow(TableRow):
     q_step: FQ
     is_pad: FQ
-    # division of intermediate exponent by 2
-    remainder: FQ
-    quotient: RLC
+    is_odd: FQ
     # columns from the exponentiation table
     identifier: FQ  # (block_no || rw_counter)
     is_first: FQ
     is_last: FQ
     base: RLC
     intermediate_exponent: RLC
+    lsb_intermediate_exponent: FQ
     intermediate_exponentiation: RLC
     # columns from the MulGadget
     a: RLC
@@ -500,6 +499,7 @@ class ExpTableRow(TableRow):
     base_limb3: FQ
     exponent_lo: FQ
     exponent_hi: FQ
+    lsb_exponent: FQ
     exponentiation_lo: FQ
     exponentiation_hi: FQ
 
@@ -587,6 +587,7 @@ class Tables:
                     base_limb3=base_limbs[3],
                     exponent_lo=intermediate_exponent_lo_hi[0],
                     exponent_hi=intermediate_exponent_lo_hi[1],
+                    lsb_exponent=row.lsb_intermediate_exponent,
                     exponentiation_lo=intermediate_exponentiation_lo_hi[0],
                     exponentiation_hi=intermediate_exponentiation_lo_hi[1],
                 )
