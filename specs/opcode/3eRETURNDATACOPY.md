@@ -3,7 +3,7 @@
 ## Procedure
 
 The `RETURNDATACOPY` opcode pops `dest_offset`, `offset` and `size` from the stack.
-It then copies `size` bytes of return data in the current environment from an offset `offset` to the memory at the address `return_data_offset`. For out-of-bound scenarios where `size > return_data_size - offset`, EVM reverts the current context.
+It then copies `size` bytes of return data in the current environment from `return_data_offset` at an `offset` to the memory at address `dest_offset`. For out-of-bound scenarios where `size > return_data_size - offset`, EVM reverts the current context.
 
 The gas cost of `RETURNDATACOPY` opcode consists of two parts:
 
