@@ -46,7 +46,7 @@ The `RETURNDATACOPY` opcode copies output data from the previous call to memory.
 
 ## Exceptions
 
-1. stack overflow: stack is full, stack pointer = 0
+1. stack underflow: `1022 <= stack_pointer <= 1024`
 2. out of gas: remaining gas is not enough
 3. copy overflow: data_offset + size > return_data_size
 
