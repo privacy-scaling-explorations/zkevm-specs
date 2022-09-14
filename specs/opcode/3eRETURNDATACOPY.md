@@ -12,7 +12,7 @@ The gas cost of `RETURNDATACOPY` opcode consists of two parts:
 
 ### EVM behaviour
 
-The `RETURNDATACOPY` opcode copies output data from the previous call to memory. If there is no previous call, the length of `RETURNDATACOPY` is bounded to 0 (returndatasize), otherwise, evm reverts the context.
+The `RETURNDATACOPY` opcode copies output data from the previous call to memory. If there is no previous call, the length of `RETURNDATACOPY` is bounded to 0 (returndatasize), evm checks gas, stack and length boundary before copy, and reverts context if any exception happens.
 
 ### Circuit behaviour
 
@@ -28,18 +28,17 @@ The `RETURNDATACOPY` opcode copies output data from the previous call to memory.
 
 1. opId == 0x3E
 2. State transition:
-   - rw_counter -> rw_counter + 3 (stack read) + 3 (last callee info read) + size * 2 (copy == 1 mem read + 1 mem write)
+   - rw_counter -> rw_counter + 3 (stack read) + 2 (last callee return data param read) + size * 2 (copy == 1 mem read + 1 mem write)
    - stack pointer + 3
    - pc + 1
    - gas -> dynamic gas cost
    - memory_size
      - `prev_memory_size` if `size = 0`
      - `max(prev_memory_size, (memory_offset + size + 31) / 32)` if `size > 0`
-3. Lookups: 6
+3. Lookups: 5
    - `memory_offset` is at the 1st position of the stack
    - `data_offset` is at the 2nd position of the stack
    - `size` is at the 3rd position of the stack
-   - `last_callee_id` is in last callee context
    - `return_data_offset` is in last callee context
    - `return_data_size` is in last callee context
 
