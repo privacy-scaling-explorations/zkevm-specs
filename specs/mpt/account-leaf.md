@@ -111,7 +111,7 @@ So the multiplier to be used in the next row is `r^{key_len + 2}`.
 `mult_diff` needs to correspond to the key length + 2 RLP bytes + 1 byte for byte that contains the key length.
 That means `mult_diff` needs to be `r^{key_len+1}` where `key_len = s_main.bytes[0] - 128`.
 
-### Account leaf address RLC & nibbles count (leaf not in first level, branch not placeholder)
+### Account leaf address RLC & nibbles count (branch not placeholder)
 
 #### Account leaf key with even nibbles: s_main.bytes[1] = 32
 
@@ -148,31 +148,6 @@ here we do not fetch for the intermediate RLC from the branch above as there is 
 Total number of account address nibbles nees to be 64. This is to prevent having short addresses
 which could lead to a root node which would be shorter than 32 bytes and thus not hashed. That
 means the trie could be manipulated to reach a desired root.
-
-### Account leaf address RLC & nibbles count (leaf in first level)
-
-Similar constraints as in the gate described above, but for account leaf being in the first level.
-
-### Previous level address RLC
-
-#### Previous key RLC
-
-When there is an account leaf after a placeholder branch, the intermediate key RLC needs to be
-fetched from the branch above the placeholder branch. That would require a rotation over two
-levels which leads into ConstrainedPoisoned because we are accessing the rows before 0 in
-some cases. For this reason, we copy previous key RLC to the current branch so that we have
-in each branch a current and previous key RLC at our disposal. This way we do not need to
-rotate over two levels.
-
-We need to ensure that the key RLC from the branch above the placeholder branch is copied
-to `accs.acc_c.rlc`. This enables us to compute the address RLC after a branch placeholder
-(see the constraint below) by not using rotations over two levels (we have the intermediate
-RLC in the current row).
-
-#### Previous key RLC mult
-
-We need to ensure that the key RLC mult from the branch above the placeholder branch is copied
-to `accs.acc_c.mult`.
 
 ### Account leaf address RLC & nibbles count (after placeholder)
 

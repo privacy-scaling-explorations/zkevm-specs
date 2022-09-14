@@ -134,7 +134,7 @@ and add the remaining bytes (nibbles) stored in the leaf.
 We also ensure that the number of all nibbles (in branches / extension nodes above
 the leaf and in the leaf) is 64.
 
-#### Leaf key RLC s_bytes0 (short)
+#### Leaf key RLC s_bytes0 = 32 (short)
 
 If `c1` and branch above is not a placeholder, we have 32 in `s_main.bytes[0]`.
 This is because `c1` in the branch above means there is an even number of nibbles left
@@ -155,4 +155,55 @@ The computed value needs to be the same as the value stored `key_rlc` column.
 
 Note: No need to distinguish between `c16` and `c1` here as it was already
 when computing `key_rlc_acc_short`.
+
+#### Leaf key acc s_bytes1 = 32 (long)
+
+If `c1` and branch above is not a placeholder, we have 32 in `s_main.bytes[1]`.
+This is because `c1` in the branch above means there is an even number of nibbles left
+and we have an even number of nibbles in the leaf, the first byte (after RLP bytes
+specifying the length) of the key is 32.
+
+#### Key RLC (long)
+
+We need to ensure the leaf key RLC is computed properly. We take the key RLC value
+from the last branch and add the bytes from position
+`s_main.bytes[1]` up at most to `c_main.rlp2`. We need to ensure that there are 0s
+after the last key byte, this is done by `key_len_lookup`.
+
+The computed value needs to be the same as the value stored `key_rlc` column.
+
+`is_long` example:
+`[248,67,160,59,138,106,70,105,186,37,13,38,205,122,69,158,202,157,33,95,131,7,227,58,235,229,3,121,188,90,54,23,236,52,68,161,160,...`
+
+Note: No need to distinguish between `c16` and `c1` here as it was already
+when computing `key_rlc_acc_long`.
+
+#### Key RLC (last level)
+
+We need to ensure the leaf key RLC is computed properly.
+When the leaf is in the last level we simply take the key RLC value
+from the last branch and this is the final key RLC value as there is no
+nibble in the leaf.
+
+The computed value needs to be the same as the value stored `key_rlc` column.
+
+Last level example:
+`[227,32,161,160,187,239,170,18,88,1,56,188,38,60,149,117,120,38,223,78,36,235,129,201,170,170,170,170,170,170,170,170,170,170,170,170]`
+
+#### Key RLC (one nibble)
+
+We need to ensure the leaf key RLC is computed properly.
+When there is only one nibble in the leaf, we take the key RLC value
+from the last branch and add the last remaining nibble stored in `s_main.rlp2`.
+
+The computed value needs to be the same as the value stored `key_rlc` column.
+
+One nibble example short value:
+`[194,48,1]`
+
+One nibble example long value:
+`[227,48,161,160,187,239,170,18,88,1,56,188,38,60,149,117,120,38,223,78,36,235,129,201,170,170,170,170,170,170,170,170,170,170,170,170]`
+
+####
+
 
