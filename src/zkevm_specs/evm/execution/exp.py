@@ -27,18 +27,17 @@ def exp(instruction: Instruction):
             res_lo, res_hi = instruction.exp_lookup(
                 identifier,
                 FQ.one(),
-                FQ.one(),
                 base_limbs,
                 (exponent_lo, exponent_hi),
             )
         else:
             # lookup to enforce the is_first step
             res_lo, res_hi = instruction.exp_lookup(
-                identifier, FQ.one(), FQ.zero(), base_limbs, (exponent_lo, exponent_hi)
+                identifier, FQ.zero(), base_limbs, (exponent_lo, exponent_hi)
             )
             # lookup to enforce the is_last step
             int_res_lo, int_res_hi = instruction.exp_lookup(
-                identifier, FQ.zero(), FQ.one(), base_limbs, (FQ(2), FQ.zero())
+                identifier, FQ.one(), base_limbs, (FQ(2), FQ.zero())
             )
             # intermediary result should be base^2
             int_res = instruction.rlc_encode(

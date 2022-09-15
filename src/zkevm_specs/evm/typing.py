@@ -757,16 +757,15 @@ class ExpCircuit:
             # multiplication gadget
             a, b, d = step[0], step[1], step[2]
             # exp table
-            _, is_odd = divmod(exponent, 2)
+            quotient, is_odd = divmod(exponent, 2)
             exponent_rlc = RLC(exponent, randomness, n_bytes=32)
             self._append_step(
                 identifier,
-                FQ(1 if i == 0 else 0),
                 FQ(1 if i == len(steps) - 1 else 0),
+                RLC(quotient, randomness, n_bytes=32),
                 FQ(is_odd),
                 base_rlc,
                 exponent_rlc,
-                (exponent & 0b11111111),
                 RLC(d, randomness, n_bytes=32),
                 RLC(a, randomness, n_bytes=32),
                 RLC(b, randomness, n_bytes=32),
@@ -785,14 +784,13 @@ class ExpCircuit:
             ExpCircuitRow(
                 q_step=FQ.zero(),
                 is_pad=FQ.one(),
+                quotient=RLC(0),
                 is_odd=FQ.zero(),
                 identifier=FQ(identifier),
-                is_first=FQ.zero(),
                 is_last=FQ.zero(),
                 base=RLC(0),
-                intermediate_exponent=RLC(0),
-                lsb_intermediate_exponent=FQ.zero(),
-                intermediate_exponentiation=RLC(0),
+                exponent=RLC(0),
+                exponentiation=RLC(0),
                 a=RLC(0),
                 b=RLC(0),
                 c=RLC(0),
@@ -803,12 +801,11 @@ class ExpCircuit:
     def _append_step(
         self,
         identifier: IntOrFQ,
-        is_first: IntOrFQ,
         is_last: IntOrFQ,
+        quotient: RLC,
         is_odd: IntOrFQ,
         base: RLC,
         exponent: RLC,
-        lsb_exponent: IntOrFQ,
         exponentiation: RLC,
         a: RLC,
         b: RLC,
@@ -819,14 +816,13 @@ class ExpCircuit:
             ExpCircuitRow(
                 q_step=FQ.one(),
                 is_pad=FQ.zero(),
+                quotient=quotient,
                 is_odd=FQ(is_odd),
                 identifier=FQ(identifier),
-                is_first=FQ(is_first),
                 is_last=FQ(is_last),
                 base=base,
-                intermediate_exponent=exponent,
-                lsb_intermediate_exponent=FQ(lsb_exponent),
-                intermediate_exponentiation=exponentiation,
+                exponent=exponent,
+                exponentiation=exponentiation,
                 a=a,
                 b=b,
                 c=c,

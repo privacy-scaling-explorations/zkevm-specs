@@ -472,15 +472,14 @@ class KeccakTableRow(TableRow):
 class ExpCircuitRow(TableRow):
     q_step: FQ
     is_pad: FQ
+    quotient: RLC  # 2 * q + is_odd == exponent
     is_odd: FQ
     # columns from the exponentiation table
-    identifier: FQ  # (block_no || rw_counter)
-    is_first: FQ
+    identifier: FQ  # rw_counter
     is_last: FQ
     base: RLC
-    intermediate_exponent: RLC
-    lsb_intermediate_exponent: FQ
-    intermediate_exponentiation: RLC
+    exponent: RLC
+    exponentiation: RLC
     # columns from the MulGadget
     a: RLC
     b: RLC
@@ -491,7 +490,6 @@ class ExpCircuitRow(TableRow):
 @dataclass(frozen=True)
 class ExpTableRow(TableRow):
     identifier: FQ
-    is_first: FQ
     is_last: FQ
     base_limb0: FQ
     base_limb1: FQ
@@ -499,7 +497,6 @@ class ExpTableRow(TableRow):
     base_limb3: FQ
     exponent_lo: FQ
     exponent_hi: FQ
-    lsb_exponent: FQ
     exponentiation_lo: FQ
     exponentiation_hi: FQ
 
@@ -574,22 +571,20 @@ class Tables:
             if row.is_pad == FQ.one():
                 continue
             base_limbs = word_to_64s(row.base)
-            intermediate_exponent_lo_hi = word_to_lo_hi(row.intermediate_exponent)
-            intermediate_exponentiation_lo_hi = word_to_lo_hi(row.intermediate_exponentiation)
+            exponent_lo_hi = word_to_lo_hi(row.exponent)
+            exponentiation_lo_hi = word_to_lo_hi(row.exponentiation)
             rows.append(
                 ExpTableRow(
                     identifier=row.identifier,
-                    is_first=row.is_first,
                     is_last=row.is_last,
                     base_limb0=base_limbs[0],
                     base_limb1=base_limbs[1],
                     base_limb2=base_limbs[2],
                     base_limb3=base_limbs[3],
-                    exponent_lo=intermediate_exponent_lo_hi[0],
-                    exponent_hi=intermediate_exponent_lo_hi[1],
-                    lsb_exponent=row.lsb_intermediate_exponent,
-                    exponentiation_lo=intermediate_exponentiation_lo_hi[0],
-                    exponentiation_hi=intermediate_exponentiation_lo_hi[1],
+                    exponent_lo=exponent_lo_hi[0],
+                    exponent_hi=exponent_lo_hi[1],
+                    exponentiation_lo=exponentiation_lo_hi[0],
+                    exponentiation_hi=exponentiation_lo_hi[1],
                 )
             )
         return set(rows)
@@ -710,14 +705,12 @@ class Tables:
     def exp_lookup(
         self,
         identifier: Expression,
-        is_first: Expression,
         is_last: Expression,
         base_limbs: Tuple[Expression, ...],
         exponent: Tuple[Expression, Expression],
     ):
         query = {
             "identifier": identifier.expr(),
-            "is_first": is_first.expr(),
             "is_last": is_last.expr(),
             "base_limb0": base_limbs[0].expr(),
             "base_limb1": base_limbs[1].expr(),
