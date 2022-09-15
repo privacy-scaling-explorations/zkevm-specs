@@ -22,11 +22,9 @@ The `EXP` opcode performs an exponential operation. It reads the integer base `b
         - Do a lookup to exponentiation table for
 	```
 	(
-	    is_first=1,
 	    is_last=1,
 	    base_limbs,
 	    exponent_lo_hi,
-	    lsb_exponent,
 	    exponentiation_lo_hi,
 	)
 	```
@@ -34,22 +32,18 @@ The `EXP` opcode performs an exponential operation. It reads the integer base `b
         - Do a lookup to exponentiation table for:
 	```
 	(
-	    is_first=1,
 	    is_last=0,
 	    base_limbs,
 	    exponent_lo_hi,
-	    lsb_exponent,
 	    exponentiation_lo_hi,
 	)
 	```
 	- Do a lookup to exponentiation table for:
 	```
 	(
-	    is_first=0,
 	    is_last=1,
 	    base_limbs,
 	    exponent_lo_hi=[2, 0],
-	    lsb_exponent=[2, 0],
 	    base_sq_lo_hi,
 	)
 	```

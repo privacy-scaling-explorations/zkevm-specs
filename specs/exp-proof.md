@@ -25,7 +25,7 @@ The exponentiation circuit contains columns from the [exponentiation table](./ta
 1. `q_step`: A selector to indicate whether or not the current row represents a step in the exponentiation trace.
 2. `is_pad`: A boolean-valued advice column to indicate whether or not the step is reserved for padding or not.
 3. `is_odd`: a boolean-valued advice column to indicate whether or not the exponent at this step is odd or even.
-4. `fixed_table`: A set of 2 fixed columns spanning over 128 rows, reserved for odd/even byte-values. The odd table will consist of values `{1, 3, 5, ..., 253, 255}` and the even table will consist of values `{0, 2, 4, ..., 252, 254}`.
+4. `quotient`: An RLC field representing the quotient in `2 * q + is_odd == exponent`.
 
 We even use a few columns to perform multiplication (modulo `2^256`) of the intermediate steps in the exponentiation trace.
 
@@ -34,15 +34,17 @@ We even use a few columns to perform multiplication (modulo `2^256`) of the inte
 - For every step except the last step, validate that:
     - `base` MUST be the same across subsequent steps.
     - Multiplication result `d` from the next row MUST be equal to the first multiplicand `a` in the current row. For instance, if we consider `row_0` (`531441 * 3 = 1594323`) and `row_1` (`729 * 729 = 531441`) from the above example, `d_1` is `531441` and `a_0` is also `531441`.
+    - `identifier` MUST be the same across subsequent steps.
 
 - For every step, validate that:
-    - `is_first` and `is_last` MUST be boolean.
-    - `is_first == 1` MUST be followed by `is_first::next == 0`.
-    - `is_first == 0` MUST be followed by `is_first::next == 0`.
+    - `is_last` MUST be boolean.
+    - `is_pad` MUST be boolean.
+    - `is_odd` MUST be boolean.
     - `is_last == 1` MUST be followed by a padding row, i.e. `is_pad::next == 1`.
+    - `is_last == 0` MUST be followed by a non-padding row, i.e. `is_pad::next == 0`.
     - The multiplication `a * b + c == d` MUST be assigned correctly, where `c == 0`.
     - At every intermediate step in the exponentiation trace, the `exponentiation` MUST be equal to `d`, which is the result of the multiplication.
-    - `is_odd` MUST be boolean.
+    - The multiplication `2 * q + is_odd == exponent` MUST be correct.
 
 - For every step except the last step where `is_odd == 1`:
     - The second multiplicand in the multiplication `b` MUST be equal to `base`.
@@ -53,8 +55,8 @@ We even use a few columns to perform multiplication (modulo `2^256`) of the inte
 - For every step except the last step where `is_odd == 0`:
     - Both the multiplicands in the multiplication `a` and `b` MUST be equal, i.e. `a == b`.
     - `exponent::next == exponent::cur // 2`, which implies:
-        - `exponent_lo::next * 2 == exponent_lo::cur`.
-	- `exponent_hi::next * 2 == exponent_hi::cur`.
+        - `exponent_lo::next == quotient_lo`.
+	- `exponent_hi::next == quotient_hi`.
 
 - For the last step in the exponentiation trace, i.e. `is_last == 1`:
     - The exponent has reduced to `2`, i.e. `exponent_lo == 2` and `exponent_hi == 0`.
