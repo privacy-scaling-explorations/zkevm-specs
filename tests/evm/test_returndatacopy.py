@@ -89,9 +89,6 @@ def test_returndatacopy(
     )
     # rw counter before memory writes
     rw_counter_interim = rw_dictionary.rw_counter
-
-    bytecode = Bytecode().extcodecopy()
-    bytecode_hash = RLC(bytecode.hash(), randomness)
     steps = [
         StepState(
             execution_state=ExecutionState.RETURNDATACOPY,
