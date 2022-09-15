@@ -1,4 +1,3 @@
-from ...util import N_BYTES_MEMORY_ADDRESS, FQ
 from ..instruction import Instruction, Transition
 from ..table import CallContextFieldTag, RW, CopyDataTypeTag
 
