@@ -12,7 +12,7 @@ The gas cost of `RETURNDATACOPY` opcode consists of two parts:
 
 ### EVM behaviour
 
-The `RETURNDATACOPY` opcode copies output data from the previous call to memory. If there is no previous call, the length of `RETURNDATACOPY` is bounded to 0 (returndatasize), evm checks gas, stack and length boundary before copy, and reverts context if any exception happens.
+The `RETURNDATACOPY` opcode copies output data from the previous call to memory. If there is no previous call, the length of `RETURNDATACOPY` is bounded to 0 (returndatasize). Evm checks gas, stack and length boundary when copying, and reverts context if any exception happens.
 
 ### Circuit behaviour
 
