@@ -16,13 +16,12 @@ The `RETURNDATACOPY` opcode copies output data from the previous call to memory.
 
 ### Circuit behaviour
 
-1. Construct call context table in rw table.
-2. Do a busmapping lookup for a stack read of dest_offset.
-3. Do a busmapping lookup for a stack read of offset.
-4. Do a busmapping lookup for a stack read of size.
-5. Do a busmapping lookup for CallContext last Callee's ReturnDataLength read.
-6. Do a busmapping lookup for CallContext last Callee's ReturnDataOffset read.
-7. The copy of a dynamic number of bytes is verified by the CopyCircuit outside the `RETURNDATACOPY` gadget.
+1. Do a busmapping lookup for a stack read of dest_offset.
+2. Do a busmapping lookup for a stack read of offset.
+3. Do a busmapping lookup for a stack read of size.
+4. Do a busmapping lookup for a CallContext read of last Callee's ReturnDataLength.
+5. Do a busmapping lookup for a CallContext read of last Callee's ReturnDataOffset.
+6. Do a CopyTable lookup to verify the copy of bytes. The copy of a dynamic number of bytes is verified by the CopyCircuit outside the `RETURNDATACOPY` gadget.
 
 ## Constraints
 
