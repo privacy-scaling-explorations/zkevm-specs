@@ -132,7 +132,7 @@ struct ProofTypeCols {
     is_storage_mod: Column<Advice>,
     is_nonce_mod: Column<Advice>,
     is_balance_mod: Column<Advice>,
-    is_codehash_proof: Column<Advice>,
+    is_codehash_mod: Column<Advice>,
     is_account_delete_mod: Column<Advice>,
     is_non_existing_account_proof: Column<Advice>,
 }
@@ -141,7 +141,7 @@ struct ProofTypeCols {
 The lookup for nonce modification would thus look like:
 
 ```
-| Address | is_storage_mod | is_nonce_mod | is_balance_mod | is_codehash_proof | is_account_delete_mod | is_non_existing_account_proof | Key | ValuePrev | Value | RootPrev | Root |
+| Address | is_storage_mod | is_nonce_mod | is_balance_mod | is_codehash_mod | is_account_delete_mod | is_non_existing_account_proof | Key | ValuePrev | Value | RootPrev | Root |
 | - | - | - | - | - | - | - |
 | $addr | 0 | 1 | 0 | 0 | 0 | 0 | 0 | $noncePrev | $nonceCur | $rootPrev | $root |
 ```

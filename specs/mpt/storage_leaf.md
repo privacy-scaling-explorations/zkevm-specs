@@ -204,6 +204,140 @@ One nibble example short value:
 One nibble example long value:
 `[227,48,161,160,187,239,170,18,88,1,56,188,38,60,149,117,120,38,223,78,36,235,129,201,170,170,170,170,170,170,170,170,170,170,170,170]`
 
-####
+#### Total number of storage address nibbles is 64 (not first level, not branch placeholder)
+
+Checking the total number of nibbles is to prevent having short addresses
+which could lead to a root node which would be shorter than 32 bytes and thus not hashed. That
+means the trie could be manipulated to reach a desired root.
+
+### Storage leaf key RLC (after placeholder)
+
+For leaf under the placeholder branch we would not need to check the key RLC -
+this leaf is something we did not ask for, it is just a leaf that happened to be
+at the place where adding a new leaf causes adding a new branch.
+For example, when adding a leaf `L` causes that a leaf `L1`
+(this will be the leaf under the branch placeholder)
+is replaced by a branch, we get a placeholder branch at `S` side
+and leaf `L1` under it. However, the key RLC needs to be compared for leaf `L`,
+because this is where the modification takes place.
+In delete, the situation is turned around.
+
+However, we also check that the key RLC for `L1` is computed properly because
+we need `L1` key RLC for the constraints for checking that leaf `L1` is the same
+as the drifted leaf in the branch parallel. This can be checked by
+comparing the key RLC of the leaf before being replaced by branch and the key RLC
+of this same leaf after it drifted into a branch.
+Constraints for this are in `leaf_key_in_added_branch.rs`.
+
+Note that the hash of a leaf `L1` needs to be checked to be in the branch
+above the placeholder branch - this is checked in `leaf_value.rs`.
+
+#### Leaf key acc s_bytes0 (short)
+
+If `is_c1 = 1` which means there is an even number of nibbles stored in a leaf,
+we have 32 in `s_main.bytes[0]`.
+
+#### Key RLC (short)
+
+When `is_short` the first key byte is at `s_main.bytes[0]`. We retrieve the key RLC from the
+branch above the branch placeholder and add the nibbles stored in a leaf.
+The computed key RLC needs to be the same as the value stored at `accumulators.key.rlc`.
+
+`is_short`:
+`[226 160 59 138 106 70 105 186 37 13 38 205 122 69 158 202 157 33 95 131 7 227 58 235 229 3 121 188 90 54 23 236 52 68 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2]`
+
+`is_long`:
+`[248 67 160 59 138 106 70 105 186 37 13 38 205 122 69 158 202 157 33 95 131 7 227 58 235 229 3 121 188 90 54 23 236 52 68 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 3]`
+
+Note: No need to distinguish between `is_c16` and `is_c1` here as it was already
+when computing `key_rlc_acc_short`.
+
+#### Leaf key acc s_bytes1 (long)
+
+If `is_c1 = 1` which means there is an even number of nibbles stored in a leaf,
+we have 32 in `s_main.bytes[1]`.
+
+#### Key RLC (long)
+
+When `is_long` the first key byte is at `s_main.bytes[1]`. We retrieve the key RLC from the
+branch above the branch placeholder and add the nibbles stored in a leaf.
+The computed key RLC needs to be the same as the value stored at `accumulators.key.rlc`.
+
+`is_short`:
+`[226 160 59 138 106 70 105 186 37 13 38 205 122 69 158 202 157 33 95 131 7 227 58 235 229 3 121 188 90 54 23 236 52 68 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2]`
+
+`is_long`:
+`[248 67 160 59 138 106 70 105 186 37 13 38 205 122 69 158 202 157 33 95 131 7 227 58 235 229 3 121 188 90 54 23 236 52 68 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 3]`
+
+Note: No need to distinguish between `is_c16` and `is_c1` here as it was already
+when computing `key_rlc_acc_short`.
+
+#### Total number of account address nibbles is 64 (after placeholder)
+
+Checking the total number of nibbles is to prevent having short addresses
+which could lead to a root node which would be shorter than 32 bytes and thus not hashed. That
+means the trie could be manipulated to reach a desired root.
+
+To get the number of nibbles above the leaf we need to go into the branch above the placeholder branch.
+
+Note that when the leaf is in the first storage level (but positioned after the placeholder
+in the circuit), there is no branch above the placeholder branch from where
+`nibbles_count` is to be retrieved. In that case `nibbles_count = 0`.
+
+### Range lookups
+
+Range lookups ensure that `s_main`, `c_main.rlp1`, `c_main.rlp2` columns are all bytes (between 0 - 255).
+
+## Leaf value constraints
+
+### Leaf & Leaf value RLC
+
+We need the RLC of the whole leaf for a lookup that ensures the leaf is in the parent branch.
+We need the leaf value RLC for external lookups that ensure the value has been set correctly.
+
+### is_long & is_short are booleans and the sum is 1
+
+`is_short` means value has only one byte and consequently, the RLP of
+the value is only this byte itself. If there are more bytes, the value is
+equipped with two RLP meta bytes, like 161 160 if there is a
+value of length 32 (the first RLP byte means 33 bytes after it, the second
+RLP byte means 32 bytes after it).
+
+`is_short` example:
+`[1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 13]`
+
+`is_long` example:
+`[161 160 187 239 170 18 88 1 56 188 38 60 149 117 120 38 223 78 36 235 129 201 170 170 170 170 170 170 170 170 170 170 170 170 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 14]`
+
+We need to ensure `is_long` and `is_short` are booleans and that `is_long + is_short = 1`.
+
+### Leaf RLC
+
+We need to ensure that the stored leaf RLC is the same as the computed one.
+
+### Leaf value RLC
+
+We need to ensure that the stored leaf value RLC is the same as the computed one.
+
+#### Leaf key C RLC properly copied & Leaf value S RLC properly copied
+
+To enable external lookups we need to have the following information in the same row:
+
+ - key RLC: we copy it to `sel1` column from the leaf key C row
+ - previous (`S`) leaf value RLC: we copy it to `sel2` column from the leaf value `S` row
+ - current (`C`) leaf value RLC:  stored in `acc_c` column
+
+ #### s_main are 0s when there is no storage leaf (just a placeholder)
+
+ `sel` column in branch children rows determines whether the `modified_node` is empty child.
+  For example when adding a new storage leaf to the trie, we have an empty child in `S` proof
+  and non-empty in `C` proof. 
+  When there is an empty child, we have a placeholder leaf under the last branch.
+
+  If `sel = 1` which means an empty child, we need to ensure that the value is set to 0
+  in the placeholder leaf.
+
+  Note: For a leaf without a branch (means it is in the first level of the trie)
+  the constraint is in `storage_root_in_account_leaf.rs`.
 
 

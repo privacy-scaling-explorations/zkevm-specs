@@ -185,11 +185,6 @@ Currently, the extension node S and extension node C both have the same key RLC 
 however, sometimes extension node can be replaced by a shorter extension node
 (in terms of nibbles), this is still to be implemented.
 
-#### Extension node row S and C key RLC mult are the same
-
-Same as above but for the multiplier that is to be used for the first nibble 
-of the extension node.
-
 #### Long even sel1 extension node key RLC
 
 We check the extension node intermediate RLC for the case when we have
