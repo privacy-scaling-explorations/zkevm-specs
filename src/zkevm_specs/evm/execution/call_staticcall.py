@@ -86,6 +86,9 @@ def call_staticcall(instruction: Instruction):
     has_value = 1 - instruction.is_zero(value)
     instruction.constrain_zero(has_value * is_static)
 
+    # Constrain value == 0 for opcode STATICCALL.
+    instruction.constrain_zero(has_value * (1 - is_call))
+
     # Verify transfer only for opcode CALL. Since there is no argument `value` for opcode STATICCALL.
     if is_call == 1:
         _, (_, callee_balance_prev) = instruction.transfer(
