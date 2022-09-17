@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Tuple, List, Union
+from typing import Tuple, List, Union, Set
 
 from .util import (
     FQ,
@@ -12,12 +12,14 @@ from .util import (
     PUBLIC_INPUTS_TX_LEN as TX_LEN,
     GAS_COST_TX_CALL_DATA_PER_NON_ZERO_BYTE,
     GAS_COST_TX_CALL_DATA_PER_ZERO_BYTE,
+    Expression,
 )
 from .encoding import is_circuit_code
 from .tx import Tag as TxTag
 from .evm import (
     BlockContextFieldTag as BlockTag,
 )
+from .evm.table import lookup, TableRow
 
 
 @dataclass
@@ -32,6 +34,12 @@ class TxTableRow:
     index: FQ
     value: FQ
 
+
+@dataclass(frozen=True)
+class TxCallDataGasCostAccRow(TableRow):
+    tx_id: Expression
+    is_final: FQ
+    gas_cost_acc: FQ
 
 @dataclass
 class Row:
@@ -77,6 +85,7 @@ def check_row(
     row_offset_tx_table_tx_id: Row,
     row_offset_tx_table_index: Row,
     row_offset_tx_table_value: Row,
+    table: Set[TxCallDataGasCostAccRow],
 ):
 
     q_not_end = row.q_not_end
@@ -112,8 +121,8 @@ def check_row(
     zero = FQ(0)
     one = FQ(1)
     if row.q_tx_calldata != zero:
-        assert (row.tx_table.tx_id * (one - row.tx_id_inv * row.tx_table.tx_id) == zero)
-        assert (row.tx_table.value * (one - row.tx_value_inv * row.tx_table.value) == zero)
+        assert row.tx_table.tx_id * (one - row.tx_id_inv * row.tx_table.tx_id) == zero
+        assert row.tx_table.value * (one - row.tx_value_inv * row.tx_table.value) == zero
 
         is_tx_id_nonzero = row.tx_table.tx_id * row.tx_id_inv
         is_tx_id_next_nonzero = row_next.tx_table.tx_id * row_next.tx_id_inv
@@ -132,35 +141,53 @@ def check_row(
         ]
 
         for cons in default_calldata_row_constraints:
-            assert (cons == zero)
+            assert cons == zero
 
-        gas_cost = FQ(GAS_COST_TX_CALL_DATA_PER_NON_ZERO_BYTE) * is_byte_nonzero \
+        gas_cost = (
+            FQ(GAS_COST_TX_CALL_DATA_PER_NON_ZERO_BYTE) * is_byte_nonzero
             + FQ(GAS_COST_TX_CALL_DATA_PER_ZERO_BYTE) * is_byte_zero
-        gas_cost_next = FQ(GAS_COST_TX_CALL_DATA_PER_NON_ZERO_BYTE) * is_byte_next_nonzero \
+        )
+        gas_cost_next = (
+            FQ(GAS_COST_TX_CALL_DATA_PER_NON_ZERO_BYTE) * is_byte_next_nonzero
             + FQ(GAS_COST_TX_CALL_DATA_PER_ZERO_BYTE) * is_byte_next_zero
+        )
 
-        tx_id_constraint = (row_next.tx_table.tx_id - row.tx_table.tx_id) \
-            * (row_next.tx_table.tx_id - row.tx_table.tx_id - one) \
+        tx_id_constraint = (
+            (row_next.tx_table.tx_id - row.tx_table.tx_id)
+            * (row_next.tx_table.tx_id - row.tx_table.tx_id - one)
             * row_next.tx_table.tx_id
+        )
 
-        idx_of_same_tx_constraint = is_tx_id_next_nonzero \
-            * (row_next.tx_table.tx_id - row.tx_table.tx_id - one) \
+        idx_of_same_tx_constraint = (
+            is_tx_id_next_nonzero
+            * (row_next.tx_table.tx_id - row.tx_table.tx_id - one)
             * (row_next.tx_table.index - row.tx_table.index - one)
-        idx_of_next_tx_constraint = is_tx_id_next_nonzero \
-            * (row_next.tx_table.tx_id - row.tx_table.tx_id) \
+        )
+        idx_of_next_tx_constraint = (
+            is_tx_id_next_nonzero
+            * (row_next.tx_table.tx_id - row.tx_table.tx_id)
             * row_next.tx_table.index
-        gas_cost_of_same_tx_constraint = is_tx_id_next_nonzero \
-            * (row_next.tx_table.tx_id - row.tx_table.tx_id - one) \
+        )
+        gas_cost_of_same_tx_constraint = (
+            is_tx_id_next_nonzero
+            * (row_next.tx_table.tx_id - row.tx_table.tx_id - one)
             * (row_next.calldata_gas_cost - row.calldata_gas_cost - gas_cost_next)
-        gas_cost_of_next_tx_constraint = is_tx_id_next_nonzero \
-            * (row_next.tx_table.tx_id - row.tx_table.tx_id) \
+        )
+        gas_cost_of_next_tx_constraint = (
+            is_tx_id_next_nonzero
+            * (row_next.tx_table.tx_id - row.tx_table.tx_id)
             * (row_next.calldata_gas_cost - gas_cost_next)
-        is_final_of_same_tx_constraint = is_tx_id_next_nonzero \
-            * (row_next.tx_table.tx_id - row.tx_table.tx_id - one) \
+        )
+        is_final_of_same_tx_constraint = (
+            is_tx_id_next_nonzero
+            * (row_next.tx_table.tx_id - row.tx_table.tx_id - one)
             * row.is_final
-        is_final_of_next_tx_constraint = is_tx_id_next_nonzero \
-            * (row_next.tx_table.tx_id - row.tx_table.tx_id) \
+        )
+        is_final_of_next_tx_constraint = (
+            is_tx_id_next_nonzero
+            * (row_next.tx_table.tx_id - row.tx_table.tx_id)
             * (row.is_final - one)
+        )
 
         constraints = [
             tx_id_constraint,
@@ -173,30 +200,37 @@ def check_row(
         ]
 
         for cons_id, cons in enumerate(constraints):
-            print(cons_id, cons, row.is_final, row_next.tx_table.tx_id, row.tx_table.tx_id)
-            assert (cons == zero)
+            assert cons == zero
 
-        assert (row.q_tx_calldata_start * is_tx_id_nonzero * (row.tx_table.index - one))
-        assert (row.q_tx_calldata_start * is_tx_id_nonzero * (row.calldata_gas_cost - gas_cost))
-
+        assert row.q_tx_calldata_start * is_tx_id_nonzero * (row.tx_table.index - one)
+        assert row.q_tx_calldata_start * is_tx_id_nonzero * (row.calldata_gas_cost - gas_cost)
 
     if row.q_tx_table != zero:
         row_is_cdl = row.tx_table.tag - FQ(TxTag.CallDataLength)
-        assert (row_is_cdl * (one - row.tx_id_inv * row_is_cdl) == zero)
-        assert (row.tx_table.value * (one - row.tx_value_inv * row.tx_table.value) == zero)
+        assert row_is_cdl * (one - row.tx_id_inv * row_is_cdl) == zero
+        assert row.tx_table.value * (one - row.tx_value_inv * row.tx_table.value) == zero
 
         is_calldata_length_row = one - row_is_cdl * row.tx_id_inv
-        is_calldata_length_zero = one - row.tx_table.value * row.tx_value_inv
+        is_calldata_length_nonzero = row.tx_table.value * row.tx_value_inv
+        is_calldata_length_zero = one - is_calldata_length_nonzero
+
         calldata_cost = row_next.tx_table.value
 
-        assert (is_calldata_length_row * is_calldata_length_zero * calldata_cost == zero)
-
+        assert is_calldata_length_row * is_calldata_length_zero * calldata_cost == zero
+        query_condition = is_calldata_length_row * is_calldata_length_nonzero
+        query = {
+            "tx_id": row.tx_table.tx_id * query_condition,
+            "is_final": one * query_condition,
+            "gas_cost_acc": calldata_cost * query_condition,
+        }
+        lookup(TxCallDataGasCostAccRow, table, query)
 
 
 @dataclass
 class Witness:
     rows: List[Row]  # PublicInputs rows
     public_inputs: PublicInputs  # Public Inputs of the PublicInputs circuit
+    calldata_gas_cost_table: Set[TxCallDataGasCostAccRow]
 
 
 @is_circuit_code
@@ -210,6 +244,7 @@ def verify_circuit(
     """
 
     rows = witness.rows
+    table = witness.calldata_gas_cost_table
 
     # 1.0 rand_rpi copy constraint from public input to advice column
     assert rows[0].rand_rpi == witness.public_inputs.rand_rpi
@@ -246,6 +281,7 @@ def verify_circuit(
             row_offset_tx_table_tx_id,
             row_offset_tx_table_index,
             row_offset_tx_table_value,
+            table,
         )
 
 
@@ -363,7 +399,9 @@ class PublicData:
 
         return (tx_id_col, index_col, value_col)
 
-    def tx_table_tx_calldata(self, MAX_CALLDATA_BYTES: int) -> Tuple[List[FQ], List[FQ], List[FQ], List[FQ], List[FQ]]:
+    def tx_table_tx_calldata(
+        self, MAX_CALLDATA_BYTES: int
+    ) -> Tuple[List[FQ], List[FQ], List[FQ], List[FQ], List[FQ]]:
         """Return the tx table, dynamic section with calldata"""
         tx_id_col = []
         index_col = []
@@ -430,13 +468,17 @@ def public_data2witness(
     tx_table = public_data.tx_table(MAX_TXS, MAX_CALLDATA_BYTES)
     tx_table_tx_fields = public_data.tx_table_tx_fields(MAX_TXS)
     tx_table_tx_calldata = public_data.tx_table_tx_calldata(MAX_CALLDATA_BYTES)
-    raw_public_inputs.extend([0] + tx_table_tx_fields[0])  # start offset = BLOCK_LEN + 1 + EXTRA_LEN
+    raw_public_inputs.extend(
+        [0] + tx_table_tx_fields[0]
+    )  # start offset = BLOCK_LEN + 1 + EXTRA_LEN
     raw_public_inputs.extend([0] + tx_table_tx_fields[1])  # start offset += (TX_LEN * MAX_TXS + 1)
     raw_public_inputs.extend([0] + tx_table_tx_fields[2])  # start offset += (TX_LEN * MAX_TXS + 1)
     raw_public_inputs.extend(tx_table_tx_calldata[2])  # start offset += (TX_LEN * MAX_TXS + 1)
 
-    assert len(raw_public_inputs) == BLOCK_LEN + 1 + EXTRA_LEN + 3 * (
-        TX_LEN * MAX_TXS + 1) + MAX_CALLDATA_BYTES
+    assert (
+        len(raw_public_inputs)
+        == BLOCK_LEN + 1 + EXTRA_LEN + 3 * (TX_LEN * MAX_TXS + 1) + MAX_CALLDATA_BYTES
+    )
     rpi_rlc = linear_combine(raw_public_inputs, rand_rpi, range_check=False)
     # NOTE: End rlc calculation of raw_public_inputs.
 
@@ -446,6 +488,7 @@ def public_data2witness(
     rpi_rlc_acc_col = list(reversed(rpi_rlc_acc_col))
 
     rows = []
+    calldata_gas_cost_table = [TxCallDataGasCostAccRow(FQ(0), FQ(0), FQ(0))]
     for i in range(len(raw_public_inputs)):
         q_end = FQ(1) if i == len(raw_public_inputs) - 1 else FQ(0)
         q_not_end = FQ(1) - q_end
@@ -488,6 +531,9 @@ def public_data2witness(
                 tx_value_inv = value.inv()
                 calldata_gas_cost = tx_table_tx_calldata[3][i - tx_table_len]
                 is_final = tx_table_tx_calldata[4][i - tx_table_len]
+                calldata_gas_cost_table.append(
+                    TxCallDataGasCostAccRow(tx_id, is_final, calldata_gas_cost)
+                )
 
             if i == tx_table_len:
                 q_tx_calldata_start = FQ(1)
@@ -519,4 +565,4 @@ def public_data2witness(
         FQ(public_data.block.state_root),
         FQ(public_data.state_root_prev),
     )
-    return Witness(rows, public_inputs)
+    return Witness(rows, public_inputs, set(calldata_gas_cost_table))
