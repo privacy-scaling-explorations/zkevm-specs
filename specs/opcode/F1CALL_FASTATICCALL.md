@@ -74,7 +74,7 @@ callee_gas_left := min(gas_available - floor(gas_available / 64), gas)
 
 After switching call context, it does:
 
-1. Transfer `value` (unnecessary for opcode `STATICCALL`)
+1. Transfer `value` (zero for opcode `STATICCALL`)
 2. Execution
    1. If `callee_address` is a precompiled, it runs the pre-defined handler
    2. Otherwise, it takes callee's code for execution
