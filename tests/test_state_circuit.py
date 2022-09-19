@@ -65,11 +65,11 @@ def test_state_ok():
         TxRefundOp(rw_counter=14, rw=RW.Write, tx_id=1, value=FQ(1)),
         TxRefundOp(rw_counter=15, rw=RW.Write, tx_id=1, value=FQ(1)),
 
-        TxAccessListAccountOp(rw_counter=16, rw=RW.Read, tx_id=1, addr=0x12345678, value=FQ(1)),
-        TxAccessListAccountOp(rw_counter=17, rw=RW.Read, tx_id=1, addr=0x12345678, value=FQ(1)),
+        TxAccessListAccountOp(rw_counter=16, rw=RW.Read, tx_id=1, addr=0x12345678, value=FQ(0)),
+        TxAccessListAccountOp(rw_counter=17, rw=RW.Write, tx_id=1, addr=0x12345678, value=FQ(1)),
 
-        TxAccessListAccountStorageOp(rw_counter=18, rw=RW.Read, tx_id=1, addr=0x12345678, key=0x1516, value=FQ(1)),
-        TxAccessListAccountStorageOp(rw_counter=19, rw=RW.Read, tx_id=1, addr=0x12345678, key=0x1516, value=FQ(1)),
+        TxAccessListAccountStorageOp(rw_counter=18, rw=RW.Read, tx_id=1, addr=0x12345678, key=0x1516, value=FQ(0)),
+        TxAccessListAccountStorageOp(rw_counter=19, rw=RW.Write, tx_id=1, addr=0x12345678, key=0x1516, value=FQ(1)),
 
         AccountDestructedOp(rw_counter=20, rw=RW.Read, addr=0x12345678, value=FQ(1)),
         AccountDestructedOp(rw_counter=21, rw=RW.Read, addr=0x12345678, value=FQ(1)),
