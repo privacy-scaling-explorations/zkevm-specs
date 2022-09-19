@@ -327,17 +327,245 @@ To enable external lookups we need to have the following information in the same
  - previous (`S`) leaf value RLC: we copy it to `sel2` column from the leaf value `S` row
  - current (`C`) leaf value RLC:  stored in `acc_c` column
 
- #### s_main are 0s when there is no storage leaf (just a placeholder)
+#### s_main are 0s when there is no storage leaf (just a placeholder)
 
- `sel` column in branch children rows determines whether the `modified_node` is empty child.
-  For example when adding a new storage leaf to the trie, we have an empty child in `S` proof
-  and non-empty in `C` proof. 
-  When there is an empty child, we have a placeholder leaf under the last branch.
+`sel` column in branch children rows determines whether the `modified_node` is empty child.
+For example when adding a new storage leaf to the trie, we have an empty child in `S` proof
+and non-empty in `C` proof. 
+When there is an empty child, we have a placeholder leaf under the last branch.
 
-  If `sel = 1` which means an empty child, we need to ensure that the value is set to 0
-  in the placeholder leaf.
+If `sel = 1` which means an empty child, we need to ensure that the value is set to 0
+in the placeholder leaf.
 
-  Note: For a leaf without a branch (means it is in the first level of the trie)
-  the constraint is in `storage_root_in_account_leaf.rs`.
+Note: For a leaf without a branch (means it is in the first level of the trie)
+the constraint is in `storage_root_in_account_leaf.rs`.
 
+#### RLP leaf short value short
 
+When the leaf is short (first key byte in `s_main.bytes[0]` in the leaf key row) and the value
+is short (first value byte in `s_main.rlp1` in the leaf value row), we need to check that:
+`s_rlp1_prev - 192 - s_rlp2_prev + 128 - 1 - 1 = 0`.
+
+The first `-1` presents the byte occupied by `s_rlp2_prev`.
+The second `-1` presents the length of the value which is 1 because the value is short in this case.
+
+Example:
+`[226 160 59 138 106 70 105 186 37 13 38 205 122 69 158 202 157 33 95 131 7 227 58 235 229 3 121 188 90 54 23 236 52 68 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2]`
+
+In the example: `34 = 226 - 192` gives the length of the RLP stream. `32 = 160 - 128` gives the length
+of the key. That means there are 34 bytes after the first byte, 32 of these are occupied by the key,
+1 is occupied by `s_rlp2_prev`, and 1 is occupied by the value.
+
+#### RLP leaf long value long
+
+When the leaf is long (first key byte in `s_main.bytes[1]` in the leaf key row) and the value
+is long (first value byte in `s_main.bytes[0]` in the leaf value row), we need to check that:
+`s_rlp2_prev - s_bytes0_prev + 128 - 1 - (s_rlp2_cur - 128 + 1 + 1) = 0`.
+
+The expression `s_rlp2_prev - s_bytes0_prev + 128 - 1` gives us the number of bytes that are to be left
+in the value. The expression `s_rlp2_cur - 128 + 1 + 1` gives us the number of bytes in the leaf.
+
+Note that there is an additional constraint to ensure `s_main.rlp1 = s_main.rlp2 + 1`.
+
+Example:
+`[248 67 160 59 138 106 70 105 186 37 13 38 205 122 69 158 202 157 33 95 131 7 227 58 235 229 3 121 188 90 54 23 236 52 68 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 3]`
+`[161 160 187 239 170 18 88 1 56 188 38 60 149 117 120 38 223 78 36 235 129 201 170 170 170 170 170 170 170 170 170 170 170 170 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 14]`
+
+67 is the number of bytes after `s_main.rlp2`. `160 - 128 + 1` is the number of bytes that are occupied
+by the key and the byte that stores key length.
+In the next row, we have `32 = 160 - 128` bytes after `s_main.rlp2`, but we need to take into
+account also the two bytes `s_main.rlp1` and `s_main.rlp2`.
+
+#### RLP leaf short value long
+
+When the leaf is short (first key byte in `s_main.bytes[0]` in the leaf key row) and the value
+is long (first value byte in `s_main.bytes[0]` in the leaf value row), we need to check that:
+`s_rlp1_prev - 192 - s_rlp2_prev + 128 - 1 - (s_rlp2_cur - 128 + 1 + 1) = 0`.
+
+The expression `s_rlp1_prev - 192 - s_rlp2_prev + 128 - 1` gives us the number of bytes that are to be left in the value. The expression `s_rlp2_cur - 128 + 1 + 1` gives us the number of bytes in the leaf.
+
+#### RLP long value check
+
+When the leaf is long (first key byte in `s_main.bytes[1]` in the leaf key row)
+we need to ensure that `s_main.rlp1 = s_main.rlp2 + 1`.
+
+#### RLP check last level or one nibble & short value
+
+When the leaf is in the last level of the trie and the value is short,
+we need to ensure that `s_main.rlp2 = 32`.
+
+Note that in this case we do not have the length of the key stored in `s_main.rlp2` or `s_main.bytes[0]`.
+            
+Example: `[194,32,1]`
+
+#### RLP check last level or one nibble & long value
+
+When the leaf is in the last level of the trie and the value is long or there is one nibble in the key,
+we need to check:
+`s_rlp1_prev - 192 - 1  - (s_rlp2_cur - 128 + 1 + 1) = 0`.
+
+`s_rlp1_prev - 192 - 1` gives us the number of bytes that are to be in the leaf value row, while
+s_rlp2_cur - 128 + 1 + 1 gives us the number of bytes in the leaf value row.
+
+Note that in this case we do not have the length of the key stored in `s_main.rlp2` or `s_main.bytes[0]`.
+
+Example:
+`[227,32,161,160,187,239,170,18,88,1,56,188,38,60,149,117,120,38,223,78,36,235,129,201,170,170,170,170,170,170,170,170,170,170,170,170]`
+
+#### If placeholder leaf without branch (sel = 1), then storage trie is empty
+
+`sel = 1` in the leaf value row when the leaf is only a placeholder (it is added or deleted and
+thus there is no leaf in either `S` or `C` proof).
+
+This appears when a first leaf is added to the empty trie or when the only leaf is deleted from the trie.
+This selector is used to trigger off the constraint for the leaf hash being the same as
+the storage trie root (because leaf in this case is just a placeholder) in
+`storage_root_in_account_leaf.rs`.
+These constraints prevent setting `sel = 1` (and thus triggering off the constraint for the leaf hash
+to be the storage trie) in cases when the storage trie is not empty.
+  
+### Leaf hash in parent
+
+It needs to be checked that the hash of a leaf is in the parent node. We do this by a lookup
+into keccak table: `lookup(leaf_hash_rlc, parent_node_mod_child_rlc)`. 
+
+### Non-hashed leaf in parent
+
+When the leaf is not hashed (shorter than 32 bytes), it needs to be checked that its RLC
+is the same as the RLC of the modified node in the parent branch.
+
+When leaf is not hashed, the `mod_node_hash_rlc` stores the RLC of the leaf bytes
+(instead of the RLC of leaf hash). So we take the leaf RLC and compare it to the value
+stored in `mod_node_hash_rlc` in the parent branch.
+
+Note: `branch_parallel.rs` checks that there are 0s in `*_bytes` after the last
+byte of the non-hashed branch child (otherwise some corrupted RLC could be provided).
+
+### Leaf hash in parent (branch placeholder)
+
+Lookup for case when there is a placeholder branch - in this case we need to
+check the hash to correspond to the modified node of the branch above the placeholder branch.
+
+### Range lookups
+
+Range lookups ensure that `s_main`, `s_main.rlp1`, `s_main.rlp2` columns are all bytes (between 0 - 255).
+
+### 0s in s_main.bytes after the last byte value
+
+There are 0s in `s_main.bytes` after the last value byte.
+
+## Leaf key in added branch constraints
+
+A storage leaf occupies 5 rows.
+Contrary as in the branch rows, the `S` and `C` leaves are not positioned parallel to each other.
+The rows are the following:
+```
+LEAF_KEY_S
+LEAF_VALUE_S
+LEAF_KEY_C
+LEAF_VALUE_C
+LEAF_DRIFTED
+```
+
+An example of leaf rows:
+```
+[226 160 32 235 117 17 208 2 186 74 12 134 238 103 127 37 240 27 164 245 42 218 188 162 9 151 17 57 90 177 190 250 180 61 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2]
+[27 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 13]
+[225 159 63 117 31 216 242 20 172 137 89 10 84 218 35 38 178 182 67 5 68 54 127 178 216 248 46 67 173 108 157 55 18 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 3]
+[17 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 14]
+[225 159 59 117 17 208 2 186 74 12 134 238 103 127 37 240 27 164 245 42 218 188 162 9 151 17 57 90 177 190 250 180 61 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 15]
+```
+
+The `LEAF_DRIFTED` row is nonempty when a leaf is added (or deleted) to the position in trie where there is already
+an existing leaf. This appears when an existing leaf and a newly added leaf have the same initial key nibbles.
+In this case, a new branch is created and both leaves (existing and newly added) appear in the new branch.
+`LEAF_DRIFTED` row contains the key bytes of the existing leaf once it drifted down to the new branch.
+
+The constraints for `LEAF_DRIFTED` row are very similar to the ones for `LEAF_KEY` rows, but we have
+different selectors (different row) and there are some scenarios that do not appear here, like being in
+the first level of the trie. Also, when computing the leaf RLC, we need to take a different approach because
+the leaf value for the drifted leaf is stored in a parallel proof.
+
+### Storage leaf in added branch RLC
+
+It needs to be ensured that the leaf intermediate RLC (containing the leaf key bytes) is properly computed.
+The intermediate RLC is then used to compute the final leaf RLC (containing the leaf value bytes too).
+Finally, the lookup is used to check that the hash that
+corresponds to the leaf RLC is in the parent branch at `drifted_pos` position.
+
+#### is_long: s_rlp1 = 248
+
+When `is_long` (the leaf value is longer than 1 byte), `s_main.rlp1` needs to be 248.
+
+Example:
+`[248 67 160 59 138 106 70 105 186 37 13 38 205 122 69 158 202 157 33 95 131 7 227 58 235 229 3 121 188 90 54 23 236 52 68 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 3]`
+
+#### flag1 is boolean & flag2 is boolean
+
+The two values that store the information about what kind of case we have need to be boolean.
+
+#### Leaf key RLC (short or long)
+
+We need to ensure that the RLC of the row is computed properly for `is_short` and
+`is_long`. We compare the computed value with the value stored in `accumulators.acc_s.rlc`.
+
+#### Leaf key RLC (last level or one nibble)
+
+We need to ensure that the RLC of the row is computed properly for `last_level` and
+`one_nibble`. We compare the computed value with the value stored in `accumulators.acc_s.rlc`.
+
+`last_level` and `one_nibble` cases have one RLP byte (`s_rlp1`) and one byte (`s_rlp2`)
+where it is 32 (for `last_level`) or `48 + last_nibble` (for `one_nibble`).
+
+#### 0s after the last key nibble
+
+There are 0s in `s_main.bytes` after the last key nibble (this does not need to be checked for `last_level` and `one_nibble` as in these cases `s_main.bytes` are not used).
+
+### mult_diff
+
+The intermediate RLC value of this row is stored in `accumulators.acc_s.rlc`.
+To compute the final leaf RLC in `LEAF_VALUE` row, we need to know the multiplier to be used
+for the first byte in the leaf value row (which is in a parallel proof).
+The multiplier is stored in `accumulators.acc_s.mult`.
+We check that the multiplier corresponds to the length of the key that is stored in `s_main.rlp2`
+for `is_short` and in `s_main.bytes[0]` for `is_long`.
+
+Note: `last_level` and `one_nibble` have fixed multiplier because the length of the nibbles
+in these cases is fixed.
+
+### Storage drifted leaf key RLC
+
+We need to ensure that the drifted leaf has the proper key RLC. It needs to be the same as the key RLC
+of this same leaf before it drifted to the new branch. The difference is that after being drifted the leaf
+has one nibble less stored in the key - `drifted_pos` nibble that is in a branch parallel to the branch
+placeholder (if it is an extension node there are more nibbles of a difference).
+
+```
+Leaf key S
+Leaf value S
+Leaf key C
+Leaf value C
+Drifted leaf (leaf in added branch)
+```
+
+Add case (S branch is placeholder):
+```
+  Branch S           || Branch C             
+  Placeholder branch || Added branch
+  Leaf S             || Leaf C
+                      || Drifted leaf (this is Leaf S drifted into Added branch)
+```
+
+Leaf S needs to have the same key RLC as Drifted leaf.
+Note that Leaf S key RLC is computed by taking the key RLC from Branch S and
+then adding the bytes in Leaf key S row.
+Drifted leaf RLC is computed by taking the key RLC from Added branch and
+then adding the bytes in Drifted leaf row.
+
+Delete case (C branch is placeholder):
+```
+  Branch S                        || Branch C             
+  Branch to be deleted            || Placeholder branch
+  Leaf S (leaf to be deleted)     || Leaf C
+  Leaf to be drifted one level up || 
+```
