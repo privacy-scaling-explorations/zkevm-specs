@@ -136,8 +136,8 @@ the leaf and in the leaf) is 64.
 
 #### Leaf key RLC s_bytes0 = 32 (short)
 
-If `c1` and branch above is not a placeholder, we have 32 in `s_main.bytes[0]`.
-This is because `c1` in the branch above means there is an even number of nibbles left
+If `is_c1` and branch above is not a placeholder, we have 32 in `s_main.bytes[0]`.
+This is because `is_c1` in the branch above means there is an even number of nibbles left
 and we have an even number of nibbles in the leaf, the first byte (after RLP bytes
 specifying the length) of the key is 32.
 
@@ -158,8 +158,8 @@ when computing `key_rlc_acc_short`.
 
 #### Leaf key acc s_bytes1 = 32 (long)
 
-If `c1` and branch above is not a placeholder, we have 32 in `s_main.bytes[1]`.
-This is because `c1` in the branch above means there is an even number of nibbles left
+If `is_c1` and branch above is not a placeholder, we have 32 in `s_main.bytes[1]`.
+This is because `is_c1` in the branch above means there is an even number of nibbles left
 and we have an even number of nibbles in the leaf, the first byte (after RLP bytes
 specifying the length) of the key is 32.
 
@@ -177,6 +177,10 @@ The computed value needs to be the same as the value stored `key_rlc` column.
 
 Note: No need to distinguish between `c16` and `c1` here as it was already
 when computing `key_rlc_acc_long`.
+
+#### Leaf key acc s_rlp2 = 32 (last level)
+
+When the leaf is in the last level there are no nibbles stored in the key and `s_main.rlp2 = 32`.
 
 #### Key RLC (last level)
 
@@ -429,6 +433,13 @@ to be the storage trie) in cases when the storage trie is not empty.
 It needs to be checked that the hash of a leaf is in the parent node. We do this by a lookup
 into keccak table: `lookup(leaf_hash_rlc, parent_node_mod_child_rlc)`. 
 
+### Hash of the only storage leaf is storage trie root
+
+If there is no branch or extension node in the storage trie (just a leaf), it needs
+to be ensured that the hash of the (only) leaf is the storage root.
+
+Note: storage leaf in the first level cannot be shorter than 32 bytes (it is always hashed).
+
 ### Non-hashed leaf in parent
 
 When the leaf is not hashed (shorter than 32 bytes), it needs to be checked that its RLC
@@ -569,3 +580,149 @@ Delete case (C branch is placeholder):
   Leaf S (leaf to be deleted)     || Leaf C
   Leaf to be drifted one level up || 
 ```
+
+#### Leaf key RLC s_bytes0 = 32 (short)
+
+If `is_c1` and branch above is not a placeholder, we have 32 in `s_main.bytes[0]`.
+This is because `c1` in the branch above means there is an even number of nibbles left
+and we have an even number of nibbles in the leaf, the first byte (after RLP bytes
+specifying the length) of the key is 32.
+
+Note: `is_c1` is taken from the branch parallel to the placeholder branch. This is because
+the leaf in added branch is in this branch (parallel to placeholder branch).
+When computing the key RLC, `is_c1` means `drifted_pos` needs to be multiplied by 1, while
+`is_c16` means `drifted_pos` needs to be multiplied by 16.
+
+#### Drifted leaf key RLC S (short)
+
+When `S` placeholder, `leaf_key_s_rlc` is the key RLC of the leaf before it drifted down
+in a new branch. We retrieve it from `LEAF_KEY_S` row.
+This value needs to be the same as the key RLC of the drifted leaf.
+
+#### Drifted leaf key RLC C (short)
+
+When `C` placeholder, `leaf_key_c_rlc` is the key RLC of the leaf after its neighbour leaf
+has been deleted (and there were only two leaves, so the branch was deleted).
+We retrieve it from `LEAF_KEY_C` row.
+This value needs to be the same as the key RLC of the neighbour leaf (neighbour of
+the leaf that was deleted) before the leaf was deleted.
+
+#### Leaf key acc s_bytes1 = 32 (long)
+
+If `is_c1` and branch above is not a placeholder, we have 32 in `s_main.bytes[1]`.
+This is because `is_c1` in the branch above means there is an even number of nibbles left
+and we have an even number of nibbles in the leaf, the first byte (after RLP bytes
+specifying the length) of the key is 32.
+
+#### Drifted leaf key RLC S (long)
+
+Same as above `Drifted leaf key S (short)` but for `long` (key starts in `s_main.bytes[1]` instead
+of `s_main.bytes[0]`).
+
+#### Drifted leaf key RLC C (long)
+
+Same as above `Drifted leaf key C (short)` but for `long` (key starts in `s_main.bytes[1]` instead
+of `s_main.bytes[0]`).
+
+#### Leaf key acc s_rlp2 = 32 (last level)
+
+When the leaf is in the last level there are no nibbles stored in the key and `s_main.rlp2 = 32`.
+
+#### Drifted leaf key RLC S (last level)
+
+When `S` placeholder, `leaf_key_s_rlc` is the key RLC of the leaf before it drifted down
+in a new branch. We retrieve it from `LEAF_KEY_S` row.
+This value needs to be the same as the key RLC of the drifted leaf.
+
+We do not need to add any nibbles to the key RLC as there are none stored in the storage leaf
+(last level).
+
+#### Drifted leaf key RLC C (last level)
+
+When `C` placeholder, `leaf_key_c_rlc` is the key RLC of the leaf after its neighbour leaf
+has been deleted (and there were only two leaves, so the branch was deleted).
+We retrieve it from `LEAF_KEY_C` row.
+This value needs to be the same as the key RLC of the neighbour leaf (neighbour of
+the leaf that was deleted) before the leaf was deleted.
+
+We do not need to add any nibbles to the key RLC as there are none stored in the storage leaf
+(last level).
+
+#### Drifted leaf key RLC S (one nibble)
+
+When `S` placeholder, `leaf_key_s_rlc` is the key RLC of the leaf before it drifted down
+in a new branch. We retrieve it from `LEAF_KEY_S` row.
+This value needs to be the same as the key RLC of the drifted leaf.
+
+We only need to add one nibble to the key RLC.
+
+#### Drifted leaf key RLC C (one nibble)
+
+When `C` placeholder, `leaf_key_c_rlc` is the key RLC of the leaf after its neighbour leaf
+has been deleted (and there were only two leaves, so the branch was deleted).
+We retrieve it from `LEAF_KEY_C` row.
+This value needs to be the same as the key RLC of the neighbour leaf (neighbour of
+the leaf that was deleted) before the leaf was deleted.
+
+We only need to add one nibble to the key RLC.
+
+### Leaf key in added branch: neighbour leaf in the added branch (S)
+
+It needs to be ensured that the hash of the drifted leaf is in the parent branch
+at `drifted_pos` position.
+
+Rows:
+```
+Leaf key S
+Leaf value S
+Leaf key C
+Leaf value C
+Drifted leaf (leaf in added branch)
+```
+
+Add case (S branch is placeholder):
+```
+  Branch S           || Branch C             
+  Placeholder branch || Added branch
+  Leaf S             || Leaf C
+                      || Drifted leaf (this is Leaf S drifted into Added branch)
+```
+
+We need to compute the RLC of the drifted leaf. We compute the intermediate RLC
+from the bytes in `LEAF_DRIFTED` row. And we retrieve the value from `LEAF_VALUE_S` row
+(where there is the same leaf, but before it drifted down into a new branch).
+
+Then we execute the lookup into a keccak table: `lookup(leaf_rlc, branch_child_at_drifted_pos_rlc)`.
+
+### Leaf key in added branch: neighbour leaf in the deleted branch (C)
+
+It needs to be ensured that the hash of the drifted leaf is in the parent branch
+at `drifted_pos` position.
+
+Rows:
+```
+Leaf key S
+Leaf value S
+Leaf key C
+Leaf value C
+Drifted leaf (leaf in added branch)
+```
+
+Delete case (C branch is placeholder):
+```
+  Branch S                        || Branch C             
+  Branch to be deleted            || Placeholder branch
+  Leaf S (leaf to be deleted)     || Leaf C
+  Leaf to be drifted one level up || 
+```
+
+We need to compute the RLC of the leaf that is a neighbour leaf of the leaf that is to be deleted.
+We compute the intermediate RLC from the bytes in `LEAF_DRIFTED` row.
+And we retrieve the value from `LEAF_VALUE_C` row
+(where there is the same leaf, but after it was moved one level up because of the deleted branch).
+
+Then we execute the lookup into a keccak table: `lookup(leaf_rlc, branch_child_at_drifted_pos_rlc)`.
+
+### Range lookups
+
+Range lookups ensure that `s_main`, `c_main.rlp1`, `c_main.rlp2` columns are all bytes (between 0 - 255).

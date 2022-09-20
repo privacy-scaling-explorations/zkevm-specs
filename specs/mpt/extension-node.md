@@ -654,6 +654,14 @@ its hash needs to be compared to the root of the trie.
 
 Note: the branch counterpart is implemented in `branch_hash_in_parent.rs`.
 
+### Extension node in first level of storage trie - hash compared to the storage root
+
+When extension node is in the first level of the storage trie, we need to check whether
+`hash(ext_node) = storage_trie_root`. We do this by checking whether
+`(ext_node_RLC, storage_trie_root_RLC)` is in the keccak table.
+
+Note: extension node in the first level cannot be shorter than 32 bytes (it is always hashed).
+
 ### Extension node hash in parent branch
 
 Check whether the extension node hash is in the parent branch.

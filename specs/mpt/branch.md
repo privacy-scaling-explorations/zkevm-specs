@@ -333,6 +333,14 @@ When branch is in the first level of the account trie, we need to check whether
 
 Note: branch in the first level cannot be shorter than 32 bytes (it is always hashed).
 
+### Branch in first level of storage trie - hash compared to the storage root
+
+When branch is in the first level of the storage trie, we need to check whether
+`hash(branch) = storage_trie_root`. We do this by checking whether
+`(branch_RLC, storage_trie_root_RLC)` is in the keccak table.
+
+Note: branch in the first level cannot be shorter than 32 bytes (it is always hashed).
+
 ### Branch hash in parent branch
 
 This is the scenario described at the top of the file.
