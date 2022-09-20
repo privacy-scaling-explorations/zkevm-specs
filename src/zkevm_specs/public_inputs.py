@@ -41,6 +41,7 @@ class TxCallDataGasCostAccRow(TableRow):
     is_final: FQ
     gas_cost_acc: FQ
 
+
 @dataclass
 class Row:
     """PublicInputs circuit row"""
@@ -53,7 +54,7 @@ class Row:
     q_tx_calldata_start: FQ  # Fixed Column
     tx_table: TxTableRow
     tx_id_inv: FQ  # (tx_tag - CallDataLength)^(-1) when q_tx_table = 1
-                   # tx_id^(-1) when q_tx_calldata = 1
+    # tx_id^(-1) when q_tx_calldata = 1
     tx_value_inv: FQ
     calldata_gas_cost: FQ
     is_final: FQ
