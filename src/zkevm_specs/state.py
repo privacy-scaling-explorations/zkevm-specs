@@ -263,7 +263,10 @@ def check_call_context(row: Row, row_prev: Row):
     # 5.1 state root does not change
     assert row.root == row_prev.root
 
-    # TODO: Missing constraints
+    # 5.2 First access for a set of all keys
+    # - If READ, value must be 0
+    if not all_keys_eq(row, row_prev) and row.is_write == 0:
+        assert row.value == 0
 
 
 @is_circuit_code
@@ -323,8 +326,10 @@ def check_tx_access_list_account(row: Row, row_prev: Row):
     # 9.1 state root does not change
     assert row.root == row_prev.root
 
-    # TODO: Missing constraints
-    # - When keys change, value must be 0
+    # 9.2 First access for a set of all keys
+    # - If READ, value must be 0
+    if not all_keys_eq(row, row_prev) and row.is_write == 0:
+        assert row.value == 0
 
 
 @is_circuit_code
@@ -339,8 +344,10 @@ def check_tx_access_list_account_storage(row: Row, row_prev: Row):
     # 8.1 State root cannot change
     assert row.root == row_prev.root
 
-    # TODO: state root does not change
-    # - When keys change, value must be 0
+    # 8.2 First access for a set of all keys
+    # - If READ, value must be 0
+    if not all_keys_eq(row, row_prev) and row.is_write == 0:
+        assert row.value == 0
 
 
 @is_circuit_code
@@ -387,7 +394,7 @@ def check_tx_receipt(row: Row, row_prev: Row):
     if field_tag == U256(TxReceiptFieldTag.PostStateOrStatus):
         assert row.value in [0, 1]
 
-    # 11.2 when tx id changes, must be increasing by one , the CumulativeGasUsed must be increasing as well
+    # 11.2 when tx id changes, must be increasing by one, the CumulativeGasUsed must be increasing as well
     if tx_id != pre_tx_id and row.tag() == row_prev.tag():
         assert tx_id == pre_tx_id + 1
         if field_tag == U256(TxReceiptFieldTag.CumulativeGasUsed):
