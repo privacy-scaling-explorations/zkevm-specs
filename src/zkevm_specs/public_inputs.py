@@ -470,10 +470,14 @@ def public_data2witness(
     tx_table_tx_fields = public_data.tx_table_tx_fields(MAX_TXS)
     tx_table_tx_calldata = public_data.tx_table_tx_calldata(MAX_CALLDATA_BYTES)
     raw_public_inputs.extend(
-        [0] + tx_table_tx_fields[0]
+        [FQ(0)] + tx_table_tx_fields[0]
     )  # start offset = BLOCK_LEN + 1 + EXTRA_LEN
-    raw_public_inputs.extend([0] + tx_table_tx_fields[1])  # start offset += (TX_LEN * MAX_TXS + 1)
-    raw_public_inputs.extend([0] + tx_table_tx_fields[2])  # start offset += (TX_LEN * MAX_TXS + 1)
+    raw_public_inputs.extend(
+        [FQ(0)] + tx_table_tx_fields[1]
+    )  # start offset += (TX_LEN * MAX_TXS + 1)
+    raw_public_inputs.extend(
+        [FQ(0)] + tx_table_tx_fields[2]
+    )  # start offset += (TX_LEN * MAX_TXS + 1)
     raw_public_inputs.extend(tx_table_tx_calldata[2])  # start offset += (TX_LEN * MAX_TXS + 1)
 
     assert (
