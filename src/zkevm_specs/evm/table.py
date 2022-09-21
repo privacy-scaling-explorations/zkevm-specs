@@ -4,6 +4,8 @@ from enum import IntEnum, auto
 from itertools import chain, product
 from dataclasses import dataclass, field, fields
 
+from .opcode import constant_gas_cost_pairs
+
 from ..util import Expression, FQ
 from .execution_state import ExecutionState
 
@@ -27,6 +29,7 @@ class FixedTableTag(IntEnum):
     BitwiseXor = auto()  # lhs, rhs, lhs ^ rhs, 0
     ResponsibleOpcode = auto()  # execution_state, opcode, aux
     Pow2 = auto()  # value, value_pow
+    OpcodeConstantGas = auto()  # opcode constant gas
 
     def table_assignments(self) -> List[FixedTableRow]:
         if self == FixedTableTag.Range5:
@@ -68,6 +71,11 @@ class FixedTableTag(IntEnum):
                     lambda pair: pair if isinstance(pair, tuple) else (pair, 0),
                     execution_state.responsible_opcode(),
                 )
+            ]
+        elif self == FixedTableTag.OpcodeConstantGas:
+            return [
+                FixedTableRow(FQ(self), FQ(code[0]), FQ(code[1]), FQ(0))
+                for code in constant_gas_cost_pairs()
             ]
         elif self == FixedTableTag.Pow2:
             return [
@@ -300,6 +308,27 @@ class CopyDataTypeTag(IntEnum):
     RlcAcc = auto()
 
 
+class MPTProofType(IntEnum):
+    """
+    Tag for MPT lookup.
+    """
+
+    NonceMod = auto()
+    BalanceMod = auto()
+    CodeHashProof = auto()
+    AccountDeleteMod = auto()
+    NonExistingAccountProof = auto()
+    StorageMod = auto()
+
+    @staticmethod
+    def from_account_field_tag(field_tag: AccountFieldTag) -> MPTProofType:
+        if field_tag == AccountFieldTag.Balance:
+            return MPTProofType.BalanceMod
+        elif field_tag == AccountFieldTag.CodeHash:
+            return MPTProofType.CodeHashProof
+        return MPTProofType.NonceMod
+
+
 class WrongQueryKey(Exception):
     def __init__(self, table_name: str, diff: Set[str]) -> None:
         self.message = f"Lookup {table_name} with invalid keys {diff}"
@@ -380,7 +409,7 @@ class RWTableRow(TableRow):
 @dataclass(frozen=True)
 class MPTTableRow(TableRow):
     address: Expression
-    field_tag: Expression
+    proof_type: Expression
     storage_key: Expression
     root: Expression
     root_prev: Expression
