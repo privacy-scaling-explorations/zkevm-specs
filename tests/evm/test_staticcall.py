@@ -141,6 +141,10 @@ def test_staticcall(
 ):
     randomness = rand_fq()
 
+    caller_balance_prev = RLC(caller.balance, randomness)
+    callee_balance_prev = RLC(callee.balance, randomness)
+    caller_balance = RLC(caller.balance - 0, randomness)
+    callee_balance = RLC(callee.balance + 0, randomness)
     caller_bytecode = (
         Bytecode()
         .staticcall(
@@ -172,7 +176,7 @@ def test_staticcall(
 
     # fmt: off
     rw_dictionary = (
-        RWDictionary(22)
+        RWDictionary(23)
         .call_context_read(1, CallContextFieldTag.TxId, 1)
         .call_context_read(1, CallContextFieldTag.RwCounterEndOfReversion, caller_ctx.rw_counter_end_of_reversion)
         .call_context_read(1, CallContextFieldTag.IsPersistent, caller_ctx.is_persistent)
@@ -187,9 +191,10 @@ def test_staticcall(
         .stack_read(1, 1023, RLC(stack.rd_length, randomness))
         .stack_write(1, 1023, RLC(is_success, randomness))
         .tx_access_list_account_write(1, callee.address, True, is_warm_access, rw_counter_of_reversion=None if caller_ctx.is_persistent else caller_ctx.rw_counter_end_of_reversion - caller_ctx.reversible_write_counter)
-        .call_context_read(22, CallContextFieldTag.RwCounterEndOfReversion, callee_rw_counter_end_of_reversion)
-        .call_context_read(22, CallContextFieldTag.IsPersistent, callee_is_persistent)
-        .account_read(callee.address, AccountFieldTag.Balance, RLC(callee.balance, randomness))
+        .call_context_read(23, CallContextFieldTag.RwCounterEndOfReversion, callee_rw_counter_end_of_reversion)
+        .call_context_read(23, CallContextFieldTag.IsPersistent, callee_is_persistent)
+        .account_write(caller.address, AccountFieldTag.Balance, caller_balance, caller_balance_prev, rw_counter_of_reversion=None if callee_is_persistent else callee_rw_counter_end_of_reversion)
+        .account_write(callee.address, AccountFieldTag.Balance, callee_balance, callee_balance_prev, rw_counter_of_reversion=None if callee_is_persistent else callee_rw_counter_end_of_reversion - 1)
         .account_read(callee.address, AccountFieldTag.Nonce, RLC(callee.nonce, randomness))
         .account_read(callee.address, AccountFieldTag.CodeHash, callee_bytecode_hash)
     )
@@ -208,23 +213,23 @@ def test_staticcall(
         .call_context_write(1, CallContextFieldTag.GasLeft, expected.caller_gas_left) \
         .call_context_write(1, CallContextFieldTag.MemorySize, expected.next_memory_size) \
         .call_context_write(1, CallContextFieldTag.ReversibleWriteCounter, caller_ctx.reversible_write_counter + 1) \
-        .call_context_read(22, CallContextFieldTag.CallerId, 1) \
-        .call_context_read(22, CallContextFieldTag.TxId, 1) \
-        .call_context_read(22, CallContextFieldTag.Depth, 2) \
-        .call_context_read(22, CallContextFieldTag.CallerAddress, caller.address) \
-        .call_context_read(22, CallContextFieldTag.CalleeAddress, callee.address) \
-        .call_context_read(22, CallContextFieldTag.CallDataOffset, stack.cd_offset if stack.cd_length != 0 else 0) \
-        .call_context_read(22, CallContextFieldTag.CallDataLength, stack.cd_length) \
-        .call_context_read(22, CallContextFieldTag.ReturnDataOffset, stack.rd_offset if stack.rd_length != 0 else 0) \
-        .call_context_read(22, CallContextFieldTag.ReturnDataLength, stack.rd_length) \
-        .call_context_read(22, CallContextFieldTag.IsSuccess, is_success) \
-        .call_context_read(22, CallContextFieldTag.IsStatic, True) \
-        .call_context_read(22, CallContextFieldTag.LastCalleeId, 0) \
-        .call_context_read(22, CallContextFieldTag.LastCalleeReturnDataOffset, 0) \
-        .call_context_read(22, CallContextFieldTag.LastCalleeReturnDataLength, 0) \
-        .call_context_read(22, CallContextFieldTag.IsRoot, False) \
-        .call_context_read(22, CallContextFieldTag.IsCreate, False) \
-        .call_context_read(22, CallContextFieldTag.CodeHash, callee_bytecode_hash)
+        .call_context_read(23, CallContextFieldTag.CallerId, 1) \
+        .call_context_read(23, CallContextFieldTag.TxId, 1) \
+        .call_context_read(23, CallContextFieldTag.Depth, 2) \
+        .call_context_read(23, CallContextFieldTag.CallerAddress, caller.address) \
+        .call_context_read(23, CallContextFieldTag.CalleeAddress, callee.address) \
+        .call_context_read(23, CallContextFieldTag.CallDataOffset, stack.cd_offset if stack.cd_length != 0 else 0) \
+        .call_context_read(23, CallContextFieldTag.CallDataLength, stack.cd_length) \
+        .call_context_read(23, CallContextFieldTag.ReturnDataOffset, stack.rd_offset if stack.rd_length != 0 else 0) \
+        .call_context_read(23, CallContextFieldTag.ReturnDataLength, stack.rd_length) \
+        .call_context_read(23, CallContextFieldTag.IsSuccess, is_success) \
+        .call_context_read(23, CallContextFieldTag.IsStatic, True) \
+        .call_context_read(23, CallContextFieldTag.LastCalleeId, 0) \
+        .call_context_read(23, CallContextFieldTag.LastCalleeReturnDataOffset, 0) \
+        .call_context_read(23, CallContextFieldTag.LastCalleeReturnDataLength, 0) \
+        .call_context_read(23, CallContextFieldTag.IsRoot, False) \
+        .call_context_read(23, CallContextFieldTag.IsCreate, False) \
+        .call_context_read(23, CallContextFieldTag.CodeHash, callee_bytecode_hash)
     # fmt: on
 
     tables = Tables(
@@ -245,7 +250,7 @@ def test_staticcall(
         steps=[
             StepState(
                 execution_state=ExecutionState.STATICCALL,
-                rw_counter=22,
+                rw_counter=23,
                 call_id=1,
                 is_root=True,
                 is_create=False,
@@ -276,7 +281,7 @@ def test_staticcall(
                     if callee.code == STOP_BYTECODE
                     else ExecutionState.PUSH,
                     rw_counter=rw_dictionary.rw_counter,
-                    call_id=22,
+                    call_id=23,
                     is_root=False,
                     is_create=False,
                     code_hash=callee_bytecode_hash,

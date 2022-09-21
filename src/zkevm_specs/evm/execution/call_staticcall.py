@@ -29,8 +29,8 @@ def call_staticcall(instruction: Instruction):
     is_static = instruction.call_context_lookup(CallContextFieldTag.IsStatic)
     depth = instruction.call_context_lookup(CallContextFieldTag.Depth)
 
-    # Verify is_static == 1 for opcode STATICCALL.
-    instruction.constrain_zero((1 - is_call) * (1 - is_static.expr()))
+    # Verify is_static == 0 for opcode CALL, and is_static == 1 for opcode STATICCALL.
+    instruction.constrain_equal(is_call + is_static, FQ(1))
 
     # Verify depth is less than 1024
     instruction.range_lookup(depth, 1024)
@@ -89,13 +89,10 @@ def call_staticcall(instruction: Instruction):
     # Constrain value == 0 for opcode STATICCALL.
     instruction.constrain_zero(has_value * (1 - is_call))
 
-    # Verify transfer only for opcode CALL. Since there is no argument `value` for opcode STATICCALL.
-    if is_call == 1:
-        _, (_, callee_balance_prev) = instruction.transfer(
-            caller_address, callee_address, value, callee_reversion_info
-        )
-    else:
-        callee_balance_prev = instruction.account_read(callee_address, AccountFieldTag.Balance)
+    # Verify transfer
+    _, (_, callee_balance_prev) = instruction.transfer(
+        caller_address, callee_address, value, callee_reversion_info
+    )
 
     # Verify gas cost
     callee_nonce = instruction.account_read(callee_address, AccountFieldTag.Nonce)
@@ -148,7 +145,7 @@ def call_staticcall(instruction: Instruction):
         if is_call == 1:
             rw_counter_delta, stack_pointer_delta = 24, 6
         else:
-            rw_counter_delta, stack_pointer_delta = 22, 5
+            rw_counter_delta, stack_pointer_delta = 23, 5
 
         instruction.constrain_step_state_transition(
             rw_counter=Transition.delta(rw_counter_delta),
@@ -167,7 +164,7 @@ def call_staticcall(instruction: Instruction):
         if is_call == 1:
             rw_counter_delta, stack_pointer_delta = 44, 6
         else:
-            rw_counter_delta, stack_pointer_delta = 41, 5
+            rw_counter_delta, stack_pointer_delta = 42, 5
 
         # Save caller's call state
         for (field_tag, expected_value) in [

@@ -23,7 +23,7 @@ Before switching call context to the new one, it does several things:
 3. Calculate `gas_cost` and check `gas_left` is enough
 4. Calculate `callee_gas_left` for new context by rule in EIP150
 5. Check `depth` is less than `1024`
-6. Check `value` could be transfer (unnecessary for opcode `STATICCALL`)
+6. Check `value` could be transfer (zero for opcode `STATICCALL`)
 
 The memory size is calculated as follows:
 
