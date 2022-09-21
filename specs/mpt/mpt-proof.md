@@ -162,3 +162,4 @@ The constraints are grouped according to different trie node types:
  * Storage leaf constraints documentation is in [storage-leaf.md](storage-leaf.md).
  * Branch constraints documentation is in [branch.md](branch.md).
  * Extension node constraints documentation is in [extension-node.md](extension-node.md).
+ * Proof chain constraints documentation is in [proof_chain.md](proof_chain.md.md).

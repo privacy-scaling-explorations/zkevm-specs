@@ -416,18 +416,34 @@ Note that in this case we do not have the length of the key stored in `s_main.rl
 Example:
 `[227,32,161,160,187,239,170,18,88,1,56,188,38,60,149,117,120,38,223,78,36,235,129,201,170,170,170,170,170,170,170,170,170,170,170,170]`
 
-#### If placeholder leaf without branch (sel = 1), then storage trie is empty
+### Hash of the only storage leaf is storage trie root
 
-`sel = 1` in the leaf value row when the leaf is only a placeholder (it is added or deleted and
-thus there is no leaf in either `S` or `C` proof).
+If there is no branch or extension node in the storage trie (just a leaf), it needs
+to be ensured that the hash of the (only) leaf is the storage root.
 
-This appears when a first leaf is added to the empty trie or when the only leaf is deleted from the trie.
-This selector is used to trigger off the constraint for the leaf hash being the same as
-the storage trie root (because leaf in this case is just a placeholder) in
-`storage_root_in_account_leaf.rs`.
-These constraints prevent setting `sel = 1` (and thus triggering off the constraint for the leaf hash
-to be the storage trie) in cases when the storage trie is not empty.
-  
+Note: Storage leaf in the first level cannot be shorter than 32 bytes (it is always hashed).
+
+### Hash of the only storage leaf which is placeholder requires empty storage root
+
+When there is only one leaf in a storage trie and it is a placeholder, the trie needs to
+be empty - the storage root is hash of an empty trie.
+This occurs when the storage trie is empty and the first leaf is added (or reversed when
+there is only one leaf and it is deleted) - in this case we have a placeholder leaf in
+`S` proof and only one leaf in `C` proof. We need to check that in `S` proof we have an
+empty trie.
+
+### Hash of the only storage leaf which is after a placeholder is storage trie root
+
+If there is no branch or extension node in the storage trie (just a leaf)
+and the only leaf appears after branch placeholder, it needs
+to be ensured that the hash of the (only) leaf is the storage root.
+This appears when there is only one leaf in the storage trie and we add another leaf which
+means the only leaf in a trie is replaced by a branch or extension node (in delete scenario
+we have two leaves and one is deleted) - that means we have a branch placeholder in `S` proof
+and the leaf after it.
+
+Note: Branch in the first level cannot be shorter than 32 bytes (it is always hashed).
+
 ### Leaf hash in parent
 
 It needs to be checked that the hash of a leaf is in the parent node. We do this by a lookup
