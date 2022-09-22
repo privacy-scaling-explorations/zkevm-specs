@@ -212,7 +212,7 @@ The circuit can prove that updates to account nonces, balances, or storage slots
 | - | - | - | - | - | - | - |
 | $addr | NonceMod | 0 | $noncePrev | $nonceCur | $rootPrev | $root |
 | $addr | BalanceMod | 0 | $balancePrev | $balanceCur | $rootPrev | $root |
-| $addr | CodeHashProof | 0 | $codeHash | $codeHash | $rootPrev | $root |
+| $addr | CodeHashMod | 0 | $codeHashPrev | $codeHashCur | $rootPrev | $root |
 | $addr | StorageMod | $key | $valuePrev | $value | $rootPrev | $root |
 | $addr | AccountDeleteMod | 0 | 0 | 0 | $rootPrev | $root |
 | $addr | NonExistingAccountProof | 0 | 0 | 0 | $rootPrev | $root |
