@@ -27,7 +27,7 @@ The `RETURNDATACOPY` opcode copies output data from the previous call to memory.
 
 1. opId == 0x3E
 2. State transition:
-   - rw_counter -> rw_counter + 3 (stack read) + 2 (last callee return data param read) + size * 2 (copy == 1 mem read + 1 mem write)
+   - rw_counter -> rw_counter + 3 (stack read) + 3 (last callee id & return data param read) + size * 2 (copy == 1 mem read + 1 mem write)
    - stack pointer + 3
    - pc + 1
    - gas -> dynamic gas cost
