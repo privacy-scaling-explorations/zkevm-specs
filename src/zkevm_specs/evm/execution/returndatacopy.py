@@ -19,12 +19,6 @@ def returndatacopy(instruction: Instruction):
         CallContextFieldTag.LastCalleeReturnDataOffset, RW.Read
     )
 
-    memory_offset, size = instruction.memory_offset_and_length(memory_offset_word, size_word)
-    next_memory_size, memory_expansion_gas_cost = instruction.memory_expansion_dynamic_length(
-        memory_offset, size
-    )
-    gas_cost = instruction.memory_copier_gas_cost(size, memory_expansion_gas_cost)
-
     # out-of-bound-check
     instruction.range_check(
         return_data_length.expr()
@@ -34,6 +28,12 @@ def returndatacopy(instruction: Instruction):
         ),
         N_BYTES_MEMORY_SIZE,
     )
+
+    memory_offset, size = instruction.memory_offset_and_length(memory_offset_word, size_word)
+    next_memory_size, memory_expansion_gas_cost = instruction.memory_expansion_dynamic_length(
+        memory_offset, size
+    )
+    gas_cost = instruction.memory_copier_gas_cost(size, memory_expansion_gas_cost)
 
     copy_rwc_inc, _ = instruction.copy_lookup(
         instruction.curr.call_id,
