@@ -28,7 +28,9 @@ CALL_ID = 1
 POW2 = 2**256
 TESTING_DATA = (
     (0, 0),
+    (0, POW2 - 1),
     (1, 0),
+    (1, POW2 - 1),
     (0xCAFE, 0),
     (POW2 - 1, 0),
     (0, 1),
@@ -41,6 +43,7 @@ TESTING_DATA = (
     (7, 1023),
     (POW2 - 1, 2),
     (POW2 - 1, 3),
+    (POW2 - 1, POW2 - 1),
 )
 
 
@@ -48,7 +51,7 @@ TESTING_DATA = (
 def test_exp(base: int, exponent: int):
     randomness = rand_fq()
 
-    exponentiation = (base**exponent) % POW2
+    exponentiation = pow(base, exponent, POW2)
 
     bytecode = Bytecode().push(exponent, n_bytes=32).push(base, n_bytes=32).exp().stop()
     bytecode_hash = RLC(bytecode.hash(), randomness)
