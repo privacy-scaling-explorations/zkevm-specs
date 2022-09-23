@@ -60,7 +60,7 @@ def test_oog_constant_root(tx: Transaction, bytecode: Bytecode):
                 program_counter=0,
                 stack_pointer=1023,
                 gas_left=2,
-                reversible_write_counter=2,
+                reversible_write_counter=0,
                 aux_data=Opcode.PUSH1,
             ),
             StepState(
