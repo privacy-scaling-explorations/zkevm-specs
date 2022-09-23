@@ -1,5 +1,6 @@
 from ..instruction import Instruction, Transition
 from ..table import CallContextFieldTag, RW, CopyDataTypeTag
+from zkevm_specs.util import N_BYTES_MEMORY_SIZE
 
 
 def returndatacopy(instruction: Instruction):
@@ -23,6 +24,16 @@ def returndatacopy(instruction: Instruction):
         memory_offset, size
     )
     gas_cost = instruction.memory_copier_gas_cost(size, memory_expansion_gas_cost)
+
+    # out-of-bound-check
+    instruction.range_check(
+        return_data_length.expr()
+        - (
+            instruction.rlc_to_fq(offset_word, 8).expr()
+            + instruction.rlc_to_fq(size_word, 8).expr()
+        ),
+        N_BYTES_MEMORY_SIZE,
+    )
 
     copy_rwc_inc, _ = instruction.copy_lookup(
         instruction.curr.call_id,
