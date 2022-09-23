@@ -19,9 +19,10 @@ The `RETURNDATACOPY` opcode copies output data from the previous call to memory.
 1. Do a busmapping lookup for a stack read of dest_offset.
 2. Do a busmapping lookup for a stack read of offset.
 3. Do a busmapping lookup for a stack read of size.
-4. Do a busmapping lookup for a CallContext read of last Callee's ReturnDataLength.
-5. Do a busmapping lookup for a CallContext read of last Callee's ReturnDataOffset.
-6. Do a CopyTable lookup to verify the copy of bytes. The copy of a dynamic number of bytes is verified by the CopyCircuit outside the `RETURNDATACOPY` gadget.
+4. Do a busmapping lookup for a CallContext read of last Callee's ID.
+5. Do a busmapping lookup for a CallContext read of last Callee's ReturnDataLength.
+6. Do a busmapping lookup for a CallContext read of last Callee's ReturnDataOffset.
+7. Do a CopyTable lookup to verify the copy of bytes. The copy of a dynamic number of bytes is verified by the CopyCircuit outside the `RETURNDATACOPY` gadget.
 
 ## Constraints
 
@@ -34,10 +35,11 @@ The `RETURNDATACOPY` opcode copies output data from the previous call to memory.
    - memory_size
      - `prev_memory_size` if `size = 0`
      - `max(prev_memory_size, (memory_offset + size + 31) / 32)` if `size > 0`
-3. Lookups: 5
+3. Lookups: 6
    - `memory_offset` is at the 1st position of the stack
    - `data_offset` is at the 2nd position of the stack
    - `size` is at the 3rd position of the stack
+   - `last_callee_id` is in last callee context
    - `return_data_offset` is in last callee context
    - `return_data_size` is in last callee context
 
