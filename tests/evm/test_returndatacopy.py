@@ -31,6 +31,7 @@ from zkevm_specs.util import (
 )
 
 CALL_ID = 1
+CALLEE_ID = 2
 CALLEE_MEMORY = [0x00] * 32 + [0x11] * 32
 TESTING_DATA = (
     # simple cases
@@ -80,6 +81,7 @@ def test_returndatacopy(
         .stack_read(CALL_ID, 1021, dest_offset_rlc)
         .stack_read(CALL_ID, 1022, memory_offset_rlc)
         .stack_read(CALL_ID, 1023, size_rlc)
+        .call_context_read(CALL_ID, CallContextFieldTag.LastCalleeId, CALLEE_ID)
         .call_context_read(
             CALL_ID, CallContextFieldTag.LastCalleeReturnDataLength, return_data_length
         )
@@ -112,7 +114,7 @@ def test_returndatacopy(
     copy_circuit = CopyCircuit().copy(
         randomness,
         rw_dictionary,
-        CALL_ID,
+        CALLEE_ID,
         CopyDataTypeTag.Memory,
         CALL_ID,
         CopyDataTypeTag.Memory,

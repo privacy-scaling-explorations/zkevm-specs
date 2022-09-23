@@ -12,6 +12,7 @@ def returndatacopy(instruction: Instruction):
         instruction.stack_pop(),
     )
 
+    last_callee_id = instruction.call_context_lookup(CallContextFieldTag.LastCalleeId)
     return_data_length = instruction.call_context_lookup(
         CallContextFieldTag.LastCalleeReturnDataLength, RW.Read
     )
@@ -36,7 +37,7 @@ def returndatacopy(instruction: Instruction):
     gas_cost = instruction.memory_copier_gas_cost(size, memory_expansion_gas_cost)
 
     copy_rwc_inc, _ = instruction.copy_lookup(
-        instruction.curr.call_id,
+        last_callee_id,
         CopyDataTypeTag.Memory,
         instruction.curr.call_id,
         CopyDataTypeTag.Memory,
