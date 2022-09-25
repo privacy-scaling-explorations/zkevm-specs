@@ -1,8 +1,7 @@
-from ...util import FQ, N_BYTES_U64, RLC
+from ...util import FQ, N_BYTES_U64, MAX_U64, RLC
 from ..instruction import Instruction, Transition
 from ..opcode import Opcode
 from ..typing import Sequence
-from ...util import MAX_U64
 
 def sar(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
