@@ -3,6 +3,7 @@ from ..instruction import Instruction, Transition
 from ..opcode import Opcode
 from ..typing import Sequence
 
+
 def sar(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
 
