@@ -86,7 +86,7 @@ expansion, the gas cost is 0.
         - If case A: + `copy_length` (copy circuit)
         - If case B: + 0 (no additional lookups needed)
         - If case C: + 12 (`rw_table` lookups from transition to restored context)
-        - If case D: + 2 (`call_context` lookup) + 2 * `copy_length` (copy circuit)
+        - If case D: + 3 (`call_context` lookup) + 2 * `copy_length` (copy circuit)
     - gas left: `caller_gas_left - return_gas_cost`
     - restore context to caller context
 3. Lookups (outside of `rw_table`)
