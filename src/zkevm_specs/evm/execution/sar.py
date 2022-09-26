@@ -131,10 +131,7 @@ def __check_witness(
 
 
 def __gen_witness(instruction: Instruction, opcode: FQ, a: RLC, shift: RLC):
-    # Opcode of SHR and SAR are 0x1C and 0x1D. Result is 1 for SAR and 0 for SHR.
-    is_sar = opcode - Opcode.SHR
-
-    is_neg = is_sar * instruction.word_is_neg(a)
+    is_neg = instruction.word_is_neg(a)
     shf0 = instruction.bytes_to_fq(shift.le_bytes[:1])
     shf_div64 = FQ(shf0.n // 64)
     shf_mod64 = FQ(shf0.n % 64)
