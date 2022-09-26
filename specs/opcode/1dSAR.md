@@ -118,7 +118,7 @@ shf_div64_eq3 = is_zero(shf_div64 - 3)
 
 * First build `Pow2` table by tuple `(value, value_pow)` which meets `value_pow == pow(2, value)`.
 
-* Look up for `(shf_mod64, p_lo)` and `(64 - shf_mod64, p_hi)`.
+* Look up for `p_lo == pow(2, shf_mod64)` and `p_hi == pow(2, 64 - shf_mod64)`.
 
 6. Stack pop and push:
 
