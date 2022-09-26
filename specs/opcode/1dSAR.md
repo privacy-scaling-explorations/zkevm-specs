@@ -49,6 +49,10 @@ shf_lt256 = is_zero(sum(shift[1:]))
 a64s = word_to_64s(a)
 a64s_lo[idx] = a64s[idx] % p_lo
 a64s_hi[idx] = a64s[idx] / p_lo
+shf_div64_eq0 = is_zero(shf_div64)
+shf_div64_eq1 = is_zero(shf_div64 - 1)
+shf_div64_eq2 = is_zero(shf_div64 - 2)
+shf_div64_eq3 = is_zero(shf_div64 - 3)
 ```
 
 `b64s` could be calculated by these variables:
@@ -69,6 +73,7 @@ Now putting things together, the constraints can be constructed as follows:
 
 * `a64s[idx]`: It should be equal to `a64s_lo[idx] + a64s_hi[idx] * p_lo`.
 * `a64s_lo[idx]`: It should always be less than `p_lo` (`a64s_lo[idx] < p_lo`).
+* `a64s_hi[idx]`: It should always be less than `p_hi` (`a64s_hi[idx] < p_hi`).
 
 3. Merge constraints:
 
