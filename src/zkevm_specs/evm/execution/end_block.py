@@ -53,16 +53,14 @@ def end_block(instruction: Instruction):
             ]
         )
     )
-    last_rw_counter = instruction.curr.rw_counter - 1
-
-    total_rws = last_rw_counter
-    if total_txs.n > 0:
-        # If the block is not empty, we will do a call_context lookup
-        total_rws = last_rw_counter + 1
+    # Note that rw_counter starts at 1
+    is_empty_block = instruction.is_zero(instruction.curr.rw_counter - 1)
+    # If the block is not empty, we will do 1 call_context lookup
+    total_rws = is_empty_block * 0 + (1 - is_empty_block) * (instruction.curr.rw_counter - 1 + 1)
 
     if instruction.is_last_step:
-        # 1. Constraint total_rws and total_txs witness values depending on the empty block case.
-        if total_rws == 0:
+        # 1. Constraint total_txs witness values depending on the empty block case.
+        if is_empty_block == FQ(1):
             # 1a. total_txs is 0 in empty block
             instruction.constrain_equal(total_txs, FQ(0))
         else:
@@ -70,8 +68,6 @@ def end_block(instruction: Instruction):
             instruction.constrain_equal(
                 instruction.call_context_lookup(CallContextFieldTag.TxId), total_txs
             )
-            # total_rws is last_rw_counter + 1.  extra 1 from tx_id lookup.
-            instruction.constrain_equal(total_rws, last_rw_counter + 1)
 
         # 2. If total_txs == max_txs, we know we have covered all txs from the tx_table.
         # If not, we need to check that the rest of txs in the table are
