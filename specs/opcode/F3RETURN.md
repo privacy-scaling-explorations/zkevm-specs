@@ -46,7 +46,7 @@ the following parameters:
 ```
 If `return_length` is 0, it does not perform the copy circuit lookup.
 
-**B** - if it's a root call, it transitions to `EndTx`.
+**B** - if it's a root call, it transitions to `EndTx` and `is_persistent` is true.
 
 **C** - if it isn't a root call, it restores caller's context by reading to `rw_table`, then does
 step state transition to it.
@@ -82,11 +82,11 @@ expansion, the gas cost is 0.
 1. opId - 0xF3
 2. State transition:
     - rwc and `rw_table` lookups:
-        - Fixed: 3 (`call_context` lookups) + 2 (stack lookup)
+        - Fixed: 1 (`call_context` lookup) + 2 (stack lookup)
         - If case A: + `copy_length` (copy circuit)
-        - If case B: + 0 (no additional lookups needed)
+        - If case B: + 1 (`call_context` lookup)
         - If case C: + 12 (`rw_table` lookups from transition to restored context)
-        - If case D: + 3 (`call_context` lookup) + 2 * `copy_length` (copy circuit)
+        - If case D: + 2 (`call_context` lookup) + 2 * `copy_length` (copy circuit)
     - gas left: `caller_gas_left - return_gas_cost`
     - restore context to caller context
 3. Lookups (outside of `rw_table`)
