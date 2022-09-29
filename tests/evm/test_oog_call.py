@@ -15,8 +15,15 @@ from zkevm_specs.evm import (
     Bytecode,
     RWDictionary,
 )
-from zkevm_specs.util import rand_fq, RLC
-from tests.evm.test_call import expected
+from zkevm_specs.util import rand_fq, RLC, EMPTY_CODE_HASH
+from zkevm_specs.util.param import (
+    GAS_COST_NEW_ACCOUNT,
+    GAS_COST_CALL_WITH_VALUE,
+    GAS_COST_WARM_ACCESS,
+    GAS_COST_ACCOUNT_COLD_ACCESS,
+    GAS_STIPEND_CALL_WITH_VALUE,
+)
+
 
 CallContext = namedtuple(
     "CallContext",
@@ -43,6 +50,43 @@ STOP_BYTECODE = Bytecode().stop()
 
 CALLER = Account(address=0xFE, balance=int(1e20))
 CALLEE_WITH_STOP_BYTECODE_AND_BALANCE = Account(address=0xFF, code=STOP_BYTECODE, balance=int(1e18))
+
+
+def expected(callee: Account, caller_ctx: CallContext, stack: Stack, is_warm_access: bool):
+    def memory_size(offset: int, length: int) -> int:
+        if length == 0:
+            return 0
+        return (offset + length + 31) // 32
+
+    is_account_empty = callee.is_empty()
+    has_value = stack.value != 0
+    next_memory_size = max(
+        memory_size(stack.cd_offset, stack.cd_length),
+        memory_size(stack.rd_offset, stack.rd_length),
+        caller_ctx.memory_size,
+    )
+    memory_expansion_gas_cost = (
+        next_memory_size * next_memory_size - caller_ctx.memory_size * caller_ctx.memory_size
+    ) // 512 + 3 * (next_memory_size - caller_ctx.memory_size)
+    gas_cost = (
+        (GAS_COST_WARM_ACCESS if is_warm_access else GAS_COST_ACCOUNT_COLD_ACCESS)
+        + has_value * (GAS_COST_CALL_WITH_VALUE + is_account_empty * GAS_COST_NEW_ACCOUNT)
+        + memory_expansion_gas_cost
+    )
+    gas_available = caller_ctx.gas_left - gas_cost
+    all_but_one_64th_gas = gas_available - gas_available // 64
+    callee_gas_left = min(all_but_one_64th_gas, stack.gas)
+    caller_gas_left = caller_ctx.gas_left - (
+        gas_cost - has_value * GAS_STIPEND_CALL_WITH_VALUE
+        if callee.code_hash() == EMPTY_CODE_HASH
+        else gas_cost + callee_gas_left
+    )
+
+    return Expected(
+        caller_gas_left=caller_gas_left,
+        callee_gas_left=callee_gas_left + has_value * GAS_STIPEND_CALL_WITH_VALUE,
+        next_memory_size=next_memory_size,
+    )
 
 
 def gen_testing_data():
