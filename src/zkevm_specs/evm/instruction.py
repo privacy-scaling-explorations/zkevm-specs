@@ -361,7 +361,11 @@ class Instruction:
         return when_true if condition == 1 else when_false
 
     def pair_select(self, value: Expression, lhs: Expression, rhs: Expression) -> Tuple[FQ, FQ]:
-        return FQ(value.expr() == lhs.expr()), FQ(value.expr() == rhs.expr())
+        lhs_eq, rhs_eq = self.multiple_select(value, (lhs, rhs))
+        return lhs_eq, rhs_eq
+
+    def multiple_select(self, value: Expression, options: Tuple[Expression, ...]) -> Tuple[FQ, ...]:
+        return tuple(FQ(value.expr() == o.expr()) for o in options)
 
     def constant_divmod(
         self, numerator: Expression, denominator: Expression, n_bytes: int
