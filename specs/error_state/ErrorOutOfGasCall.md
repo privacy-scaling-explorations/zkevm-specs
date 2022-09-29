@@ -2,12 +2,14 @@
 
 ## Procedure
 ### EVM behavior
-For Call opcode, there are multiple kinds of gas consumes:
+For this gadget, the core is to calculate gas required, there are multiple kinds of gas
+consumes in call: 
 1. memory expansion gas cost
-    - 
-2. sdjsdj
-3. sdjksjd
+2. gas cost if new account creates
+3. transfer fee if has value
+4. account access list cost（warm/cold）
 
+below is the total gas cost calculation which from [`Call` Spec](../opcode/F1CALL.md).
 ```
 GAS_COST_WARM_ACCESS := 100
 GAS_COST_ACCOUNT_COLD_ACCESS := 2600
@@ -21,19 +23,11 @@ gas_cost = (
 )
 ```
 
-1. If it's a root call, it ends the execution.
-2. Otherwise, it restores caller's context and switch to it.
-
-
 ### Constraints
 1. `gas_left < gas_cost`.
 2. Current call must be failed.
 3. If it's a root call, it transits to `EndTx`.
 4. if it is not root call, it restores caller's context by reading to `rw_table`, then does step state transition to it.
-
-### Lookups
-- 1 Call Context lookup `CallContextFieldTag.IsSuccess`.
-- 1 Call Context lookup `CallContextFieldTag.IsPersistent`s. 
 
 ## Code
 

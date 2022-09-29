@@ -14,8 +14,8 @@ from ...util import N_BYTES_GAS
 
 
 def oog_call(instruction: Instruction):
-    # retrieve op code associated to oog constant error
-    opcode = instruction.opcode_lookup(True)
+    # retrieve op code associated to oog call error
+    instruction.opcode_lookup(True)
     callee_call_id = instruction.curr.rw_counter
 
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)

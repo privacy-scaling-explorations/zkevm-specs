@@ -15,14 +15,8 @@ from zkevm_specs.evm import (
     Bytecode,
     RWDictionary,
 )
-from zkevm_specs.util import rand_fq, RLC, EMPTY_CODE_HASH
-from zkevm_specs.util.param import (
-    GAS_COST_NEW_ACCOUNT,
-    GAS_COST_CALL_WITH_VALUE,
-    GAS_COST_WARM_ACCESS,
-    GAS_COST_ACCOUNT_COLD_ACCESS,
-    GAS_STIPEND_CALL_WITH_VALUE,
-)
+from zkevm_specs.util import rand_fq, RLC
+from tests.evm.test_call import expected
 
 CallContext = namedtuple(
     "CallContext",
@@ -46,75 +40,24 @@ Expected = namedtuple(
 )
 
 STOP_BYTECODE = Bytecode().stop()
-RETURN_BYTECODE = Bytecode().return_(0, 0)
-REVERT_BYTECODE = Bytecode().revert(0, 0)
 
 CALLER = Account(address=0xFE, balance=int(1e20))
-CALLEE_WITH_NOTHING = Account(address=0xFF)
 CALLEE_WITH_STOP_BYTECODE_AND_BALANCE = Account(address=0xFF, code=STOP_BYTECODE, balance=int(1e18))
-CALLEE_WITH_RETURN_BYTECODE = Account(address=0xFF, code=RETURN_BYTECODE)
-CALLEE_WITH_REVERT_BYTECODE = Account(address=0xFF, code=REVERT_BYTECODE)
-
-
-def expected(callee: Account, caller_ctx: CallContext, stack: Stack, is_warm_access: bool):
-    def memory_size(offset: int, length: int) -> int:
-        if length == 0:
-            return 0
-        return (offset + length + 31) // 32
-
-    is_account_empty = callee.is_empty()
-    has_value = stack.value != 0
-    next_memory_size = max(
-        memory_size(stack.cd_offset, stack.cd_length),
-        memory_size(stack.rd_offset, stack.rd_length),
-        caller_ctx.memory_size,
-    )
-    memory_expansion_gas_cost = (
-        next_memory_size * next_memory_size - caller_ctx.memory_size * caller_ctx.memory_size
-    ) // 512 + 3 * (next_memory_size - caller_ctx.memory_size)
-    gas_cost = (
-        (GAS_COST_WARM_ACCESS if is_warm_access else GAS_COST_ACCOUNT_COLD_ACCESS)
-        + has_value * (GAS_COST_CALL_WITH_VALUE + is_account_empty * GAS_COST_NEW_ACCOUNT)
-        + memory_expansion_gas_cost
-    )
-    gas_available = caller_ctx.gas_left - gas_cost
-    all_but_one_64th_gas = gas_available - gas_available // 64
-    callee_gas_left = min(all_but_one_64th_gas, stack.gas)
-    caller_gas_left = caller_ctx.gas_left - (
-        gas_cost - has_value * GAS_STIPEND_CALL_WITH_VALUE
-        if callee.code_hash() == EMPTY_CODE_HASH
-        else gas_cost + callee_gas_left
-    )
-
-    return Expected(
-        caller_gas_left=caller_gas_left,
-        callee_gas_left=callee_gas_left + has_value * GAS_STIPEND_CALL_WITH_VALUE,
-        next_memory_size=next_memory_size,
-    )
 
 
 def gen_testing_data():
     callees = [
         # CALLEE_WITH_NOTHING,
         CALLEE_WITH_STOP_BYTECODE_AND_BALANCE,
-        # CALLEE_WITH_RETURN_BYTECODE,
-        # CALLEE_WITH_REVERT_BYTECODE,
     ]
     call_contexts = [
-        # CallContext(gas_left=100000, is_persistent=True),
-        # CallContext(gas_left=100000, is_persistent=True, memory_size=8, reversible_write_counter=5),
-        CallContext(gas_left=100, is_persistent=False, rw_counter_end_of_reversion=88),
+        CallContext(gas_left=50, is_persistent=False),
+        CallContext(gas_left=100, is_persistent=False, rw_counter_end_of_reversion=0),
     ]
     stacks = [
-        # Stack(),
-        # Stack(value=int(1e18)),
-        # Stack(gas=100),
-        # Stack(gas=100000),
         Stack(gas=100, cd_offset=64, cd_length=320, rd_offset=0, rd_length=32),
-        # Stack(cd_offset=0, cd_length=32, rd_offset=64, rd_length=320),
-        # Stack(cd_offset=0xFFFFFF, cd_length=0, rd_offset=0xFFFFFF, rd_length=0),
     ]
-    is_warm_accesss = [True, False]  # [True, False]
+    is_warm_accesss = [True, False]
 
     return [
         (
@@ -198,10 +141,6 @@ def test_root_call(
     )
     # fmt: on
 
-    # fmt: off
-
-    # fmt: on
-
     tables = Tables(
         block_table=set(Block().table_assignments(randomness)),
         tx_table=set(),
@@ -265,8 +204,6 @@ def test_oog_call_not_root(caller_ctx: CallerContext, callee: Account):
     caller_bytecode = Bytecode().call(0, 0xFF, 0, 0, 0, 0, 0).stop()
     caller_bytecode_hash = RLC(caller_bytecode.hash(), randomness)
     callee_bytecode_hash = RLC(callee.code_hash(), randomness)
-    # gas is insufficient
-    callee_gas_left = 2
     callee_reversible_write_counter = 0
 
     stack = Stack(gas=100, cd_offset=64, cd_length=320, rd_offset=0, rd_length=32)
@@ -351,7 +288,7 @@ def test_oog_call_not_root(caller_ctx: CallerContext, callee: Account):
                 code_hash=callee_bytecode_hash,
                 program_counter=0,
                 stack_pointer=1017,
-                gas_left=callee_gas_left,
+                gas_left=0,
                 reversible_write_counter=callee_reversible_write_counter,
             ),
             StepState(
