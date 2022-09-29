@@ -164,7 +164,7 @@ def call_staticcall(instruction: Instruction):
         if is_call == 1:
             rw_counter_delta, stack_pointer_delta = 44, 6
         else:
-            rw_counter_delta, stack_pointer_delta = 42, 5
+            rw_counter_delta, stack_pointer_delta = 43, 5
 
         # Save caller's call state
         for (field_tag, expected_value) in [
@@ -187,7 +187,7 @@ def call_staticcall(instruction: Instruction):
 
         # Setup next call's context. Note that RwCounterEndOfReversion, IsPersistent
         # have been checked above.
-        call_context_lookups = [
+        for (field_tag, expected_value) in [
             (CallContextFieldTag.CallerId, instruction.curr.call_id),
             (CallContextFieldTag.TxId, tx_id.expr()),
             (CallContextFieldTag.Depth, depth.expr() + 1),
@@ -197,11 +197,7 @@ def call_staticcall(instruction: Instruction):
             (CallContextFieldTag.CallDataLength, cd_length),
             (CallContextFieldTag.ReturnDataOffset, rd_offset),
             (CallContextFieldTag.ReturnDataLength, rd_length),
-        ]
-        # Value is not used for opcode STATICCALL.
-        if is_call == 1:
-            call_context_lookups.append((CallContextFieldTag.Value, value.expr()))
-        call_context_lookups += [
+            (CallContextFieldTag.Value, value.expr()),
             (CallContextFieldTag.IsSuccess, is_success.expr()),
             (CallContextFieldTag.IsStatic, is_static.expr()),
             (CallContextFieldTag.LastCalleeId, FQ(0)),
@@ -210,8 +206,7 @@ def call_staticcall(instruction: Instruction):
             (CallContextFieldTag.IsRoot, FQ(False)),
             (CallContextFieldTag.IsCreate, FQ(False)),
             (CallContextFieldTag.CodeHash, callee_code_hash.expr()),
-        ]
-        for (field_tag, expected_value) in call_context_lookups:
+        ]:
             instruction.constrain_equal(
                 instruction.call_context_lookup(field_tag, call_id=callee_call_id),
                 expected_value,

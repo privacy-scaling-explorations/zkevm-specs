@@ -272,10 +272,8 @@ def test_call_staticcall(
         .call_context_read(call_id, CallContextFieldTag.CallDataOffset, stack.cd_offset if stack.cd_length != 0 else 0) \
         .call_context_read(call_id, CallContextFieldTag.CallDataLength, stack.cd_length) \
         .call_context_read(call_id, CallContextFieldTag.ReturnDataOffset, stack.rd_offset if stack.rd_length != 0 else 0) \
-        .call_context_read(call_id, CallContextFieldTag.ReturnDataLength, stack.rd_length)
-        if is_call:
-            rw_dictionary.call_context_read(call_id, CallContextFieldTag.Value, RLC(value, randomness))
-        rw_dictionary \
+        .call_context_read(call_id, CallContextFieldTag.ReturnDataLength, stack.rd_length) \
+        .call_context_read(call_id, CallContextFieldTag.Value, RLC(value, randomness)) \
         .call_context_read(call_id, CallContextFieldTag.IsSuccess, is_success) \
         .call_context_read(call_id, CallContextFieldTag.IsStatic, is_static) \
         .call_context_read(call_id, CallContextFieldTag.LastCalleeId, 0) \
