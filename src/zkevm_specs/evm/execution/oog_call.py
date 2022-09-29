@@ -51,6 +51,8 @@ def oog_call(instruction: Instruction):
     instruction.constrain_zero(has_value * is_static)
     callee_address = instruction.rlc_to_fq(callee_address_rlc, N_BYTES_ACCOUNT_ADDRESS)
 
+    # TODO: handle PrecompiledContract oog cases
+
     # Add callee to access list
     is_warm_access = instruction.add_account_to_access_list(tx_id, callee_address, reversion_info)
     callee_reversion_info = instruction.reversion_info(call_id=callee_call_id)
@@ -83,29 +85,29 @@ def oog_call(instruction: Instruction):
     gas_not_enough, _ = instruction.compare(instruction.curr.gas_left, gas_cost, N_BYTES_GAS)
     instruction.constrain_equal(gas_not_enough, FQ(1))
 
-    print("come to verify gas is insufficient")
     # current call must be failed.
-    # is_success = instruction.call_context_lookup(CallContextFieldTag.IsSuccess)
-    # instruction.constrain_equal(is_success, FQ(0))
-    # is_persistent = instruction.call_context_lookup(CallContextFieldTag.IsPersistent)
-    # instruction.constrain_equal(is_persistent, FQ(0))
+    instruction.constrain_equal(
+        instruction.call_context_lookup(CallContextFieldTag.IsSuccess), FQ(0)
+    )
+    is_persistent = instruction.call_context_lookup(CallContextFieldTag.IsPersistent)
+    instruction.constrain_equal(is_persistent, FQ(0))
 
     # Go to EndTx only when is_root
     is_to_end_tx = instruction.is_equal(instruction.next.execution_state, ExecutionState.EndTx)
     instruction.constrain_equal(FQ(instruction.curr.is_root), is_to_end_tx)
 
-    # TODO: state transition.
+    # state transition.
     if instruction.curr.is_root:
         # Do step state transition
         instruction.constrain_step_state_transition(
-            rw_counter=Transition.delta(20),
+            rw_counter=Transition.delta(22),
             call_id=Transition.same(),
         )
     else:
         # when it is internal call, need to restore caller's state as finishing this call.
         # Restore caller state to next StepState
         instruction.step_state_transition_to_restored_context(
-            rw_counter_delta=19,
+            rw_counter_delta=22,
             return_data_offset=FQ(0),
             return_data_length=FQ(0),
             gas_left=instruction.curr.gas_left,

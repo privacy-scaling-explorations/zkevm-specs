@@ -33,7 +33,7 @@ CallContext = namedtuple(
         "memory_size",
         "reversible_write_counter",
     ],
-    defaults=[0, True, 0, 0, 2],
+    defaults=[0, False, 0, 0, 2],
 )
 Stack = namedtuple(
     "Stack",
@@ -114,7 +114,7 @@ def gen_testing_data():
         # Stack(cd_offset=0, cd_length=32, rd_offset=64, rd_length=320),
         # Stack(cd_offset=0xFFFFFF, cd_length=0, rd_offset=0xFFFFFF, rd_length=0),
     ]
-    is_warm_accesss = [True]  # [True, False]
+    is_warm_accesss = [True, False]  # [True, False]
 
     return [
         (
@@ -193,6 +193,8 @@ def test_root_call(
         .account_write(callee.address, AccountFieldTag.Balance, callee_balance, callee_balance_prev, rw_counter_of_reversion=callee_rw_counter_end_of_reversion - 1)
         .account_read(callee.address, AccountFieldTag.Nonce, RLC(callee.nonce, randomness))
         .account_read(callee.address, AccountFieldTag.CodeHash, callee_bytecode_hash)
+        .call_context_read(1, CallContextFieldTag.IsSuccess, 0)
+        .call_context_read(1, CallContextFieldTag.IsPersistent, 0)
     )
     # fmt: on
 
@@ -235,11 +237,136 @@ def test_root_call(
                 call_id=1,
                 gas_left=0,
             ),
-            # StepState(
-            #     execution_state=ExecutionState.EndBlock,
-            #     rw_counter=rw_dictionary.rw_counter,
-            #     call_id=1,
-            #     gas_left=0,
-            # ),
+        ],
+    )
+
+
+CallerContext = namedtuple(
+    "CallerContext",
+    [
+        "is_root",
+        "is_create",
+        "program_counter",
+        "stack_pointer",
+        "gas_left",
+        "memory_size",
+        "reversible_write_counter",
+    ],
+    defaults=[False, False, 232, 1023, 10, 0, 0],
+)
+
+TESTING_DATA_NOT_ROOT = ((CallerContext(), CALLEE_WITH_STOP_BYTECODE_AND_BALANCE),)
+
+
+@pytest.mark.parametrize("caller_ctx, callee", TESTING_DATA_NOT_ROOT)
+def test_oog_call_not_root(caller_ctx: CallerContext, callee: Account):
+    randomness = rand_fq()
+
+    caller_bytecode = Bytecode().call(0, 0xFF, 0, 0, 0, 0, 0).stop()
+    caller_bytecode_hash = RLC(caller_bytecode.hash(), randomness)
+    callee_bytecode_hash = RLC(callee.code_hash(), randomness)
+    # gas is insufficient
+    callee_gas_left = 2
+    callee_reversible_write_counter = 0
+
+    stack = Stack(gas=100, cd_offset=64, cd_length=320, rd_offset=0, rd_length=32)
+
+    is_warm_access = False
+    caller_rw_counter_end_of_reversion = 2
+    callee_rw_counter_end_of_reversion = 0
+    caller_address = 0xFF
+
+    caller_balance = 1000
+    callee_balance = 200
+    caller_balance_prev = RLC(1000, randomness)
+    callee_balance_prev = RLC(200, randomness)
+    caller_balance = RLC(caller_balance - stack.value, randomness)
+    callee_balance = RLC(callee_balance + stack.value, randomness)
+
+    tables = Tables(
+        block_table=set(Block().table_assignments(randomness)),
+        tx_table=set(),
+        bytecode_table=set(
+            chain(
+                caller_bytecode.table_assignments(randomness),
+                callee.code.table_assignments(randomness),
+            )
+        ),
+        rw_table=set(
+            # fmt: off
+            RWDictionary(24)
+            .call_context_read(2, CallContextFieldTag.TxId, 1)
+            .call_context_read(2, CallContextFieldTag.RwCounterEndOfReversion, caller_rw_counter_end_of_reversion)
+            .call_context_read(2, CallContextFieldTag.IsPersistent, False)
+            .call_context_read(2, CallContextFieldTag.CalleeAddress, caller_address)
+            .call_context_read(2, CallContextFieldTag.IsStatic, False)
+            .stack_read(2, 1017, RLC(stack.gas, randomness))
+            .stack_read(2, 1018, RLC(callee.address, randomness))
+            .stack_read(2, 1019, RLC(stack.value, randomness))
+            .stack_read(2, 1020, RLC(stack.cd_offset, randomness))
+            .stack_read(2, 1021, RLC(stack.cd_length, randomness))
+            .stack_read(2, 1022, RLC(stack.rd_offset, randomness))
+            .stack_read(2, 1023, RLC(stack.rd_length, randomness))
+            .stack_write(2, 1023, RLC(False, randomness))
+            .tx_access_list_account_write(1, callee.address, True, is_warm_access,
+                                          rw_counter_of_reversion=caller_rw_counter_end_of_reversion - caller_ctx.reversible_write_counter)
+            .call_context_read(24, CallContextFieldTag.RwCounterEndOfReversion, callee_rw_counter_end_of_reversion)
+            .call_context_read(24, CallContextFieldTag.IsPersistent, False)
+            .account_write(caller_address, AccountFieldTag.Balance, caller_balance, caller_balance_prev,
+                           rw_counter_of_reversion=callee_rw_counter_end_of_reversion)
+            .account_write(callee.address, AccountFieldTag.Balance, callee_balance, callee_balance_prev,
+                           rw_counter_of_reversion=callee_rw_counter_end_of_reversion - 1)
+            .account_read(callee.address, AccountFieldTag.Nonce, RLC(callee.nonce, randomness))
+            .account_read(callee.address, AccountFieldTag.CodeHash, callee_bytecode_hash)
+            # restore context operations
+            .call_context_read(2, CallContextFieldTag.IsSuccess, 0)
+            .call_context_read(2, CallContextFieldTag.IsPersistent, 0)
+            .call_context_read(2, CallContextFieldTag.CallerId, 1)
+            .call_context_read(1, CallContextFieldTag.IsRoot, caller_ctx.is_root)
+            .call_context_read(1, CallContextFieldTag.IsCreate, caller_ctx.is_create)
+            .call_context_read(1, CallContextFieldTag.CodeHash, caller_bytecode_hash)
+            .call_context_read(1, CallContextFieldTag.ProgramCounter, caller_ctx.program_counter)
+            .call_context_read(1, CallContextFieldTag.StackPointer, caller_ctx.stack_pointer)
+            .call_context_read(1, CallContextFieldTag.GasLeft, caller_ctx.gas_left)
+            .call_context_read(1, CallContextFieldTag.MemorySize, caller_ctx.memory_size)
+            .call_context_read(1, CallContextFieldTag.ReversibleWriteCounter, caller_ctx.reversible_write_counter)
+            .call_context_write(1, CallContextFieldTag.LastCalleeId, 2)
+            .call_context_write(1, CallContextFieldTag.LastCalleeReturnDataOffset, 0)
+            .call_context_write(1, CallContextFieldTag.LastCalleeReturnDataLength, 0)
+            .rws
+            # fmt: on
+        ),
+    )
+
+    verify_steps(
+        randomness=randomness,
+        tables=tables,
+        steps=[
+            StepState(
+                execution_state=ExecutionState.ErrorOutOfGasCALL,
+                rw_counter=24,
+                call_id=2,
+                is_root=False,
+                is_create=False,
+                code_hash=callee_bytecode_hash,
+                program_counter=0,
+                stack_pointer=1017,
+                gas_left=callee_gas_left,
+                reversible_write_counter=callee_reversible_write_counter,
+            ),
+            StepState(
+                execution_state=ExecutionState.STOP,
+                rw_counter=24 + 34,
+                call_id=1,
+                is_root=caller_ctx.is_root,
+                is_create=caller_ctx.is_create,
+                code_hash=caller_bytecode_hash,
+                program_counter=caller_ctx.program_counter,
+                stack_pointer=caller_ctx.stack_pointer,
+                gas_left=caller_ctx.gas_left,
+                memory_size=caller_ctx.memory_size,
+                reversible_write_counter=caller_ctx.reversible_write_counter
+                + callee_reversible_write_counter,
+            ),
         ],
     )
