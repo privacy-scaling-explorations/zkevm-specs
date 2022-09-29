@@ -7,10 +7,9 @@ from ...util import (
     GAS_COST_CALL_WITH_VALUE,
     GAS_COST_NEW_ACCOUNT,
 )
-from ..instruction import Instruction, Transition, FixedTableTag
+from ..instruction import Instruction, Transition
 from ..table import CallContextFieldTag, AccountFieldTag
 from ..execution_state import ExecutionState
-from ..opcode import Opcode
 from ...util import N_BYTES_GAS
 
 
