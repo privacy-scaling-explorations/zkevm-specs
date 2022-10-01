@@ -158,6 +158,7 @@ def test_call_staticcall(
     expected: Expected,
 ):
     is_call = opcode == Opcode.CALL
+    is_static = not is_call or stack.value == 0
 
     randomness = rand_fq()
 
@@ -213,8 +214,8 @@ def test_call_staticcall(
         )
     )
 
-    is_static, call_id, rw_counter, next_program_counter, stack_pointer = (
-        (False, 24, 24, 232, 1017) if is_call else (True, 23, 23, 199, 1018)
+    call_id, rw_counter, next_program_counter, stack_pointer = (
+        (24, 24, 232, 1017) if is_call else (23, 23, 199, 1018)
     )
 
     # fmt: off
