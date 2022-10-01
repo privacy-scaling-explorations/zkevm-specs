@@ -26,7 +26,11 @@ def call_staticcall(instruction: Instruction):
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
     reversion_info = instruction.reversion_info()
     caller_address = instruction.call_context_lookup(CallContextFieldTag.CalleeAddress)
+    is_static = instruction.call_context_lookup(CallContextFieldTag.IsStatic)
     depth = instruction.call_context_lookup(CallContextFieldTag.Depth)
+
+    # Verify is_static == 0 for opcode CALL, and is_static == 1 for opcode STATICCALL.
+    instruction.constrain_equal(is_call + is_static, FQ(1))
 
     # Verify depth is less than 1024
     instruction.range_lookup(depth, 1024)
@@ -77,12 +81,6 @@ def call_staticcall(instruction: Instruction):
             callee_reversion_info.rw_counter_end_of_reversion,
             reversion_info.rw_counter_of_reversion(),
         )
-
-    # Get callee is_static and Verify is_static == 0 for opcode CALL, and is_static == 1 for opcode STATICCALL.
-    is_static = instruction.call_context_lookup(
-        CallContextFieldTag.IsStatic, call_id=callee_call_id
-    )
-    instruction.constrain_equal(is_call + is_static, FQ(1))
 
     # Check not is_static if call has value
     has_value = 1 - instruction.is_zero(value)

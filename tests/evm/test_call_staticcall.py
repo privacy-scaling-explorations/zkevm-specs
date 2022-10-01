@@ -213,10 +213,8 @@ def test_call_staticcall(
         )
     )
 
-    callee_is_static = False if is_call else True
-
-    call_id, rw_counter, next_program_counter, stack_pointer = (
-        (24, 24, 232, 1017) if is_call else (23, 23, 199, 1018)
+    is_static, call_id, rw_counter, next_program_counter, stack_pointer = (
+        (False, 24, 24, 232, 1017) if is_call else (True, 23, 23, 199, 1018)
     )
 
     # fmt: off
@@ -226,6 +224,7 @@ def test_call_staticcall(
         .call_context_read(1, CallContextFieldTag.RwCounterEndOfReversion, caller_ctx.rw_counter_end_of_reversion)
         .call_context_read(1, CallContextFieldTag.IsPersistent, caller_ctx.is_persistent)
         .call_context_read(1, CallContextFieldTag.CalleeAddress, caller.address)
+        .call_context_read(1, CallContextFieldTag.IsStatic, is_static)
         .call_context_read(1, CallContextFieldTag.Depth, 1)
     )
     if is_call:
@@ -246,7 +245,6 @@ def test_call_staticcall(
         .tx_access_list_account_write(1, callee.address, True, is_warm_access, rw_counter_of_reversion=None if caller_ctx.is_persistent else caller_ctx.rw_counter_end_of_reversion - caller_ctx.reversible_write_counter) \
         .call_context_read(call_id, CallContextFieldTag.RwCounterEndOfReversion, callee_rw_counter_end_of_reversion) \
         .call_context_read(call_id, CallContextFieldTag.IsPersistent, callee_is_persistent) \
-        .call_context_read(call_id, CallContextFieldTag.IsStatic, callee_is_static) \
         .account_write(caller.address, AccountFieldTag.Balance, caller_balance, caller_balance_prev, rw_counter_of_reversion=None if callee_is_persistent else callee_rw_counter_end_of_reversion) \
         .account_write(callee.address, AccountFieldTag.Balance, callee_balance, callee_balance_prev, rw_counter_of_reversion=None if callee_is_persistent else callee_rw_counter_end_of_reversion - 1) \
         .account_read(callee.address, AccountFieldTag.Nonce, RLC(callee.nonce, randomness)) \
@@ -277,7 +275,7 @@ def test_call_staticcall(
         .call_context_read(call_id, CallContextFieldTag.ReturnDataLength, stack.rd_length) \
         .call_context_read(call_id, CallContextFieldTag.Value, RLC(value, randomness)) \
         .call_context_read(call_id, CallContextFieldTag.IsSuccess, is_success) \
-        .call_context_read(call_id, CallContextFieldTag.IsStatic, callee_is_static) \
+        .call_context_read(call_id, CallContextFieldTag.IsStatic, is_static) \
         .call_context_read(call_id, CallContextFieldTag.LastCalleeId, 0) \
         .call_context_read(call_id, CallContextFieldTag.LastCalleeReturnDataOffset, 0) \
         .call_context_read(call_id, CallContextFieldTag.LastCalleeReturnDataLength, 0) \
