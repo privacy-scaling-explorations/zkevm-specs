@@ -56,7 +56,7 @@ def end_block(instruction: Instruction):
     # Note that rw_counter starts at 1
     is_empty_block = instruction.is_zero(instruction.curr.rw_counter - 1)
     # If the block is not empty, we will do 1 call_context lookup
-    total_rws = is_empty_block * 0 + (1 - is_empty_block) * (instruction.curr.rw_counter - 1 + 1)
+    total_rws = (1 - is_empty_block) * (instruction.curr.rw_counter - 1 + 1)
 
     if instruction.is_last_step:
         # 1. Constraint total_txs witness values depending on the empty block case.
@@ -96,6 +96,8 @@ def end_block(instruction: Instruction):
         # in the rw_table.
         # We conclude that the number of meaningful entries in the rw_table is total_rws.
 
+        # TODO: Send fixed reward to coinbase according to the chain rules (See
+        # https://github.com/privacy-scaling-explorations/zkevm-specs/issues/290)
     else:
         # Propagate rw_counter and call_id all the way down
         instruction.constrain_step_state_transition(
