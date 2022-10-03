@@ -1,6 +1,6 @@
 from __future__ import annotations
 from enum import IntEnum, auto
-from typing import Optional, Sequence, Tuple, Union
+from typing import Optional, Sequence, Tuple, Union, List
 
 from ..util import (
     FQ,
@@ -126,9 +126,19 @@ class Instruction:
     def constrain_zero(self, value: Expression):
         assert value.expr() == 0, ConstraintUnsatFailure(f"Expected value to be 0, but got {value}")
 
+    def constrain_not_zero(self, value: Expression):
+        assert value.expr() != 0, ConstraintUnsatFailure(
+            f"Expected value to be != 0, but got {value}"
+        )
+
     def constrain_equal(self, lhs: Expression, rhs: Expression):
         assert lhs.expr() == rhs.expr(), ConstraintUnsatFailure(
             f"Expected values to be equal, but got {lhs} and {rhs}"
+        )
+
+    def constrain_in(self, lhs: Expression, rhs: List[FQ]):
+        assert lhs.expr() in rhs, ConstraintUnsatFailure(
+            f"Expected value to be in {rhs}, but got {lhs}"
         )
 
     def constrain_bool(self, num: Expression):

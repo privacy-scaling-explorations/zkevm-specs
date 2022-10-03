@@ -170,7 +170,6 @@ For this implementation, the Tx Table is extended to look like this:
 | $TxID  | CallDataLength      | 0          | $value: raw |
 | $TxID  | TxSignHash          |            | $value: rlc |
 | $TxID  | CallData            | $ByteIndex | $value: raw |
-| $TxID  | Pad                 | 0          | 0           |
 
 For the ECDSA signature verification, instead of doing lookups to the ECDSA table we'll just use an ECDSA verification gadget for each transaction.  Since each transaction uses a variable number of rows due to the variable length CallData, we'll rearrange the table so that each transaction starts at a fixed offset like this (by moving all the CallData rows at the end):
 
@@ -193,7 +192,7 @@ For each transaction:
 
 This structure is repeated `MAX_TXS` times.  When the number of transactions is
 less than `MAX_TXS`, the rows corresponding to unused transactions will use the
-`Pad` tag.
+continue having sequential `TxID`s but will have all values set to 0.  In particular, the signature verification is disabled when `CallerAddress == 0`.
 
 Then the table continues: for each transaction:
 
@@ -204,7 +203,8 @@ Then the table continues: for each transaction:
 
 These rows are repeated `MAX_CALLDATA_BYTES` times.  When the total numer of
 bytes from all transactions' call data is less than `MAX_CALLDATA_BYTES`, the
-rows corresponding to unused transactions will use the `Pad` tag.
+rows corresponding to unused transactions will use the `CallData` tag with
+`TxID = 0`.
 
 Organizing the table this way allows having the values of `CallerAddress` and
 `TxSignHash` for each transaction at a fixed offset.  This makes it possible to

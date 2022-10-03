@@ -21,6 +21,9 @@ def begin_tx(instruction: Instruction):
     tx_value = cast_expr(instruction.tx_context_lookup(tx_id, TxContextFieldTag.Value), RLC)
     tx_call_data_length = instruction.tx_context_lookup(tx_id, TxContextFieldTag.CallDataLength)
 
+    # CallerAddress != 0 (not a padding tx)
+    instruction.constrain_not_zero(tx_caller_address)
+
     # Verify nonce
     tx_nonce = instruction.tx_context_lookup(tx_id, TxContextFieldTag.Nonce)
     nonce, nonce_prev = instruction.account_write(tx_caller_address, AccountFieldTag.Nonce)
