@@ -204,6 +204,7 @@ class AccountFieldTag(IntEnum):
     Nonce = auto()
     Balance = auto()
     CodeHash = auto()
+    NonExisting = auto()
 
 
 class CallContextFieldTag(IntEnum):
@@ -312,20 +313,25 @@ class MPTProofType(IntEnum):
     Tag for MPT lookup.
     """
 
-    StorageMod = 0
     NonceMod = 1
     BalanceMod = 2
     CodeHashMod = 3
-    AccountDeleteMod = 4
-    NonExistingAccountProof = 5
+    NonExistingAccountProof = 4
+    AccountDeleteMod = 5
+    StorageMod = 6
+    NonExistingStorageProof = 7
 
     @staticmethod
     def from_account_field_tag(field_tag: AccountFieldTag) -> MPTProofType:
+        if field_tag == AccountFieldTag.Nonce:
+            return MPTProofType.NonceMod
         if field_tag == AccountFieldTag.Balance:
             return MPTProofType.BalanceMod
         elif field_tag == AccountFieldTag.CodeHash:
             return MPTProofType.CodeHashMod
-        return MPTProofType.NonceMod
+        elif field_tag == AccountFieldTag.NonExisting:
+            return MPTProofType.NonExistingAccountProof
+        raise Exception("Unexpected AccountFieldTag value")
 
 
 class WrongQueryKey(Exception):
