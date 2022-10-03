@@ -31,7 +31,6 @@ def call_staticcall(instruction: Instruction):
     )
     depth = instruction.call_context_lookup(CallContextFieldTag.Depth)
 
-
     # Verify depth is less than 1024
     instruction.range_lookup(depth, 1024)
 
