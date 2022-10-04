@@ -215,6 +215,18 @@ the signature verification and hash lookup.
 
 ![](./tx_circuit.rev1.png)
 
+### Signature verification and random linear combination
+
+Instead of verifying ECDSA signatures by doing lookups to an ECDSA table, we use ECDSA chip from `halo2wrong` directly.
+
+We also extend the `MainGate`, which is the underlying component of ECDSA chip, to build the random linear combination of these data:
+
+- PublicKey - Decomposed from signature verification and then used to lookup to keccak table as input
+- PublicKeyHash - Used to lookup to keccak table as output
+- TxSignHash - Decomposed from signature verification and then used to copy to tx table
+
+The extended random linear combination gate requires one extra column in second phase to contain the running sum of RLC, which accumulate inputs chunk by chunk and finally build the RLC of the whole input.
+
 ### Summary of changes
 
 - Skip verification of correct construction of the transaction trie (no MPT table lookups)
