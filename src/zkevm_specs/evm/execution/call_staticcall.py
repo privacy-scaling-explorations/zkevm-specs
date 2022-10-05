@@ -1,28 +1,34 @@
 from ...util import (
+    EMPTY_CODE_HASH,
     FQ,
+    GAS_COST_ACCOUNT_COLD_ACCESS,
+    GAS_COST_CALL_WITH_VALUE,
+    GAS_COST_NEW_ACCOUNT,
+    GAS_COST_WARM_ACCESS,
+    GAS_STIPEND_CALL_WITH_VALUE,
     N_BYTES_ACCOUNT_ADDRESS,
     N_BYTES_GAS,
-    EMPTY_CODE_HASH,
-    GAS_COST_WARM_ACCESS,
-    GAS_COST_ACCOUNT_COLD_ACCESS,
-    GAS_COST_NEW_ACCOUNT,
-    GAS_COST_CALL_WITH_VALUE,
-    GAS_STIPEND_CALL_WITH_VALUE,
+    RLC,
 )
 from ..instruction import Instruction, Transition
+from ..opcode import Opcode
 from ..table import RW, CallContextFieldTag, AccountFieldTag
 from ..precompiled import PrecompiledAddress
 
 
-def call(instruction: Instruction):
-    instruction.responsible_opcode_lookup(instruction.opcode_lookup(True))
+def call_staticcall(instruction: Instruction):
+    opcode = instruction.opcode_lookup(True)
+    is_call, _ = instruction.pair_select(opcode, Opcode.CALL, Opcode.STATICCALL)
+    instruction.responsible_opcode_lookup(opcode)
 
     callee_call_id = instruction.curr.rw_counter
 
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
     reversion_info = instruction.reversion_info()
     caller_address = instruction.call_context_lookup(CallContextFieldTag.CalleeAddress)
-    is_static = instruction.call_context_lookup(CallContextFieldTag.IsStatic)
+    is_static = instruction.select(
+        is_call, instruction.call_context_lookup(CallContextFieldTag.IsStatic), FQ(1)
+    )
     depth = instruction.call_context_lookup(CallContextFieldTag.Depth)
 
     # Verify depth is less than 1024
@@ -31,7 +37,8 @@ def call(instruction: Instruction):
     # Lookup values from stack
     gas_rlc = instruction.stack_pop()
     callee_address_rlc = instruction.stack_pop()
-    value = instruction.stack_pop()
+    # The third argument `value` of opcode CALL is not present for opcode STATICCALL.
+    value = instruction.stack_pop() if is_call == 1 else RLC(0)
     cd_offset_rlc = instruction.stack_pop()
     cd_length_rlc = instruction.stack_pop()
     rd_offset_rlc = instruction.stack_pop()
@@ -131,10 +138,15 @@ def call(instruction: Instruction):
                 expected_value,
             )
 
+        if is_call == 1:
+            rw_counter_delta, stack_pointer_delta = 24, 6
+        else:
+            rw_counter_delta, stack_pointer_delta = 23, 5
+
         instruction.constrain_step_state_transition(
-            rw_counter=Transition.delta(24),
+            rw_counter=Transition.delta(rw_counter_delta),
             program_counter=Transition.delta(1),
-            stack_pointer=Transition.delta(6),
+            stack_pointer=Transition.delta(stack_pointer_delta),
             gas_left=Transition.delta(has_value * GAS_STIPEND_CALL_WITH_VALUE - gas_cost),
             memory_size=Transition.to(next_memory_size),
             reversible_write_counter=Transition.delta(3),
@@ -145,10 +157,18 @@ def call(instruction: Instruction):
             code_hash=Transition.same(),
         )
     else:
+        if is_call == 1:
+            rw_counter_delta, stack_pointer_delta = 44, 6
+        else:
+            rw_counter_delta, stack_pointer_delta = 43, 5
+
         # Save caller's call state
         for (field_tag, expected_value) in [
             (CallContextFieldTag.ProgramCounter, instruction.curr.program_counter + 1),
-            (CallContextFieldTag.StackPointer, instruction.curr.stack_pointer + 6),
+            (
+                CallContextFieldTag.StackPointer,
+                instruction.curr.stack_pointer + stack_pointer_delta,
+            ),
             (CallContextFieldTag.GasLeft, instruction.curr.gas_left - gas_cost - callee_gas_left),
             (CallContextFieldTag.MemorySize, next_memory_size),
             (
@@ -192,7 +212,7 @@ def call(instruction: Instruction):
         callee_gas_left += has_value * GAS_STIPEND_CALL_WITH_VALUE
 
         instruction.step_state_transition_to_new_context(
-            rw_counter=Transition.delta(44),
+            rw_counter=Transition.delta(rw_counter_delta),
             call_id=Transition.to(callee_call_id),
             is_root=Transition.to(False),
             is_create=Transition.to(False),

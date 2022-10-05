@@ -25,8 +25,9 @@ def verify(
     ok = True
     for (idx, row) in enumerate(rows):
         row_prev = rows[(idx - 1) % len(rows)]
+        row_next = rows[(idx + 1) % len(rows)]
         try:
-            check_state_row(row, row_prev, tables, randomness)
+            check_state_row(row, row_prev, row_next, tables, randomness)
         except AssertionError as e:
             if success:
                 traceback.print_exc()
@@ -64,11 +65,11 @@ def test_state_ok():
         TxRefundOp(rw_counter=14, rw=RW.Write, tx_id=1, value=FQ(1)),
         TxRefundOp(rw_counter=15, rw=RW.Write, tx_id=1, value=FQ(1)),
 
-        TxAccessListAccountOp(rw_counter=16, rw=RW.Read, tx_id=1, addr=0x12345678, value=FQ(1)),
-        TxAccessListAccountOp(rw_counter=17, rw=RW.Read, tx_id=1, addr=0x12345678, value=FQ(1)),
+        TxAccessListAccountOp(rw_counter=16, rw=RW.Read, tx_id=1, addr=0x12345678, value=FQ(0)),
+        TxAccessListAccountOp(rw_counter=17, rw=RW.Write, tx_id=1, addr=0x12345678, value=FQ(1)),
 
-        TxAccessListAccountStorageOp(rw_counter=18, rw=RW.Read, tx_id=1, addr=0x12345678, key=0x1516, value=FQ(1)),
-        TxAccessListAccountStorageOp(rw_counter=19, rw=RW.Read, tx_id=1, addr=0x12345678, key=0x1516, value=FQ(1)),
+        TxAccessListAccountStorageOp(rw_counter=18, rw=RW.Read, tx_id=1, addr=0x12345678, key=0x1516, value=FQ(0)),
+        TxAccessListAccountStorageOp(rw_counter=19, rw=RW.Write, tx_id=1, addr=0x12345678, key=0x1516, value=FQ(1)),
 
         AccountDestructedOp(rw_counter=20, rw=RW.Read, addr=0x12345678, value=FQ(1)),
         AccountDestructedOp(rw_counter=21, rw=RW.Read, addr=0x12345678, value=FQ(1)),
@@ -89,6 +90,22 @@ def test_state_ok():
         TxReceiptOp(rw_counter=35, rw=RW.Read, tx_id=1, field_tag=TxReceiptFieldTag.CumulativeGasUsed, value=FQ(200)),
         TxReceiptOp(rw_counter=36, rw=RW.Read, tx_id=2, field_tag=TxReceiptFieldTag.PostStateOrStatus, value=FQ(1)),
         TxReceiptOp(rw_counter=37, rw=RW.Read, tx_id=2, field_tag=TxReceiptFieldTag.CumulativeGasUsed, value=FQ(500)),
+    ]
+    # fmt: on
+    tables = Tables(mpt_table_from_ops(ops, randomness))
+    verify(ops, tables, randomness)
+
+
+def test_mpt_updates_ok():
+    # fmt: off
+    ops = [
+        StartOp(),
+
+        StorageOp(rw_counter=7, rw=RW.Read,  tx_id=1, addr=0x12345678, key=0x1516, value=rlc(789), committed_value=rlc(789)),
+        StorageOp(rw_counter=8, rw=RW.Write, tx_id=1, addr=0x12345678, key=0x4959, value=rlc(38491), committed_value=rlc(98765)),
+
+        AccountOp(rw_counter=12, rw=RW.Write, addr=0x12345678, field_tag=AccountFieldTag.Nonce, value=FQ(1), committed_value=FQ(0)),
+        AccountOp(rw_counter=13, rw=RW.Read,  addr=0x12345678, field_tag=AccountFieldTag.Balance, value=FQ(3), committed_value=FQ(0)),
     ]
     # fmt: on
     tables = Tables(mpt_table_from_ops(ops, randomness))
@@ -360,30 +377,3 @@ def test_storage_committed_value_bad():
     # fmt: on
     tables = Tables(mpt_table_from_ops(ops, randomness))
     verify(ops, tables, randomness, success=False)
-
-
-def test_mpt_counter_bad():
-    # fmt: off
-    ops = [
-        StartOp(),
-        StorageOp(rw_counter=1, rw=RW.Write, tx_id=1, addr=0x12345678, key=0x15161718, value=rlc(789), committed_value=rlc(789)),
-        StorageOp(rw_counter=2, rw=RW.Write, tx_id=1, addr=0x12345678, key=0x15161718, value=rlc(123), committed_value=rlc(789)),
-    ]
-    # fmt: on
-    rows = assign_state_circuit(ops, r)
-    # mpt_counter goes from 1 to 3
-    rows[2] = rows[2]._replace(mpt_counter=FQ(3))
-    tables = Tables(mpt_table_from_ops(ops, randomness))
-    verify(rows, tables, randomness, success=False)
-
-    # fmt: off
-    ops = [
-        StartOp(),
-        StackOp(rw_counter=1, rw=RW.Write, call_id=1, stack_ptr=1021, value=rlc(4321)),
-    ]
-    # fmt: on
-    rows = assign_state_circuit(ops, r)
-    # mpt_counter increases when tag is not Account or Storage
-    rows[1] = rows[1]._replace(mpt_counter=FQ(1))
-    tables = Tables(mpt_table_from_ops(ops, randomness))
-    verify(rows, tables, randomness, success=False)

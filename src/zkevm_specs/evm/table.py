@@ -4,6 +4,8 @@ from enum import IntEnum, auto
 from itertools import chain, product
 from dataclasses import dataclass, field, fields
 
+from .opcode import constant_gas_cost_pairs
+
 from ..util import Expression, FQ
 from .execution_state import ExecutionState
 
@@ -27,6 +29,7 @@ class FixedTableTag(IntEnum):
     BitwiseXor = auto()  # lhs, rhs, lhs ^ rhs, 0
     ResponsibleOpcode = auto()  # execution_state, opcode, aux
     Pow2 = auto()  # value, value_pow
+    OpcodeConstantGas = auto()  # opcode constant gas
 
     def table_assignments(self) -> List[FixedTableRow]:
         if self == FixedTableTag.Range5:
@@ -69,8 +72,21 @@ class FixedTableTag(IntEnum):
                     execution_state.responsible_opcode(),
                 )
             ]
+        elif self == FixedTableTag.OpcodeConstantGas:
+            return [
+                FixedTableRow(FQ(self), FQ(code[0]), FQ(code[1]), FQ(0))
+                for code in constant_gas_cost_pairs()
+            ]
         elif self == FixedTableTag.Pow2:
-            return [FixedTableRow(FQ(self), FQ(value), FQ(1 << value)) for value in range(65)]
+            return [
+                FixedTableRow(
+                    FQ(self),
+                    FQ(value),
+                    FQ(1 << value) if value < 128 else FQ(0),
+                    FQ(0) if value < 128 else FQ(1 << (value - 128)),
+                )
+                for value in range(256)
+            ]
         else:
             raise ValueError("Unreacheable")
 
@@ -130,6 +146,7 @@ class TxContextFieldTag(IntEnum):
     Value = auto()
     CallDataLength = auto()
     CallDataGasCost = auto()
+    TxSignHash = auto()
     CallData = auto()
 
 
@@ -147,23 +164,14 @@ class RW(IntEnum):
     Write = 1
 
 
-class MPTTableTag(IntEnum):
-    """
-    Tag for MPTTable lookup
-    """
-
-    Nonce = 1
-    Balance = 2
-    CodeHash = 4
-    Storage = 8
-
-
 class RWTableTag(IntEnum):
     """
     Tag for RWTable lookup, where the RWTable an advice-column table built by
     prover, which will be part of State circuit and each unit read-write data
     will be verified to be consistent between each write.
     """
+
+    Start = auto()  # Used for upper rows padding
 
     TxAccessListAccount = auto()
     TxAccessListAccountStorage = auto()
@@ -196,6 +204,7 @@ class AccountFieldTag(IntEnum):
     Nonce = auto()
     Balance = auto()
     CodeHash = auto()
+    NonExisting = auto()
 
 
 class CallContextFieldTag(IntEnum):
@@ -299,6 +308,32 @@ class CopyDataTypeTag(IntEnum):
     RlcAcc = auto()
 
 
+class MPTProofType(IntEnum):
+    """
+    Tag for MPT lookup.
+    """
+
+    NonceMod = 1
+    BalanceMod = 2
+    CodeHashMod = 3
+    NonExistingAccountProof = 4
+    AccountDeleteMod = 5
+    StorageMod = 6
+    NonExistingStorageProof = 7
+
+    @staticmethod
+    def from_account_field_tag(field_tag: AccountFieldTag) -> MPTProofType:
+        if field_tag == AccountFieldTag.Nonce:
+            return MPTProofType.NonceMod
+        if field_tag == AccountFieldTag.Balance:
+            return MPTProofType.BalanceMod
+        elif field_tag == AccountFieldTag.CodeHash:
+            return MPTProofType.CodeHashMod
+        elif field_tag == AccountFieldTag.NonExisting:
+            return MPTProofType.NonExistingAccountProof
+        raise Exception("Unexpected AccountFieldTag value")
+
+
 class WrongQueryKey(Exception):
     def __init__(self, table_name: str, diff: Set[str]) -> None:
         self.message = f"Lookup {table_name} with invalid keys {diff}"
@@ -378,10 +413,11 @@ class RWTableRow(TableRow):
 
 @dataclass(frozen=True)
 class MPTTableRow(TableRow):
-    counter: Expression
-    target: Expression  # MPTTableTag
     address: Expression
-    key: Expression
+    proof_type: Expression
+    storage_key: Expression
+    root: Expression
+    root_prev: Expression
     value: Expression
     value_prev: Expression
 

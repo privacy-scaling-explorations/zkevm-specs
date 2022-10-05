@@ -36,7 +36,10 @@ def verify_steps(
 
 def verify_step(instruction: Instruction):
     if instruction.is_first_step:
-        instruction.constrain_equal(instruction.curr.execution_state, ExecutionState.BeginTx)
+        instruction.constrain_in(
+            instruction.curr.execution_state,
+            [FQ(ExecutionState.BeginTx), FQ(ExecutionState.EndBlock)],
+        )
 
     if instruction.is_last_step:
         instruction.constrain_equal(instruction.curr.execution_state, ExecutionState.EndBlock)

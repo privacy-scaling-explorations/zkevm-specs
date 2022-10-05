@@ -1,6 +1,6 @@
 from __future__ import annotations
 from enum import IntEnum, auto
-from typing import Optional, Sequence, Tuple, Union
+from typing import Optional, Sequence, Tuple, Union, List
 
 from ..util import (
     FQ,
@@ -126,9 +126,19 @@ class Instruction:
     def constrain_zero(self, value: Expression):
         assert value.expr() == 0, ConstraintUnsatFailure(f"Expected value to be 0, but got {value}")
 
+    def constrain_not_zero(self, value: Expression):
+        assert value.expr() != 0, ConstraintUnsatFailure(
+            f"Expected value to be != 0, but got {value}"
+        )
+
     def constrain_equal(self, lhs: Expression, rhs: Expression):
         assert lhs.expr() == rhs.expr(), ConstraintUnsatFailure(
             f"Expected values to be equal, but got {lhs} and {rhs}"
+        )
+
+    def constrain_in(self, lhs: Expression, rhs: List[FQ]):
+        assert lhs.expr() in rhs, ConstraintUnsatFailure(
+            f"Expected value to be in {rhs}, but got {lhs}"
         )
 
     def constrain_bool(self, num: Expression):
@@ -752,6 +762,10 @@ class Instruction:
             call_id = self.curr.call_id
         return self.rw_lookup(rw, RWTableTag.CallContext, call_id, FQ(field_tag)).value
 
+    def rw_table_start_lookup(self, counter: Expression):
+        # Raises exception if no lookup matches
+        self.rw_lookup(rw=RW.Read, tag=RWTableTag.Start, rw_counter=counter)
+
     def reversion_info(self, call_id: Expression = None) -> ReversionInfo:
         [rw_counter_end_of_reversion, is_persistent] = [
             self.call_context_lookup(tag, call_id=call_id)
@@ -1009,8 +1023,8 @@ class Instruction:
         self.range_check(gas_cost, N_BYTES_GAS)
         return gas_cost
 
-    def pow2_lookup(self, value: Expression, value_pow: Expression):
-        self.fixed_lookup(FixedTableTag.Pow2, value, value_pow)
+    def pow2_lookup(self, value: Expression, pow_lo128: Expression, pow_hi128: Expression):
+        self.fixed_lookup(FixedTableTag.Pow2, value, pow_lo128, pow_hi128)
 
     def copy_lookup(
         self,

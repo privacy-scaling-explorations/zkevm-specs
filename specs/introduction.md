@@ -7,7 +7,7 @@ Currently, every Ethereum node must validate every transaction in the Ethereum v
 This means making a proof of validity for EVM + state reads / writes + signatures.
 
 To simplify we separate our proofs into two components:
-1. **State proof**: State/memory/stack ops have been performed correctly. This does not check if the correct location has been read/written. We allow our prover to pick any location here and in the EVM proof confirm it is correct.
-2. **EVM proof**: This checks that the correct opcode is called at the correct time. It checks the validity of these opcodes and confirms that each of these opcodes and the state proof both performed the correct operations.
+1. **[State proof](./state-proof.md)**: State/memory/stack ops have been performed correctly. This does not check if the correct location has been read/written. We allow our prover to pick any location here and in the EVM proof confirm it is correct.
+2. **[EVM proof](./evm-proof.md)**: This checks that the correct opcode is called at the correct time. It checks the validity of these opcodes and confirms that each of these opcodes and the state proof both performed the correct operations.
 
 Only after verifying both proofs are valid, we have confidence that Ethereum block is executed correctly.

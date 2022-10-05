@@ -133,7 +133,7 @@ class Transaction:
         nonce: U64 = U64(0),
         gas: U64 = U64(21000),
         gas_price: U256 = U256(int(2e9)),
-        caller_address: U160 = U160(0),
+        caller_address: U160 = U160(0xCAFE),
         callee_address: U160 = None,
         value: U256 = U256(0),
         call_data: bytes = bytes(),
@@ -146,6 +146,11 @@ class Transaction:
         self.callee_address = callee_address
         self.value = value
         self.call_data = call_data
+
+    @classmethod
+    def padding(obj, id: int):
+        tx = obj(id, U64(0), U64(0), U256(0), U160(0), U160(0), U256(0), bytes())
+        return tx
 
     def call_data_gas_cost(self) -> int:
         return reduce(
@@ -161,48 +166,57 @@ class Transaction:
             0,
         )
 
+    def table_fixed(self, randomness: FQ) -> List[TxTableRow]:
+        return [
+            TxTableRow(FQ(self.id), FQ(TxContextFieldTag.Nonce), FQ(0), FQ(self.nonce)),
+            TxTableRow(FQ(self.id), FQ(TxContextFieldTag.Gas), FQ(0), FQ(self.gas)),
+            TxTableRow(
+                FQ(self.id),
+                FQ(TxContextFieldTag.GasPrice),
+                FQ(0),
+                RLC(self.gas_price, randomness),
+            ),
+            TxTableRow(
+                FQ(self.id), FQ(TxContextFieldTag.CallerAddress), FQ(0), FQ(self.caller_address)
+            ),
+            TxTableRow(
+                FQ(self.id),
+                FQ(TxContextFieldTag.CalleeAddress),
+                FQ(0),
+                FQ(0 if self.callee_address is None else self.callee_address),
+            ),
+            TxTableRow(
+                FQ(self.id),
+                FQ(TxContextFieldTag.IsCreate),
+                FQ(0),
+                FQ(self.callee_address is None),
+            ),
+            TxTableRow(
+                FQ(self.id), FQ(TxContextFieldTag.Value), FQ(0), RLC(self.value, randomness)
+            ),
+            TxTableRow(
+                FQ(self.id),
+                FQ(TxContextFieldTag.CallDataLength),
+                FQ(0),
+                FQ(len(self.call_data)),
+            ),
+            TxTableRow(
+                FQ(self.id),
+                FQ(TxContextFieldTag.CallDataGasCost),
+                FQ(0),
+                FQ(self.call_data_gas_cost()),
+            ),
+            TxTableRow(
+                FQ(self.id),
+                FQ(TxContextFieldTag.TxSignHash),
+                FQ(0),
+                FQ(1234),  # Mock value for TxSignHash
+            ),
+        ]
+
     def table_assignments(self, randomness: FQ) -> Iterator[TxTableRow]:
         return chain(
-            [
-                TxTableRow(FQ(self.id), FQ(TxContextFieldTag.Nonce), FQ(0), FQ(self.nonce)),
-                TxTableRow(FQ(self.id), FQ(TxContextFieldTag.Gas), FQ(0), FQ(self.gas)),
-                TxTableRow(
-                    FQ(self.id),
-                    FQ(TxContextFieldTag.GasPrice),
-                    FQ(0),
-                    RLC(self.gas_price, randomness),
-                ),
-                TxTableRow(
-                    FQ(self.id), FQ(TxContextFieldTag.CallerAddress), FQ(0), FQ(self.caller_address)
-                ),
-                TxTableRow(
-                    FQ(self.id),
-                    FQ(TxContextFieldTag.CalleeAddress),
-                    FQ(0),
-                    FQ(0 if self.callee_address is None else self.callee_address),
-                ),
-                TxTableRow(
-                    FQ(self.id),
-                    FQ(TxContextFieldTag.IsCreate),
-                    FQ(0),
-                    FQ(self.callee_address is None),
-                ),
-                TxTableRow(
-                    FQ(self.id), FQ(TxContextFieldTag.Value), FQ(0), RLC(self.value, randomness)
-                ),
-                TxTableRow(
-                    FQ(self.id),
-                    FQ(TxContextFieldTag.CallDataLength),
-                    FQ(0),
-                    FQ(len(self.call_data)),
-                ),
-                TxTableRow(
-                    FQ(self.id),
-                    FQ(TxContextFieldTag.CallDataGasCost),
-                    FQ(0),
-                    FQ(self.call_data_gas_cost()),
-                ),
-            ],
+            self.table_fixed(randomness),
             map(
                 lambda item: TxTableRow(
                     FQ(self.id), FQ(TxContextFieldTag.CallData), FQ(item[0]), FQ(item[1])

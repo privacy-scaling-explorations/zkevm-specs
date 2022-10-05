@@ -13,7 +13,8 @@ from .address import *
 from .mulmod import *
 from .balance import *
 from .block_ctx import *
-from .call import *
+from .blockhash import *
+from .call_staticcall import *
 from .calldatasize import *
 from .caller import *
 from .callvalue import *
@@ -28,6 +29,7 @@ from .jumpi import *
 from .mul_div_mod import *
 from .origin import *
 from .push import *
+from .returndatasize import *
 from .slt_sgt import *
 from .gas import *
 from .gasprice import *
@@ -35,12 +37,14 @@ from .storage import *
 from .selfbalance import *
 from .extcodehash import *
 from .log import *
-from .sha3 import sha3
-from .shr import shr
 from .bitwise import not_opcode
 from .sdiv_smod import sdiv_smod
+from .sha3 import sha3
+from .shl_shr import shl_shr
 from .stop import stop
 from .return_ import *
+from .extcodecopy import *
+from .oog_constant import *
 
 
 EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
@@ -63,9 +67,11 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.CODECOPY: codecopy,
     ExecutionState.CODESIZE: codesize,
     ExecutionState.BlockCtx: blockctx,
+    ExecutionState.BLOCKHASH: blockhash,
     ExecutionState.JUMP: jump,
     ExecutionState.JUMPI: jumpi,
     ExecutionState.PUSH: push,
+    ExecutionState.RETURNDATASIZE: returndatasize,
     ExecutionState.SCMP: scmp,
     ExecutionState.GAS: gas,
     ExecutionState.SHA3: sha3,
@@ -73,12 +79,14 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.SSTORE: sstore,
     ExecutionState.SELFBALANCE: selfbalance,
     ExecutionState.GASPRICE: gasprice,
+    ExecutionState.EXTCODECOPY: extcodecopy,
     ExecutionState.EXTCODEHASH: extcodehash,
     ExecutionState.LOG: log,
-    ExecutionState.CALL: call,
+    ExecutionState.CALL_STATICCALL: call_staticcall,
     ExecutionState.ISZERO: iszero,
-    ExecutionState.SHR: shr,
     ExecutionState.SDIV_SMOD: sdiv_smod,
+    ExecutionState.SHL_SHR: shl_shr,
     ExecutionState.STOP: stop,
     ExecutionState.RETURN: return_,
+    ExecutionState.ErrorOutOfGasConstant: oog_constant,
 }
