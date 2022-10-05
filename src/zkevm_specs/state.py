@@ -236,11 +236,14 @@ def check_storage(row: Row, row_prev: Row, row_next: Row, tables: Tables):
     # 4.0. Unused keys are 0
     assert row.field_tag() == 0
 
+    is_non_exist = FQ(row.value.expr() == FQ(0)) * FQ(row.committed_value.expr() == FQ(0))
+
     # 4.1. MPT lookup for last access to (address, storage_key)
     if not all_keys_eq(row, row_next):
         tables.mpt_lookup(
             row.address(),
-            FQ(MPTProofType.StorageMod),
+            is_non_exist * FQ(MPTProofType.NonExistingStorageProof)
+            + (1 - is_non_exist) * FQ(MPTProofType.StorageMod),
             row.storage_key(),
             row.value,
             row.committed_value,

@@ -75,6 +75,7 @@ NOTE: `kN` means `keyN`
 | $counter | $isWrite    | Account                    |             | $address           | Nonce                      |                     | $value    | $committedValue  | $root |
 | $counter | $isWrite    | Account                    |             | $address           | Balance                    |                     | $value    | $committedValue  | $root |
 | $counter | $isWrite    | Account                    |             | $address           | CodeHash                   |                     | $value    | $committedValue  | $root |
+| $counter | $isWrite    | Account                    |             | $address           | NonExisting                |                     | 0         | 0                | $root |
 | $counter | true        | AccountDestructed          |             | $address           |                            |                     | $value    | 0                | $root |
 |          |             |                            |             |                    |                            |                     |           |                  |                 |
 |          |             | *CallContext constant*     |             |                    | *CallContextFieldTag* (ro) |                     |           |                  |                 |
@@ -198,8 +199,6 @@ Provided by the MPT (Merkle Patricia Trie) circuit.
 
 The current MPT circuit design exposes one big table where different targets require different lookups as described below.
 From this table, the following columns contain values using the RLC encoding:
-- Address
-- ProofType
 - Key
 - ValuePrev
 - Value
@@ -208,88 +207,15 @@ From this table, the following columns contain values using the RLC encoding:
 
 The circuit can prove that updates to account nonces, balances, or storage slots are correct, or that an account's code hash is some particular value. Note that it is not possible to change the code hash for an account without deleting it and then recreating it.
 
-| Address | ProofType | Key | ValuePrev | Value | RootPrev | Root |
-| - | - | - | - | - | - | - |
-| $addr | NonceMod | 0 | $noncePrev | $nonceCur | $rootPrev | $root |
-| $addr | BalanceMod | 0 | $balancePrev | $balanceCur | $rootPrev | $root |
-| $addr | CodeHashMod | 0 | $codeHashPrev | $codeHashCur | $rootPrev | $root |
-| $addr | StorageMod | $key | $valuePrev | $value | $rootPrev | $root |
-| $addr | AccountDeleteMod | 0 | 0 | 0 | $rootPrev | $root |
-| $addr | NonExistingAccountProof | 0 | 0 | 0 | $rootPrev | $root |
-
-### Nonce update
-
-| Enable | Counter  | Address | ValuePrev  | ValueCur  |
-| ------ | -------- | ------- | ---------- | --------- |
-| 1      | $counter | $addr   | $noncePrev | $nonceCur |
-
-Column names in circuit:
-- Enable: `is_nonce_mod`
-- Counter: `counter`
-- Address: `address_rlc`
-- ValuePrev: `sel1`
-- ValueCur: `s_mod_node_hash_rlc`
-
-### Balance update
-
-| Enable | Counter  | Address | ValuePrev    | ValueCur    |
-| ------ | -------- | ------- | ------------ | ----------- |
-| 1      | $counter | $addr   | $balancePrev | $balanceCur |
-
-Column names in circuit:
-- Enable: `is_balance_mod`
-- Counter: `counter`
-- Address: `address_rlc`
-- ValuePrev: `sel2`
-- ValueCur: `c_mod_node_hash_rlc`
-
-### CodeHash update
-
-| Enable | Counter  | Address | ValuePrev     | ValueCur     |
-| ------ | -------- | ------- | ------------- | ------------ |
-| 1      | $counter | $addr   | $codeHashPrev | $codeHashCur |
-
-Column names in circuit:
-- Enable: `is_codehash_mod`
-- Counter: `counter`
-- Address: `address_rlc`
-- ValuePrev: `sel2`
-- ValueCur: `c_mod_node_hash_rlc`
-
-### Storage update
-
-| Enable | Counter  | Address | Key  | ValuePrev  | ValueCur  |
-| ------ | -------- | ------- | ---- | ---------- | --------- |
-| 1      | $counter | $addr   | $key | $valuePrev | $valueCur |
-
-Column names in circuit:
-- Enable: `is_storage_mod`
-- Counter: `counter`
-- Address: `address_rlc`
-- Key: `key_rlc_mult`
-- ValuePrev: `mult_diff`
-- ValueCur: `acc_c`
-
-### Unified table proposal
-
-We can compress the 4 tables into one at the expense of adding new columns in the MPT circuit.  We still need to analyze the tradeoff of adding columns to the circuit VS merging all the lookups into one.
-
-A unified MPT table would look like this:
-
-| Target   | Counter  | Address | Key  | ValuePrev     | ValueCur     |
-| -------- | -------- | ------- | ---- | ------------- | ------------ |
-| Nonce    | $counter | $addr   | 0    | $noncePrev    | $nonceCur    |
-| Balance  | $counter | $addr   | 0    | $balancePrev  | $balanceCur  |
-| CodeHash | $counter | $addr   | 0    | $codeHashPrev | $codeHashCur |
-| Storage  | $counter | $addr   | $key | $valuePrev    | $valueCur    |
-
-Columns expressions in circuit:
-- Target: `1 * is_nonce_mod + 2 * is_balance_mod + 4 * is_codehash_mod + 8 * is_storage_mod`
-- Counter: `counter`
-- Address: `address_rlc`
-- Key: `key_rlc_mult`
-- ValuePrev: `is_nonce_mod * sel1 + is_balance_mod * sel2 + is_codehash_mod * sel2 + is_storage_mod * mult_diff`
-- ValueCur: `is_nonce_mod * s_mod_node_hash_rlc + is_balance_mod * c_mod_node_hash_rlc + is_codehash_mod * c_mod_node_hash_rlc + is_storage_mod * acc_c`
+| Address | ProofType               | Key  | ValuePrev     | Value        | RootPrev  | Root  |
+| ------- | ----------------------- | ---- | ------------- | ------------ | --------- | ----- |
+| $addr   | NonceMod                | 0    | $noncePrev    | $nonceCur    | $rootPrev | $root |
+| $addr   | BalanceMod              | 0    | $balancePrev  | $balanceCur  | $rootPrev | $root |
+| $addr   | CodeHashMod             | 0    | $codeHashPrev | $codeHashCur | $rootPrev | $root |
+| $addr   | NonExistingAccountProof | 0    | 0             | 0            | $root     | $root |
+| $addr   | AccountDeleteMod        | 0    | 0             | 0            | $rootPrev | $root |
+| $addr   | StorageMod              | $key | $valuePrev    | $value       | $rootPrev | $root |
+| $addr   | NonExistingStorageProof | $key | 0             | 0            | $root     | $root |
 
 ## `Keccak Table`
 
