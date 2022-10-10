@@ -32,14 +32,14 @@ def oog_constant(instruction: Instruction):
     if instruction.curr.is_root:
         # Do step state transition
         instruction.constrain_step_state_transition(
-            rw_counter=Transition.delta(2),
+            rw_counter=Transition.delta(2 + instruction.curr.reversible_write_counter),
             call_id=Transition.same(),
         )
     else:
         # when it is internal call, need to restore caller's state as finishing this call.
         # Restore caller state to next StepState
         instruction.step_state_transition_to_restored_context(
-            rw_counter_delta=2,
+            rw_counter_delta=2 + instruction.curr.reversible_write_counter.n,
             return_data_offset=FQ(0),
             return_data_length=FQ(0),
             gas_left=instruction.curr.gas_left,
