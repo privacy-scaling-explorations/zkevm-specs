@@ -38,12 +38,7 @@ def test_oog_constant_root(tx: Transaction, bytecode: Bytecode):
             )
         ),
         bytecode_table=set(bytecode.table_assignments(randomness)),
-        rw_table=set(
-            RWDictionary(24)
-            .call_context_read(1, CallContextFieldTag.IsSuccess, 0)
-            .call_context_read(1, CallContextFieldTag.IsPersistent, 0)
-            .rws
-        ),
+        rw_table=set(RWDictionary(24).call_context_read(1, CallContextFieldTag.IsSuccess, 0).rws),
     )
 
     verify_steps(
@@ -64,7 +59,7 @@ def test_oog_constant_root(tx: Transaction, bytecode: Bytecode):
             ),
             StepState(
                 execution_state=ExecutionState.EndTx,
-                rw_counter=28,
+                rw_counter=27,
                 call_id=1,
                 gas_left=0,
             ),
@@ -113,7 +108,6 @@ def test_oog_constant_not_root(caller_ctx: CallContext, callee_bytecode: Bytecod
             # fmt: off
             RWDictionary(69)
             .call_context_read(2, CallContextFieldTag.IsSuccess, 0)
-            .call_context_read(2, CallContextFieldTag.IsPersistent, 0)
             .call_context_read(2, CallContextFieldTag.CallerId, 1)
             .call_context_read(1, CallContextFieldTag.IsRoot, caller_ctx.is_root)
             .call_context_read(1, CallContextFieldTag.IsCreate, caller_ctx.is_create)
@@ -150,7 +144,7 @@ def test_oog_constant_not_root(caller_ctx: CallContext, callee_bytecode: Bytecod
             ),
             StepState(
                 execution_state=ExecutionState.STOP,
-                rw_counter=83,
+                rw_counter=82,
                 call_id=1,
                 is_root=caller_ctx.is_root,
                 is_create=caller_ctx.is_create,
