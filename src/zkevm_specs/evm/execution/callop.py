@@ -28,8 +28,12 @@ def callop(instruction: Instruction):
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
     reversion_info = instruction.reversion_info()
     caller_address = instruction.call_context_lookup(CallContextFieldTag.CalleeAddress)
-    parent_caller_address = instruction.call_context_lookup(CallContextFieldTag.CallerAddress)
-    parent_value = instruction.call_context_lookup(CallContextFieldTag.Value)
+    parent_caller_address = instruction.select(
+        is_delegatecall, instruction.call_context_lookup(CallContextFieldTag.CallerAddress), FQ(0)
+    )
+    parent_call_value = instruction.select(
+        is_delegatecall, instruction.call_context_lookup(CallContextFieldTag.Value), FQ(0)
+    )
     is_static = instruction.select(
         is_staticcall, FQ(1), instruction.call_context_lookup(CallContextFieldTag.IsStatic)
     )
@@ -207,7 +211,7 @@ def callop(instruction: Instruction):
             (CallContextFieldTag.ReturnDataLength, rd_length),
             (
                 CallContextFieldTag.Value,
-                instruction.select(is_delegatecall, parent_value.expr(), value.expr()),
+                instruction.select(is_delegatecall, parent_call_value.expr(), value.expr()),
             ),
             (CallContextFieldTag.IsSuccess, is_success.expr()),
             (CallContextFieldTag.IsStatic, is_static.expr()),
