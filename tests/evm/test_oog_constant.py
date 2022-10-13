@@ -61,11 +61,10 @@ def test_oog_constant_root(tx: Transaction, bytecode: Bytecode):
                 stack_pointer=1023,
                 gas_left=2,
                 reversible_write_counter=2,
-                aux_data=Opcode.PUSH1,
             ),
             StepState(
                 execution_state=ExecutionState.EndTx,
-                rw_counter=26,
+                rw_counter=28,
                 call_id=1,
                 gas_left=0,
             ),
