@@ -70,6 +70,16 @@ kind of case we have:
  `flag1: 0, flag0: 1`: `one_nibble`
 
 The constraints in `leaf_key.rs` apply to `LEAF_KEY_S` and `LEAF_KEY_C` rows.
+The constraints ensure the hash of a storage leaf is in a parent branch and that the RLP
+of the leaf is correct.
+
+Lookups:
+The `is_storage_mod` lookup is enabled in `LEAF_VALUE_C` row.
+
+Note that there are no checks for example for the root as the constraints to ensure `start_root`
+and `final_root` does not change (except in the first row of the modification) are in `proof_chain.rs`
+and the constraints to ensure the lookup roots correspond to the roots of the trie are in the first
+level nodes (`account_leaf_storage_codehash.rs` or `branch_hash_in_parent.rs`).
 
 ## Storage leaf key constraints
 

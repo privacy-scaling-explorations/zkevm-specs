@@ -32,6 +32,13 @@ Example:
 [0,160,86,232,31,23,27,204,85,166,255,131,69,230,146,192,248,110,91,72,224,27,153,108,173,192,1,98,47,181,227,99,180,33,0,160,197,210,70,1,134,247,35,60,146,126,125,178,220,199,3,192,229,0,182,83,202,130,39,59,123,250,216,4,93,133,164,122]
 
 [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+
+Lookups:
+We have nonce and balance in the same row - to enable lookups into the same columns (`value_prev`, `value`),
+we enable nonce lookup in `ACCOUNT_LEAF_NONCE_BALANCE_S` row and balance lookup in `ACCOUNT_LEAF_NONCE_BALANCE_C` row.
+This means we copy nonce C RLC to `ACCOUNT_LEAF_NONCE_BALANCE_S` row,
+and balance S RLC to `ACCOUNT_LEAF_NONCE_BALANCE_C` row.
+Constraints are added to ensure everything is properly copied.
 ```
 
 There are two main scenarios when an account is added to the trie:
@@ -325,17 +332,38 @@ Similarly as in `Balance RLP long` constraint,
 `Balance RLP short` constraint ensures the RLC of a balance is computed properly when
 balance is short.
 
-#### S nonce RLC is correctly copied to C row
+#### S nonce RLC is correctly copied to value_prev column
 
-To enable lookup for nonce modification we need to have `S` nonce and `C` nonce
-in the same row. For this reason, `S` nonce RLC is copied to `sel1` column in `C` row.
-This constraint checks whether the value is properly copied.
+To enable lookup for nonce modification we need to have S nonce and C nonce in the same row.
+For this reason, S nonce RLC is copied to `value_prev` column.
+
+#### C nonce RLC is correctly copied to lookup row
+
+To enable lookup for nonce modification we need to have S nonce and C nonce in the same row.
+For this reason, C nonce RLC is copied to `value` column in `ACCOUNT_LEAF_NONCE_BALANCE_S` row.
+
+#### C nonce RLC is correctly copied to NON_EXISTING_ACCOUNT row
+
+To enable lookup for nonce modification we need to have S nonce and C nonce in the same row.
+For this reason, C nonce RLC is copied to `value` column in `NON_EXISTING_ACCOUNT` row.
+
+#### S balance RLC is correctly copied to C row
+
+To enable lookup for balance modification we need to have S balance and C balance in the same row.
+For this reason, S balance RLC is copied to `value_prev` column in C row.
 
 #### S balance RLC is correctly copied to C row
 
 To enable lookup for balance modification we need to have `S` balance and `C` balance
 in the same row. For this reason, `S` balance RLC is copied to `sel2` column in `C` row.
 This constraint checks whether the value is properly copied.
+
+#### C balance RLC is correctly copied to value column
+
+To enable lookup for balance modification we need to have S balance and C balance in the same row.
+For this reason, C balance RLC is copied to `value` column in C row.
+constraints.push((
+
 
 #### If storage or balance or codehash modification: S nonce = C nonce
 
@@ -593,13 +621,17 @@ the RLC of the codehash stored in some column too. The RLC is stored in
 `c_mod_node_hash_rlc`. We need to ensure that this value corresponds to the RLC
 of `c_main.bytes`.
 
-### S storage root RLC is correctly copied to C row
+#### S codehash RLC is correctly copied to C row
 
-To enable lookup for storage root modification we need to have S storage root
-and C storage root in the same row.
-For this reason, S storage root RLC is copied to `sel1` column in C row.
+To enable lookup for codehash modification we need to have S codehash
+and C codehash in the same row.
+For this reason, S codehash RLC is copied to `value_prev` column in C row.
 
-Note: we do not need such constraint for codehash as the codehash never changes.
+##### C codehash RLC is correctly copied to value row
+
+To enable lookup for codehash modification we need to have S codehash
+and C codehash in the same row (`value_prev`, `value` columns).
+C codehash RLC is copied to `value` column in C row.
 
 #### If nonce or balance or codehash modification: storage_root_s = storage_root_c
 
@@ -896,6 +928,10 @@ The whole account leaf looks like:
 [0,160,86,232,31,23,27,204,85,166,255,131,69,230,146,192,248,110,91,72,224,27,153,108,173,192,1,98,47,181,227,99,180,33,0,160,197,210,70,1,134,247,35,60,146,126,125,178,220,199,3,192,229,0,182,83,202,130,39,59,123,250,216,4,93,133,164,122]
 [0,160,86,232,31,23,27,204,85,166,255,131,69,230,146,192,248,110,91,72,224,27,153,108,173,192,1,98,47,181,227,99,180,33,0,160,197,210,70,1,134,247,35,60,146,126,125,178,220,199,3,192,229,0,182,83,202,130,39,59,123,250,216,4,93,133,164,122]
 [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+
+Lookups:
+We have nonce and balance in the same row - to enable lookups into the same columns (`value_prev`, `value`),
+we enable nonce lookup in `ACCOUNT_NON_EXISTING` row and balance lookup in `ACCOUNT_LEAF_NONCE_BALANCE_C` row.
 ```
 
 For the example of non-existing account proof account leaf see below:
@@ -916,6 +952,9 @@ proving that the account does not exist at the address which starts with the sam
 in the rows above (except for the `ACCOUNT_NON_EXISTING` row) and continues with nibbles `ACCOUNT_NON_EXISTING` row.
 
 Note that the selector (being 1 in this case) at `s_main.rlp1` specifies whether it is wrong leaf or nil case.
+
+Lookups:
+The `is_non_existing_account_proof` lookup is enabled in `ACCOUNT_NON_EXISTING` row.
 
 ### Non existing account proof leaf address RLC (leaf not in first level, branch not placeholder)
 
@@ -974,6 +1013,8 @@ it automatically means the account leaf is not in the first level.
 Similarly as the gate above, but for the account leaf being in the first level.
 
 ### Address of wrong leaf and the enquired address are of the same length
+
+#### The number of nibbles in the wrong leaf and the enquired address are the same
 
 This constraint is to prevent the attacker to prove that some account does not exist by setting
 some arbitrary number of nibbles in the account leaf which would lead to a desired RLC.

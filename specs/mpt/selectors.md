@@ -23,6 +23,21 @@ mutually exclusive and the constraints to ensure the proper order of rows.
 
 The type of the proof needs to be set.
 
+#### Proof type corresponds to boolean proof type selectors
+
+`proof_type` corresponds to `is_storage_mode, is_nonce_mod, ...`.
+
+The correspondence is:
+```
+is_nonce_mod = 1
+is_balance_mod = 2
+is_codehash_mod = 3
+is_non_existing_account_proof = 4
+is_account_delete_mod = 5
+is_storage_mod = 6
+non_existing_storage_proof = 7
+```
+
 ### Rows order ensured & proof type cannot change in rows corresponding to one modification
 
 #### Branch init can appear only after certain row types
