@@ -336,10 +336,9 @@ We need to ensure that the stored leaf value RLC is the same as the computed one
 #### Leaf key C RLC properly copied & Leaf value S RLC properly copied
 
 To enable external lookups we need to have the following information in the same row:
-
- - key RLC: we copy it to `sel1` column from the leaf key C row
- - previous (`S`) leaf value RLC: we copy it to `sel2` column from the leaf value `S` row
- - current (`C`) leaf value RLC:  stored in `acc_c` column
+ - key RLC:                       we copy it to `accs.key.mult` column from the leaf key C row
+ - previous (`S`) leaf value RLC: we copy it to `value_prev` column from the leaf value `S` row
+ - current (`C`) leaf value RLC:  stored in `acc_c` column, we copy it to `value` column
 
 #### s_main are 0s when there is no storage leaf (just a placeholder)
 

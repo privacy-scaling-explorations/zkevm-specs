@@ -8,7 +8,24 @@ Let us assume there are two proofs (as returned by `eth getProof`):
 - A proof that there exists value `val2` at key `key1` for address `addr` in the state trie with root `root2`.
 
 The circuit checks the transition from `val1` to `val2` at `key1` that led to the change
-of trie root from `root1` to `root2` (the chaining of such proofs is yet to be added).
+of trie root from `root1` to `root2`.
+
+Similarly, MPT circuit can prove that `nonce`, `balance`, or `codehash` has been changed at
+a particular address. But also, the circuit can prove that at a particular address no account exists
+(`NonExistingAccountProof`), that at particular storage key no value is stored `NonExistingStorageProof`,
+or that at a particular address an account has been deleted.
+
+The circuit exposes a table which looks like:
+
+| Address | ProofType               | Key  | ValuePrev     | Value        | RootPrev  | Root  |
+| ------- | ----------------------- | ---- | ------------- | ------------ | --------- | ----- |
+| $addr   | NonceMod                | 0    | $noncePrev    | $nonceCur    | $rootPrev | $root |
+| $addr   | BalanceMod              | 0    | $balancePrev  | $balanceCur  | $rootPrev | $root |
+| $addr   | CodeHashMod             | 0    | $codeHashPrev | $codeHashCur | $rootPrev | $root |
+| $addr   | NonExistingAccountProof | 0    | 0             | 0            | $root     | $root |
+| $addr   | AccountDeleteMod        | 0    | 0             | 0            | $rootPrev | $root |
+| $addr   | StorageMod              | $key | $valuePrev    | $value       | $rootPrev | $root |
+| $addr   | NonExistingStorageProof | $key | 0             | 0            | $root     | $root |
 
 The proof returned by `eth getProof` looks like:
 
@@ -42,15 +59,16 @@ The proof returned by `eth getProof` looks like:
 }
 ```
 
-In the above case account proof contains five elements.
-The first four are branches / extension nodes, the last one is account leaf.
+In the above case, the account proof contains five elements.
+The first four are branches or extension nodes, the last one is an account leaf.
 The hash of the account leaf is checked to
 be in the fourth element (at the proper position - depends on the account address).
-The hash of the fourth element is checked to be in the third element (at the proper position) ...
+The hash of the fourth element is checked to be in the third element (at the proper position).
+When we arrive to the top, the hash of the first element needs to be the same as trie root.
 
 The storage proof in the above case contains two elements.
-The first one is branch or extension node, the second element is storage leaf.
-The hash of storage leaf is checked to
+The first one is branch or extension node, the second element is a storage leaf.
+The hash of the storage leaf is checked to
 be in the first element at the proper position (depends on the key).
 
 The hash of the first storage proof element (storage root) needs to be checked
@@ -58,8 +76,8 @@ to be in the account leaf of the last account proof element.
 
 ## Two parallel proofs
 
-This section gives a bit of intuition why MPT circuit handles two parallel proofs at the
-same time. Namely, there is `S` (as `State`) proof which presents the state of the trie
+This section explains why MPT circuit handles two parallel proofs at the
+same time. There is `S` (as `State`) proof which presents the state of the trie
 before the modification. And there is `C` (as `Change`) proof which presents the state
 of the trie after modification. 
 
@@ -68,17 +86,17 @@ There are `2 * (2 + 32)` columns which contain RLP
 streams returned by `getProof`. The other columns are selectors (for example which kind of
 row we are at).
 
-The value `2 * (2 + 32)` is motivated by the fact that keccak output is of 32 width.
+The value `2 * (2 + 32)` comes from the fact that keccak output is of 32 width.
 The additional 2 bytes are for RLP specific bytes which store information like
 how long is the substream.
 Finally, the multiplier 2 is because we always have two parallel proofs:
-before and after modification.
+before and after the modification.
 
 The struct `MainCols` contains `rlp1`, `rlp2` bytes (2 bytes) and an array `bytes` of length 32.
 There is `MainCols` for `S` proof (named `s_main`) and
 `MainCols` for `C` proof (named `c_main`).
 
-Let us observe a branch. It contains 16 children which are distributed over 16 rows.
+Branch contains 16 children which are distributed over 16 rows.
 We have branch `S` and branch `C`.
 
 Branch rows:
@@ -89,9 +107,11 @@ Branch S child 15 | Branch C child 15
 ```
 
 The branch does not include raw children, it includes only a hash of each children (except
-when a child is shorter than 32 bytes, in this case the raw child is included in a branch).
+when a child is shorter than 32 bytes, in this case the raw child is part of a branch).
 
-Branch rows (you can see there are `2 * (2 + 32)` columns):
+To get some impression how the witness data is distributed over the columns let us observe
+the branch layout.
+Branch rows look like (you can see there are `2 * (2 + 32)` columns):
 ```
 s_main                     | c_main
 rlp1 rlp2 bytes            | rlp1 rlp2 bytes
@@ -125,37 +145,36 @@ MPT circuit supports the following proofs:
  - Codehash proof
  - Account delete modification
  - Non existing account proof
+ - Non existing storage proof
 
-There is a struct `ProofTypeCols` that is to be used to specify the type of a proof:
+There is a struct `ProofTypeCols` that is used to specify the type of a proof:
 ```
 struct ProofTypeCols {
+    proof_type: Column<Advice>,
     is_storage_mod: Column<Advice>,
     is_nonce_mod: Column<Advice>,
     is_balance_mod: Column<Advice>,
     is_codehash_mod: Column<Advice>,
     is_account_delete_mod: Column<Advice>,
     is_non_existing_account_proof: Column<Advice>,
+    is_non_existing_storage_proof: Column<Advice>,
 }
 ```
 
-The lookup for nonce modification would thus look like:
+Except for the `proof_type`, the fields are boolean to simplify the writing of the constraints.
+The MPT lookup uses only the `proof_type` field - one of the following values:
 
 ```
-| Address | is_storage_mod | is_nonce_mod | is_balance_mod | is_codehash_mod | is_account_delete_mod | is_non_existing_account_proof | Key | ValuePrev | Value | RootPrev | Root |
-| - | - | - | - | - | - | - |
-| $addr | 0 | 1 | 0 | 0 | 0 | 0 | 0 | $noncePrev | $nonceCur | $rootPrev | $root |
+NonceMod = 1
+BalanceMod = 2
+CodeHashMod = 3
+NonExistingAccountProof = 4
+AccountDeleteMod = 5
+StorageMod = 6
+NonExistingStorageProof = 7
 ```
-
-For `is_account_delete_mod` and `is_non_existing_account_proof` we use 0 for `ValuePrev` and `Value`. Note that there is no `is_account_create_proof` because we can create the account implicitly by `is_nonce_mod` or `is_balance_mod` (and in this case we do not need to check that the account previously did no exist, while for `is_account_delete_mod` the MPT circuit checks whether there really is not an account with the specified address anymore).
-
-The columns in the struct falls into selectors category (as opposed to `MainCols` columns).
-`SelectorsChip` ensures there is exactly one type of proof selected.
 
 ## Constraints for different types of nodes
-
-All configs of the MPT circuit use the first gate to check the RLP encoding,
-the computation of RLC, and the selectors being of proper values (for example being
-boolean).
 
 The constraints are grouped according to different trie node types:
  * Account leaf constraints documentation is in [account-leaf.md](account-leaf.md).
@@ -164,3 +183,25 @@ The constraints are grouped according to different trie node types:
  * Extension node constraints documentation is in [extension-node.md](extension-node.md).
  * Proof chain constraints documentation is in [proof_chain.md](proof_chain.md).
  * Selector constraints documentation is in [selectors.md](selectors.md).
+
+Some visual presentations of the MPT circuit aspects can be found [here](visual.md).
+Explanation about helper methods that are used across different configs can be found
+[here](helpers.md).
+
+## Proof chaining
+
+One proof proves one modification. When two or more modifications are to be
+proved to be correct, a chaining between proofs is needed.
+That means we need to ensure:
+
+```
+current S state trie root = previous C state trie root
+```
+
+For this reason `not_first_level` selector is used which is set to 0 for the
+first rows of the proof. These are either the rows of the first
+branch / extension node or the rows of the account leaf (if only one element
+in the state trie).
+
+Having `not_first_level` selector we know when the switch happens to a new proof and the constraint
+above can be ensured.
