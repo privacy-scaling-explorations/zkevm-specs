@@ -14,7 +14,7 @@ one of the followings occurs:
 ### Constraints
 1. `dest` is out of range or not`JUMPDEST` code
 2. Current call must be failed.
-3. If it's a root call, it transits to `EndTx`, and the call's `IsPersistent` must be false
+3. If it's a root call, it transits to `EndTx`
 4. if it is not root call, it restores caller's context by reading to `rw_table`, then does step state transition to it.
 
 ### Lookups
