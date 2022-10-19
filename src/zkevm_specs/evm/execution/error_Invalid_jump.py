@@ -1,5 +1,5 @@
 from ...util import FQ
-from ..instruction import Instruction, Transition, FixedTableTag
+from ..instruction import Instruction, Transition
 from ..table import CallContextFieldTag
 from ..execution_state import ExecutionState
 from ..opcode import Opcode
@@ -7,10 +7,9 @@ from ...util import N_BYTES_PROGRAM_COUNTER
 
 
 def invalid_jump(instruction: Instruction):
-    # retrieve op code associated to oog constant error
     opcode = instruction.opcode_lookup(True)
     # current executing op code must be JUMP or JUMPI
-    instruction.constrain_in(opcode, [Opcode.JUMP, Opcode.JUMPI])
+    instruction.constrain_in(opcode, [FQ(Opcode.JUMP), FQ(Opcode.JUMPI)])
     code_length = instruction.bytecode_length(instruction.curr.code_hash)
     dest = instruction.stack_pop()
     # lookup value from bytecode table
@@ -18,23 +17,18 @@ def invalid_jump(instruction: Instruction):
 
     # check gas left is less than const gas required
     out_of_range, _ = instruction.compare(code_length, dest_value, N_BYTES_PROGRAM_COUNTER)
-    print(
-        "dest_value is {}, code length is {}, out of rang is {}".format(
-            dest_value, code_length, out_of_range
-        )
-    )
+
     # if not out of range, check `dest` is invalid
     if not out_of_range.n:
-
         print("dest_value is not out of range "),
         value, is_code = instruction.bytecode_lookup_pair(instruction.curr.code_hash, dest_value)
         # value is not `JUMPDEST` or `is_code` is false
         instruction.constrain_bool(is_code)
         is_jump_dest = value == Opcode.JUMPDEST
-        instruction.constrain_zero(is_code * is_jump_dest)
+        instruction.constrain_zero(is_code * FQ(is_jump_dest))
     else:
-        print("dest_value is out of range "),
-        instruction.constrain_equal(out_of_range, FQ(0))
+        # `dest` value is out of range
+        instruction.constrain_equal(out_of_range, FQ(1))
 
     # current call must be failed.
     is_success = instruction.call_context_lookup(CallContextFieldTag.IsSuccess)
