@@ -85,7 +85,10 @@ CallContext = namedtuple(
     defaults=[True, False, 232, 1023, 10, 0, 0],
 )
 
-TESTING_DATA_NOT_ROOT = ((CallContext(), bytes([5])),)
+TESTING_DATA_NOT_ROOT = (
+    (CallContext(), bytes([5])),
+    (CallContext(), bytes([20])),
+)
 
 
 @pytest.mark.parametrize("caller_ctx, dest_bytes", TESTING_DATA_NOT_ROOT)
