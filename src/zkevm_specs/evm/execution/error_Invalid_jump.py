@@ -15,12 +15,10 @@ def invalid_jump(instruction: Instruction):
     # lookup value from bytecode table
     dest_value = instruction.rlc_to_fq(dest, N_BYTES_PROGRAM_COUNTER)
 
-    # check gas left is less than const gas required
     out_of_range, _ = instruction.compare(code_length, dest_value, N_BYTES_PROGRAM_COUNTER)
 
     # if not out of range, check `dest` is invalid
     if not out_of_range.n:
-        print("dest_value is not out of range "),
         value, is_code = instruction.bytecode_lookup_pair(instruction.curr.code_hash, dest_value)
         # value is not `JUMPDEST` or `is_code` is false
         instruction.constrain_bool(is_code)
