@@ -14,7 +14,7 @@ from .util import (
 
 def verify_step(cs: ConstraintSystem, rows: List[ExpCircuitRow]):
     # for every step except the last
-    with cs.condition(rows[0].q_step * (1 - rows[0].is_last)) as cs:
+    with cs.condition(rows[0].is_step * (1 - rows[0].is_last)) as cs:
         # base is the same across rows.
         cs.constrain_equal(rows[0].base, rows[1].base)
         # multiplication result from the "next" row `d` must be used as
@@ -24,16 +24,14 @@ def verify_step(cs: ConstraintSystem, rows: List[ExpCircuitRow]):
         cs.constrain_equal(rows[0].identifier, rows[1].identifier)
 
     # for every step
-    with cs.condition(rows[0].q_step) as cs:
+    with cs.condition(rows[0].is_step) as cs:
         # is_last is boolean.
         cs.constrain_bool(rows[0].is_last)
-        # is_pad is boolean.
-        cs.constrain_bool(rows[0].is_pad)
-        # is_odd, i.e. odd/even parity is a boolean.
-        cs.constrain_bool(rows[0].is_odd)
-        # is_last == 1 is followed by is_pad == 1.
-        # is_last == 0 is following by is_pad == 0.
-        cs.constrain_equal(rows[0].is_last, rows[1].is_pad)
+        # remainder (r), i.e. odd/even parity of exponent is boolean.
+        cs.constrain_bool(rows[0].r)
+        # is_last == 1 is followed by unusable row.
+        # is_last == 0 is following by usable row.
+        cs.constrain_equal(rows[0].is_last, (1 - rows[1].q_usable))
         # multiplication is assigned correctly
         _overflow, carry_lo_hi, additional_constraints = mul_add_words(
             rows[0].a, rows[0].b, rows[0].c, rows[0].d
@@ -48,7 +46,7 @@ def verify_step(cs: ConstraintSystem, rows: List[ExpCircuitRow]):
         cs.constrain_zero(rows[0].c)
         # parity check multiplication is assigned correctly.
         _overflow, carry_lo_hi, additional_constraints = mul_add_words(
-            RLC(2), rows[0].quotient, RLC(rows[0].is_odd.n), rows[0].exponent
+            RLC(2), rows[0].q, rows[0].r, rows[0].exponent
         )
         cs.range_check(carry_lo_hi[0], 9)
         cs.range_check(carry_lo_hi[1], 9)
@@ -56,7 +54,7 @@ def verify_step(cs: ConstraintSystem, rows: List[ExpCircuitRow]):
         cs.constrain_equal(additional_constraints[1][0], additional_constraints[1][1])
 
     # for all steps (except the last), where exponent is odd
-    with cs.condition(rows[0].q_step * (1 - rows[0].is_last) * rows[0].is_odd) as cs:
+    with cs.condition(rows[0].is_step * (1 - rows[0].is_last) * rows[0].r.expr()) as cs:
         # exponent::next == exponent::cur - 1
         cur_lo, cur_hi = word_to_lo_hi(rows[0].exponent)
         next_lo, next_hi = word_to_lo_hi(rows[1].exponent)
@@ -68,11 +66,11 @@ def verify_step(cs: ConstraintSystem, rows: List[ExpCircuitRow]):
         cs.constrain_equal(rows[0].base, rows[0].b)
 
     # for all steps (except the last), where exponent is even
-    with cs.condition(rows[0].q_step * (1 - rows[0].is_last) * (1 - rows[0].is_odd)) as cs:
+    with cs.condition(rows[0].is_step * (1 - rows[0].is_last) * (1 - rows[0].r.expr())) as cs:
         # exponent::next == exponent::cur / 2
         cur_lo, cur_hi = word_to_lo_hi(rows[0].exponent)
         next_lo, next_hi = word_to_lo_hi(rows[1].exponent)
-        quotient_lo, quotient_hi = word_to_lo_hi(rows[0].quotient)
+        quotient_lo, quotient_hi = word_to_lo_hi(rows[0].q)
         # exponent::next == exponent::cur // 2 (equate next lo/hi)
         cs.constrain_equal(next_lo, quotient_lo)
         cs.constrain_equal(next_hi, quotient_hi)

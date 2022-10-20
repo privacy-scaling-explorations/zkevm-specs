@@ -470,25 +470,27 @@ class KeccakTableRow(TableRow):
 
 @dataclass
 class ExpCircuitRow(TableRow):
-    q_step: FQ
-    is_pad: FQ
-    quotient: RLC  # 2 * q + is_odd == exponent
-    is_odd: FQ
+    q_usable: FQ
     # columns from the exponentiation table
+    is_step: FQ
     identifier: FQ  # rw_counter
     is_last: FQ
     base: RLC
     exponent: RLC
     exponentiation: RLC
-    # columns from the MulGadget
+    # columns from the MulAddGadget (a*b + c == d)
     a: RLC
     b: RLC
     c: RLC
     d: RLC
+    # columns from the parity check (2*q + r == exponent)
+    q: RLC
+    r: RLC
 
 
 @dataclass(frozen=True)
 class ExpTableRow(TableRow):
+    is_step: FQ
     identifier: FQ
     is_last: FQ
     base_limb0: FQ
@@ -568,13 +570,12 @@ class Tables:
     def _convert_exp_circuit_to_table(self, exp_circuit: Sequence[ExpCircuitRow]):
         rows: List[ExpTableRow] = []
         for i, row in enumerate(exp_circuit):
-            if row.is_pad == FQ.one():
-                continue
             base_limbs = word_to_64s(row.base)
             exponent_lo_hi = word_to_lo_hi(row.exponent)
             exponentiation_lo_hi = word_to_lo_hi(row.exponentiation)
             rows.append(
                 ExpTableRow(
+                    is_step=FQ.one(),
                     identifier=row.identifier,
                     is_last=row.is_last,
                     base_limb0=base_limbs[0],
@@ -710,6 +711,7 @@ class Tables:
         exponent: Tuple[Expression, Expression],
     ):
         query = {
+            "is_step": FQ.one().expr(),
             "identifier": identifier.expr(),
             "is_last": is_last.expr(),
             "base_limb0": base_limbs[0].expr(),

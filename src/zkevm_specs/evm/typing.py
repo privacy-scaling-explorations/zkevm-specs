@@ -762,8 +762,6 @@ class ExpCircuit:
             self._append_step(
                 identifier,
                 FQ(1 if i == len(steps) - 1 else 0),
-                RLC(quotient, randomness, n_bytes=32),
-                FQ(is_odd),
                 base_rlc,
                 exponent_rlc,
                 RLC(d, randomness, n_bytes=32),
@@ -771,6 +769,8 @@ class ExpCircuit:
                 RLC(b, randomness, n_bytes=32),
                 RLC(0, randomness, n_bytes=32),
                 RLC(d, randomness, n_bytes=32),
+                RLC(quotient, randomness, n_bytes=32),
+                RLC(is_odd, randomness, n_bytes=32),
             )
             if is_odd == 0:
                 # exponent is even
@@ -782,10 +782,8 @@ class ExpCircuit:
     def _append_padding_row(self, identifier: IntOrFQ):
         self.rows.append(
             ExpCircuitRow(
-                q_step=FQ.zero(),
-                is_pad=FQ.one(),
-                quotient=RLC(0),
-                is_odd=FQ.zero(),
+                q_usable=FQ.zero(),
+                is_step=FQ.zero(),
                 identifier=FQ(identifier),
                 is_last=FQ.zero(),
                 base=RLC(0),
@@ -795,6 +793,8 @@ class ExpCircuit:
                 b=RLC(0),
                 c=RLC(0),
                 d=RLC(0),
+                q=RLC(0),
+                r=RLC(0),
             )
         )
 
@@ -802,8 +802,6 @@ class ExpCircuit:
         self,
         identifier: IntOrFQ,
         is_last: IntOrFQ,
-        quotient: RLC,
-        is_odd: IntOrFQ,
         base: RLC,
         exponent: RLC,
         exponentiation: RLC,
@@ -811,13 +809,13 @@ class ExpCircuit:
         b: RLC,
         c: RLC,
         d: RLC,
+        quotient: RLC,
+        remainder: RLC,
     ):
         self.rows.append(
             ExpCircuitRow(
-                q_step=FQ.one(),
-                is_pad=FQ.zero(),
-                quotient=quotient,
-                is_odd=FQ(is_odd),
+                q_usable=FQ.one(),
+                is_step=FQ.one(),
                 identifier=FQ(identifier),
                 is_last=FQ(is_last),
                 base=base,
@@ -827,6 +825,8 @@ class ExpCircuit:
                 b=b,
                 c=c,
                 d=d,
+                q=quotient,
+                r=remainder,
             )
         )
 
