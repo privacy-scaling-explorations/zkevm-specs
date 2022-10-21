@@ -118,6 +118,10 @@ def check_row(
         row.q_tx_table * row.tx_table.value
         == row.q_tx_table * row_offset_tx_table_value.raw_public_inputs
     )
+    assert (
+        row.q_tx_calldata * row.tx_table.value
+        == row.q_tx_calldata * row_offset_tx_table_value.raw_public_inputs
+    )
 
     zero = FQ(0)
     one = FQ(1)
