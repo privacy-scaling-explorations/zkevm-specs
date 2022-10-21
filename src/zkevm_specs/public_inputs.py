@@ -128,6 +128,7 @@ def check_row(
         is_tx_id_nonzero = row.tx_table.tx_id * row.tx_id_inv
         is_tx_id_next_nonzero = row_next.tx_table.tx_id * row_next.tx_id_inv
         is_tx_id_zero = one - is_tx_id_nonzero
+        is_tx_id_next_zero = one - is_tx_id_next_nonzero
 
         is_byte_nonzero = row.tx_table.value * row.tx_value_inv
         is_byte_next_nonzero = row_next.tx_table.value * row_next.tx_value_inv
@@ -165,10 +166,8 @@ def check_row(
             * (row_next.tx_table.index - row.tx_table.index - one)
         )
         idx_of_next_tx_constraint = (
-            is_tx_id_next_nonzero
-            * (row_next.tx_table.tx_id - row.tx_table.tx_id)
-            * row_next.tx_table.index
-        )
+            row_next.tx_table.tx_id - row.tx_table.tx_id
+        ) * row_next.tx_table.index
         gas_cost_of_same_tx_constraint = (
             is_tx_id_next_nonzero
             * (row_next.tx_table.tx_id - row.tx_table.tx_id - one)
@@ -179,15 +178,14 @@ def check_row(
             * (row_next.tx_table.tx_id - row.tx_table.tx_id)
             * (row_next.calldata_gas_cost - gas_cost_next)
         )
+        gas_cost_of_last_tx_constraint = is_tx_id_next_zero * row_next.calldata_gas_cost
         is_final_of_same_tx_constraint = (
             is_tx_id_next_nonzero
             * (row_next.tx_table.tx_id - row.tx_table.tx_id - one)
             * row.is_final
         )
-        is_final_of_next_tx_constraint = (
-            is_tx_id_next_nonzero
-            * (row_next.tx_table.tx_id - row.tx_table.tx_id)
-            * (row.is_final - one)
+        is_final_of_next_tx_constraint = (row_next.tx_table.tx_id - row.tx_table.tx_id) * (
+            row.is_final - one
         )
 
         constraints = [
@@ -196,6 +194,7 @@ def check_row(
             is_tx_id_nonzero * idx_of_next_tx_constraint,
             is_tx_id_nonzero * gas_cost_of_same_tx_constraint,
             is_tx_id_nonzero * gas_cost_of_next_tx_constraint,
+            is_tx_id_nonzero * gas_cost_of_last_tx_constraint,
             is_tx_id_nonzero * is_final_of_same_tx_constraint,
             is_tx_id_nonzero * is_final_of_next_tx_constraint,
         ]
@@ -203,8 +202,10 @@ def check_row(
         for cons_id, cons in enumerate(constraints):
             assert cons == zero
 
-        assert row.q_tx_calldata_start * is_tx_id_nonzero * (row.tx_table.index - one)
-        assert row.q_tx_calldata_start * is_tx_id_nonzero * (row.calldata_gas_cost - gas_cost)
+        assert row.q_tx_calldata_start * is_tx_id_nonzero * row.tx_table.index == zero
+        assert (
+            row.q_tx_calldata_start * is_tx_id_nonzero * (row.calldata_gas_cost - gas_cost) == zero
+        )
 
     if row.q_tx_table != zero:
         row_is_cdl = row.tx_table.tag - FQ(TxTag.CallDataLength)
