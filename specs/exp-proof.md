@@ -56,7 +56,7 @@ The exponentiation circuit consists of the following columns:
         - `exponent` MUST reduce to `exponent // 2`, which means:
 	    - Low 128 bits of `exponent::cur` MUST equal low 128 bits of `parity_check`'s multiplication result `d`.
 	        - That is, `exp_table.exponent_lo == parity_check.d_lo`.
-	    - High 128 bits of `exponent::cur` MUST equal high 128 bits of `parity_check's multiplication result `d`.
+	    - High 128 bits of `exponent::cur` MUST equal high 128 bits of `parity_check`'s multiplication result `d`.
 	        - That is, `exp_table.exponent_hi == parity_check.d_hi`.
 	    - Low 128 bits of `exponent::next` MUST equal low 128 bits of `parity_check`'s multiplicand `q`.
 	        - That is, `exp_table.exponent_lo::next == parity_check.q_lo`. We compute `q_lo` using the 64-bit limbs of `q`.
