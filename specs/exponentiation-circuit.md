@@ -247,7 +247,7 @@ We make use of a cell called `most_significant_nonzero_byte_inverse` to store th
 ```
 sum(word_bytes[index'..32]) == 0
 ```
-which basically means that, all the other bytes from `index'` must be `0` (since in the little-endian representation of word, bytes beyong the byte-size will be `0`).
+which basically means that, all the other bytes from `index'` must be `0` (since in the little-endian representation of word, bytes beyond the byte-size will be `0`).
 * If `index' > 0` then:
 ```
 word_bytes[index'] * most_significant_nonzero_byte_inverse == 1
