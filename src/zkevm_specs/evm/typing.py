@@ -45,8 +45,11 @@ from .table import (
     CopyDataTypeTag,
     CopyCircuitRow,
     KeccakTableRow,
+    ExpCircuitRow,
 )
 from .opcode import get_push_size, Opcode
+
+POW2 = 2**256
 
 
 class Block:
@@ -698,6 +701,134 @@ class KeccakCircuit:
             )
         )
         return self
+
+
+class ExpCircuit:
+    rows: List[ExpCircuitRow]
+    pad_rows: List[ExpCircuitRow]
+
+    def __init__(self, pad_rows: Optional[List[ExpCircuitRow]] = None) -> None:
+        self.rows = []
+        self.pad_rows = []
+        if pad_rows is not None:
+            self.pad_rows = pad_rows
+
+    def table(self) -> Sequence[ExpCircuitRow]:
+        return self.rows + self.pad_rows
+
+    def add_event(self, base: int, exponent: int, randomness: FQ, identifier: IntOrFQ):
+        steps: List[Tuple[int, int, int]] = []
+        exponentiation = self._exp_by_squaring(base, exponent, steps)
+        steps.reverse()
+        self._append_steps(base, exponent, exponentiation, steps, randomness, identifier)
+        self._append_padding_row(identifier)
+        return self
+
+    def _exp_by_squaring(self, base: int, exponent: int, steps: List[Tuple[int, int, int]]):
+        # we assume that base and exponent are both < 2**256
+        if exponent == 0:
+            return 1
+        if exponent == 1:
+            return base
+
+        exp1 = self._exp_by_squaring(base, exponent // 2, steps)
+        exp2 = (exp1 * exp1) % POW2
+        steps.append((exp1, exp1, exp2))
+        if exponent % 2 == 0:
+            # exponent is even
+            return exp2
+        else:
+            # exponent is odd
+            exp = (base * exp2) % POW2
+            steps.append((exp2, base, exp))
+            return exp
+
+    def _append_steps(
+        self,
+        base: int,
+        exponent: int,
+        exponentiation: int,
+        steps: List[Tuple[int, int, int]],
+        randomness: FQ,
+        identifier: IntOrFQ,
+    ):
+        base_rlc = RLC(base, randomness, n_bytes=32)
+        for i, step in enumerate(steps):
+            # multiplication gadget
+            a, b, d = step[0], step[1], step[2]
+            # exp table
+            quotient, is_odd = divmod(exponent, 2)
+            exponent_rlc = RLC(exponent, randomness, n_bytes=32)
+            self._append_step(
+                identifier,
+                FQ(1 if i == len(steps) - 1 else 0),
+                base_rlc,
+                exponent_rlc,
+                RLC(d, randomness, n_bytes=32),
+                RLC(a, randomness, n_bytes=32),
+                RLC(b, randomness, n_bytes=32),
+                RLC(0, randomness, n_bytes=32),
+                RLC(d, randomness, n_bytes=32),
+                RLC(quotient, randomness, n_bytes=32),
+                RLC(is_odd, randomness, n_bytes=32),
+            )
+            if is_odd == 0:
+                # exponent is even
+                exponent = exponent // 2
+            else:
+                # exponent is odd
+                exponent = exponent - 1
+
+    def _append_padding_row(self, identifier: IntOrFQ):
+        self.rows.append(
+            ExpCircuitRow(
+                q_usable=FQ.zero(),
+                is_step=FQ.zero(),
+                identifier=FQ(identifier),
+                is_last=FQ.zero(),
+                base=RLC(0),
+                exponent=RLC(0),
+                exponentiation=RLC(0),
+                a=RLC(0),
+                b=RLC(0),
+                c=RLC(0),
+                d=RLC(0),
+                q=RLC(0),
+                r=RLC(0),
+            )
+        )
+
+    def _append_step(
+        self,
+        identifier: IntOrFQ,
+        is_last: IntOrFQ,
+        base: RLC,
+        exponent: RLC,
+        exponentiation: RLC,
+        a: RLC,
+        b: RLC,
+        c: RLC,
+        d: RLC,
+        quotient: RLC,
+        remainder: RLC,
+    ):
+        self.rows.append(
+            ExpCircuitRow(
+                q_usable=FQ.one(),
+                is_step=FQ.one(),
+                identifier=FQ(identifier),
+                is_last=FQ(is_last),
+                base=base,
+                exponent=exponent,
+                exponentiation=exponentiation,
+                a=a,
+                b=b,
+                c=c,
+                d=d,
+                q=quotient,
+                r=remainder,
+            )
+        )
 
 
 class CopyCircuit:

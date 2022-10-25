@@ -1,7 +1,8 @@
 from __future__ import annotations
-from typing import Sequence, Protocol, Type, TypeVar, Union
+from typing import List, Protocol, Sequence, Tuple, Type, TypeVar, Union
 from py_ecc import bn128
 from py_ecc.utils import prime_field_inv
+from .param import MAX_N_BYTES
 
 
 def linear_combine(seq: Sequence[Union[int, FQ]], base: FQ, range_check: bool = True) -> FQ:
@@ -84,3 +85,80 @@ def cast_expr(expression: Expression, ty: Type[ExpressionImpl]) -> ExpressionImp
     if not isinstance(expression, ty):
         raise TypeError(f"Casting Expression to {ty}, but got {type(expression)}")
     return expression
+
+
+def byte_size(value: Union[int, RLC]) -> int:
+    if isinstance(value, RLC):
+        return len(bytearray(value.le_bytes).rstrip(b"\x00"))
+    else:
+        return (value.bit_length() + 7) // 8
+
+
+def bytes_to_fq(value: bytes):
+    assert len(value) <= MAX_N_BYTES
+    return FQ(int.from_bytes(value, "little"))
+
+
+def word_to_lo_hi(word: RLC) -> Tuple[FQ, FQ]:
+    assert len(word.le_bytes) == 32, "Expected word to contain 32 bytes"
+    return bytes_to_fq(word.le_bytes[:16]), bytes_to_fq(word.le_bytes[16:])
+
+
+def word_to_64s(word: RLC) -> Tuple[FQ, ...]:
+    assert len(word.le_bytes) == 32, "Expected word to contain 32 bytes"
+    return tuple(bytes_to_fq(word.le_bytes[8 * i : 8 * (i + 1)]) for i in range(4))
+
+
+def lo_hi_to_64s(lo_hi: Tuple[FQ, FQ]) -> Tuple[FQ, ...]:
+    lo_bytes = lo_hi[0].n.to_bytes(16, "little")
+    hi_bytes = lo_hi[1].n.to_bytes(16, "little")
+    return (
+        bytes_to_fq(lo_bytes[0:8]),
+        bytes_to_fq(lo_bytes[8:16]),
+        bytes_to_fq(hi_bytes[0:8]),
+        bytes_to_fq(hi_bytes[8:16]),
+    )
+
+
+def sum_values(values: Sequence[IntOrFQ]) -> FQ:
+    return FQ(sum(values))
+
+
+def add_words(addends: Sequence[RLC], randomness: FQ) -> Tuple[RLC, FQ]:
+    addends_lo, addends_hi = list(zip(*map(word_to_lo_hi, addends)))
+    carry_lo, sum_lo = divmod(sum_values(addends_lo).n, 1 << 128)
+    carry_hi, sum_hi = divmod((sum_values(addends_hi) + carry_lo).n, 1 << 128)
+    sum_bytes = sum_lo.to_bytes(16, "little") + sum_hi.to_bytes(16, "little")
+    return RLC(sum_bytes, randomness, n_bytes=len(sum_bytes)), FQ(carry_hi)
+
+
+def mul_add_words(a: RLC, b: RLC, c: RLC, d: RLC) -> Tuple[FQ, Tuple[FQ, FQ], List[Tuple[FQ, FQ]]]:
+    """
+    The function constrains a * b + c == d, where a, b, c, d are 256-bit words.
+    It returns the overflow part of a * b + c.
+    """
+    a64s = word_to_64s(a)
+    b64s = word_to_64s(b)
+    c_lo, c_hi = word_to_lo_hi(c)
+    d_lo, d_hi = word_to_lo_hi(d)
+
+    t0 = a64s[0] * b64s[0]
+    t1 = a64s[0] * b64s[1] + a64s[1] * b64s[0]
+    t2 = a64s[0] * b64s[2] + a64s[1] * b64s[1] + a64s[2] * b64s[0]
+    t3 = a64s[0] * b64s[3] + a64s[1] * b64s[2] + a64s[2] * b64s[1] + a64s[3] * b64s[0]
+    carry_lo = (t0 + (t1 * 2**64) + c_lo - d_lo) / (2**128)
+    carry_hi = (t2 + (t3 * 2**64) + c_hi + carry_lo - d_hi) / (2**128)
+    overflow = (
+        carry_hi
+        + a64s[1] * b64s[3]
+        + a64s[2] * b64s[2]
+        + a64s[3] * b64s[1]
+        + a64s[2] * b64s[3]
+        + a64s[3] * b64s[2]
+        + a64s[3] * b64s[3]
+    )
+
+    constraint1 = (t0 + t1 * (2**64) + c_lo, d_lo + carry_lo * (2**128))
+    constraint2 = (t2 + t3 * (2**64) + c_hi + carry_lo, d_hi + carry_hi * (2**128))
+
+    return overflow, (carry_lo, carry_hi), [constraint1, constraint2]
