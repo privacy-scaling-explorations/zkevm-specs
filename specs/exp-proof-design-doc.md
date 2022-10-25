@@ -1,4 +1,4 @@
-# Exponentiation Circuit
+# Exponentiation Proof Design Document
 
 The Exponentiation Circuit is a sub-circuit within the [`SuperCircuit`](https://github.com/privacy-scaling-explorations/zkevm-circuits/blob/main/zkevm-circuits/src/super_circuit.rs) used to validate exponentiation, particularly required for the [`EXP`](https://www.evm.codes/playground?unit=Wei&codeType=Mnemonic&code=%27z1~2~10wyyz2~2~2w%27~yPUSH1%20z%2F%2F%20Example%20y%5CnwyEXP%01wyz~_) opcode gadget within the [`EVM Circuit`](https://github.com/privacy-scaling-explorations/zkevm-circuits/blob/main/zkevm-circuits/src/evm_circuit.rs).
 
