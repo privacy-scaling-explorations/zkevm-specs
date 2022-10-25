@@ -42,6 +42,11 @@ class TxCallDataGasCostAccRow(TableRow):
     gas_cost_acc: FQ
 
 
+@dataclass(frozen=True)
+class FixedU16Row(TableRow):
+    value: FQ
+
+
 @dataclass
 class Row:
     """PublicInputs circuit row"""
@@ -56,6 +61,7 @@ class Row:
     tx_id_inv: FQ  # (tx_tag - CallDataLength)^(-1) when q_tx_table = 1
     # tx_id^(-1) when q_tx_calldata = 1
     tx_value_inv: FQ
+    tx_id_diff_inv: FQ
     calldata_gas_cost: FQ
     is_final: FQ
 
@@ -87,6 +93,7 @@ def check_row(
     row_offset_tx_table_index: Row,
     row_offset_tx_table_value: Row,
     table: Set[TxCallDataGasCostAccRow],
+    fixed_u16_table: Set[FixedU16Row],
 ):
 
     q_not_end = row.q_not_end
@@ -128,11 +135,17 @@ def check_row(
     if row.q_tx_calldata != zero:
         assert row.tx_table.tx_id * (one - row.tx_id_inv * row.tx_table.tx_id) == zero
         assert row.tx_table.value * (one - row.tx_value_inv * row.tx_table.value) == zero
-
+        assert (row_next.tx_table.tx_id - row.tx_table.tx_id) * (
+            one - row.tx_id_diff_inv * (row_next.tx_table.tx_id - row.tx_table.tx_id)
+        ) == zero
         is_tx_id_nonzero = row.tx_table.tx_id * row.tx_id_inv
         is_tx_id_next_nonzero = row_next.tx_table.tx_id * row_next.tx_id_inv
         is_tx_id_zero = one - is_tx_id_nonzero
         is_tx_id_next_zero = one - is_tx_id_next_nonzero
+        tx_id_not_equal_to_next = (
+            row_next.tx_table.tx_id - row.tx_table.tx_id
+        ) * row.tx_id_diff_inv
+        tx_id_equal_to_next = one - tx_id_not_equal_to_next
 
         is_byte_nonzero = row.tx_table.value * row.tx_value_inv
         is_byte_next_nonzero = row_next.tx_table.value * row_next.tx_value_inv
@@ -158,24 +171,23 @@ def check_row(
             + FQ(GAS_COST_TX_CALL_DATA_PER_ZERO_BYTE) * is_byte_next_zero
         )
 
+        tx_id_diff = row_next.tx_table.tx_id - row.tx_table.tx_id - one
         tx_id_constraint = (
             (row_next.tx_table.tx_id - row.tx_table.tx_id)
-            * (row_next.tx_table.tx_id - row.tx_table.tx_id - one)
+            * (row_next.tx_table.tx_id - row.tx_table.tx_id - one - tx_id_diff)
             * row_next.tx_table.tx_id
         )
+        tx_id_diff_query = {"value": tx_id_not_equal_to_next * is_tx_id_next_nonzero * tx_id_diff}
+        lookup(FixedU16Row, fixed_u16_table, tx_id_diff_query)
 
-        idx_of_same_tx_constraint = (
-            is_tx_id_next_nonzero
-            * (row_next.tx_table.tx_id - row.tx_table.tx_id - one)
-            * (row_next.tx_table.index - row.tx_table.index - one)
+        idx_of_same_tx_constraint = tx_id_equal_to_next * (
+            row_next.tx_table.index - row.tx_table.index - one
         )
         idx_of_next_tx_constraint = (
             row_next.tx_table.tx_id - row.tx_table.tx_id
         ) * row_next.tx_table.index
-        gas_cost_of_same_tx_constraint = (
-            is_tx_id_next_nonzero
-            * (row_next.tx_table.tx_id - row.tx_table.tx_id - one)
-            * (row_next.calldata_gas_cost - row.calldata_gas_cost - gas_cost_next)
+        gas_cost_of_same_tx_constraint = tx_id_equal_to_next * (
+            row_next.calldata_gas_cost - row.calldata_gas_cost - gas_cost_next
         )
         gas_cost_of_next_tx_constraint = (
             is_tx_id_next_nonzero
@@ -183,11 +195,7 @@ def check_row(
             * (row_next.calldata_gas_cost - gas_cost_next)
         )
         gas_cost_of_last_tx_constraint = is_tx_id_next_zero * row_next.calldata_gas_cost
-        is_final_of_same_tx_constraint = (
-            is_tx_id_next_nonzero
-            * (row_next.tx_table.tx_id - row.tx_table.tx_id - one)
-            * row.is_final
-        )
+        is_final_of_same_tx_constraint = tx_id_equal_to_next * row.is_final
         is_final_of_next_tx_constraint = (row_next.tx_table.tx_id - row.tx_table.tx_id) * (
             row.is_final - one
         )
@@ -267,6 +275,7 @@ def verify_circuit(
     # 1.4 state_root_prev copy constraint from public input to raw_public_inputs
     assert rows[BLOCK_LEN + 3].raw_public_inputs == witness.public_inputs.state_root_prev
 
+    fixed_u16_table = set([FixedU16Row(FQ(i)) for i in range(1 << 16)])
     for i in range(len(rows)):
         row = rows[i]
         row_next = rows[(i + 1) % len(rows)]
@@ -288,6 +297,7 @@ def verify_circuit(
             row_offset_tx_table_index,
             row_offset_tx_table_value,
             table,
+            fixed_u16_table,
         )
 
 
@@ -514,6 +524,7 @@ def public_data2witness(
         q_tx_calldata_start = FQ(0)
         tx_id_inv = FQ(0)
         tx_value_inv = FQ(0)
+        tx_id_diff_inv = FQ(0)
         calldata_gas_cost = FQ(0)
         is_final = FQ(0)
         tx_row = TxTableRow(FQ(0), FQ(0), FQ(0), FQ(0))
@@ -539,6 +550,10 @@ def public_data2witness(
                 q_tx_calldata = FQ(1)
                 tx_id_inv = tx_id.inv()
                 tx_value_inv = value.inv()
+                tx_id_next = FQ(0)
+                if i < tx_table_len + MAX_CALLDATA_BYTES - 1:
+                    tx_id_next = tx_table[0][i + 1]
+                tx_id_diff_inv = (tx_id_next - tx_id).inv()
                 calldata_gas_cost = tx_table_tx_calldata[3][i - tx_table_len]
                 is_final = tx_table_tx_calldata[4][i - tx_table_len]
                 calldata_gas_cost_table.append(
@@ -558,6 +573,7 @@ def public_data2witness(
             tx_row,
             tx_id_inv,
             tx_value_inv,
+            tx_id_diff_inv,
             calldata_gas_cost,
             is_final,
             raw_public_inputs[i],
