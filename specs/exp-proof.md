@@ -50,8 +50,8 @@ The exponentiation circuit consists of the following columns:
         - `exponent` MUST reduce by 1, which means:
 	    - Low 128 bits of `exponent::next` MUST equal low 128 bits of `exponent::cur - 1`.
 	    - High 128 bits of `exponent::next` MUST equal high 128 bits of `exponent::cur`.
-	- `exponent` is odd also means it was a multiplication by `base` operation, that is:
-	    - For each limb, `exp_table.base_limb == mul_gadget.b`.
+        - `exponent` is odd also means it was a multiplication by `base` operation, that is:
+            - For each limb, `exp_table.base_limb == mul_gadget.b`.
     - If parity check if `even`, i.e. `parity_check.r_lo == 0`:
         - `exponent` MUST reduce to `exponent // 2`, which means:
 	    - Low 128 bits of `exponent::cur` MUST equal low 128 bits of `parity_check`'s multiplication result `d`.
