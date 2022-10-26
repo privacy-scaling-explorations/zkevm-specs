@@ -40,8 +40,9 @@ def callop(instruction: Instruction):
 
     # Lookup values from stack
     gas_rlc = instruction.stack_pop()
-    callee_address_rlc = instruction.stack_pop()
-    # The third argument `value` of opcode CALL is not present for both opcode DELEGATECALL and STATICCALL.
+    code_address_rlc = instruction.stack_pop()
+    # The third argument `value` of opcode CALL is not present for both opcode
+    # DELEGATECALL and STATICCALL.
     value = instruction.stack_pop() if is_call == 1 else RLC(0)
     cd_offset_rlc = instruction.stack_pop()
     cd_length_rlc = instruction.stack_pop()
@@ -53,7 +54,14 @@ def callop(instruction: Instruction):
     instruction.constrain_bool(is_success)
 
     # Recomposition of random linear combination to integer
-    callee_address = instruction.rlc_to_fq(callee_address_rlc, N_BYTES_ACCOUNT_ADDRESS)
+    code_address = instruction.rlc_to_fq(code_address_rlc, N_BYTES_ACCOUNT_ADDRESS)
+
+    # For opcode DELEGATECALL, set `callee_address` to previous `caller_address`
+    # and `caller_address` to `parent_caller_address` Variable `code_address`
+    # will be used to get code hash.
+    callee_address = instruction.select(is_delegatecall, caller_address, code_address)
+    caller_address = instruction.select(is_delegatecall, parent_caller_address, caller_address)
+
     gas = instruction.rlc_to_fq(gas_rlc, N_BYTES_GAS)
     gas_is_u64 = instruction.is_zero(instruction.sum(gas_rlc.le_bytes[N_BYTES_GAS:]))
     cd_offset, cd_length = instruction.memory_offset_and_length(cd_offset_rlc, cd_length_rlc)
@@ -67,8 +75,8 @@ def callop(instruction: Instruction):
         rd_length,
     )
 
-    # Add callee to access list
-    is_warm_access = instruction.add_account_to_access_list(tx_id, callee_address, reversion_info)
+    # Add `code_address` to access list
+    is_warm_access = instruction.add_account_to_access_list(tx_id, code_address, reversion_info)
 
     # Propagate rw_counter_end_of_reversion and is_persistent
     callee_reversion_info = instruction.reversion_info(call_id=callee_call_id)
@@ -96,7 +104,7 @@ def callop(instruction: Instruction):
 
     # Verify gas cost
     callee_nonce = instruction.account_read(callee_address, AccountFieldTag.Nonce)
-    callee_code_hash = instruction.account_read(callee_address, AccountFieldTag.CodeHash)
+    callee_code_hash = instruction.account_read(code_address, AccountFieldTag.CodeHash)
     is_empty_code_hash = instruction.is_equal(
         callee_code_hash, instruction.rlc_encode(EMPTY_CODE_HASH, 32)
     )
@@ -191,16 +199,8 @@ def callop(instruction: Instruction):
             (CallContextFieldTag.CallerId, instruction.curr.call_id),
             (CallContextFieldTag.TxId, tx_id.expr()),
             (CallContextFieldTag.Depth, depth.expr() + 1),
-            (
-                CallContextFieldTag.CallerAddress,
-                instruction.select(
-                    is_delegatecall, parent_caller_address.expr(), caller_address.expr()
-                ),
-            ),
-            (
-                CallContextFieldTag.CalleeAddress,
-                instruction.select(is_delegatecall, caller_address.expr(), callee_address),
-            ),
+            (CallContextFieldTag.CallerAddress, caller_address.expr()),
+            (CallContextFieldTag.CalleeAddress, callee_address.expr()),
             (CallContextFieldTag.CallDataOffset, cd_offset),
             (CallContextFieldTag.CallDataLength, cd_length),
             (CallContextFieldTag.ReturnDataOffset, rd_offset),
