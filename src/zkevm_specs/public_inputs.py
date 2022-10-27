@@ -171,14 +171,11 @@ def check_row(
             + FQ(GAS_COST_TX_CALL_DATA_PER_ZERO_BYTE) * is_byte_next_zero
         )
 
-        tx_id_diff = row_next.tx_table.tx_id - row.tx_table.tx_id - one
-        tx_id_constraint = (
-            (row_next.tx_table.tx_id - row.tx_table.tx_id)
-            * (row_next.tx_table.tx_id - row.tx_table.tx_id - one - tx_id_diff)
-            * row_next.tx_table.tx_id
-        )
-        tx_id_diff_query = {"value": tx_id_not_equal_to_next * is_tx_id_next_nonzero * tx_id_diff}
-        lookup(FixedU16Row, fixed_u16_table, tx_id_diff_query)
+        tx_id_diff_minus_one = row_next.tx_table.tx_id - row.tx_table.tx_id - one
+        tx_id_diff_minus_one_query = {
+            "value": tx_id_not_equal_to_next * is_tx_id_next_nonzero * tx_id_diff_minus_one
+        }
+        lookup(FixedU16Row, fixed_u16_table, tx_id_diff_minus_one_query)
 
         idx_of_same_tx_constraint = tx_id_equal_to_next * (
             row_next.tx_table.index - row.tx_table.index - one
@@ -201,7 +198,6 @@ def check_row(
         )
 
         constraints = [
-            tx_id_constraint,
             is_tx_id_nonzero * idx_of_same_tx_constraint,
             is_tx_id_nonzero * idx_of_next_tx_constraint,
             is_tx_id_nonzero * gas_cost_of_same_tx_constraint,
