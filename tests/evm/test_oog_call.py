@@ -91,7 +91,6 @@ def expected(callee: Account, caller_ctx: CallContext, stack: Stack, is_warm_acc
 
 def gen_testing_data():
     callees = [
-        # CALLEE_WITH_NOTHING,
         CALLEE_WITH_STOP_BYTECODE_AND_BALANCE,
     ]
     call_contexts = [

@@ -11,11 +11,14 @@ from ..instruction import Instruction, Transition
 from ..table import CallContextFieldTag, AccountFieldTag
 from ..execution_state import ExecutionState
 from ...util import N_BYTES_GAS
+from ..opcode import Opcode
 
 
 def oog_call(instruction: Instruction):
     # retrieve op code associated to oog call error
-    instruction.opcode_lookup(True)
+    opcode = instruction.opcode_lookup(True)
+    instruction.constrain_equal(opcode, Opcode.CALL)
+
     callee_call_id = instruction.curr.rw_counter
 
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
