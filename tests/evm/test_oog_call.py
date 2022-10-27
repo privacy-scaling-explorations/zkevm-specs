@@ -88,9 +88,6 @@ def test_root_call(
 ):
     randomness = rand_fq()
 
-    caller_balance_prev = RLC(caller.balance, randomness)
-    callee_balance_prev = RLC(callee.balance, randomness)
-    caller_balance = RLC(caller.balance - stack.value, randomness)
     callee_balance = RLC(callee.balance + stack.value, randomness)
     caller_bytecode = (
         Bytecode()
@@ -117,7 +114,6 @@ def test_root_call(
         .call_context_read(1, CallContextFieldTag.TxId, 1)
         .call_context_read(1, CallContextFieldTag.RwCounterEndOfReversion, caller_ctx.rw_counter_end_of_reversion)
         .call_context_read(1, CallContextFieldTag.IsPersistent, caller_ctx.is_persistent)
-        .call_context_read(1, CallContextFieldTag.CalleeAddress, caller.address)
         .call_context_read(1, CallContextFieldTag.IsStatic, False)
         .stack_read(1, 1017, RLC(stack.gas, randomness))
         .stack_read(1, 1018, RLC(callee.address, randomness))
@@ -128,10 +124,7 @@ def test_root_call(
         .stack_read(1, 1023, RLC(stack.rd_length, randomness))
         .stack_write(1, 1023, RLC(is_success, randomness))
         .tx_access_list_account_write(1, callee.address, True, is_warm_access, rw_counter_of_reversion=caller_ctx.rw_counter_end_of_reversion - caller_ctx.reversible_write_counter)
-        .call_context_read(24, CallContextFieldTag.RwCounterEndOfReversion, callee_rw_counter_end_of_reversion)
-        .call_context_read(24, CallContextFieldTag.IsPersistent, False)
-        .account_write(caller.address, AccountFieldTag.Balance, caller_balance, caller_balance_prev, rw_counter_of_reversion=callee_rw_counter_end_of_reversion)
-        .account_write(callee.address, AccountFieldTag.Balance, callee_balance, callee_balance_prev, rw_counter_of_reversion=callee_rw_counter_end_of_reversion - 1)
+        .account_read(callee.address, AccountFieldTag.Balance, callee_balance)
         .account_read(callee.address, AccountFieldTag.Nonce, RLC(callee.nonce, randomness))
         .account_read(callee.address, AccountFieldTag.CodeHash, callee_bytecode_hash)
         .call_context_read(1, CallContextFieldTag.IsSuccess, 0)
@@ -208,14 +201,8 @@ def test_oog_call_not_root(caller_ctx: CallerContext, callee: Account):
 
     is_warm_access = False
     caller_rw_counter_end_of_reversion = 2
-    callee_rw_counter_end_of_reversion = 0
-    caller_address = 0xFF
 
-    caller_balance = 1000
     callee_balance = 200
-    caller_balance_prev = RLC(1000, randomness)
-    callee_balance_prev = RLC(200, randomness)
-    caller_balance = RLC(caller_balance - stack.value, randomness)
     callee_balance = RLC(callee_balance + stack.value, randomness)
 
     tables = Tables(
@@ -233,7 +220,6 @@ def test_oog_call_not_root(caller_ctx: CallerContext, callee: Account):
             .call_context_read(2, CallContextFieldTag.TxId, 1)
             .call_context_read(2, CallContextFieldTag.RwCounterEndOfReversion, caller_rw_counter_end_of_reversion)
             .call_context_read(2, CallContextFieldTag.IsPersistent, False)
-            .call_context_read(2, CallContextFieldTag.CalleeAddress, caller_address)
             .call_context_read(2, CallContextFieldTag.IsStatic, False)
             .stack_read(2, 1017, RLC(stack.gas, randomness))
             .stack_read(2, 1018, RLC(callee.address, randomness))
@@ -245,12 +231,7 @@ def test_oog_call_not_root(caller_ctx: CallerContext, callee: Account):
             .stack_write(2, 1023, RLC(False, randomness))
             .tx_access_list_account_write(1, callee.address, True, is_warm_access,
                                           rw_counter_of_reversion=caller_rw_counter_end_of_reversion - caller_ctx.reversible_write_counter)
-            .call_context_read(24, CallContextFieldTag.RwCounterEndOfReversion, callee_rw_counter_end_of_reversion)
-            .call_context_read(24, CallContextFieldTag.IsPersistent, False)
-            .account_write(caller_address, AccountFieldTag.Balance, caller_balance, caller_balance_prev,
-                           rw_counter_of_reversion=callee_rw_counter_end_of_reversion)
-            .account_write(callee.address, AccountFieldTag.Balance, callee_balance, callee_balance_prev,
-                           rw_counter_of_reversion=callee_rw_counter_end_of_reversion - 1)
+            .account_read(callee.address, AccountFieldTag.Balance, callee_balance)
             .account_read(callee.address, AccountFieldTag.Nonce, RLC(callee.nonce, randomness))
             .account_read(callee.address, AccountFieldTag.CodeHash, callee_bytecode_hash)
             # restore context operations
@@ -291,7 +272,7 @@ def test_oog_call_not_root(caller_ctx: CallerContext, callee: Account):
             ),
             StepState(
                 execution_state=ExecutionState.STOP,
-                rw_counter=24 + 34,
+                rw_counter=24 + 30,
                 call_id=1,
                 is_root=caller_ctx.is_root,
                 is_create=caller_ctx.is_create,

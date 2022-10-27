@@ -19,11 +19,8 @@ def oog_call(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
     instruction.constrain_equal(opcode, Opcode.CALL)
 
-    callee_call_id = instruction.curr.rw_counter
-
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
     reversion_info = instruction.reversion_info()
-    caller_address = instruction.call_context_lookup(CallContextFieldTag.CalleeAddress)
     is_static = instruction.call_context_lookup(CallContextFieldTag.IsStatic)
     # Lookup values from stack
     gas_rlc = instruction.stack_pop()
@@ -36,7 +33,6 @@ def oog_call(instruction: Instruction):
     is_success = instruction.stack_push()
     instruction.constrain_zero(is_success)
 
-    gas_is_u64 = instruction.is_zero(instruction.sum(gas_rlc.le_bytes[N_BYTES_GAS:]))
     cd_offset, cd_length = instruction.memory_offset_and_length(cd_offset_rlc, cd_length_rlc)
     rd_offset, rd_length = instruction.memory_offset_and_length(rd_offset_rlc, rd_length_rlc)
 
@@ -57,12 +53,9 @@ def oog_call(instruction: Instruction):
 
     # Add callee to access list
     is_warm_access = instruction.add_account_to_access_list(tx_id, callee_address, reversion_info)
-    callee_reversion_info = instruction.reversion_info(call_id=callee_call_id)
-    # Verify transfer
-    _, (_, callee_balance_prev) = instruction.transfer(
-        caller_address, callee_address, value, callee_reversion_info
-    )
 
+    # lookup balance of callee
+    callee_balance = instruction.account_read(callee_address, AccountFieldTag.Balance)
     # Verify gas cost
     callee_nonce = instruction.account_read(callee_address, AccountFieldTag.Nonce)
     callee_code_hash = instruction.account_read(callee_address, AccountFieldTag.CodeHash)
@@ -71,9 +64,7 @@ def oog_call(instruction: Instruction):
         callee_code_hash, instruction.rlc_encode(EMPTY_CODE_HASH, 32)
     )
     is_account_empty = (
-        instruction.is_zero(callee_nonce)
-        * instruction.is_zero(callee_balance_prev)
-        * is_empty_code_hash
+        instruction.is_zero(callee_nonce) * instruction.is_zero(callee_balance) * is_empty_code_hash
     )
     gas_cost = (
         instruction.select(
@@ -102,14 +93,14 @@ def oog_call(instruction: Instruction):
     if instruction.curr.is_root:
         # Do step state transition
         instruction.constrain_step_state_transition(
-            rw_counter=Transition.delta(22),
+            rw_counter=Transition.delta(18),
             call_id=Transition.same(),
         )
     else:
         # when it is internal call, need to restore caller's state as finishing this call.
         # Restore caller state to next StepState
         instruction.step_state_transition_to_restored_context(
-            rw_counter_delta=22,
+            rw_counter_delta=18,
             return_data_offset=FQ(0),
             return_data_length=FQ(0),
             gas_left=instruction.curr.gas_left,
