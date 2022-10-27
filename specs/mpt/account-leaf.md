@@ -930,8 +930,7 @@ The whole account leaf looks like:
 [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
 
 Lookups:
-We have nonce and balance in the same row - to enable lookups into the same columns (`value_prev`, `value`),
-we enable nonce lookup in `ACCOUNT_NON_EXISTING` row and balance lookup in `ACCOUNT_LEAF_NONCE_BALANCE_C` row.
+The `non_existing_account_proof` lookup is enabled in `ACCOUNT_NON_EXISTING` row.
 ```
 
 For the example of non-existing account proof account leaf see below:

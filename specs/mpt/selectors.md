@@ -110,6 +110,10 @@ Storage leaf value C row can appear only after storage leaf key C row.
 
 Storage leaf in added branch row can appear only after storage leaf value C row.
 
+#### Storage leaf in added branch -> storage leaf non existing row",
+
+Storage non existing row can appear only after storage leaf in added branch.
+
 #### In the first row only certain row types can occur
 
 In the first row only account leaf key S row or branch init row can occur.

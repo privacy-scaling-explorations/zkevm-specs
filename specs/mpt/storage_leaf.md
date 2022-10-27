@@ -1,6 +1,6 @@
 # Storage leaf
 
-A storage leaf occupies 5 rows.
+A storage leaf occupies 6 rows.
 Contrary as in the branch rows, the `S` and `C` leaves are not positioned parallel to each other.
 The rows are the following:
 ```
@@ -9,6 +9,7 @@ LEAF_VALUE_S
 LEAF_KEY_C
 LEAF_VALUE_C
 LEAF_DRIFTED
+LEAF_NON_EXISTING
 ```
 
 An example of leaf rows:
@@ -18,6 +19,7 @@ An example of leaf rows:
 [226 160 59 138 106 70 105 186 37 13 38 205 122 69 158 202 157 33 95 131 7 227 58 235 229 3 121 188 90 54 23 236 52 68 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 3]
 [17 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 14]
 [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 15]
+[0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 19]
 ```
 
 In the above example the value has been changed from 1 (`LEAF_VALUE_S`) to 17 (`LEAF_VALUE_C`).
@@ -42,6 +44,7 @@ the leaf has only one nibble.
 [248 67 160 59 138 106 70 105 186 37 13 38 205 122 69 158 202 157 33 95 131 7 227 58 235 229 3 121 188 90 54 23 236 52 68 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 3]
 [161 160 187 239 170 18 88 1 56 188 38 60 149 117 120 38 223 78 36 235 129 201 170 170 170 170 170 170 170 170 170 170 170 170 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 14]
 [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 15]
+[0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 19]
 ```
 
 `last_level`
@@ -51,6 +54,7 @@ the leaf has only one nibble.
 [194 32 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 3]
 [17 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 14]
 [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 15]
+[0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 19]
 ```
 
 `one_nibble`:
@@ -60,6 +64,7 @@ the leaf has only one nibble.
 [194 48 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 3]
 [17 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 14]
 [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 15]
+[0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 19]
 ```
 
 `s_mod_node_rlc` (`flag1`) and `c_mod_node_rlc` (`flag2`) columns store the information of what
@@ -492,7 +497,7 @@ There are 0s in `s_main.bytes` after the last value byte.
 
 ## Leaf key in added branch constraints
 
-A storage leaf occupies 5 rows.
+A storage leaf occupies 6 rows.
 Contrary as in the branch rows, the `S` and `C` leaves are not positioned parallel to each other.
 The rows are the following:
 ```
@@ -501,6 +506,7 @@ LEAF_VALUE_S
 LEAF_KEY_C
 LEAF_VALUE_C
 LEAF_DRIFTED
+LEAF_NON_EXISTING
 ```
 
 An example of leaf rows:
@@ -510,6 +516,7 @@ An example of leaf rows:
 [225 159 63 117 31 216 242 20 172 137 89 10 84 218 35 38 178 182 67 5 68 54 127 178 216 248 46 67 173 108 157 55 18 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 3]
 [17 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 14]
 [225 159 59 117 17 208 2 186 74 12 134 238 103 127 37 240 27 164 245 42 218 188 162 9 151 17 57 90 177 190 250 180 61 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 15]
+[17 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 19]
 ```
 
 The `LEAF_DRIFTED` row is nonempty when a leaf is added (or deleted) to the position in trie where there is already
@@ -582,6 +589,7 @@ Leaf value S
 Leaf key C
 Leaf value C
 Drifted leaf (leaf in added branch)
+Leaf non existing
 ```
 
 Add case (S branch is placeholder):
@@ -751,3 +759,123 @@ Then we execute the lookup into a keccak table: `lookup(leaf_rlc, branch_child_a
 ### Range lookups
 
 Range lookups ensure that `s_main`, `c_main.rlp1`, `c_main.rlp2` columns are all bytes (between 0 - 255).
+
+## Storage leaf non-existing-storage constraints
+
+A storage leaf occupies 6 rows.
+Contrary as in the branch rows, the `S` and `C` leaves are not positioned parallel to each other.
+The rows are the following:
+```
+LEAF_KEY_S
+LEAF_VALUE_S
+LEAF_KEY_C
+LEAF_VALUE_C
+LEAF_DRIFTED
+LEAF_NON_EXISTING
+```
+
+An example of leaf rows:
+```
+[226 160 49 236 194 26 116 94 57 104 160 78 149 112 228 66 91 193 143 168 1 156 104 2 129 150 181 70 209 102 156 32 12 104 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2]
+[1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 13]
+[226 160 49 236 194 26 116 94 57 104 160 78 149 112 228 66 91 193 143 168 1 156 104 2 129 150 181 70 209 102 156 32 12 104 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 3]
+[1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 14]
+[0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 15]
+[1 160 58 99 87 1 44 26 58 224 161 125 48 76 153 32 49 3 130 217 104 235 204 75 23 113 244 28 107 48 66 5 181 112 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 19]
+```
+
+In the above example, there is a wrong leaf case (see `s_rlp1` being 1 in the last row).
+The constrainst here are analogue to the ones in `account_non_existing.rs`, but here it is for the
+non existing storage instead of non existing account. However, more cases need to be handled for storage
+because there can appear 1 (named `short`) or 2 RLP bytes (named `long`),
+while for account there are always 2. Also, the selectors need
+to be obtained differently - for example, when we are checking the leaf in the first (storage) level,
+we are checking whether we are behind the account leaf (for account proof we are checking whether we
+are in the first level).
+
+Lookups:
+The `non_existing_storage_proof` lookup is enabled in `LEAF_NON_EXISTING` row.
+
+### Non existing storage proof leaf key RLC (leaf not in first level, branch not placeholder)
+
+#### Storage leaf key acc s_advice0 (short)
+
+If there is an even number of nibbles stored in a leaf, `s_bytes0` needs to be 32.
+
+#### Storage key RLC (short)
+
+Differently as for the other proofs, the storage-non-existing proof compares `key_rlc`
+with the key stored in `STORAGE_NON_EXISTING` row, not in `LEAF_KEY` row.
+
+The crucial thing is that we have a wrong leaf at the key (not exactly the same, just some starting
+set of nibbles is the same) where we are proving there is no leaf.
+If there would be a leaf at the specified key, it would be positioned in the branch where
+the wrong leaf is positioned. Note that the position is determined by the starting set of nibbles.
+Once we add the remaining nibbles to the starting ones, we need to obtain the enquired key.
+There is a complementary constraint which makes sure the remaining nibbles are different for wrong leaf
+and the non-existing leaf (in the case of wrong leaf, while the case with nil being in branch
+is different).
+
+#### Storage leaf key acc s_bytes1 (long)
+
+If there is an even number of nibbles stored in a leaf, `s_bytes1` needs to be 32.
+
+#### Storage key RLC (long)
+
+Same as for `Storage key RLC (long)`, but here for the cases when there are two RLP bytes.
+
+#### Wrong leaf sum check (short and long)
+
+We compute the RLC of the key bytes in the `LEAF_NON_EXISTING` row. We check whether the computed
+value is the same as the one stored in `accs.acc_c.rlc` column.
+
+#### Wrong leaf sum_prev check (short and long)
+
+We compute the RLC of the key bytes in the `STORAGE_NON_EXISTING` row. We check whether the computed
+value is the same as the one stored in `accs.acc_c.mult` column.
+
+#### Key of a leaf is different than key being inquired
+
+The key in the `LEAF_KEY` row and the key in the LEAF_NON_EXISTING row are different.
+
+#### Nil object in parent branch
+
+In case when there is no wrong leaf, we need to check there is a nil object in the parent branch.
+Note that the constraints in `branch.rs` ensure that `sel2` is 1 if and only if there is a nil object
+at `modified_node` position. We check that in case of no wrong leaf in
+the non-existing-storage proof, `is_nil_object` is 1.
+
+### Non existing storage proof leaf key RLC
+
+Ensuring that the storage does not exist when there is only one storage key in the storage trie.
+Note 1: The hash of the only storage is checked to be the storage root in `leaf_value.rs`.
+Note 2: There is no nil_object case checked in this gate, because it is covered in the gate
+above. That is because when there is a branch (with nil object) in the first level,
+it automatically means the leaf is not in the first level.
+
+### Non existing account proof leaf address RLC (leaf in first level)
+
+Similarly as the gate above, but for the account leaf being in the first level.
+
+### Key of wrong leaf and the enquired key are of the same length
+
+#### The number of nibbles in the wrong leaf and the enquired key are the same
+
+This constraint is to prevent the attacker to prove that some key does not exist by setting
+some arbitrary number of nibbles in the storage leaf which would lead to a desired RLC.
+
+### s_main.bytes[i] = 0 when key ends
+
+Key RLC is computed over all of `(s_main.bytes[0]), s_main.bytes[1], ..., s_main.bytes[31], c_main.rlp1, c_main.rlp2`
+because we do not know the key length in advance.
+To prevent changing the key and setting `s_main.bytes[i]` (or `c_main.rlp1/c_main.rlp2`) for
+`i > key_len + 1` to get the desired key RLC, we need to ensure that
+`s_main.bytes[i] = 0` for `i > key_len + 1`.
+
+Note that the number of the key bytes in the `LEAF_NON_EXISTING` row needs to be the same as
+the number of the key bytes in the `LEAF_KEY` row.
+
+### Range lookups
+
+Range lookups ensure that `s_main`, `c_main.rlp1`, `c_main.rlp2` columns are all bytes (between 0 - 255).
+Note that `c_main.bytes` columns are not used.
