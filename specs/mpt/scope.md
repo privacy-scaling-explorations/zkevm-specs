@@ -30,9 +30,10 @@ Create al L node
 
 There are no nodes in the S tree. There is only one L node in the C trie.
 
-However, note that when there is no leaf in S proof, a placeholder (an empty leaf) is added to maintain
-the layout. So in the case of adding a leaf to an empty trie, we will have a placeholder leaf in
-S proof and a newly added leaf in C proof.
+Note that when there is no leaf in S proof, a placeholder (an empty leaf) is added to maintain
+the layout (having a placeholder leaf in S proof in the same rows as there is a newly added leaf in C proof).
+So in the case of adding a leaf to an empty trie, we will have a placeholder leaf in
+S proof and a newly added leaf in a C proof.
 
 Two cases need to be considered: account leaf and storage leaf.
 
@@ -41,20 +42,20 @@ Two cases need to be considered: account leaf and storage leaf.
 For the account leaf, the constraints are implemented in `account_leaf` folder.
 The selector `not_first_level` is used to check whether we are in the first level or not. Being in the first
 level means we are adding a leaf to an empty trie.
-The case for being in the first level is needed in all `account_leaf` files, except in
-`account_leaf_nonce_balance.rs` where mostly intermediate RLCs are checked and there are no checks
-that involve parent element (parent element being trie root in the first level).
-And also it is not needed for `account_leaf_key_in_added_branch.rs`:
-a leaf cannot appear in the first element when it is added to a branch. Just as a note -
+The case for being in the first level needs to be handled in all `account_leaf` files, except in
+`account_leaf_nonce_balance.rs`, where mostly intermediate RLCs are checked and there are no checks
+that involve parent element (parent element being trie root when in the first level).
+Also it is not needed for `account_leaf_key_in_added_branch.rs`:
+a leaf cannot appear in the first element when it is added to a new branch. Just as a note -
 in `account_leaf_key_in_added_branch.rs` we need to check whether the parent element is in a first
 level or not.
 
-In `account_leaf_key.rs` we need to consider being in the first level when computing the account address RLC
-- when in the first level we do not take value from the parent branch as there is none, it just means all 64
-nibbles of the address are stored in a leaf.
+In `account_leaf_key.rs` we need to consider being in the first level when computing the account
+address RLC - when in the first level we do not take the value from the parent branch as there is none,
+all 64 nibbles of the address are stored in a leaf.
 In `account_leaf_storage_codehash.rs` we need to compare the leaf RLC (its hash) with the element in
 the parent branch or with trie root if in the first level.
-In `account_non_existing.rs` we need to check that the leaf is a placeholder when we are in an empty trie.
+In `account_non_existing.rs` we need to ensure that the leaf is a placeholder when we are in an empty trie.
 
 #### Storage leaf
 
@@ -64,10 +65,10 @@ we need to check whether we are in the first storage level - this is done by che
 leaf appears immediately after the account leaf. Also, instead of checking the hash of the leaf being
 the state trie root, we check whether it is the storage trie root.
 
-The constraints are analogous to the account leaf ones, but there are many differences: the storage
+The constraints are analogous to the account leaf ones, but there are also many differences: the storage
 leaf RLP bytes that determine the leaf length can appear in two versions (1 byte or 2 bytes), we do
-not have nonce, balance, storage trie root, and codehash here, we only have leaf value. Nevertheless,
-as far as the first level checks go, the constraints are analogous.
+not have a nonce, balance, storage trie root, and codehash here, we only have a leaf value. Nevertheless,
+as far as the first level checks go, the constraints are analogous (`leaf_key.rs`, `leaf_value.rs`).
 
 ### Insert when branching occurs in a B
 
@@ -95,7 +96,7 @@ If L does NOT overflows, set BL node inside B
 The hash of a leaf (or raw leaf if shorter than 32 bytes) is checked to be at the proper position
 in the parent branch in `account_leaf_storage_codehash.rs` for account leaf and in
 `leaf_value.rs` for storage leaf.
-Note that account leaf is always hashed as it is always longer than 31 bytes. For storage leaf
+Note that the account leaf is always hashed as it is always longer than 31 bytes. For storage leaf
 we use a selector `not_hashed` in `leaf_value.rs` to consider the two cases.
 
 ### Insert when branching occurs in L
@@ -138,8 +139,8 @@ If overflows a new leaf is created
                                                     *{BL 99}
 ```
 
-When a leaf is added to the position where some leaf already existed (not the same position,
-a new branch is inserted. The constraints for an account leaf in a newly added branch are
+When a leaf is added to the position where some leaf already existed,
+a new branch is inserted. The constraints for an account leaf in a newly added branch are implemented
 in `account_leaf_key_in_added_branch.rs` and for a storage leaf in `leaf_key_in_added_branch.rs`.
 
 Note that a branch placeholder is inserted to maintain the layout. That means that a placeholder
@@ -201,11 +202,11 @@ The checks that are common are:
  * checks that the change occurs only at the given address/key - all other branch rows
  are the same in S and C proof (`branch.rs`)
  * checks that the modification propagates properly by changed hashes in all the parent elements up
- to the root (`branch_hash_in_parent.rs`)
+ to the root (`branch_hash_in_parent.rs`, `extension_node.rs`)
  * checks that the hash of the element is in the parent branch or the same as trie root
  (`account_leaf_storage_codehash.rs` and `leaf_value.rs`)
  * checks that the node RLC is properly computed (`branch_rlc.rs` for branches, `account_leaf_key.fs`,
  `account_leaf_nonce_balance.rs`, `account_leaf_storage_codehash.rs` for account leaf, and
- `leaf_key.rs` and `leaf_value.rs` for storage leaf)
- * checks that the intermediate address or key RLC (depending whether in account or storage proof)
+ `leaf_key.rs` and `leaf_value.rs` for storage leaf, `extension_node.rs` for extension node)
+ * checks that the intermediate address or key RLC (depending whether we are in account or storage proof)
  is properly computed (`branch_key.rs` for branches, `extension_node_key.rs` for extension nodes).
