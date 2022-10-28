@@ -81,9 +81,9 @@ We use the following columns/gadgets in the exponentiation circuit:
 * `is_step`: A boolean value indicating whether this row is the first row from the set of rows representing a step from the exponentiation trace.
 * `identifier`: An identifier to uniquely identify an exponentiation trace. As of now, we use the read-write counter after reading both stack elements as the identifier.
 * `is_last`: Indicates whether or not the step is the last step for this exponentiation operation.
-* `base_limbs[i]`: Four columns representing the `base` as 64-bit limbs.
-* `exponent_lo_hi[i]`: Two columns representing the `exponent` as 128-bit low and high components.
-* `exponentiation_lo_hi[i]`: Two columns representing the `exponentiation` result as 128-bit low and high components.
+* `base_limbs`: Column (4 rows) for representing the `base` as 64-bit limbs.
+* `exponent_lo_hi`: Column (2 rows) for representing the `exponent` as 128-bit low and high components.
+* `exponentiation_lo_hi`: Column (2 rows) for representing the `exponentiation` result as 128-bit low and high components.
 ##### MulAddGadget (mul_gadget) for `a*b + c == d (mod 2^256)`
 * `a_limbs[i]`: Four columns representing `a` as 64-bit limbs, used for each multiplication step.
 * `b_limbs[i]`: Four columns representing `b` as 64-bit limbs, used for each multiplication step.
