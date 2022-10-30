@@ -30,13 +30,13 @@ stack instead.
    - gas:
      - the accessed `address` is warm: GAS_COST_WARM_ACCESS
      - the accessed `address` is cold: GAS_COST_ACCOUNT_COLD_ACCESS
-3. Lookups: 8 busmapping lookups
+3. Lookups: 7 busmapping lookups
    - `address` is at top of the stack.
    - 3 reads from call context for `tx_id`, `rw_counter_end_of_reversion`, and
      `is_persistent`.
    - `address` is added to the transaction access list if not already present.
-   - `is_non_existing` is read to check account existence.
-   - `balance` is read from account. Set to 0 if it doesn't exist.
+   - If witness value `exists == 1`, lookup account `balance`. Otherwise lookup
+     account non-existing proof.
    - The BALANCE result is at the new top of the stack.
 4. Additional Constraints
    - value `is_warm` matches the gas cost for this opcode.
