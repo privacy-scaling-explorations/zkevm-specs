@@ -25,34 +25,32 @@ from zkevm_specs.util import (
 )
 
 TESTING_DATA = [
-    (0x30000, 0, True, True, True),
-    (0x30000, 0, True, False, True),
-    (0x30000, 200, False, True, True),
-    (0x30000, 200, False, False, True),
+    (0x30000, 0, 0, True, True),
+    (0x30000, 0, 0, False, True),
+    (0x30000, 200, 1, True, True),
+    (0x30000, 200, 1, False, True),
     (
         rand_address(),
         rand_word(),
-        rand_range(2) == 0,
+        rand_range(2),
         rand_range(2) == 0,
         True,  # persistent call
     ),
     (
         rand_address(),
         rand_word(),
-        rand_range(2) == 0,
+        rand_range(2),
         rand_range(2) == 0,
         False,  # reverted call
     ),
 ]
 
 
-@pytest.mark.parametrize("address, balance, is_non_existing, is_warm, is_persistent", TESTING_DATA)
-def test_balance(
-    address: U160, balance: U256, is_non_existing: bool, is_warm: bool, is_persistent: bool
-):
+@pytest.mark.parametrize("address, balance, exists, is_warm, is_persistent", TESTING_DATA)
+def test_balance(address: U160, balance: U256, exists: int, is_warm: bool, is_persistent: bool):
     randomness = rand_fq()
 
-    result = 0 if is_non_existing else balance
+    result = balance if exists == 1 else 0
 
     tx_id = 1
     call_id = 1
@@ -60,7 +58,7 @@ def test_balance(
     rw_counter_end_of_reversion = 0 if is_persistent else 9
     reversible_write_counter = 0
 
-    rw_table = set(
+    rw_dictionary = (
         RWDictionary(1)
         .stack_read(call_id, 1023, RLC(address, randomness))
         .call_context_read(tx_id, CallContextFieldTag.TxId, tx_id)
@@ -75,11 +73,15 @@ def test_balance(
             is_warm,
             rw_counter_of_reversion=rw_counter_end_of_reversion - reversible_write_counter,
         )
-        .account_read(address, AccountFieldTag.NonExisting, RLC(is_non_existing, randomness))
-        .account_read(address, AccountFieldTag.Balance, RLC(balance, randomness))
-        .stack_write(call_id, 1023, RLC(result, randomness))
-        .rws
     )
+    if exists == 1:
+        rw_dictionary.account_read(address, AccountFieldTag.Balance, RLC(balance, randomness))
+    else:
+        rw_dictionary.account_read(
+            address, AccountFieldTag.NonExisting, RLC(1 - exists, randomness)
+        )
+
+    rw_table = set(rw_dictionary.stack_write(call_id, 1023, RLC(result, randomness)).rws)
 
     bytecode = Bytecode().balance()
     tables = Tables(
@@ -104,6 +106,7 @@ def test_balance(
                 program_counter=0,
                 stack_pointer=1023,
                 gas_left=GAS_COST_WARM_ACCESS + (not is_warm) * EXTRA_GAS_COST_ACCOUNT_COLD_ACCESS,
+                aux_data=exists,
             ),
             StepState(
                 execution_state=ExecutionState.STOP if is_persistent else ExecutionState.REVERT,
