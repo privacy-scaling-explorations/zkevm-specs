@@ -13,10 +13,13 @@ def exp(instruction: Instruction):
     exponent_lo, exponent_hi = instruction.word_to_lo_hi(exponent_rlc)
     exponentiation_lo, exponentiation_hi = instruction.word_to_lo_hi(exponentiation_rlc)
 
-    if instruction.is_zero(exponent_rlc) == FQ.one():
+    exponent_is_zero = instruction.is_zero(exponent_hi) * instruction.is_zero(exponent_lo)
+    exponent_is_one = instruction.is_zero(exponent_hi) * instruction.is_equal(exponent_lo, FQ.one())
+
+    if exponent_is_zero == FQ.one():
         instruction.constrain_equal(exponentiation_lo, FQ.one())
         instruction.constrain_zero(exponentiation_hi)
-    elif instruction.is_equal(exponent_rlc, FQ.one()) == FQ.one():
+    elif exponent_is_one == FQ.one():
         instruction.constrain_equal(exponentiation_lo, base_lo)
         instruction.constrain_equal(exponentiation_hi, base_hi)
     else:
