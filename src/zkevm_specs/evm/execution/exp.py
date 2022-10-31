@@ -25,7 +25,7 @@ def exp(instruction: Instruction):
     else:
         base_limbs = instruction.word_to_64s(base_rlc)
         identifier = FQ(instruction.curr.rw_counter + instruction.rw_counter_offset)
-        single_step = instruction.is_equal(exponent_rlc, FQ(2))
+        single_step = instruction.is_zero(exponent_hi) * instruction.is_equal(exponent_lo, FQ(2))
 
         # lookup to enforce the is_first step
         res_lo, res_hi = instruction.exp_lookup(
