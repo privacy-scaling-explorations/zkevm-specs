@@ -3,7 +3,7 @@ from ..instruction import Instruction, Transition, FixedTableTag
 from ..table import CallContextFieldTag
 from ..execution_state import ExecutionState
 from ..opcode import Opcode
-from ...util import N_BYTES_GAS, N_BYTES_STACK
+from ...util import N_BYTES_STACK
 
 
 def stack_error(instruction: Instruction):
@@ -11,8 +11,8 @@ def stack_error(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
     # TODO: lookup min or max stack pointer
     max_stack_pointer = FQ(Opcode(opcode.expr().n).max_stack_pointer())
-    min_stack_pointer = Opcode(opcode.expr().n).min_stack_pointer()
-    min_stack_pointer = FQ(min_stack_pointer if min_stack_pointer > 0 else 0)
+    min_sp = Opcode(opcode.expr().n).min_stack_pointer()
+    min_stack_pointer = FQ(min_sp if min_sp > 0 else 0)
     instruction.fixed_lookup(
         FixedTableTag.OpcodeStack, opcode, min_stack_pointer, max_stack_pointer
     )

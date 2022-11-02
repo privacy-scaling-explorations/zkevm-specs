@@ -12,7 +12,6 @@ from zkevm_specs.evm import (
     Transaction,
     Bytecode,
     RWDictionary,
-    Opcode,
 )
 from zkevm_specs.util import rand_fq, RLC
 
