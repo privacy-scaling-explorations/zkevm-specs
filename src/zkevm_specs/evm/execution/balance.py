@@ -27,7 +27,7 @@ def balance(instruction: Instruction):
 
     instruction.step_state_transition_in_same_context(
         opcode,
-        rw_counter=Transition.delta(8),
+        rw_counter=Transition.delta(7),
         program_counter=Transition.delta(1),
         stack_pointer=Transition.same(),
         dynamic_gas_cost=instruction.select(is_warm, FQ(0), FQ(EXTRA_GAS_COST_ACCOUNT_COLD_ACCESS)),
