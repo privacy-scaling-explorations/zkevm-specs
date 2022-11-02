@@ -111,7 +111,7 @@ def test_balance(address: U160, balance: U256, exists: int, is_warm: bool, is_pe
             ),
             StepState(
                 execution_state=ExecutionState.STOP if is_persistent else ExecutionState.REVERT,
-                rw_counter=9,
+                rw_counter=8,
                 call_id=1,
                 is_root=True,
                 is_create=False,
