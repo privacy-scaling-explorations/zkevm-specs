@@ -23,7 +23,7 @@ stack instead.
 
 1. opId = 0x31
 2. State transition:
-   - gc + 8 (1 stack read, 1 stack write, 3 call context reads, 2 account reads,
+   - gc + 7 (1 stack read, 1 stack write, 3 call context reads, 1 account reads,
      1 transaction access list write)
    - stack_pointer + 0 (one pop and one push)
    - pc + 1
