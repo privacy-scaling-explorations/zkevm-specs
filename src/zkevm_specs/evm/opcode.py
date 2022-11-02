@@ -377,7 +377,7 @@ def stack_underflow_pairs() -> List[Tuple[Opcode, int]]:
     return pairs
 
 
-def stack_pairs() -> List[Tuple[Opcode, int, int]]:
+def stack_bounds() -> List[Tuple[Opcode, int, int]]:
     pairs = []
     for opcode in valid_opcodes():
         pairs.append((opcode, opcode.min_stack_pointer(), opcode.max_stack_pointer()))

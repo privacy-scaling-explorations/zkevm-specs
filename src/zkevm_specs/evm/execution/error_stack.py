@@ -10,14 +10,20 @@ def stack_error(instruction: Instruction):
     # retrieve op code associated to stack error
     opcode = instruction.opcode_lookup(True)
     # TODO: lookup min or max stack pointer
-    stack_entry = instruction.fixed_lookup(
-        FixedTableTag.OpcodeStack, opcode, FQ(Opcode(opcode.expr().n).constant_gas_cost())
+    max_stack_pointer = FQ(Opcode(opcode.expr().n).max_stack_pointer())
+    min_stack_pointer = Opcode(opcode.expr().n).min_stack_pointer()
+    min_stack_pointer = FQ(min_stack_pointer if min_stack_pointer > 0 else 0)
+    instruction.fixed_lookup(
+        FixedTableTag.OpcodeStack, opcode, min_stack_pointer, max_stack_pointer
     )
 
-    min, max = stack_entry.value1, stack_entry.value2
     # check stack pointer is underflow or overflow
-    is_underflow, _ = instruction.compare(instruction.curr.stack_pointer, min, N_BYTES_STACK)
-    is_overflow, _ = instruction.compare(max, instruction.curr.stack_pointer, N_BYTES_STACK)
+    is_overflow, _ = instruction.compare(
+        instruction.curr.stack_pointer, FQ(min_stack_pointer), N_BYTES_STACK
+    )
+    is_underflow, _ = instruction.compare(
+        FQ(max_stack_pointer), instruction.curr.stack_pointer, N_BYTES_STACK
+    )
     instruction.constrain_bool(is_underflow)
     instruction.constrain_bool(is_overflow)
 

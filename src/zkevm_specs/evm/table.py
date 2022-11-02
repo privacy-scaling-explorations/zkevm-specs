@@ -12,7 +12,7 @@ from .opcode import (
     Opcode,
     stack_overflow_pairs,
     stack_underflow_pairs,
-    stack_pairs,
+    stack_bounds,
 )
 
 
@@ -88,7 +88,7 @@ class FixedTableTag(IntEnum):
             return [
                 # flag | op code |  min stack | max stack
                 FixedTableRow(FQ(self), FQ(pair[0]), FQ(pair[1] if pair[1] > 0 else 0), FQ(pair[2]))
-                for pair in stack_pairs()
+                for pair in stack_bounds()
             ]
 
         elif self == FixedTableTag.Pow2:
