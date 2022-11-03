@@ -28,12 +28,18 @@ def callop(instruction: Instruction):
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
     reversion_info = instruction.reversion_info()
     caller_address = instruction.call_context_lookup(CallContextFieldTag.CalleeAddress)
-    parent_caller_address = instruction.call_context_lookup(CallContextFieldTag.CallerAddress)
-    parent_call_value = instruction.call_context_lookup(CallContextFieldTag.Value)
     is_static = instruction.select(
         is_staticcall, FQ(1), instruction.call_context_lookup(CallContextFieldTag.IsStatic)
     )
     depth = instruction.call_context_lookup(CallContextFieldTag.Depth)
+    parent_caller_address, parent_call_value = (
+        (
+            instruction.call_context_lookup(CallContextFieldTag.CallerAddress),
+            instruction.call_context_lookup(CallContextFieldTag.Value),
+        )
+        if is_delegatecall == 1
+        else (RLC(0), RLC(0))
+    )
 
     # Verify depth is less than 1024
     instruction.range_lookup(depth, 1024)
@@ -150,10 +156,10 @@ def callop(instruction: Instruction):
                 expected_value,
             )
 
-        if is_call == 1:
-            rw_counter_delta, stack_pointer_delta = 26, 6
-        else:
-            rw_counter_delta, stack_pointer_delta = 25, 5
+        # Opcode CALL has an extra stack pop `value`, and opcode DELEGATECALL
+        # has two extra call context lookups - parent caller address and value.
+        rw_counter_delta = 23 + is_call + is_delegatecall * 2
+        stack_pointer_delta = 5 + is_call
 
         instruction.constrain_step_state_transition(
             rw_counter=Transition.delta(rw_counter_delta),
@@ -169,10 +175,8 @@ def callop(instruction: Instruction):
             code_hash=Transition.same(),
         )
     else:
-        if is_call == 1:
-            rw_counter_delta, stack_pointer_delta = 46, 6
-        else:
-            rw_counter_delta, stack_pointer_delta = 45, 5
+        rw_counter_delta = 43 + is_call + is_delegatecall * 2
+        stack_pointer_delta = 5 + is_call
 
         # Save caller's call state
         for (field_tag, expected_value) in [

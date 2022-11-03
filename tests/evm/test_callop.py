@@ -178,15 +178,15 @@ def test_callop(
 ):
     randomness = rand_fq()
 
-    is_call = opcode == Opcode.CALL
-    is_delegatecall = opcode == Opcode.DELEGATECALL
+    is_call = 1 if opcode == Opcode.CALL else 0
+    is_delegatecall = 1 if opcode == Opcode.DELEGATECALL else 0
 
     # Set `is_static == 1` for both DELEGATECALL and STATICCALL opcodes, and
     # also when `stack.value == 0` for opcode CALL.
-    value = stack.value if is_call else 0
+    value = stack.value if is_call == 1 else 0
     is_static = value == 0
 
-    if is_call:
+    if is_call == 1:
         caller_bytecode = (
             Bytecode()
             .call(
@@ -200,7 +200,7 @@ def test_callop(
             )
             .stop()
         )
-    elif is_delegatecall:
+    elif is_delegatecall == 1:
         caller_bytecode = (
             Bytecode()
             .delegatecall(
@@ -248,9 +248,12 @@ def test_callop(
         )
     )
 
-    call_id, rw_counter, next_program_counter, stack_pointer = (
-        (26, 26, 232, 1017) if is_call else (25, 25, 199, 1018)
-    )
+    # Opcode CALL has an extra stack pop `value`, and opcode DELEGATECALL has
+    # two extra call context lookups - parent caller address and value.
+    call_id = 23 + is_call + is_delegatecall * 2
+    rw_counter = call_id
+    next_program_counter = 232 if is_call else 199
+    stack_pointer = 1018 - is_call
 
     # fmt: off
     rw_dictionary = (
@@ -259,12 +262,14 @@ def test_callop(
         .call_context_read(1, CallContextFieldTag.RwCounterEndOfReversion, caller_ctx.rw_counter_end_of_reversion)
         .call_context_read(1, CallContextFieldTag.IsPersistent, caller_ctx.is_persistent)
         .call_context_read(1, CallContextFieldTag.CalleeAddress, caller.address)
-        .call_context_read(1, CallContextFieldTag.CallerAddress, parent_caller.address)
-        .call_context_read(1, CallContextFieldTag.Value, RLC(parent_value, randomness))
         .call_context_read(1, CallContextFieldTag.IsStatic, is_static)
         .call_context_read(1, CallContextFieldTag.Depth, 1)
     )
-    if is_call:
+    if is_delegatecall == 1:
+        rw_dictionary \
+        .call_context_read(1, CallContextFieldTag.CallerAddress, parent_caller.address) \
+        .call_context_read(1, CallContextFieldTag.Value, RLC(parent_value, randomness))
+    if is_call == 1:
         rw_dictionary \
         .stack_read(1, 1017, RLC(stack.gas, randomness)) \
         .stack_read(1, 1018, RLC(callee.address, randomness)) \
@@ -288,7 +293,7 @@ def test_callop(
     # DELEGATECALL set callee to previous caller and caller to parent caller for
     # other operations.
     code_address = callee.address
-    if is_delegatecall:
+    if is_delegatecall == 1:
         callee = caller
         caller = parent_caller
 
@@ -325,7 +330,7 @@ def test_callop(
         .call_context_read(call_id, CallContextFieldTag.CallDataLength, stack.cd_length) \
         .call_context_read(call_id, CallContextFieldTag.ReturnDataOffset, stack.rd_offset if stack.rd_length != 0 else 0) \
         .call_context_read(call_id, CallContextFieldTag.ReturnDataLength, stack.rd_length) \
-        .call_context_read(call_id, CallContextFieldTag.Value, RLC(parent_value if is_delegatecall else value, randomness)) \
+        .call_context_read(call_id, CallContextFieldTag.Value, RLC(parent_value if is_delegatecall == 1 else value, randomness)) \
         .call_context_read(call_id, CallContextFieldTag.IsSuccess, is_success) \
         .call_context_read(call_id, CallContextFieldTag.IsStatic, is_static) \
         .call_context_read(call_id, CallContextFieldTag.LastCalleeId, 0) \
