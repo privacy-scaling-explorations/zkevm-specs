@@ -40,6 +40,7 @@ def verify_step(instruction: Instruction):
             instruction.curr.execution_state,
             [FQ(ExecutionState.BeginTx), FQ(ExecutionState.EndBlock)],
         )
+        instruction.constrain_equal(instruction.curr.rw_counter, FQ(1))
 
     if instruction.is_last_step:
         instruction.constrain_equal(instruction.curr.execution_state, ExecutionState.EndBlock)
