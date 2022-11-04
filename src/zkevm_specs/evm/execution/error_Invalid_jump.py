@@ -21,12 +21,8 @@ def invalid_jump(instruction: Instruction):
     if not out_of_range.n:
         value, is_code = instruction.bytecode_lookup_pair(instruction.curr.code_hash, dest_value)
         # value is not `JUMPDEST` or `is_code` is false
-        instruction.constrain_bool(is_code)
         is_jump_dest = value == Opcode.JUMPDEST
         instruction.constrain_zero(is_code * FQ(is_jump_dest))
-    else:
-        # `dest` value is out of range
-        instruction.constrain_equal(out_of_range, FQ(1))
 
     # current call must be failed.
     is_success = instruction.call_context_lookup(CallContextFieldTag.IsSuccess)
@@ -49,5 +45,4 @@ def invalid_jump(instruction: Instruction):
             rw_counter_delta=2 + instruction.curr.reversible_write_counter.n,
             return_data_offset=FQ(0),
             return_data_length=FQ(0),
-            gas_left=instruction.curr.gas_left,
         )

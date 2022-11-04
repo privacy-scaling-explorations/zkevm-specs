@@ -19,7 +19,7 @@ one of the followings occurs:
 
 ### Lookups
 - Byte code lookup.
-- Call Context lookup `CallContextFieldTag.IsPersistent` (Only if Current instruction is root.).
+- Call Context lookup `CallContextFieldTag.IsSuccess`
 
 ## Code
 
