@@ -673,7 +673,7 @@ class Instruction:
     def bytecode_lookup_pair(
         self, bytecode_hash: Expression, index: Expression
     ) -> Tuple[Expression, Expression]:
-        rw = self.tables.bytecode_lookup(bytecode_hash, FQ(BytecodeFieldTag.Byte), index, is_code)
+        rw = self.tables.bytecode_lookup(bytecode_hash, FQ(BytecodeFieldTag.Byte), index, None)
         return rw.value, rw.is_code
 
     def bytecode_length(self, bytecode_hash: Expression) -> Expression:

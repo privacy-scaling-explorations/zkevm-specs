@@ -10,15 +10,21 @@ def invalid_jump(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
     # current executing op code must be JUMP or JUMPI
     instruction.constrain_in(opcode, [FQ(Opcode.JUMP), FQ(Opcode.JUMPI)])
+    _, is_jumpi = instruction.pair_select(opcode, Opcode.JUMP, Opcode.JUMPI)
     code_length = instruction.bytecode_length(instruction.curr.code_hash)
     dest = instruction.stack_pop()
+    # if `JUMPI`, pop `condition`
+    if is_jumpi == FQ(1):
+        condition = instruction.rlc_to_fq(instruction.stack_pop(), N_BYTES_PROGRAM_COUNTER)
+        # if condition is zero, jump will not happen, so constrain condition not zero
+        instruction.constrain_not_zero(condition)
     # lookup value from bytecode table
     dest_value = instruction.rlc_to_fq(dest, N_BYTES_PROGRAM_COUNTER)
 
-    out_of_range, _ = instruction.compare(code_length, dest_value, N_BYTES_PROGRAM_COUNTER)
+    within_range, _ = instruction.compare(dest_value, code_length, N_BYTES_PROGRAM_COUNTER)
 
     # if not out of range, check `dest` is invalid
-    if not out_of_range.n:
+    if within_range == FQ(1):
         value, is_code = instruction.bytecode_lookup_pair(instruction.curr.code_hash, dest_value)
         # value is not `JUMPDEST` or `is_code` is false
         is_jump_dest = value == Opcode.JUMPDEST
@@ -35,14 +41,15 @@ def invalid_jump(instruction: Instruction):
     if instruction.curr.is_root:
         # Do step state transition
         instruction.constrain_step_state_transition(
-            rw_counter=Transition.delta(2 + instruction.curr.reversible_write_counter),
+            rw_counter=Transition.delta(2 + is_jumpi.n + instruction.curr.reversible_write_counter),
             call_id=Transition.same(),
         )
     else:
         # when it is internal call, need to restore caller's state as finishing this call.
         # Restore caller state to next StepState
         instruction.step_state_transition_to_restored_context(
-            rw_counter_delta=2 + instruction.curr.reversible_write_counter.n,
+            rw_counter_delta=2 + is_jumpi.n + instruction.curr.reversible_write_counter.n,
             return_data_offset=FQ(0),
             return_data_length=FQ(0),
+            gas_left=instruction.curr.gas_left,
         )
