@@ -87,7 +87,7 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.EXTCODEHASH: extcodehash,
     ExecutionState.EXP: exp,
     ExecutionState.LOG: log,
-    ExecutionState.CALL_DELEGATECALL_STATICCALL: callop,
+    ExecutionState.CALL_OP: callop,
     ExecutionState.ISZERO: iszero,
     ExecutionState.SDIV_SMOD: sdiv_smod,
     ExecutionState.SHL_SHR: shl_shr,

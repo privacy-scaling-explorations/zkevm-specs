@@ -1,10 +1,10 @@
-# CALL, DELEGATECALL and STATICCALL opcodes
+# CALL, CALLCODE, DELEGATECALL and STATICCALL opcodes
 
 ## Procedure
 
 ### EVM behavior
 
-The `CALL` opcode transfer specified amount of ether to callee and creates a new call context and switch to it. This is done by popping serveral words from stack:
+The `CALL` opcode transfers specified amount of ether to callee and creates a new call context and switch to it. This is done by popping serveral words from stack:
 
 1. `gas` - The amount of gas caller want to give to callee (capped by rule in EIP150)
 2. `callee_address` - The ether recipient whose code is to be executed (by taking the 20 LSB of popped word)
@@ -14,15 +14,18 @@ The `CALL` opcode transfer specified amount of ether to callee and creates a new
 6. `return_data_offset` - The offset of return_data chunk in caller's memory, which will be set to return_data from callee after call
 7. `return_data_length` - The length of return_data chunk
 
-Both `DELEGATECALL` and `STATICCALL` opcodes are similar to `CALL`, and have some differences:
+`CALLCODE`, `DELEGATECALL` and `STATICCALL` opcodes are similar to `CALL`, but have some differences:
+
+- For opcode `CALLCODE`:
+It creates a new sub context as setting both caller and callee addresses to caller's, but with the code of the given account (callee).
 
 - For opcode `DELEGATECALL`:
-It creates a new sub context as if calling itself, but with the code of the given account (callee). In particular the current `sender` (parent caller) and `value` remain the same.
+It creates a new sub context as setting caller address to parent caller's and callee address to current caller's, but with the code of the given account (callee). In particular the current `sender` (parent caller) and `value` remain the same.
 
 - For opcode `STATICCALL`:
 It does not allow any state modifying instructions (is_static == 1) or sending ether to callee in the sub context.
 
-And both `DELEGATECALL` and `STATICCALL` opcodes only pop 6 words from stack `gas`, `callee_address`, `call_data_offset`, `call_data_length`, `return_data_offset` and `return_data_length` (without the third popped word `value` in opcode `CALL`).
+And both `DELEGATECALL` and `STATICCALL` opcodes only pop 6 words from stack `gas`, `callee_address`, `call_data_offset`, `call_data_length`, `return_data_offset` and `return_data_length` (except the third popped word `value` for both `CALL` and `CALLCODE` opcodes).
 
 Before switching call context to the new one, it does several things:
 
@@ -93,7 +96,7 @@ After switching call context, it does:
 
 The circuit takes current `rw_counter` as next call's `call_id` to make sure each call has a unique `call_id`.
 
-It pops 7 words for opcode `CALL` or 6 words for both `DELEGATECALL` and `STATICCALL` opcodes from stack, and take `result` of execution from prover to and push it to stack instantly. The reason it pushes the `result` before execution is to avoid the redundancy that every terminating `ExecutionState` needs to do the push. And it can do this because the `result` will also be in call context and checked in terminating `ExecutionState`s.
+It pops 7 words for both `CALL` and `CALLCODE` opcodes and 6 words for both `DELEGATECALL` and `STATICCALL` opcodes from stack, and take `result` of execution from prover to and push it to stack instantly. The reason it pushes the `result` before execution is to avoid the redundancy that every terminating `ExecutionState` needs to do the push. And it can do this because the `result` will also be in call context and checked in terminating `ExecutionState`s.
 
 It then checks the new call `is_persistent` only if current `is_persistent` and `result` of execution is success. If the new call is not persistent is due to current's call is not persistent, we need to propagate the `rw_counter_end_of_reversion` to make sure every state update has a corresponding reversion.
 
