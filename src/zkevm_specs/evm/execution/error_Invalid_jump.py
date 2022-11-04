@@ -15,7 +15,7 @@ def invalid_jump(instruction: Instruction):
     dest = instruction.stack_pop()
     # if `JUMPI`, pop `condition`
     if is_jumpi == FQ(1):
-        condition = instruction.rlc_to_fq(instruction.stack_pop(), N_BYTES_PROGRAM_COUNTER)
+        condition = instruction.stack_pop()
         # if condition is zero, jump will not happen, so constrain condition not zero
         instruction.constrain_not_zero(condition)
     # lookup value from bytecode table
