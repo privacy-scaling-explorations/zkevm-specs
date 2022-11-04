@@ -1,10 +1,13 @@
-import traceback
-from typing import Union, List, Callable
-from eth_keys import keys
-from eth_utils import keccak
-import rlp
-from zkevm_specs.public_inputs import *
-from zkevm_specs.util import FQ, RLC, U64, U256, U160
+from typing import Union, Callable
+from zkevm_specs.public_inputs import (
+    Witness,
+    PublicData,
+    public_data2witness,
+    verify_circuit,
+    Block,
+    Transaction,
+)
+from zkevm_specs.util import FQ, U64, U256, U160
 import random
 from random import randrange, randbytes
 
@@ -118,7 +121,7 @@ def test_basic():
     verify(public_data, MAX_TXS, MAX_CALLDATA_BYTES, rand_rpi)
 
 
-def override_not_success(override: Callable[Witness, None]):
+def override_not_success(override: Callable[[Witness], None]):
     random.seed(0)
 
     MAX_TXS = 2
@@ -196,13 +199,6 @@ def test_bad_rand_rpi_chain_id_pub():
 def test_bad_rand_rpi_state_root_pub():
     def override(witness):
         witness.public_inputs.state_root = FQ(123)
-
-    override_not_success(override)
-
-
-def test_bad_rand_rpi_state_root_prev_pub():
-    def override(witness):
-        witness.public_inputs.state_root_prev = FQ(123)
 
     override_not_success(override)
 
