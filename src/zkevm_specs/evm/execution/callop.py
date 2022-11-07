@@ -16,9 +16,11 @@ from ..table import RW, CallContextFieldTag, AccountFieldTag
 from ..precompiled import PrecompiledAddress
 
 
-def call_staticcall(instruction: Instruction):
+def callop(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
-    is_call, _ = instruction.pair_select(opcode, Opcode.CALL, Opcode.STATICCALL)
+    is_call, is_delegatecall, is_staticcall = instruction.multiple_select(
+        opcode, (Opcode.CALL, Opcode.DELEGATECALL, Opcode.STATICCALL)
+    )
     instruction.responsible_opcode_lookup(opcode)
 
     callee_call_id = instruction.curr.rw_counter
@@ -27,17 +29,26 @@ def call_staticcall(instruction: Instruction):
     reversion_info = instruction.reversion_info()
     caller_address = instruction.call_context_lookup(CallContextFieldTag.CalleeAddress)
     is_static = instruction.select(
-        is_call, instruction.call_context_lookup(CallContextFieldTag.IsStatic), FQ(1)
+        is_staticcall, FQ(1), instruction.call_context_lookup(CallContextFieldTag.IsStatic)
     )
     depth = instruction.call_context_lookup(CallContextFieldTag.Depth)
+    parent_caller_address, parent_call_value = (
+        (
+            instruction.call_context_lookup(CallContextFieldTag.CallerAddress),
+            instruction.call_context_lookup(CallContextFieldTag.Value),
+        )
+        if is_delegatecall == 1
+        else (RLC(0), RLC(0))
+    )
 
     # Verify depth is less than 1024
     instruction.range_lookup(depth, 1024)
 
     # Lookup values from stack
     gas_rlc = instruction.stack_pop()
-    callee_address_rlc = instruction.stack_pop()
-    # The third argument `value` of opcode CALL is not present for opcode STATICCALL.
+    code_address_rlc = instruction.stack_pop()
+    # The third argument `value` of opcode CALL is not present for both opcode
+    # DELEGATECALL and STATICCALL.
     value = instruction.stack_pop() if is_call == 1 else RLC(0)
     cd_offset_rlc = instruction.stack_pop()
     cd_length_rlc = instruction.stack_pop()
@@ -49,7 +60,14 @@ def call_staticcall(instruction: Instruction):
     instruction.constrain_bool(is_success)
 
     # Recomposition of random linear combination to integer
-    callee_address = instruction.rlc_to_fq(callee_address_rlc, N_BYTES_ACCOUNT_ADDRESS)
+    code_address = instruction.rlc_to_fq(code_address_rlc, N_BYTES_ACCOUNT_ADDRESS)
+
+    # For opcode DELEGATECALL, set `callee_address` to previous `caller_address`
+    # and `caller_address` to `parent_caller_address` Variable `code_address`
+    # will be used to get code hash.
+    callee_address = instruction.select(is_delegatecall, caller_address, code_address)
+    caller_address = instruction.select(is_delegatecall, parent_caller_address, caller_address)
+
     gas = instruction.rlc_to_fq(gas_rlc, N_BYTES_GAS)
     gas_is_u64 = instruction.is_zero(instruction.sum(gas_rlc.le_bytes[N_BYTES_GAS:]))
     cd_offset, cd_length = instruction.memory_offset_and_length(cd_offset_rlc, cd_length_rlc)
@@ -63,8 +81,8 @@ def call_staticcall(instruction: Instruction):
         rd_length,
     )
 
-    # Add callee to access list
-    is_warm_access = instruction.add_account_to_access_list(tx_id, callee_address, reversion_info)
+    # Add `code_address` to access list
+    is_warm_access = instruction.add_account_to_access_list(tx_id, code_address, reversion_info)
 
     # Propagate rw_counter_end_of_reversion and is_persistent
     callee_reversion_info = instruction.reversion_info(call_id=callee_call_id)
@@ -92,7 +110,7 @@ def call_staticcall(instruction: Instruction):
 
     # Verify gas cost
     callee_nonce = instruction.account_read(callee_address, AccountFieldTag.Nonce)
-    callee_code_hash = instruction.account_read(callee_address, AccountFieldTag.CodeHash)
+    callee_code_hash = instruction.account_read(code_address, AccountFieldTag.CodeHash)
     is_empty_code_hash = instruction.is_equal(
         callee_code_hash, instruction.rlc_encode(EMPTY_CODE_HASH, 32)
     )
@@ -138,10 +156,10 @@ def call_staticcall(instruction: Instruction):
                 expected_value,
             )
 
-        if is_call == 1:
-            rw_counter_delta, stack_pointer_delta = 24, 6
-        else:
-            rw_counter_delta, stack_pointer_delta = 23, 5
+        # Opcode CALL has an extra stack pop `value`, and opcode DELEGATECALL
+        # has two extra call context lookups - parent caller address and value.
+        rw_counter_delta = 23 + is_call + is_delegatecall * 2
+        stack_pointer_delta = 5 + is_call
 
         instruction.constrain_step_state_transition(
             rw_counter=Transition.delta(rw_counter_delta),
@@ -157,10 +175,8 @@ def call_staticcall(instruction: Instruction):
             code_hash=Transition.same(),
         )
     else:
-        if is_call == 1:
-            rw_counter_delta, stack_pointer_delta = 44, 6
-        else:
-            rw_counter_delta, stack_pointer_delta = 43, 5
+        rw_counter_delta = 43 + is_call + is_delegatecall * 2
+        stack_pointer_delta = 5 + is_call
 
         # Save caller's call state
         for (field_tag, expected_value) in [
@@ -188,12 +204,15 @@ def call_staticcall(instruction: Instruction):
             (CallContextFieldTag.TxId, tx_id.expr()),
             (CallContextFieldTag.Depth, depth.expr() + 1),
             (CallContextFieldTag.CallerAddress, caller_address.expr()),
-            (CallContextFieldTag.CalleeAddress, callee_address),
+            (CallContextFieldTag.CalleeAddress, callee_address.expr()),
             (CallContextFieldTag.CallDataOffset, cd_offset),
             (CallContextFieldTag.CallDataLength, cd_length),
             (CallContextFieldTag.ReturnDataOffset, rd_offset),
             (CallContextFieldTag.ReturnDataLength, rd_length),
-            (CallContextFieldTag.Value, value.expr()),
+            (
+                CallContextFieldTag.Value,
+                instruction.select(is_delegatecall, parent_call_value.expr(), value.expr()),
+            ),
             (CallContextFieldTag.IsSuccess, is_success.expr()),
             (CallContextFieldTag.IsStatic, is_static.expr()),
             (CallContextFieldTag.LastCalleeId, FQ(0)),

@@ -1,4 +1,4 @@
-# CALL and STATICCALL opcodes
+# CALL, DELEGATECALL and STATICCALL opcodes
 
 ## Procedure
 
@@ -8,13 +8,21 @@ The `CALL` opcode transfer specified amount of ether to callee and creates a new
 
 1. `gas` - The amount of gas caller want to give to callee (capped by rule in EIP150)
 2. `callee_address` - The ether recipient whose code is to be executed (by taking the 20 LSB of popped word)
-3. `value` - The amount of ether to be transferred (non-existent for opcode `STATICCALL`)
+3. `value` - The amount of ether to be transferred (non-existent for both `DELEGATECALL` and `STATICCALL` opcodes)
 4. `call_data_offset` - The offset of call_data chunk in caller's memory as call_data for callee
 5. `call_data_length` - The length of call_data chunk
 6. `return_data_offset` - The offset of return_data chunk in caller's memory, which will be set to return_data from callee after call
 7. `return_data_length` - The length of return_data chunk
 
-The `STATICCALL` opcode is equivalent to `CALL`, except that it does not allow any state modifying instructions (is_static == 1) or sending ether to callee in the sub context. It only pops 6 words from stack `gas`, `callee_address`, `call_data_offset`, `call_data_length`, `return_data_offset` and `return_data_length` (without the third popped word `value` in opcode `CALL`).
+Both `DELEGATECALL` and `STATICCALL` opcodes are similar to `CALL`, and have some differences:
+
+- For opcode `DELEGATECALL`:
+It creates a new sub context as if calling itself, but with the code of the given account (callee). In particular the current `sender` (parent caller) and `value` remain the same.
+
+- For opcode `STATICCALL`:
+It does not allow any state modifying instructions (is_static == 1) or sending ether to callee in the sub context.
+
+And both `DELEGATECALL` and `STATICCALL` opcodes only pop 6 words from stack `gas`, `callee_address`, `call_data_offset`, `call_data_length`, `return_data_offset` and `return_data_length` (without the third popped word `value` in opcode `CALL`).
 
 Before switching call context to the new one, it does several things:
 
@@ -23,7 +31,7 @@ Before switching call context to the new one, it does several things:
 3. Calculate `gas_cost` and check `gas_left` is enough
 4. Calculate `callee_gas_left` for new context by rule in EIP150
 5. Check `depth` is less than `1024`
-6. Check `value` could be transfer (zero for opcode `STATICCALL`)
+6. Check `value` could be transfer (zero for both `DELEGATECALL` and `STATICCALL` opcodes)
 
 The memory size is calculated as follows:
 
@@ -50,7 +58,7 @@ next.memory_size := max(
 memory_expansion_gas_cost := calc_memory_cost(next.memory_size) - memory_cost(curr.memory_size)
 ```
 
-The `gas_cost` is calculated like this (has_value == 0 for opcode `STATICCALL`):
+The `gas_cost` is calculated like this (has_value == 0 for both `DELEGATECALL` and `STATICCALL` opcodes):
 
 ```
 GAS_COST_WARM_ACCESS := 100
@@ -74,7 +82,7 @@ callee_gas_left := min(gas_available - floor(gas_available / 64), gas)
 
 After switching call context, it does:
 
-1. Transfer `value` (zero for opcode `STATICCALL`)
+1. Transfer `value` (zero for both `DELEGATECALL` and `STATICCALL` opcodes)
 2. Execution
    1. If `callee_address` is a precompiled, it runs the pre-defined handler
    2. Otherwise, it takes callee's code for execution
@@ -85,7 +93,7 @@ After switching call context, it does:
 
 The circuit takes current `rw_counter` as next call's `call_id` to make sure each call has a unique `call_id`.
 
-It pops the 7 words for opcode `CALL` or 6 words for opcode `STATICCALL` from stack, and take `result` of execution from prover to and push it to stack instantly. The reason it pushes the `result` before execution is to avoid the redundancy that every terminating `ExecutionState` needs to do the push. And it can do this because the `result` will also be in call context and checked in terminating `ExecutionState`s.
+It pops 7 words for opcode `CALL` or 6 words for both `DELEGATECALL` and `STATICCALL` opcodes from stack, and take `result` of execution from prover to and push it to stack instantly. The reason it pushes the `result` before execution is to avoid the redundancy that every terminating `ExecutionState` needs to do the push. And it can do this because the `result` will also be in call context and checked in terminating `ExecutionState`s.
 
 It then checks the new call `is_persistent` only if current `is_persistent` and `result` of execution is success. If the new call is not persistent is due to current's call is not persistent, we need to propagate the `rw_counter_end_of_reversion` to make sure every state update has a corresponding reversion.
 
@@ -95,4 +103,4 @@ In the end of execution, the terminating `ExecutionState` like `RETURN`, `REVERT
 
 ## Code
 
-Please refer to `src/zkevm_specs/evm/execution/call_staticcall.py`.
+Please refer to `src/zkevm_specs/evm/execution/callop.py`.
