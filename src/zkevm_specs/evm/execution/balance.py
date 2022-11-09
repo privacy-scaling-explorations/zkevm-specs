@@ -1,4 +1,4 @@
-from ...util import EXTRA_GAS_COST_ACCOUNT_COLD_ACCESS, FQ, N_BYTES_ACCOUNT_ADDRESS, RLC
+from ...util import EXTRA_GAS_COST_ACCOUNT_COLD_ACCESS, FQ, N_BYTES_ACCOUNT_ADDRESS
 from ..instruction import Instruction, Transition
 from ..opcode import Opcode
 from ..table import AccountFieldTag, CallContextFieldTag
@@ -16,10 +16,11 @@ def balance(instruction: Instruction):
     # Load account `exists` value from auxilary witness data.
     exists = instruction.curr.aux_data
 
-    if exists == 0:  # 1 - exists == 1
+    if exists == 1:
+        balance = instruction.account_read(address, AccountFieldTag.Balance)
+    else:  # exists == 0
         instruction.account_read(address, AccountFieldTag.NonExisting)
 
-    balance = instruction.account_read(address, AccountFieldTag.Balance) if exists == 1 else RLC(0)
     instruction.constrain_equal(
         instruction.select(exists, balance.expr(), FQ(0)),
         instruction.stack_push(),

@@ -59,8 +59,8 @@ def test_extcodehash(address: U160, code: bytes, exists: int, is_warm: bool, is_
     tx_id = 1
     call_id = 1
 
-    # 9 + 1 reversible operation (the account access list write)
-    rw_counter_end_of_reversion = 0 if is_persistent else 10
+    # 7 + 1 reversible operation (the account access list write)
+    rw_counter_end_of_reversion = 0 if is_persistent else 8
     reversible_write_counter = 0
 
     rw_dictionary = (
