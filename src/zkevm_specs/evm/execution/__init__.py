@@ -14,7 +14,7 @@ from .mulmod import *
 from .balance import *
 from .block_ctx import *
 from .blockhash import *
-from .call_staticcall import *
+from .callop import *
 from .calldatasize import *
 from .caller import *
 from .callvalue import *
@@ -47,6 +47,7 @@ from .stop import stop
 from .return_ import *
 from .extcodecopy import *
 from .oog_constant import *
+from .error_Invalid_jump import *
 
 
 EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
@@ -86,11 +87,12 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.EXTCODEHASH: extcodehash,
     ExecutionState.EXP: exp,
     ExecutionState.LOG: log,
-    ExecutionState.CALL_STATICCALL: call_staticcall,
+    ExecutionState.CALL_DELEGATECALL_STATICCALL: callop,
     ExecutionState.ISZERO: iszero,
     ExecutionState.SDIV_SMOD: sdiv_smod,
     ExecutionState.SHL_SHR: shl_shr,
     ExecutionState.STOP: stop,
     ExecutionState.RETURN: return_,
     ExecutionState.ErrorOutOfGasConstant: oog_constant,
+    ExecutionState.ErrorInvalidJump: invalid_jump,
 }

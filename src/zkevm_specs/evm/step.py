@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Optional, Any
 from .execution_state import ExecutionState
 from ..util import FQ, RLC
 
@@ -58,7 +58,7 @@ class StepState:
         memory_size: int = 0,
         reversible_write_counter: int = 0,
         log_id: int = 0,
-        aux_data: Any = None,
+        aux_data: Optional[Any] = None,
     ) -> None:
         self.execution_state = execution_state
         self.rw_counter = FQ(rw_counter)

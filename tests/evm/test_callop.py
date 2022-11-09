@@ -1,7 +1,6 @@
-import itertools
 import pytest
 from collections import namedtuple
-from itertools import chain
+from itertools import chain, product
 from zkevm_specs.evm import (
     Account,
     AccountFieldTag,
@@ -23,6 +22,7 @@ from zkevm_specs.util import (
     GAS_COST_WARM_ACCESS,
     GAS_STIPEND_CALL_WITH_VALUE,
     RLC,
+    U256,
     rand_fq,
 )
 
@@ -51,6 +51,9 @@ STOP_BYTECODE = Bytecode().stop()
 RETURN_BYTECODE = Bytecode().return_(0, 0)
 REVERT_BYTECODE = Bytecode().revert(0, 0)
 
+PARENT_CALLER = Account(address=0xFD, balance=int(1e20))
+PARENT_VALUE = int(5e18)
+
 CALLER = Account(address=0xFE, balance=int(1e20))
 CALLEE_WITH_NOTHING = Account(address=0xFF)
 CALLEE_WITH_STOP_BYTECODE_AND_BALANCE = Account(address=0xFF, code=STOP_BYTECODE, balance=int(1e18))
@@ -59,17 +62,20 @@ CALLEE_WITH_REVERT_BYTECODE = Account(address=0xFF, code=REVERT_BYTECODE)
 
 
 def expected(
-    opcode: Opcode, callee: Account, caller_ctx: CallContext, stack: Stack, is_warm_access: bool
+    opcode: Opcode,
+    bytecode_hash: U256,
+    callee: Account,
+    caller_ctx: CallContext,
+    stack: Stack,
+    is_warm_access: bool,
 ):
     def memory_size(offset: int, length: int) -> int:
         if length == 0:
             return 0
         return (offset + length + 31) // 32
 
-    is_call = opcode == Opcode.CALL
-    is_account_empty = callee.is_empty()
-    value = stack.value if is_call else 0
-    has_value = value != 0
+    # Either DELEGATECALL or STATICCALL has no `value` argument on stack.
+    has_value = stack.value != 0 if opcode == Opcode.CALL else False
     next_memory_size = max(
         memory_size(stack.cd_offset, stack.cd_length),
         memory_size(stack.rd_offset, stack.rd_length),
@@ -80,7 +86,7 @@ def expected(
     ) // 512 + 3 * (next_memory_size - caller_ctx.memory_size)
     gas_cost = (
         (GAS_COST_WARM_ACCESS if is_warm_access else GAS_COST_ACCOUNT_COLD_ACCESS)
-        + has_value * (GAS_COST_CALL_WITH_VALUE + is_account_empty * GAS_COST_NEW_ACCOUNT)
+        + has_value * (GAS_COST_CALL_WITH_VALUE + callee.is_empty() * GAS_COST_NEW_ACCOUNT)
         + memory_expansion_gas_cost
     )
     gas_available = caller_ctx.gas_left - gas_cost
@@ -88,7 +94,7 @@ def expected(
     callee_gas_left = min(all_but_one_64th_gas, stack.gas)
     caller_gas_left = caller_ctx.gas_left - (
         gas_cost - has_value * GAS_STIPEND_CALL_WITH_VALUE
-        if callee.code_hash() == EMPTY_CODE_HASH
+        if bytecode_hash == EMPTY_CODE_HASH
         else gas_cost + callee_gas_left
     )
 
@@ -102,6 +108,7 @@ def expected(
 def gen_testing_data():
     opcodes = [
         Opcode.CALL,
+        Opcode.DELEGATECALL,
         Opcode.STATICCALL,
     ]
     callees = [
@@ -131,12 +138,21 @@ def gen_testing_data():
             opcode,
             CALLER,
             callee,
+            PARENT_CALLER,
+            PARENT_VALUE,
             call_context,
             stack,
             is_warm_access,
-            expected(opcode, callee, call_context, stack, is_warm_access),
+            expected(
+                opcode,
+                callee.code_hash(),
+                CALLER if opcode == Opcode.DELEGATECALL else callee,
+                call_context,
+                stack,
+                is_warm_access,
+            ),
         )
-        for opcode, callee, call_context, stack, is_warm_access in itertools.product(
+        for opcode, callee, call_context, stack, is_warm_access in product(
             opcodes, callees, call_contexts, stacks, is_warm_accesss
         )
     ]
@@ -146,30 +162,32 @@ TESTING_DATA = gen_testing_data()
 
 
 @pytest.mark.parametrize(
-    "opcode, caller, callee, caller_ctx, stack, is_warm_access, expected", TESTING_DATA
+    "opcode, caller, callee, parent_caller, parent_value, caller_ctx, stack, is_warm_access, expected",
+    TESTING_DATA,
 )
-def test_call_staticcall(
+def test_callop(
     opcode: Opcode,
     caller: Account,
     callee: Account,
+    parent_caller: Account,
+    parent_value: int,
     caller_ctx: CallContext,
     stack: Stack,
     is_warm_access: bool,
     expected: Expected,
 ):
-    is_call = opcode == Opcode.CALL
-    is_static = not is_call or stack.value == 0
-
     randomness = rand_fq()
 
-    value = stack.value if is_call else 0
-    caller_balance_prev = RLC(caller.balance, randomness)
-    callee_balance_prev = RLC(callee.balance, randomness)
-    caller_balance = RLC(caller.balance - value, randomness)
-    callee_balance = RLC(callee.balance + value, randomness)
+    is_call = 1 if opcode == Opcode.CALL else 0
+    is_delegatecall = 1 if opcode == Opcode.DELEGATECALL else 0
 
-    caller_bytecode = (
-        (
+    # Set `is_static == 1` for both DELEGATECALL and STATICCALL opcodes, and
+    # also when `stack.value == 0` for opcode CALL.
+    value = stack.value if is_call == 1 else 0
+    is_static = value == 0
+
+    if is_call == 1:
+        caller_bytecode = (
             Bytecode()
             .call(
                 stack.gas,
@@ -182,8 +200,21 @@ def test_call_staticcall(
             )
             .stop()
         )
-        if is_call
-        else (
+    elif is_delegatecall == 1:
+        caller_bytecode = (
+            Bytecode()
+            .delegatecall(
+                stack.gas,
+                callee.address,
+                stack.cd_offset,
+                stack.cd_length,
+                stack.rd_offset,
+                stack.rd_length,
+            )
+            .stop()
+        )
+    else:  # STATICCALL
+        caller_bytecode = (
             Bytecode()
             .staticcall(
                 stack.gas,
@@ -195,10 +226,13 @@ def test_call_staticcall(
             )
             .stop()
         )
-    )
 
     caller_bytecode_hash = RLC(caller_bytecode.hash(), randomness)
-    callee_bytecode_hash = RLC(callee.code_hash(), randomness)
+
+    callee_bytecode = callee.code
+    callee_bytecode_hash = callee_bytecode.hash()
+    is_empty_code_hash = callee_bytecode_hash == EMPTY_CODE_HASH
+    callee_bytecode_hash = RLC(callee_bytecode_hash, randomness)
 
     is_success = False if callee is CALLEE_WITH_REVERT_BYTECODE else True
     is_reverted_by_caller = not caller_ctx.is_persistent and is_success
@@ -214,9 +248,12 @@ def test_call_staticcall(
         )
     )
 
-    call_id, rw_counter, next_program_counter, stack_pointer = (
-        (24, 24, 232, 1017) if is_call else (23, 23, 199, 1018)
-    )
+    # Opcode CALL has an extra stack pop `value`, and opcode DELEGATECALL has
+    # two extra call context lookups - parent caller address and value.
+    call_id = 23 + is_call + is_delegatecall * 2
+    rw_counter = call_id
+    next_program_counter = 232 if is_call else 199
+    stack_pointer = 1018 - is_call
 
     # fmt: off
     rw_dictionary = (
@@ -228,12 +265,16 @@ def test_call_staticcall(
         .call_context_read(1, CallContextFieldTag.IsStatic, is_static)
         .call_context_read(1, CallContextFieldTag.Depth, 1)
     )
-    if is_call:
+    if is_delegatecall == 1:
+        rw_dictionary \
+        .call_context_read(1, CallContextFieldTag.CallerAddress, parent_caller.address) \
+        .call_context_read(1, CallContextFieldTag.Value, RLC(parent_value, randomness))
+    if is_call == 1:
         rw_dictionary \
         .stack_read(1, 1017, RLC(stack.gas, randomness)) \
         .stack_read(1, 1018, RLC(callee.address, randomness)) \
         .stack_read(1, 1019, RLC(value, randomness))
-    else:
+    else: # DELEGATECALL or STATICCALL
         rw_dictionary \
         .stack_read(1, 1018, RLC(stack.gas, randomness)) \
         .stack_read(1, 1019, RLC(callee.address, randomness))
@@ -245,15 +286,30 @@ def test_call_staticcall(
         .stack_write(1, 1023, RLC(is_success, randomness)) \
         .tx_access_list_account_write(1, callee.address, True, is_warm_access, rw_counter_of_reversion=None if caller_ctx.is_persistent else caller_ctx.rw_counter_end_of_reversion - caller_ctx.reversible_write_counter) \
         .call_context_read(call_id, CallContextFieldTag.RwCounterEndOfReversion, callee_rw_counter_end_of_reversion) \
-        .call_context_read(call_id, CallContextFieldTag.IsPersistent, callee_is_persistent) \
+        .call_context_read(call_id, CallContextFieldTag.IsPersistent, callee_is_persistent)
+    # fmt: on
+
+    # Save code address for further code hash read, and if opcode is
+    # DELEGATECALL set callee to previous caller and caller to parent caller for
+    # other operations.
+    code_address = callee.address
+    if is_delegatecall == 1:
+        callee = caller
+        caller = parent_caller
+
+    caller_balance_prev = RLC(caller.balance, randomness)
+    callee_balance_prev = RLC(callee.balance, randomness)
+    caller_balance = RLC(caller.balance - value, randomness)
+    callee_balance = RLC(callee.balance + value, randomness)
+
+    # fmt: off
+    rw_dictionary \
         .account_write(caller.address, AccountFieldTag.Balance, caller_balance, caller_balance_prev, rw_counter_of_reversion=None if callee_is_persistent else callee_rw_counter_end_of_reversion) \
         .account_write(callee.address, AccountFieldTag.Balance, callee_balance, callee_balance_prev, rw_counter_of_reversion=None if callee_is_persistent else callee_rw_counter_end_of_reversion - 1) \
         .account_read(callee.address, AccountFieldTag.Nonce, RLC(callee.nonce, randomness)) \
-        .account_read(callee.address, AccountFieldTag.CodeHash, callee_bytecode_hash)
-    # fmt: on
+        .account_read(code_address, AccountFieldTag.CodeHash, callee_bytecode_hash)
 
-    # fmt: off
-    if callee.code_hash() == EMPTY_CODE_HASH:
+    if is_empty_code_hash:
         rw_dictionary \
         .call_context_write(1, CallContextFieldTag.LastCalleeId, 0) \
         .call_context_write(1, CallContextFieldTag.LastCalleeReturnDataOffset, 0) \
@@ -274,7 +330,7 @@ def test_call_staticcall(
         .call_context_read(call_id, CallContextFieldTag.CallDataLength, stack.cd_length) \
         .call_context_read(call_id, CallContextFieldTag.ReturnDataOffset, stack.rd_offset if stack.rd_length != 0 else 0) \
         .call_context_read(call_id, CallContextFieldTag.ReturnDataLength, stack.rd_length) \
-        .call_context_read(call_id, CallContextFieldTag.Value, RLC(value, randomness)) \
+        .call_context_read(call_id, CallContextFieldTag.Value, RLC(parent_value if is_delegatecall == 1 else value, randomness)) \
         .call_context_read(call_id, CallContextFieldTag.IsSuccess, is_success) \
         .call_context_read(call_id, CallContextFieldTag.IsStatic, is_static) \
         .call_context_read(call_id, CallContextFieldTag.LastCalleeId, 0) \
@@ -291,7 +347,7 @@ def test_call_staticcall(
         bytecode_table=set(
             chain(
                 caller_bytecode.table_assignments(randomness),
-                callee.code.table_assignments(randomness),
+                callee_bytecode.table_assignments(randomness),
             )
         ),
         rw_table=set(rw_dictionary.rws),
@@ -302,7 +358,7 @@ def test_call_staticcall(
         tables=tables,
         steps=[
             StepState(
-                execution_state=ExecutionState.CALL_STATICCALL,
+                execution_state=ExecutionState.CALL_DELEGATECALL_STATICCALL,
                 rw_counter=rw_counter,
                 call_id=1,
                 is_root=True,
@@ -328,7 +384,7 @@ def test_call_staticcall(
                     memory_size=expected.next_memory_size,
                     reversible_write_counter=caller_ctx.reversible_write_counter + 3,
                 )
-                if callee.code_hash() == EMPTY_CODE_HASH
+                if is_empty_code_hash
                 else StepState(
                     execution_state=ExecutionState.STOP
                     if callee.code == STOP_BYTECODE

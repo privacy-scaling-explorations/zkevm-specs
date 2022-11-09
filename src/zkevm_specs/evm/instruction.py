@@ -361,7 +361,11 @@ class Instruction:
         return when_true if condition == 1 else when_false
 
     def pair_select(self, value: Expression, lhs: Expression, rhs: Expression) -> Tuple[FQ, FQ]:
-        return FQ(value.expr() == lhs.expr()), FQ(value.expr() == rhs.expr())
+        lhs_eq, rhs_eq = self.multiple_select(value, (lhs, rhs))
+        return lhs_eq, rhs_eq
+
+    def multiple_select(self, value: Expression, options: Tuple[Expression, ...]) -> Tuple[FQ, ...]:
+        return tuple(FQ(value.expr() == o.expr()) for o in options)
 
     def constant_divmod(
         self, numerator: Expression, denominator: Expression, n_bytes: int
@@ -436,7 +440,7 @@ class Instruction:
 
         return fq
 
-    def rlc_encode(self, value: Union[FQ, int, bytes], n_bytes: int = None) -> RLC:
+    def rlc_encode(self, value: Union[FQ, int, bytes], n_bytes: Optional[int] = None) -> RLC:
         if isinstance(value, FQ):
             value = value.n
         if isinstance(value, bytes):
@@ -665,12 +669,20 @@ class Instruction:
         ).value
         return value
 
+    # look up byte code value
     def bytecode_lookup(
-        self, bytecode_hash: Expression, index: Expression, is_code: Expression = None
+        self, bytecode_hash: Expression, index: Expression, is_code: Optional[Expression] = None
     ) -> Expression:
         return self.tables.bytecode_lookup(
             bytecode_hash, FQ(BytecodeFieldTag.Byte), index, is_code
         ).value
+
+    # lookup value and is_code pair
+    def bytecode_lookup_pair(
+        self, bytecode_hash: Expression, index: Expression
+    ) -> Tuple[Expression, Expression]:
+        rw = self.tables.bytecode_lookup(bytecode_hash, FQ(BytecodeFieldTag.Byte), index, None)
+        return rw.value, rw.is_code
 
     def bytecode_length(self, bytecode_hash: Expression) -> Expression:
         return self.tables.bytecode_lookup(
@@ -700,14 +712,14 @@ class Instruction:
         self,
         rw: RW,
         tag: RWTableTag,
-        key1: Expression = None,
-        key2: Expression = None,
-        key3: Expression = None,
-        key4: Expression = None,
-        value: Expression = None,
-        value_prev: Expression = None,
-        aux0: Expression = None,
-        rw_counter: Expression = None,
+        key1: Optional[Expression] = None,
+        key2: Optional[Expression] = None,
+        key3: Optional[Expression] = None,
+        key4: Optional[Expression] = None,
+        value: Optional[Expression] = None,
+        value_prev: Optional[Expression] = None,
+        aux0: Optional[Expression] = None,
+        rw_counter: Optional[Expression] = None,
     ) -> RWTableRow:
         if rw_counter is None:
             rw_counter = self.curr.rw_counter + self.rw_counter_offset
@@ -729,14 +741,14 @@ class Instruction:
     def state_write(
         self,
         tag: RWTableTag,
-        key1: Expression = None,
-        key2: Expression = None,
-        key3: Expression = None,
-        key4: Expression = None,
-        value: Expression = None,
-        value_prev: Expression = None,
-        aux0: Expression = None,
-        reversion_info: ReversionInfo = None,
+        key1: Optional[Expression] = None,
+        key2: Optional[Expression] = None,
+        key3: Optional[Expression] = None,
+        key4: Optional[Expression] = None,
+        value: Optional[Expression] = None,
+        value_prev: Optional[Expression] = None,
+        aux0: Optional[Expression] = None,
+        reversion_info: Optional[ReversionInfo] = None,
     ) -> RWTableRow:
         assert tag.write_with_reversion()
 
@@ -760,7 +772,7 @@ class Instruction:
         return row
 
     def call_context_lookup(
-        self, field_tag: CallContextFieldTag, rw: RW = RW.Read, call_id: Expression = None
+        self, field_tag: CallContextFieldTag, rw: RW = RW.Read, call_id: Optional[Expression] = None
     ) -> Expression:
         if call_id is None:
             call_id = self.curr.call_id
@@ -770,7 +782,7 @@ class Instruction:
         # Raises exception if no lookup matches
         self.rw_lookup(rw=RW.Read, tag=RWTableTag.Start, rw_counter=counter)
 
-    def reversion_info(self, call_id: Expression = None) -> ReversionInfo:
+    def reversion_info(self, call_id: Optional[Expression] = None) -> ReversionInfo:
         [rw_counter_end_of_reversion, is_persistent] = [
             self.call_context_lookup(tag, call_id=call_id)
             for tag in [
@@ -799,7 +811,7 @@ class Instruction:
             self.rw_lookup(rw, RWTableTag.Stack, self.curr.call_id, stack_pointer).value, RLC
         )
 
-    def memory_write(self, memory_address: Expression, call_id: Expression = None) -> FQ:
+    def memory_write(self, memory_address: Expression, call_id: Optional[Expression] = None) -> FQ:
         return self.memory_lookup(RW.Write, memory_address, call_id)
 
     def memory_read(
@@ -807,7 +819,9 @@ class Instruction:
     ) -> Expression:
         return self.memory_lookup(RW.Read, memory_address, call_id)
 
-    def memory_lookup(self, rw: RW, memory_address: Expression, call_id: Expression = None) -> FQ:
+    def memory_lookup(
+        self, rw: RW, memory_address: Expression, call_id: Optional[Expression] = None
+    ) -> FQ:
         if call_id is None:
             call_id = self.curr.call_id
         return cast_expr(self.rw_lookup(rw, RWTableTag.Memory, call_id, memory_address).value, FQ)
@@ -818,7 +832,7 @@ class Instruction:
     def tx_refund_write(
         self,
         tx_id: Expression,
-        reversion_info: ReversionInfo = None,
+        reversion_info: Optional[ReversionInfo] = None,
     ) -> Tuple[FQ, FQ]:
         row = self.state_write(
             RWTableTag.TxRefund,
@@ -839,7 +853,7 @@ class Instruction:
         self,
         account_address: Expression,
         account_field_tag: AccountFieldTag,
-        reversion_info: ReversionInfo = None,
+        reversion_info: Optional[ReversionInfo] = None,
     ) -> Tuple[Expression, Expression]:
         row = self.state_write(
             RWTableTag.Account,
@@ -853,7 +867,7 @@ class Instruction:
         self,
         account_address: Expression,
         values: Sequence[RLC],
-        reversion_info: ReversionInfo = None,
+        reversion_info: Optional[ReversionInfo] = None,
     ) -> Tuple[RLC, RLC]:
         value, value_prev = self.account_write(
             account_address, AccountFieldTag.Balance, reversion_info
@@ -868,7 +882,7 @@ class Instruction:
         self,
         account_address: Expression,
         values: Sequence[RLC],
-        reversion_info: ReversionInfo = None,
+        reversion_info: Optional[ReversionInfo] = None,
     ) -> Tuple[RLC, RLC]:
         value, value_prev = self.account_write(
             account_address, AccountFieldTag.Balance, reversion_info
@@ -897,7 +911,7 @@ class Instruction:
         account_address: Expression,
         storage_key: Expression,
         tx_id: Expression,
-        reversion_info: ReversionInfo = None,
+        reversion_info: Optional[ReversionInfo] = None,
     ) -> Tuple[RLC, RLC, RLC]:
         row = self.state_write(
             RWTableTag.AccountStorage,
@@ -910,7 +924,10 @@ class Instruction:
         return cast_expr(row.value, RLC), cast_expr(row.value_prev, RLC), cast_expr(row.aux0, RLC)
 
     def add_account_to_access_list(
-        self, tx_id: Expression, account_address: Expression, reversion_info: ReversionInfo = None
+        self,
+        tx_id: Expression,
+        account_address: Expression,
+        reversion_info: Optional[ReversionInfo] = None,
     ) -> FQ:
         row = self.state_write(
             RWTableTag.TxAccessListAccount,
@@ -926,7 +943,7 @@ class Instruction:
         tx_id: Expression,
         account_address: Expression,
         storage_key: Expression,
-        reversion_info: ReversionInfo = None,
+        reversion_info: Optional[ReversionInfo] = None,
     ) -> FQ:
         row = self.state_write(
             RWTableTag.TxAccessListAccountStorage,
@@ -944,7 +961,7 @@ class Instruction:
         receiver_address: Expression,
         value: RLC,
         gas_fee: RLC,
-        reversion_info: ReversionInfo = None,
+        reversion_info: Optional[ReversionInfo] = None,
     ) -> Tuple[Tuple[RLC, RLC], Tuple[RLC, RLC]]:
         sender_balance_pair = self.sub_balance(sender_address, [value, gas_fee], reversion_info)
         receiver_balance_pair = self.add_balance(receiver_address, [value], reversion_info)
@@ -955,7 +972,7 @@ class Instruction:
         sender_address: Expression,
         receiver_address: Expression,
         value: RLC,
-        reversion_info: ReversionInfo = None,
+        reversion_info: Optional[ReversionInfo] = None,
     ) -> Tuple[Tuple[RLC, RLC], Tuple[RLC, RLC]]:
         sender_balance_pair = self.sub_balance(sender_address, [value], reversion_info)
         receiver_balance_pair = self.add_balance(receiver_address, [value], reversion_info)
@@ -1041,7 +1058,7 @@ class Instruction:
         dst_addr: Expression,
         length: Expression,
         rw_counter: Expression,
-        log_id: Expression = None,
+        log_id: Optional[Expression] = None,
     ) -> Tuple[FQ, FQ]:
         copy_table_row = self.tables.copy_lookup(
             src_id,
