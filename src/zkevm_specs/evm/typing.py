@@ -137,7 +137,7 @@ class Transaction:
         gas: U64 = U64(21000),
         gas_price: U256 = U256(int(2e9)),
         caller_address: U160 = U160(0xCAFE),
-        callee_address: U160 = None,
+        callee_address: Optional[U160] = None,
         value: U256 = U256(0),
         call_data: bytes = bytes(),
     ) -> None:
@@ -354,8 +354,8 @@ class Account:
         address: U160 = U160(0),
         nonce: U256 = U256(0),
         balance: U256 = U256(0),
-        code: Bytecode = None,
-        storage: Storage = None,
+        code: Optional[Bytecode] = None,
+        storage: Optional[Storage] = None,
     ) -> None:
         self.address = address
         self.nonce = nonce
@@ -483,7 +483,7 @@ class RWDictionary:
         tx_id: IntOrFQ,
         refund: IntOrFQ,
         refund_prev: IntOrFQ,
-        rw_counter_of_reversion: int = None,
+        rw_counter_of_reversion: Optional[int] = None,
     ) -> RWDictionary:
         return self._state_write(
             RWTableTag.TxRefund,
@@ -499,7 +499,7 @@ class RWDictionary:
         account_address: IntOrFQ,
         value: bool,
         value_prev: bool,
-        rw_counter_of_reversion: int = None,
+        rw_counter_of_reversion: Optional[int] = None,
     ) -> RWDictionary:
         return self._state_write(
             RWTableTag.TxAccessListAccount,
@@ -517,7 +517,7 @@ class RWDictionary:
         storage_key: RLC,
         value: bool,
         value_prev: bool,
-        rw_counter_of_reversion: int = None,
+        rw_counter_of_reversion: Optional[int] = None,
     ) -> RWDictionary:
         return self._state_write(
             RWTableTag.TxAccessListAccountStorage,
@@ -549,7 +549,7 @@ class RWDictionary:
         field_tag: AccountFieldTag,
         value: Union[int, FQ, RLC],
         value_prev: Union[int, FQ, RLC],
-        rw_counter_of_reversion: int = None,
+        rw_counter_of_reversion: Optional[int] = None,
     ) -> RWDictionary:
         if isinstance(value, int):
             value = FQ(value)
@@ -593,7 +593,7 @@ class RWDictionary:
         value_prev: RLC,
         tx_id: IntOrFQ,
         value_committed: RLC,
-        rw_counter_of_reversion: int = None,
+        rw_counter_of_reversion: Optional[int] = None,
     ) -> RWDictionary:
         if isinstance(tx_id, int):
             tx_id = FQ(tx_id)
@@ -618,7 +618,7 @@ class RWDictionary:
         value: Expression = FQ(0),
         value_prev: Expression = FQ(0),
         aux0: Expression = FQ(0),
-        rw_counter_of_reversion: int = None,
+        rw_counter_of_reversion: Optional[int] = None,
     ) -> RWDictionary:
         self._append(
             RW.Write,
@@ -659,7 +659,7 @@ class RWDictionary:
         value: Expression = FQ(0),
         value_prev: Expression = FQ(0),
         aux0: Expression = FQ(0),
-        rw_counter: int = None,
+        rw_counter: Optional[int] = None,
     ) -> RWDictionary:
         if rw_counter is None:
             rw_counter = self.rw_counter

@@ -523,9 +523,9 @@ class Tables:
         tx_table: Set[TxTableRow],
         bytecode_table: Set[BytecodeTableRow],
         rw_table: Union[Set[Sequence[Expression]], Set[RWTableRow]],
-        copy_circuit: Sequence[CopyCircuitRow] = None,
-        keccak_table: Sequence[KeccakTableRow] = None,
-        exp_circuit: Sequence[ExpCircuitRow] = None,
+        copy_circuit: Optional[Sequence[CopyCircuitRow]] = None,
+        keccak_table: Optional[Sequence[KeccakTableRow]] = None,
+        exp_circuit: Optional[Sequence[ExpCircuitRow]] = None,
     ) -> None:
         self.block_table = block_table
         self.tx_table = tx_table
@@ -629,7 +629,7 @@ class Tables:
         bytecode_hash: Expression,
         field_tag: Expression,
         index: Expression,
-        is_code: Expression = None,
+        is_code: Optional[Expression] = None,
     ) -> BytecodeTableRow:
         query = {
             "bytecode_hash": bytecode_hash,
@@ -644,13 +644,13 @@ class Tables:
         rw_counter: Expression,
         rw: Expression,
         tag: Expression,
-        key1: Expression = None,
-        key2: Expression = None,
-        key3: Expression = None,
-        key4: Expression = None,
-        value: Expression = None,
-        value_prev: Expression = None,
-        aux0: Expression = None,
+        key1: Optional[Expression] = None,
+        key2: Optional[Expression] = None,
+        key3: Optional[Expression] = None,
+        key4: Optional[Expression] = None,
+        value: Optional[Expression] = None,
+        value_prev: Optional[Expression] = None,
+        aux0: Optional[Expression] = None,
     ) -> RWTableRow:
         query = {
             "rw_counter": rw_counter,
@@ -677,7 +677,7 @@ class Tables:
         dst_addr: Expression,
         length: Expression,
         rw_counter: Expression,
-        log_id: Expression = None,
+        log_id: Optional[Expression] = None,
     ) -> CopyTableRow:
         if dst_type == CopyDataTypeTag.TxLog:
             assert log_id is not None
