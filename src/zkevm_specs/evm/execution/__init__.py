@@ -47,6 +47,7 @@ from .stop import stop
 from .return_ import *
 from .extcodecopy import *
 from .oog_constant import *
+from .error_Invalid_jump import *
 
 
 EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
@@ -93,4 +94,5 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.STOP: stop,
     ExecutionState.RETURN: return_,
     ExecutionState.ErrorOutOfGasConstant: oog_constant,
+    ExecutionState.ErrorInvalidJump: invalid_jump,
 }

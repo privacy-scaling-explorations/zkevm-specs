@@ -669,12 +669,20 @@ class Instruction:
         ).value
         return value
 
+    # look up byte code value
     def bytecode_lookup(
         self, bytecode_hash: Expression, index: Expression, is_code: Expression = None
     ) -> Expression:
         return self.tables.bytecode_lookup(
             bytecode_hash, FQ(BytecodeFieldTag.Byte), index, is_code
         ).value
+
+    # lookup value and is_code pair
+    def bytecode_lookup_pair(
+        self, bytecode_hash: Expression, index: Expression
+    ) -> Tuple[Expression, Expression]:
+        rw = self.tables.bytecode_lookup(bytecode_hash, FQ(BytecodeFieldTag.Byte), index, None)
+        return rw.value, rw.is_code
 
     def bytecode_length(self, bytecode_hash: Expression) -> Expression:
         return self.tables.bytecode_lookup(
