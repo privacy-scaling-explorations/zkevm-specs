@@ -1,4 +1,4 @@
-from ...util import EXTRA_GAS_COST_ACCOUNT_COLD_ACCESS, FQ, N_BYTES_ACCOUNT_ADDRESS
+from ...util import EXTRA_GAS_COST_ACCOUNT_COLD_ACCESS, FQ, N_BYTES_ACCOUNT_ADDRESS, RLC
 from ..instruction import Instruction, Transition
 from ..opcode import Opcode
 from ..table import AccountFieldTag, CallContextFieldTag
@@ -16,10 +16,12 @@ def extcodehash(instruction: Instruction):
     # Load account `exists` value from auxilary witness data.
     exists = instruction.curr.aux_data
 
-    if exists == 1:
-        code_hash = instruction.account_read(address, AccountFieldTag.CodeHash)
-    else:  # exists == 0
+    if exists == 0:
         instruction.account_read(address, AccountFieldTag.NonExisting)
+
+    code_hash = (
+        instruction.account_read(address, AccountFieldTag.CodeHash) if exists == 1 else RLC(0)
+    )
 
     instruction.constrain_equal(
         instruction.select(exists, code_hash.expr(), FQ(0)),
