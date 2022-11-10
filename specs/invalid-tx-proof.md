@@ -23,33 +23,35 @@ We use a conditional filter flag `neutral_bad_tx` to tell the difference between
 ## Proof of invalid transaction
 
 Below is the list of invalid transaction types and their handler methods. `!` means contrary as usual.
-(1). `!`the transaction is well-formed RLP, with no additional trailing bytes
-Category: Type 3.
-Solution: RLP decoding is verified by a RLP circuit, wrong RLP leads to wrong/non-existent proof, and a honest miner could easily tell the contract the RLP is problematic.
 
-(2). `!`The transaction signature is valid;
-Category: Type 3.
-Solution: The signature is checked by evm circuit without conditional filter. So if a TX has invalid signature, no valid proof can be generated, and the whole txList is marked as invalid because only malicious miner packs invalid signature. Meanwhile we depend on one honest miner to submit a InvalidTxListProof and expose that invalid sig TX to the smart contract.
+(1) `!`the transaction is well-formed RLP, with no additional trailing bytes;
+- Category: Type 3.
+- Solution: RLP decoding is verified by a RLP circuit, wrong RLP leads to wrong/non-existent proof, and a honest miner could easily tell the contract the RLP is problematic.
+
+(2) `!`The transaction signature is valid;
+- Category: Type 3.
+- Solution: The signature is checked by evm circuit without conditional filter. So if a TX has invalid signature, no valid proof can be generated, and the whole txList is marked as invalid because only malicious miner packs invalid signature. Meanwhile we depend on one honest miner to submit a InvalidTxListProof and expose that invalid sig TX to the smart contract.
 
 (3) `!`the transaction nonce is valid (equivalent to the sender account’s current nonce);
-Category: Type 2.
-Solution: Conditional filtering in evm circuit. As `naatral_bad_tx` == true, we just skip this TX while processing the txlist in circuit, see [Circuit Constraints](#circuit-constraints) section.
+- Category: Type 2.
+- Solution: Conditional filtering in evm circuit. As `naatral_bad_tx` == true, we just skip this TX while processing the txlist in circuit, see [Circuit Constraints](#circuit-constraints) section.
 
 (4) `!`the sender account has no contract code deployed (see EIP-3607 by Feist et al. [2021]);
-Category: Type 3.
-Solution: As long as the address conflict is infeasible, we treat this as impossible so far.
+- Category: Type 3.
+- Solution: As long as the address conflict is infeasible, we treat this as impossible so far.
 
 (5) `!`the gas limit is no smaller than the intrinsic gas, g0, used by the transaction;
-Category: Type 3.
-Solution: Pretty like invalid sig processing. No valid proof can be generated if it happens, and a honest miner could easily tell the contract this one is incorrect. The only thing need to care is that the contract needs to handle nil RLP encoding correctly.
+- Category: Type 3.
+- Solution: Pretty like invalid sig processing. No valid proof can be generated if it happens, and a honest miner could easily tell the contract this one is incorrect. The only thing need to care is that the contract needs to handle nil RLP encoding correctly.
 
 (6) `!`the sender account balance contains at least the cost, v0, required in up-front payment.
-Category: Type 2.
-Solution: Same as (3)
+- Category: Type 2.
+- Solution: Same as (3)
 
 So, We actually make the circuit know all these types, and then, Only 2 `neutral_bad_tx` types have normal circuit proof and the rest does not.
 
 ## Circuit Constraints
+
 - For a TX in tx table
   - A binary column called `neutral_bad_tx` in tx_table.
   - If `tx_nonce != nonce_prev` then `neutral_bad_tx == true` else `neutral_bad_tx == false`.
@@ -60,5 +62,6 @@ So, We actually make the circuit know all these types, and then, Only 2 `neutral
   - Public input/Ecdsa/Keccak/etc circuits to ignore `neutral_bad_tx` cell. 
 
 ## Code
+
 Please refer to [Begin TX execution](`src/zkevm-specs/exp_circuit.py`).
 Almost all circuit modules change more or less because tx_table changes.
