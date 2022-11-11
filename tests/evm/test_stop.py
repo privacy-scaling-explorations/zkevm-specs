@@ -41,12 +41,7 @@ def test_stop_is_root(tx: Transaction, bytecode: Bytecode):
             )
         ),
         bytecode_table=set(bytecode.table_assignments(randomness)),
-        rw_table=set(
-            RWDictionary(24)
-            .call_context_read(1, CallContextFieldTag.IsSuccess, 1)
-            .call_context_read(1, CallContextFieldTag.IsPersistent, 1)
-            .rws
-        ),
+        rw_table=set(RWDictionary(24).call_context_read(1, CallContextFieldTag.IsSuccess, 1).rws),
     )
 
     verify_steps(
@@ -67,7 +62,7 @@ def test_stop_is_root(tx: Transaction, bytecode: Bytecode):
             ),
             StepState(
                 execution_state=ExecutionState.EndTx,
-                rw_counter=26,
+                rw_counter=25,
                 call_id=1,
             ),
         ],

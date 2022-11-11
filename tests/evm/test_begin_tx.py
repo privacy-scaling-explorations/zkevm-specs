@@ -96,7 +96,7 @@ TESTING_DATA = (
 def test_begin_tx(tx: Transaction, callee: Account, is_success: bool):
     randomness = rand_fq()
 
-    rw_counter_end_of_reversion = 23
+    rw_counter_end_of_reversion = 24
     caller_balance_prev = int(1e20)
     callee_balance_prev = callee.balance
     caller_balance = caller_balance_prev - (tx.value + tx.gas * tx.gas_price)
@@ -110,6 +110,7 @@ def test_begin_tx(tx: Transaction, callee: Account, is_success: bool):
         .call_context_read(1, CallContextFieldTag.TxId, tx.id)
         .call_context_read(1, CallContextFieldTag.RwCounterEndOfReversion, 0 if is_success else rw_counter_end_of_reversion)
         .call_context_read(1, CallContextFieldTag.IsPersistent, is_success)
+        .call_context_read(1, CallContextFieldTag.IsSuccess, is_success)
         .account_write(tx.caller_address, AccountFieldTag.Nonce, tx.nonce + 1, tx.nonce)
         .tx_access_list_account_write(tx.id, tx.caller_address, True, False)
         .tx_access_list_account_write(tx.id, tx.callee_address, True, False)
