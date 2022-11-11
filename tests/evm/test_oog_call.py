@@ -128,7 +128,6 @@ def test_root_call(
         .account_read(callee.address, AccountFieldTag.Nonce, RLC(callee.nonce, randomness))
         .account_read(callee.address, AccountFieldTag.CodeHash, callee_bytecode_hash)
         .call_context_read(1, CallContextFieldTag.IsSuccess, 0)
-        .call_context_read(1, CallContextFieldTag.IsPersistent, 0)
     )
     # fmt: on
 
@@ -236,7 +235,6 @@ def test_oog_call_not_root(caller_ctx: CallerContext, callee: Account):
             .account_read(callee.address, AccountFieldTag.CodeHash, callee_bytecode_hash)
             # restore context operations
             .call_context_read(2, CallContextFieldTag.IsSuccess, 0)
-            .call_context_read(2, CallContextFieldTag.IsPersistent, 0)
             .call_context_read(2, CallContextFieldTag.CallerId, 1)
             .call_context_read(1, CallContextFieldTag.IsRoot, caller_ctx.is_root)
             .call_context_read(1, CallContextFieldTag.IsCreate, caller_ctx.is_create)
@@ -272,7 +270,7 @@ def test_oog_call_not_root(caller_ctx: CallerContext, callee: Account):
             ),
             StepState(
                 execution_state=ExecutionState.STOP,
-                rw_counter=24 + 30,
+                rw_counter=24 + 29,
                 call_id=1,
                 is_root=caller_ctx.is_root,
                 is_create=caller_ctx.is_create,
