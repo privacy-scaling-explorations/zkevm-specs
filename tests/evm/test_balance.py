@@ -55,8 +55,8 @@ def test_balance(address: U160, balance: U256, exists: int, is_warm: bool, is_pe
     tx_id = 1
     call_id = 1
 
-    # 9 + 1 reversible operation (the account access list write)
-    rw_counter_end_of_reversion = 0 if is_persistent else 10
+    # 7 + 1 reversible operation (the account access list write)
+    rw_counter_end_of_reversion = 0 if is_persistent else 8
     reversible_write_counter = 0
 
     rw_dictionary = (
