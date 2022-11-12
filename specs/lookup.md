@@ -30,4 +30,4 @@ The AND operation table is an example.
 
 Rows of a variable table are determined "at" proving time.
 
-It allows prover to create their own table. An example would be the prover can witness a key-value mapping as a variable table. Note that we need extra check to gurantee the uniqueness of the mapping key.
+It allows prover to create their own table. An example would be the prover can witness a key-value mapping as a variable table. Note that we need extra check to guarantee the uniqueness of the mapping key.
