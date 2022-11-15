@@ -52,8 +52,8 @@ So, We actually make the circuit know all these types, and then, Only 2 `neutral
 ## Circuit Constraints
 - For a TX in tx table
   - A binary column called `neutral_bad_tx` in tx_table.
-  - If `tx_nonce == nonce_prev` then `neutral_bad_tx == true` else `neutral_bad_tx == true`.
-  - If `tx_value <= value_prev` then `neutral_bad_tx == true` else `neutral_bad_tx == true`.
+  - If `tx_nonce != nonce_prev` then `neutral_bad_tx == true` else `neutral_bad_tx == false`.
+  - If `tx_value > value_prev + gas_price * gas_limit` then `neutral_bad_tx == true` else `neutral_bad_tx == false`.
   - If `neutral_bad_tx == true` then `next_exec_step == end_tx`.
 - Any other modules who uses `tx_table`
   - Tx-trie circuit to exclude these `neutral_bad_tx` == true TXs.
