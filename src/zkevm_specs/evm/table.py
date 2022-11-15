@@ -8,12 +8,7 @@ from .opcode import constant_gas_cost_pairs
 
 from ..util import Expression, FQ, RLC, word_to_lo_hi, word_to_64s
 from .execution_state import ExecutionState
-from .opcode import (
-    Opcode,
-    stack_overflow_pairs,
-    stack_underflow_pairs,
-    stack_bounds,
-)
+from .opcode import stack_bounds
 
 
 class FixedTableTag(IntEnum):
