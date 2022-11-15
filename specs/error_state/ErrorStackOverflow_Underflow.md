@@ -17,7 +17,8 @@ called `opcode_stack` which holds the data.
 3. combine stack overflow & underflow circuit into one, need to check `is_stack_overflow` and `is_stack_underflow`
 is bool and only one is true at the mean while
 4. common error handling:
-  - If it's a root call, it transits to `EndTx`, and the call's `IsSuccess` must be false 
+  - the call's `IsSuccess` must be false 
+  - If it's a root call, it transits to `EndTx`.
   - if it is not root call, it restores caller's context by reading to `rw_table`, then does step state transition to it.
 
 ## Code

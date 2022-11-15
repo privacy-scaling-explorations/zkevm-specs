@@ -9,7 +9,7 @@ from ...util import N_BYTES_STACK
 def stack_error(instruction: Instruction):
     # retrieve op code associated to stack error
     opcode = instruction.opcode_lookup(True)
-    # TODO: lookup min or max stack pointer
+    # lookup min or max stack pointer
     max_stack_pointer = FQ(Opcode(opcode.expr().n).max_stack_pointer())
     min_sp = Opcode(opcode.expr().n).min_stack_pointer()
     min_stack_pointer = FQ(min_sp if min_sp > 0 else 0)
