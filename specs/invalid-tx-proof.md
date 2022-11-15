@@ -17,7 +17,7 @@ The execution of a transaction is the most complex part of the Ethereum protocol
 However we don't check all of them in evm_circuit. Some checks can be done in the contract. So we separate TX to these 3 types:
 1. `Good TX`: A TX can be executed successfully, which means it comply with that 6 rules defined by the eth yellow paper.
 2. `Neutral bad TX`: A bad TX, but the failure is becuase sth out of a miner's control, e.g., a nonce conflicting TX.
-3. `Malicious bad TX`: A bad TX, but it is submitted because of a malicious proposer. For example: a TX with wrong signature, normal miner filter it out. The txList contains TX in this type is also treated as invalid txList.
+3. `Malicious bad TX`: A bad TX, but it is submitted because of a malicious proposer. For example: a TX with wrong signature, normal miner filter it out. The txList contains TX in this type is also treated as an invalid txList.
 We use a conditional filter flag `neutral_bad_tx` to tell the difference between type 2 & 3, if the flag is set, the type 2 TX is still handled by the circuit, without any change to state DB. 
 
 ## Proof of invalid transaction
@@ -34,7 +34,7 @@ Below is the list of invalid transaction types and their handler methods. `!` me
 
 (3) `!`the transaction nonce is valid (equivalent to the sender account’s current nonce);
 - Category: Type 2.
-- Solution: Conditional filtering in evm circuit. As `naatral_bad_tx` == true, we just skip this TX while processing the txlist in circuit, see [Circuit Constraints](#circuit-constraints) section.
+- Solution: Conditional filtering in evm circuit. As `neutral_bad_tx` == true, we just skip this TX while processing the txlist in circuit, see [Circuit Constraints](#circuit-constraints) section.
 
 (4) `!`the sender account has no contract code deployed (see EIP-3607 by Feist et al. [2021]);
 - Category: Type 3.
@@ -64,4 +64,4 @@ So, We actually make the circuit know all these types, and then, Only 2 `neutral
 ## Code
 
 Please refer to [Begin TX execution](`src/zkevm-specs/exp_circuit.py`).
-Almost all circuit modules change more or less because tx_table changes.
+Almost all circuit modules will be changed more or less because tx_table changes.
