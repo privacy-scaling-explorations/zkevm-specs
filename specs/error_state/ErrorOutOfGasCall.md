@@ -1,4 +1,4 @@
-# ErrorOutOfGasConstant state
+# ErrorOutOfGasCall state
 
 ## Procedure
 ### EVM behavior
@@ -9,15 +9,14 @@ consumes in call:
 3. transfer fee if has value
 4. account access list cost（warm/cold）
 
-below is the total gas cost calculation which from [`Call` Spec](../opcode/F1CALL.md).
+below is the total gas cost calculation which from [`Call` Spec](../opcode/F1CALL_F4DELEGATECALL_FASTATICCALL.md).
 ```
 GAS_COST_WARM_ACCESS := 100
 GAS_COST_ACCOUNT_COLD_ACCESS := 2600
 GAS_COST_CALL_EMPTY_ACCOUNT := 25000
 GAS_COST_CALL_WITH_VALUE := 9000
 gas_cost = (
-    GAS_COST_WARM_ACCESS
-    + GAS_COST_WARM_ACCESS if is_warm_access else GAS_COST_ACCOUNT_COLD_ACCESS
+    GAS_COST_WARM_ACCESS if is_warm_access else GAS_COST_ACCOUNT_COLD_ACCESS
     + has_value * (GAS_COST_CALL_WITH_VALUE + is_account_empty * GAS_COST_CALL_EMPTY_ACCOUNT)
     + memory_expansion_gas_cost
 )
