@@ -65,10 +65,9 @@ def begin_tx(instruction: Instruction):
     sender_balance_prev = sender_balance_pair[1]
     balance_not_enough = sender_balance_prev.int_value < tx_value.int_value + gas_fee.int_value
     invalid_tx = 1 - (1 - balance_not_enough) * (is_nonce_valid)
+    # prover should not give incorrect is_tx_invalid flag.
     instruction.constrain_equal(is_tx_invalid, invalid_tx)
 
-    # assert!(neutral_invalid_tx == (tx_nonce != nonce_prev) or (balance_not_enough))
-    instruction.constrain_equal(is_tx_invalid, invalid_tx)
     if tx_is_create == 1:
         # TODO: Verify created address
         # code_hash represents the contract creation code
