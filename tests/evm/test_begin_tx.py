@@ -101,7 +101,19 @@ TESTING_DATA = (
         CALLEE_WITH_NOTHING,
         True,  # is success because the tx is skipped
     ),
-    # Transfer with wrong nonce and neutral_invalid flag
+    # Transfer with insufficient balance
+    (
+        Transaction(
+            caller_address=0xFE,
+            callee_address=CALLEE_ADDRESS,
+            gas=21080,
+            value=int(1e21),
+            invalid_tx=1,
+        ),
+        CALLEE_WITH_NOTHING,
+        True,  # is success because the tx is skipped
+    ),
+    # Transfer with insufficient balance and ignore the revert code
     (
         Transaction(
             caller_address=0xFE,
@@ -111,7 +123,7 @@ TESTING_DATA = (
             nonce=U64(100),
             invalid_tx=1,
         ),
-        CALLEE_WITH_NOTHING,
+        CALLEE_WITH_REVERT_BYTECODE,
         True,  # is success because the tx is skipped
     ),
 )
@@ -149,7 +161,7 @@ def test_begin_tx(tx: Transaction, callee: Account, is_success: bool):
         .account_write(tx.callee_address, AccountFieldTag.Balance, RLC(callee_balance, randomness), RLC(callee_balance_prev, randomness), rw_counter_of_reversion=None if is_success else rw_counter_end_of_reversion - 1)
         .account_read(tx.callee_address, AccountFieldTag.CodeHash, bytecode_hash)
     )
-    if callee.code_hash() != EMPTY_CODE_HASH:
+    if callee.code_hash() != EMPTY_CODE_HASH and is_tx_valid == 1:
         rw_dictionary \
         .call_context_read(1, CallContextFieldTag.Depth, 1) \
         .call_context_read(1, CallContextFieldTag.CallerAddress, tx.caller_address) \
@@ -183,7 +195,7 @@ def test_begin_tx(tx: Transaction, callee: Account, is_success: bool):
             ),
             StepState(
                 execution_state=ExecutionState.EndTx
-                if callee.code_hash() == EMPTY_CODE_HASH
+                if callee.code_hash() == EMPTY_CODE_HASH or is_tx_valid == 0
                 else ExecutionState.PUSH,
                 rw_counter=rw_dictionary.rw_counter,
                 call_id=1,
