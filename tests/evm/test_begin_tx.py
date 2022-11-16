@@ -96,10 +96,10 @@ TESTING_DATA = (
             callee_address=CALLEE_ADDRESS,
             value=int(1e18),
             nonce=U64(100),
-            neutral_invalid=1,
+            invalid_tx=1,
         ),
         CALLEE_WITH_NOTHING,
-        False,
+        True,  # is success because the tx is skipped
     ),
     # Transfer with wrong nonce and neutral_invalid flag
     (
@@ -109,10 +109,10 @@ TESTING_DATA = (
             gas=21080,
             value=int(1e18),
             nonce=U64(100),
-            neutral_invalid=1,
+            invalid_tx=1,
         ),
         CALLEE_WITH_NOTHING,
-        False,
+        True,  # is success because the tx is skipped
     ),
 )
 
@@ -121,7 +121,7 @@ TESTING_DATA = (
 def test_begin_tx(tx: Transaction, callee: Account, is_success: bool):
     randomness = rand_fq()
 
-    is_tx_valid = 1 - tx.neutral_invalid
+    is_tx_valid = 1 - tx.invalid_tx
     rw_counter_end_of_reversion = 24
     caller_nonce_prev = 0
     caller_balance_prev = int(1e20)

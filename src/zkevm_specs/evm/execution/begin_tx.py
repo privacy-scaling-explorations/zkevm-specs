@@ -28,11 +28,11 @@ def begin_tx(instruction: Instruction):
     instruction.constrain_not_zero(tx_caller_address)
 
     # Verify nonce
-    neutral_invalid_tx = instruction.tx_context_lookup(tx_id, TxContextFieldTag.NeutralInvalid)
+    is_tx_invalid = instruction.tx_context_lookup(tx_id, TxContextFieldTag.TxInvalid)
     tx_nonce = instruction.tx_context_lookup(tx_id, TxContextFieldTag.Nonce)
     nonce, nonce_prev = instruction.account_write(tx_caller_address, AccountFieldTag.Nonce)
-    nonce_diff_is_zero = instruction.is_zero(tx_nonce - nonce_prev)
-    instruction.constrain_equal(nonce, nonce_prev.expr() + 1 - neutral_invalid_tx)
+    is_nonce_valid = instruction.is_zero(tx_nonce - nonce_prev)
+    instruction.constrain_equal(nonce, nonce_prev.expr() + 1 - is_tx_invalid)
 
     # TODO: Implement EIP 1559 (currently it supports legacy transaction format)
     # Calculate gas fee
@@ -56,7 +56,7 @@ def begin_tx(instruction: Instruction):
 
     account_value_rlc = instruction.account_read(tx_caller_address, AccountFieldTag.Balance)
     balance_not_enough = account_value_rlc.int_value < tx_value.int_value + gas_fee.int_value
-    invalid_tx = 1 - (1 - balance_not_enough) * (nonce_diff_is_zero)
+    invalid_tx = 1 - (1 - balance_not_enough) * (is_nonce_valid)
 
     # Verify transfer
     instruction.transfer_with_gas_fee(
@@ -68,7 +68,7 @@ def begin_tx(instruction: Instruction):
     )
 
     # assert!(neutral_invalid_tx == (tx_nonce != nonce_prev) or (balance_not_enough))
-    instruction.constrain_equal(neutral_invalid_tx, invalid_tx)
+    instruction.constrain_equal(is_tx_invalid, invalid_tx)
     if tx_is_create == 1:
         # TODO: Verify created address
         # code_hash represents the contract creation code
@@ -85,9 +85,9 @@ def begin_tx(instruction: Instruction):
             code_hash, RLC(EMPTY_CODE_HASH, instruction.randomness)
         )
 
-        if is_empty_code_hash == FQ(1) or neutral_invalid_tx == FQ(1):
+        if is_empty_code_hash == FQ(1) or is_tx_invalid == FQ(1):
             # Make sure tx is persistent
-            instruction.constrain_equal(reversion_info.is_persistent, FQ(1) - neutral_invalid_tx)
+            instruction.constrain_equal(reversion_info.is_persistent, FQ(1))
 
             # Do step state transition
             instruction.constrain_equal(instruction.next.execution_state, ExecutionState.EndTx)

@@ -129,7 +129,7 @@ class Transaction:
     callee_address: Optional[U160]
     value: U256
     call_data: bytes
-    neutral_invalid: int
+    invalid_tx: int
 
     def __init__(
         self,
@@ -141,7 +141,7 @@ class Transaction:
         callee_address: Optional[U160] = None,
         value: U256 = U256(0),
         call_data: bytes = bytes(),
-        neutral_invalid: int = 0,
+        invalid_tx: int = 0,
     ) -> None:
         self.id = id
         self.nonce = nonce
@@ -151,7 +151,7 @@ class Transaction:
         self.callee_address = callee_address
         self.value = value
         self.call_data = call_data
-        self.neutral_invalid = neutral_invalid
+        self.invalid_tx = invalid_tx
 
     @classmethod
     def padding(obj, id: int):
@@ -220,9 +220,9 @@ class Transaction:
             ),
             TxTableRow(
                 FQ(self.id),
-                FQ(TxContextFieldTag.NeutralInvalid),
+                FQ(TxContextFieldTag.TxInvalid),
                 FQ(0),
-                FQ(self.neutral_invalid),
+                FQ(self.invalid_tx),
             ),
         ]
 
