@@ -504,7 +504,6 @@ class Instruction:
 
         carry_lo, sum_lo = divmod(self.sum(addends_lo).n, 1 << 128)
         carry_hi, sum_hi = divmod((self.sum(addends_hi) + carry_lo).n, 1 << 128)
-
         sum_bytes = sum_lo.to_bytes(16, "little") + sum_hi.to_bytes(16, "little")
 
         return self.rlc_encode(sum_bytes), FQ(carry_hi)
