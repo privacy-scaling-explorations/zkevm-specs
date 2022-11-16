@@ -54,18 +54,18 @@ def begin_tx(instruction: Instruction):
     instruction.constrain_zero(instruction.add_account_to_access_list(tx_id, tx_caller_address))
     instruction.constrain_zero(instruction.add_account_to_access_list(tx_id, tx_callee_address))
 
-    account_value_rlc = instruction.account_read(tx_caller_address, AccountFieldTag.Balance)
-    balance_not_enough = account_value_rlc.int_value < tx_value.int_value + gas_fee.int_value
-    invalid_tx = 1 - (1 - balance_not_enough) * (is_nonce_valid)
-
     # Verify transfer
-    instruction.transfer_with_gas_fee(
+    sender_balance_pair, _ = instruction.transfer_with_gas_fee(
         tx_caller_address,
         tx_callee_address,
-        tx_value if invalid_tx == 0 else RLC(0),
-        gas_fee if invalid_tx == 0 else RLC(0),
+        tx_value if is_tx_invalid == 0 else RLC(0),
+        gas_fee if is_tx_invalid == 0 else RLC(0),
         reversion_info,
     )
+    sender_balance_prev = sender_balance_pair[1]
+    balance_not_enough = sender_balance_prev.int_value < tx_value.int_value + gas_fee.int_value
+    invalid_tx = 1 - (1 - balance_not_enough) * (is_nonce_valid)
+    instruction.constrain_equal(is_tx_invalid, invalid_tx)
 
     # assert!(neutral_invalid_tx == (tx_nonce != nonce_prev) or (balance_not_enough))
     instruction.constrain_equal(is_tx_invalid, invalid_tx)
@@ -92,7 +92,7 @@ def begin_tx(instruction: Instruction):
             # Do step state transition
             instruction.constrain_equal(instruction.next.execution_state, ExecutionState.EndTx)
             instruction.constrain_step_state_transition(
-                rw_counter=Transition.delta(11), call_id=Transition.to(call_id)
+                rw_counter=Transition.delta(10), call_id=Transition.to(call_id)
             )
         else:
 
@@ -122,7 +122,7 @@ def begin_tx(instruction: Instruction):
                 )
 
             instruction.step_state_transition_to_new_context(
-                rw_counter=Transition.delta(24),
+                rw_counter=Transition.delta(23),
                 call_id=Transition.to(call_id),
                 is_root=Transition.to(True),
                 is_create=Transition.to(False),

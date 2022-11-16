@@ -145,7 +145,6 @@ def test_begin_tx(tx: Transaction, callee: Account, is_success: bool):
         .account_write(tx.caller_address, AccountFieldTag.Nonce, caller_nonce_prev + is_tx_valid, caller_nonce_prev)
         .tx_access_list_account_write(tx.id, tx.caller_address, True, False)
         .tx_access_list_account_write(tx.id, tx.callee_address, True, False)
-        .account_read(tx.caller_address, AccountFieldTag.Balance, RLC(caller_balance_prev, randomness))
         .account_write(tx.caller_address, AccountFieldTag.Balance, RLC(caller_balance, randomness), RLC(caller_balance_prev, randomness), rw_counter_of_reversion=None if is_success else rw_counter_end_of_reversion)
         .account_write(tx.callee_address, AccountFieldTag.Balance, RLC(callee_balance, randomness), RLC(callee_balance_prev, randomness), rw_counter_of_reversion=None if is_success else rw_counter_end_of_reversion - 1)
         .account_read(tx.callee_address, AccountFieldTag.CodeHash, bytecode_hash)
