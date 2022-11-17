@@ -1,5 +1,6 @@
-from ...util import FQ, N_BYTES_MEMORY_ADDRESS
+from ...util import EMPTY_HASH, FQ, N_BYTES_MEMORY_ADDRESS
 from ..instruction import Instruction, Transition
+from ..opcode import Opcode
 from ..table import CallContextFieldTag, CopyDataTypeTag
 from ..execution_state import ExecutionState
 
@@ -8,14 +9,15 @@ from ..execution_state import ExecutionState
 # used in the code (but with an underscore suffix it's OK).
 
 
-def return_(instruction: Instruction):
+def return_revert(instruction: Instruction):
     # We do this check explicitly because we're not using same_context transition.
-    instruction.responsible_opcode_lookup(instruction.opcode_lookup(True))
+    opcode = instruction.opcode_lookup(True)
+    is_return, _ = instruction.pair_select(opcode, Opcode.RETURN, Opcode.REVERT)
 
     # When a call ends with RETURN this call must be successful, but it's not
     # necessary persistent depends on if it's a sub-call of a failed call or not.
     is_success = instruction.call_context_lookup(CallContextFieldTag.IsSuccess)  # rwc += 1
-    instruction.constrain_equal(is_success, FQ(1))
+    instruction.constrain_equal(is_success, is_return)
 
     return_offset_rlc = instruction.stack_pop()  # rwc += 1
     return_length_rlc = instruction.stack_pop()  # rwc += 1
@@ -26,14 +28,21 @@ def return_(instruction: Instruction):
 
     rwc_delta = 3
 
-    if instruction.curr.is_create:
+    if instruction.curr.is_create and is_success:
         # A. Returns the specified memory chunk as deployment code.
 
         # TODO: Untested case.  Test it once create Tx is implemented, and once
         # CREATE/CREATE2 are implemented.
+        callee_address = instruction.call_context_lookup(CallContextFieldTag.CalleeAddress)
+        reversion_info = instruction.reversion_info()
+        code_hash, code_hash_prev = instruction.account_write(
+            callee_address, AccountFieldTag.CodeHash
+        )
+        instruction.constrain_equal(code_hash_prev, EMPTY_HASH)
+        instruction.constrain_equal(code_hash, instruction.curr.aux_data)
+
         # Return a memory chunk as deployment code by copying each byte from
         # callee's memory to bytecode, using the copy circuit.
-        code_hash = instruction.curr.aux_data  # Load code_hash witness value from aux_data
         copy_length = return_length
         copy_rwc_inc, _ = instruction.copy_lookup(
             instruction.curr.call_id,  # src_id
