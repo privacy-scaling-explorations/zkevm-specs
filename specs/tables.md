@@ -219,7 +219,7 @@ The circuit can prove that updates to account nonces, balances, or storage slots
 
 ## `Keccak Table`
 
-See [tx.py](src/zkevm_specs/tx.py)
+See [tx.py](../src/zkevm_specs/tx.py)
 
 | IsEnabled | InputRLC   | InputLen | Output      |
 | --------- | ---------- | -------- | ----------- |
