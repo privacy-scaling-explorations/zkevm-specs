@@ -7,13 +7,12 @@ from ..opcode import Opcode
 
 def insufficient_balance(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
-    # current executing op code must be Call, CallCode
+    # current executing op code must be Call, CallCode， Create & Create2
     instruction.constrain_in(
         opcode, [FQ(Opcode.CALL), FQ(Opcode.CALLCODE), FQ(Opcode.CREATE), FQ(Opcode.CREATE2)]
     )
-    is_call, is_call_code = instruction.multiple_select(opcode, (Opcode.CALL, Opcode.CALLCODE))
-
-    # below we only handle call case, will handle call_code later
+    # TODO: for create/create2 have different stack from Call, will handle it in the future
+    # below we only handle call case
     instruction.stack_pop()
     instruction.stack_pop()
     value_rlc = instruction.stack_pop()
@@ -22,8 +21,6 @@ def insufficient_balance(instruction: Instruction):
     caller_balance_rlc = instruction.account_read(caller_address, AccountFieldTag.Balance)
     caller_balance = instruction.rlc_to_fq(caller_balance_rlc, 31)
     is_insufficient, _ = instruction.compare(caller_balance, value, 31)
-    print("caller_balance is {}".format(caller_balance))
-    print("transfer value is {}".format(value))
 
     instruction.constrain_equal(is_insufficient, FQ(1))
 

@@ -18,18 +18,18 @@ from collections import namedtuple
 
 
 TESTING_DATA = (
-    (Opcode.JUMP, bytes([5])),
-    # out of range
-    (Opcode.JUMP, bytes([20])),
+    # balance | transfer value
+    (200, 250),
+    (1, 2),
 )
 
 
-@pytest.mark.parametrize("opcode, dest_bytes", TESTING_DATA)
-def test_insufficient_balance_root(opcode: Opcode, dest_bytes: bytes):
+@pytest.mark.parametrize("balance, transfer_value", TESTING_DATA)
+def test_insufficient_balance_root(balance: int, transfer_value: int):
     randomness = rand_fq()
 
     block = Block()
-    bytecode = Bytecode().call(0, 0xFC, 250, 0, 0, 0, 0).stop()
+    bytecode = Bytecode().call(0, 0xFC, transfer_value, 0, 0, 0, 0).stop()
     bytecode_hash = RLC(bytecode.hash(), randomness)
 
     tables = Tables(
@@ -40,9 +40,9 @@ def test_insufficient_balance_root(opcode: Opcode, dest_bytes: bytes):
             RWDictionary(9)
             .stack_read(1, 1010, RLC(10000, randomness))  # gas
             .stack_read(1, 1011, RLC(0xFC, randomness))  # address
-            .stack_read(1, 1012, RLC(250, randomness))  # value
+            .stack_read(1, 1012, RLC(transfer_value, randomness))  # value
             .call_context_read(1, CallContextFieldTag.CalleeAddress, 0xFE)
-            .account_read(0xFE, AccountFieldTag.Balance, RLC(200, randomness))
+            .account_read(0xFE, AccountFieldTag.Balance, RLC(balance, randomness))
             .call_context_read(1, CallContextFieldTag.IsSuccess, 0)
             .rws
         ),
@@ -87,16 +87,16 @@ CallContext = namedtuple(
     defaults=[True, False, 232, 1023, 10, 0, 0],
 )
 
-TESTING_DATA_NOT_ROOT = ((CallContext(), bytes([5])),)
+TESTING_DATA_NOT_ROOT = ((CallContext(), 100, 101),)
 
 
-@pytest.mark.parametrize("caller_ctx, dest_bytes", TESTING_DATA_NOT_ROOT)
-def test_insufficient_balance_not_root(caller_ctx: CallContext, dest_bytes: bytes):
+@pytest.mark.parametrize("caller_ctx, balance, transfer_value", TESTING_DATA_NOT_ROOT)
+def test_insufficient_balance_not_root(caller_ctx: CallContext, balance: int, transfer_value: int):
     randomness = rand_fq()
 
     caller_bytecode = Bytecode().call(0, 0xFF, 0, 0, 0, 0, 0).stop()
     caller_bytecode_hash = RLC(caller_bytecode.hash(), randomness)
-    callee_bytecode = Bytecode().call(0, 0xFC, 0, 0, 0, 0, 0).stop()
+    callee_bytecode = Bytecode().call(0, 0xFC, transfer_value, 0, 0, 0, 0).stop()
     callee_bytecode_hash = RLC(callee_bytecode.hash(), randomness)
     callee_reversible_write_counter = 0
 
@@ -114,9 +114,9 @@ def test_insufficient_balance_not_root(caller_ctx: CallContext, dest_bytes: byte
             RWDictionary(69)
             .stack_read(2, 1010, RLC(10000, randomness))  # gas
             .stack_read(2, 1011, RLC(0xfc, randomness))  # address
-            .stack_read(2, 1012, RLC(250, randomness))  # value
+            .stack_read(2, 1012, RLC(transfer_value, randomness))  # value
             .call_context_read(2, CallContextFieldTag.CalleeAddress, 0xfe)
-            .account_read(0xfe, AccountFieldTag.Balance, RLC(200, randomness))
+            .account_read(0xfe, AccountFieldTag.Balance, RLC(balance, randomness))
             .call_context_read(2, CallContextFieldTag.IsSuccess, 0)
             .call_context_read(2, CallContextFieldTag.CallerId, 1)
             .call_context_read(1, CallContextFieldTag.IsRoot, caller_ctx.is_root)

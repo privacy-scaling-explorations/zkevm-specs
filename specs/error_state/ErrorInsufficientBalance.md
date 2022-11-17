@@ -4,7 +4,7 @@
 ### EVM behavior
 this type of error only occurs when executing op code is  `Call` `CallCode` ,`Create` or `Create2`.
 
-Pop one EVM word `value` from the stack, then go to `ErrorInvalidJump` state when 
+Pop one EVM word `value` from the stack, then go to `ErrorInsufficientBalance` state when 
 caller's balance <  `value`
 
 ### Constraints
