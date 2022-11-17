@@ -49,6 +49,7 @@ from .extcodecopy import *
 from .oog_constant import *
 from .oog_call import *
 from .error_Invalid_jump import *
+from .error_insufficient_balance import *
 
 
 EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
@@ -97,4 +98,5 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.ErrorOutOfGasConstant: oog_constant,
     ExecutionState.ErrorInvalidJump: invalid_jump,
     ExecutionState.ErrorOutOfGasCALL: oog_call,
+    ExecutionState.ErrorInsufficientBalance: insufficient_balance,
 }
