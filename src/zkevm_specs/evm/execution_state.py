@@ -72,8 +72,7 @@ class ExecutionState(IntEnum):
     SWAP = auto()  # SWAP1, SWAP2, ..., SWAP16
     LOG = auto()  # LOG0, LOG1, LOG2, LOG3, LOG4
     CREATE = auto()
-    CALL_DELEGATECALL_STATICCALL = auto()
-    CALLCODE = auto()
+    CALL_OP = auto()
     RETURN = auto()
     CREATE2 = auto()
     REVERT = auto()
@@ -333,10 +332,8 @@ class ExecutionState(IntEnum):
             ]
         elif self == ExecutionState.CREATE:
             return [Opcode.CREATE]
-        elif self == ExecutionState.CALL_DELEGATECALL_STATICCALL:
-            return [Opcode.CALL, Opcode.DELEGATECALL, Opcode.STATICCALL]
-        elif self == ExecutionState.CALLCODE:
-            return [Opcode.CALLCODE]
+        elif self == ExecutionState.CALL_OP:
+            return [Opcode.CALL, Opcode.CALLCODE, Opcode.DELEGATECALL, Opcode.STATICCALL]
         elif self == ExecutionState.RETURN:
             return [Opcode.RETURN]
         elif self == ExecutionState.CREATE2:
