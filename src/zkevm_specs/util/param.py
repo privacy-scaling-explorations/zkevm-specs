@@ -14,6 +14,9 @@ N_BYTES_PROGRAM_COUNTER = 8
 N_BYTES_U64 = 8
 # Number of bytes of an EVM word (u256)
 N_BYTES_WORD = 32
+# Number of bytes of stack pointer(1024)
+N_BYTES_STACK = 2
+
 
 # Gas cost of free step
 GAS_COST_ZERO = 0
