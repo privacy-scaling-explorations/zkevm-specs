@@ -13,7 +13,7 @@ def extcodehash(instruction: Instruction):
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
     is_warm = instruction.add_account_to_access_list(tx_id, address, instruction.reversion_info())
 
-    # Load account `exists` value from auxilary witness data.
+    # Load account `exists` value from auxillary witness data.
     exists = instruction.curr.aux_data
 
     if exists == 0:
