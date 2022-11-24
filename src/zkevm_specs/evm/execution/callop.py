@@ -18,8 +18,8 @@ from ..precompiled import PrecompiledAddress
 
 def callop(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
-    is_call, is_delegatecall, is_staticcall = instruction.multiple_select(
-        opcode, (Opcode.CALL, Opcode.DELEGATECALL, Opcode.STATICCALL)
+    is_call, is_callcode, is_delegatecall, is_staticcall = instruction.multiple_select(
+        opcode, (Opcode.CALL, Opcode.CALLCODE, Opcode.DELEGATECALL, Opcode.STATICCALL)
     )
     instruction.responsible_opcode_lookup(opcode)
 
@@ -47,9 +47,9 @@ def callop(instruction: Instruction):
     # Lookup values from stack
     gas_rlc = instruction.stack_pop()
     code_address_rlc = instruction.stack_pop()
-    # The third argument `value` of opcode CALL is not present for both opcode
-    # DELEGATECALL and STATICCALL.
-    value = instruction.stack_pop() if is_call == 1 else RLC(0)
+    # The third stack pop `value` is not present for both DELEGATECALL and
+    # STATICCALL opcodes.
+    value = instruction.stack_pop() if is_call + is_callcode == 1 else RLC(0)
     cd_offset_rlc = instruction.stack_pop()
     cd_length_rlc = instruction.stack_pop()
     rd_offset_rlc = instruction.stack_pop()
@@ -62,10 +62,15 @@ def callop(instruction: Instruction):
     # Recomposition of random linear combination to integer
     code_address = instruction.rlc_to_fq(code_address_rlc, N_BYTES_ACCOUNT_ADDRESS)
 
-    # For opcode DELEGATECALL, set `callee_address` to previous `caller_address`
-    # and `caller_address` to `parent_caller_address` Variable `code_address`
-    # will be used to get code hash.
-    callee_address = instruction.select(is_delegatecall, caller_address, code_address)
+    # For opcode CALLCODE:
+    # - callee_address = caller_address
+    #
+    # For opcode DELEGATECALL:
+    # - callee_address = caller_address
+    # - caller_address = parent_caller_address
+    #
+    # Variable `code_address` will be used to get code hash.
+    callee_address = instruction.select(is_callcode + is_delegatecall, caller_address, code_address)
     caller_address = instruction.select(is_delegatecall, parent_caller_address, caller_address)
 
     gas = instruction.rlc_to_fq(gas_rlc, N_BYTES_GAS)
@@ -156,10 +161,11 @@ def callop(instruction: Instruction):
                 expected_value,
             )
 
-        # Opcode CALL has an extra stack pop `value`, and opcode DELEGATECALL
-        # has two extra call context lookups - parent caller address and value.
-        rw_counter_delta = 23 + is_call + is_delegatecall * 2
-        stack_pointer_delta = 5 + is_call
+        # Both CALL and CALLCODE opcodes have an extra stack pop `value`, and
+        # opcode DELEGATECALL has two extra call context lookups - parent caller
+        # address and value.
+        rw_counter_delta = 23 + is_call + is_callcode + is_delegatecall * 2
+        stack_pointer_delta = 5 + is_call + is_callcode
 
         instruction.constrain_step_state_transition(
             rw_counter=Transition.delta(rw_counter_delta),
@@ -175,8 +181,8 @@ def callop(instruction: Instruction):
             code_hash=Transition.same(),
         )
     else:
-        rw_counter_delta = 43 + is_call + is_delegatecall * 2
-        stack_pointer_delta = 5 + is_call
+        rw_counter_delta = 43 + is_call + is_callcode + is_delegatecall * 2
+        stack_pointer_delta = 5 + is_call + is_callcode
 
         # Save caller's call state
         for (field_tag, expected_value) in [

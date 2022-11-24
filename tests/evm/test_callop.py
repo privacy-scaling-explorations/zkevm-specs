@@ -74,8 +74,9 @@ def expected(
             return 0
         return (offset + length + 31) // 32
 
-    # Either DELEGATECALL or STATICCALL has no `value` argument on stack.
-    has_value = stack.value != 0 if opcode == Opcode.CALL else False
+    # Both CALL and CALLCODE opcodes have argument `value` on stack, but no for
+    # DELEGATECALL or STATICCALL.
+    has_value = stack.value != 0 if opcode in [Opcode.CALL, Opcode.CALLCODE] else False
     next_memory_size = max(
         memory_size(stack.cd_offset, stack.cd_length),
         memory_size(stack.rd_offset, stack.rd_length),
@@ -108,6 +109,7 @@ def expected(
 def gen_testing_data():
     opcodes = [
         Opcode.CALL,
+        Opcode.CALLCODE,
         Opcode.DELEGATECALL,
         Opcode.STATICCALL,
     ]
@@ -146,7 +148,8 @@ def gen_testing_data():
             expected(
                 opcode,
                 callee.code_hash(),
-                CALLER if opcode == Opcode.DELEGATECALL else callee,
+                # `callee = caller` for both CALLCODE and DELEGATECALL opcodes.
+                CALLER if opcode in [opcode.CALLCODE, Opcode.DELEGATECALL] else callee,
                 call_context,
                 stack,
                 is_warm_access,
@@ -179,17 +182,32 @@ def test_callop(
     randomness = rand_fq()
 
     is_call = 1 if opcode == Opcode.CALL else 0
+    is_callcode = 1 if opcode == Opcode.CALLCODE else 0
     is_delegatecall = 1 if opcode == Opcode.DELEGATECALL else 0
 
-    # Set `is_static == 1` for both DELEGATECALL and STATICCALL opcodes, and
-    # also when `stack.value == 0` for opcode CALL.
-    value = stack.value if is_call == 1 else 0
+    # Set `is_static == 1` for both DELEGATECALL and STATICCALL opcodes, or when
+    # `stack.value == 0` for both CALL and CALLCODE opcodes.
+    value = stack.value if is_call + is_callcode == 1 else 0
     is_static = value == 0
 
     if is_call == 1:
         caller_bytecode = (
             Bytecode()
             .call(
+                stack.gas,
+                callee.address,
+                value,
+                stack.cd_offset,
+                stack.cd_length,
+                stack.rd_offset,
+                stack.rd_length,
+            )
+            .stop()
+        )
+    elif is_callcode == 1:
+        caller_bytecode = (
+            Bytecode()
+            .callcode(
                 stack.gas,
                 callee.address,
                 value,
@@ -248,12 +266,13 @@ def test_callop(
         )
     )
 
-    # Opcode CALL has an extra stack pop `value`, and opcode DELEGATECALL has
-    # two extra call context lookups - parent caller address and value.
-    call_id = 23 + is_call + is_delegatecall * 2
+    # Both CALL and CALLCODE opcodes have an extra stack pop `value`, and opcode
+    # DELEGATECALL has two extra call context lookups - parent caller address
+    # and value.
+    call_id = 23 + is_call + is_callcode + is_delegatecall * 2
     rw_counter = call_id
-    next_program_counter = 232 if is_call else 199
-    stack_pointer = 1018 - is_call
+    next_program_counter = 232 if is_call + is_callcode == 1 else 199
+    stack_pointer = 1018 - is_call - is_callcode
 
     # fmt: off
     rw_dictionary = (
@@ -269,7 +288,7 @@ def test_callop(
         rw_dictionary \
         .call_context_read(1, CallContextFieldTag.CallerAddress, parent_caller.address) \
         .call_context_read(1, CallContextFieldTag.Value, RLC(parent_value, randomness))
-    if is_call == 1:
+    if is_call + is_callcode == 1:
         rw_dictionary \
         .stack_read(1, 1017, RLC(stack.gas, randomness)) \
         .stack_read(1, 1018, RLC(callee.address, randomness)) \
@@ -289,11 +308,18 @@ def test_callop(
         .call_context_read(call_id, CallContextFieldTag.IsPersistent, callee_is_persistent)
     # fmt: on
 
-    # Save code address for further code hash read, and if opcode is
-    # DELEGATECALL set callee to previous caller and caller to parent caller for
-    # other operations.
+    # For opcode CALLCODE:
+    # - callee = caller
+    #
+    # For opcode DELEGATECALL:
+    # - callee = caller
+    # - caller = parent_caller
+    #
+    # Variable `code_address` will be used for further code hash read.
     code_address = callee.address
-    if is_delegatecall == 1:
+    if is_callcode == 1:
+        callee = caller
+    elif is_delegatecall == 1:
         callee = caller
         caller = parent_caller
 
@@ -358,7 +384,7 @@ def test_callop(
         tables=tables,
         steps=[
             StepState(
-                execution_state=ExecutionState.CALL_DELEGATECALL_STATICCALL,
+                execution_state=ExecutionState.CALL_OP,
                 rw_counter=rw_counter,
                 call_id=1,
                 is_root=True,

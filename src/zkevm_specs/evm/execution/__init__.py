@@ -46,8 +46,11 @@ from .shl_shr import shl_shr
 from .stop import stop
 from .return_ import *
 from .extcodecopy import *
+
+# Opcode's error cases
 from .oog_constant import *
 from .oog_call import *
+from .error_stack import *
 from .error_Invalid_jump import *
 from .error_insufficient_balance import *
 
@@ -89,7 +92,7 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.EXTCODEHASH: extcodehash,
     ExecutionState.EXP: exp,
     ExecutionState.LOG: log,
-    ExecutionState.CALL_DELEGATECALL_STATICCALL: callop,
+    ExecutionState.CALL_OP: callop,
     ExecutionState.ISZERO: iszero,
     ExecutionState.SDIV_SMOD: sdiv_smod,
     ExecutionState.SHL_SHR: shl_shr,
@@ -98,5 +101,6 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.ErrorOutOfGasConstant: oog_constant,
     ExecutionState.ErrorInvalidJump: invalid_jump,
     ExecutionState.ErrorOutOfGasCALL: oog_call,
+    ExecutionState.ErrorStack: stack_error,
     ExecutionState.ErrorInsufficientBalance: insufficient_balance,
 }

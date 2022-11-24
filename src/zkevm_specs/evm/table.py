@@ -8,6 +8,7 @@ from .opcode import constant_gas_cost_pairs
 
 from ..util import Expression, FQ, RLC, word_to_lo_hi, word_to_64s
 from .execution_state import ExecutionState
+from .opcode import stack_bounds
 
 
 class FixedTableTag(IntEnum):
@@ -30,6 +31,7 @@ class FixedTableTag(IntEnum):
     ResponsibleOpcode = auto()  # execution_state, opcode, aux
     Pow2 = auto()  # value, value_pow
     OpcodeConstantGas = auto()  # opcode constant gas
+    OpcodeStack = auto()  # opcode stack info for stack error purpose
 
     def table_assignments(self) -> List[FixedTableRow]:
         if self == FixedTableTag.Range5:
@@ -77,6 +79,13 @@ class FixedTableTag(IntEnum):
                 FixedTableRow(FQ(self), FQ(code[0]), FQ(code[1]), FQ(0))
                 for code in constant_gas_cost_pairs()
             ]
+        elif self == FixedTableTag.OpcodeStack:
+            return [
+                # flag | op code |  min stack | max stack
+                FixedTableRow(FQ(self), FQ(pair[0]), FQ(pair[1] if pair[1] > 0 else 0), FQ(pair[2]))
+                for pair in stack_bounds()
+            ]
+
         elif self == FixedTableTag.Pow2:
             return [
                 FixedTableRow(
