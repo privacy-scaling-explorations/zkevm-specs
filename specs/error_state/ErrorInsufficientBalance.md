@@ -3,15 +3,16 @@
 ## Procedure
 ### EVM behavior
 this type of error only occurs when executing op code is  `Call` `CallCode` ,`Create` or `Create2`.
+For `Call` `CallCode`, it will pop 7 stack elements , and the third is transfer `value` within the call.
+when caller's balance <  `value`, then go to `ErrorInsufficientBalance` state. for this kind of error, the failed
+call result was pushed into stack, continue to execute next step.
 
-Pop one EVM word `value` from the stack, then go to `ErrorInsufficientBalance` state when 
-caller's balance <  `value`
+### circuit behavior
+1.  pop 7 stack elements, even though the other six elements not closely relevant to this error
+state constraints, but in order to be accordance with evm trace, also need to handle them here for stack pointer
+transition, which impact next step's stack status.
 
-### Constraints
-1. caller's balance <  `value`
-2. Current call must be failed.
-3. If it's a root call, it transits to `EndTx`
-4. if it is not root call, it restores caller's context by reading to `rw_table`, then does step state transition to it.
+2. lookup current callee address and its balance, then ensure balance <  `value`
 
 ## Code
 
