@@ -81,7 +81,9 @@ if the opcode is RETURN or REVERT, respectively.
 If `min(return_length, call_context[ReturnDataLength, callee_id])` is zero, it
 does not perform the copy circuit lookup.
 
-**E** - TODO
+**E** - Reverting the state changes is handled by the `ReversionInfo` used when
+*making reversible writes, so we do not need to do any additional work in this
+*gadget.
 
 
 ### Gas cost

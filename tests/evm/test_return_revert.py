@@ -42,8 +42,8 @@ def gen_bytecode(is_return: bool, offset: int, length: int) -> Bytecode:
 
 TESTING_DATA_IS_ROOT_NOT_CREATE = (
     (Transaction(), True, 4, 10),  # RETURN, no memory expansion
-    (Transaction(), True, 4, 100),  # RETURN, memory expansion (64 -> 128)
     (Transaction(), False, 4, 10),  # REVERT, no memory expansion
+    (Transaction(), True, 4, 100),  # RETURN, memory expansion (64 -> 128)
     (Transaction(), False, 4, 100),  # REVERT, memory expansion (64 -> 128)
 )
 
@@ -127,14 +127,44 @@ CallContext = namedtuple(
 )
 
 TESTING_DATA_NOT_ROOT_NOT_CREATE = (
-    (CallContext(), True, 4, 8),  # No memory expansion, return_length < caller_return_length
-    (CallContext(), True, 4, 10),  # No memory expansion, return_length = caller_return_length
-    (CallContext(), True, 4, 20),  # No memory expansion, return_length > caller_return_length
-    (CallContext(), True, 4, 100),  # Memory expansion (64 -> 128)
-    (CallContext(), False, 4, 8),  # No memory expansion, return_length < caller_return_length
-    (CallContext(), False, 4, 10),  # No memory expansion, return_length = caller_return_length
-    (CallContext(), False, 4, 20),  # No memory expansion, return_length > caller_return_length
-    (CallContext(), False, 4, 100),  # Memory expansion (64 -> 128)
+    (
+        CallContext(),
+        True,
+        4,
+        8,
+    ),  # RETURN, no memory expansion, return_length < caller_return_length
+    (
+        CallContext(),
+        False,
+        4,
+        8,
+    ),  # REVERT, no memory expansion, return_length < caller_return_length
+    (
+        CallContext(),
+        True,
+        4,
+        10,
+    ),  # RETURN, no memory expansion, return_length = caller_return_length
+    (
+        CallContext(),
+        False,
+        4,
+        10,
+    ),  # REVERT, no memory expansion, return_length = caller_return_length
+    (
+        CallContext(),
+        True,
+        4,
+        20,
+    ),  # RETURN, no memory expansion, return_length > caller_return_length
+    (
+        CallContext(),
+        False,
+        4,
+        20,
+    ),  # REVERT, no memory expansion, return_length > caller_return_length
+    (CallContext(), True, 4, 100),  # RETURN, memory expansion (64 -> 128)
+    (CallContext(), False, 4, 100),  # REVERT, memory expansion (64 -> 128)
 )
 
 
