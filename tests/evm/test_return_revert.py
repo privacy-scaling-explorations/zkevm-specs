@@ -131,13 +131,17 @@ TESTING_DATA_NOT_ROOT_NOT_CREATE = (
     (CallContext(), True, 4, 10),  # No memory expansion, return_length = caller_return_length
     (CallContext(), True, 4, 20),  # No memory expansion, return_length > caller_return_length
     (CallContext(), True, 4, 100),  # Memory expansion (64 -> 128)
+    (CallContext(), False, 4, 8),  # No memory expansion, return_length < caller_return_length
+    (CallContext(), False, 4, 10),  # No memory expansion, return_length = caller_return_length
+    (CallContext(), False, 4, 20),  # No memory expansion, return_length > caller_return_length
+    (CallContext(), False, 4, 100),  # Memory expansion (64 -> 128)
 )
 
 
 @pytest.mark.parametrize(
     "caller_ctx, is_return, return_offset, return_length", TESTING_DATA_NOT_ROOT_NOT_CREATE
 )
-def test_return_not_root_not_create(
+def test_not_root_not_create(
     caller_ctx: CallContext, is_return: bool, return_offset: int, return_length: int
 ):
     randomness = rand_fq()
@@ -165,7 +169,7 @@ def test_return_not_root_not_create(
     # Entries before the memory copy
     rw_dict = (
         rw_dict
-        .call_context_read(callee_id, CallContextFieldTag.IsSuccess, 1)
+        .call_context_read(callee_id, CallContextFieldTag.IsSuccess, int(is_return))
         .stack_read(callee_id, 1022, return_offset_rlc)
         .stack_read(callee_id, 1023, return_length_rlc)
         .call_context_read(callee_id, CallContextFieldTag.ReturnDataOffset, caller_return_offset)

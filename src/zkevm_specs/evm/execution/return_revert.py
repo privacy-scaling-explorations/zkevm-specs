@@ -38,7 +38,7 @@ def return_revert(instruction: Instruction):
         code_hash, code_hash_prev = instruction.account_write(
             callee_address, AccountFieldTag.CodeHash
         )
-        instruction.constrain_equal(code_hash_prev, RLCEMPTY_HASH)
+        instruction.constrain_equal(code_hash_prev, RLC(EMPTY_HASH))
         instruction.constrain_equal(code_hash, instruction.curr.aux_data)
 
         # Return a memory chunk as deployment code by copying each byte from
