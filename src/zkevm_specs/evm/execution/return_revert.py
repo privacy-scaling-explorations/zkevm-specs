@@ -1,7 +1,7 @@
-from ...util import EMPTY_HASH, FQ, N_BYTES_MEMORY_ADDRESS
+from ...util import EMPTY_HASH, FQ, N_BYTES_MEMORY_ADDRESS, RLC
 from ..instruction import Instruction, Transition
 from ..opcode import Opcode
-from ..table import CallContextFieldTag, CopyDataTypeTag
+from ..table import CallContextFieldTag, CopyDataTypeTag, AccountFieldTag
 from ..execution_state import ExecutionState
 
 # NOTE: This python file is called `return_.py` and the opcode gadget is called
@@ -38,7 +38,7 @@ def return_revert(instruction: Instruction):
         code_hash, code_hash_prev = instruction.account_write(
             callee_address, AccountFieldTag.CodeHash
         )
-        instruction.constrain_equal(code_hash_prev, EMPTY_HASH)
+        instruction.constrain_equal(code_hash_prev, RLCEMPTY_HASH)
         instruction.constrain_equal(code_hash, instruction.curr.aux_data)
 
         # Return a memory chunk as deployment code by copying each byte from
