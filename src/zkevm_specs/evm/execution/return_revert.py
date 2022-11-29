@@ -102,7 +102,7 @@ def return_revert(instruction: Instruction):
         is_persistent = instruction.call_context_lookup(
             CallContextFieldTag.IsPersistent
         )  # rwc += 1
-        instruction.constrain_equal(is_persistent, FQ(1))
+        instruction.constrain_equal(is_persistent, FQ(is_return))
 
         # Do step state transition
         instruction.constrain_step_state_transition(

@@ -41,15 +41,17 @@ def gen_bytecode(is_return: bool, offset: int, length: int) -> Bytecode:
 
 
 TESTING_DATA_IS_ROOT_NOT_CREATE = (
-    (Transaction(), True, 4, 10),  # No memory expansion
-    (Transaction(), True, 4, 100),  # Memory expansion (64 -> 128)
+    (Transaction(), True, 4, 10),  # RETURN, no memory expansion
+    (Transaction(), True, 4, 100),  # RETURN, memory expansion (64 -> 128)
+    (Transaction(), False, 4, 10),  # REVERT, no memory expansion
+    (Transaction(), False, 4, 100),  # REVERT, memory expansion (64 -> 128)
 )
 
 
 @pytest.mark.parametrize(
-    "tx,is_return, return_offset, return_length", TESTING_DATA_IS_ROOT_NOT_CREATE
+    "tx, is_return, return_offset, return_length", TESTING_DATA_IS_ROOT_NOT_CREATE
 )
-def test_return_is_root_not_create(
+def test_is_root_not_create(
     tx: Transaction, is_return: bool, return_offset: int, return_length: int
 ):
     randomness = rand_fq()
@@ -74,10 +76,10 @@ def test_return_is_root_not_create(
         bytecode_table=set(bytecode.table_assignments(randomness)),
         rw_table=set(
             RWDictionary(24)
-            .call_context_read(callee_id, CallContextFieldTag.IsSuccess, 1)
+            .call_context_read(callee_id, CallContextFieldTag.IsSuccess, int(is_return))
             .stack_read(callee_id, 1022, return_offset_rlc)
             .stack_read(callee_id, 1023, return_length_rlc)
-            .call_context_read(callee_id, CallContextFieldTag.IsPersistent, 1)
+            .call_context_read(callee_id, CallContextFieldTag.IsPersistent, int(is_return))
             .rws
         ),
     )
