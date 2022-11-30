@@ -5,14 +5,14 @@ from py_ecc.utils import prime_field_inv
 from .param import MAX_N_BYTES
 
 
-def linear_combine(seq: Sequence[Union[int, FQ]], base: FQ, range_check: bool = True) -> FQ:
+def linear_combine_bytes(seq: Sequence[Union[int, FQ]], base: FQ, range_check: bool = True) -> FQ:
     """
     Aggregate a sequence of data into a single field element.
     To use it as a commitment, the base must be a secured random number.
     If the input represents a sequence of data, apply the function directly.
     If the input represents a number, it must be in little-endian order.
     >>> r = 10
-    >>> assert linear_combine([1, 2, 3], r) == 1 + 2 * r + 3 * r**2
+    >>> assert linear_combine_bytes([1, 2, 3], r) == 1 + 2 * r + 3 * r**2
     """
     result = FQ.zero()
     for limb in reversed(seq):
@@ -60,7 +60,7 @@ class RLC:
         value = value.ljust(n_bytes, b"\x00")
 
         self.int_value = int.from_bytes(value, "little")
-        self.rlc_value = linear_combine(value, randomness)
+        self.rlc_value = linear_combine_bytes(value, randomness)
         self.le_bytes = value
 
     def expr(self) -> FQ:

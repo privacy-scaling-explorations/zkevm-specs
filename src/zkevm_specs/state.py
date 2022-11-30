@@ -4,7 +4,7 @@ from math import log, ceil
 
 from zkevm_specs.evm.table import MPTProofType
 
-from .util import FQ, RLC, U160, U256, Expression, linear_combine
+from .util import FQ, RLC, U160, U256, Expression, linear_combine_bytes
 from .encoding import U8, is_circuit_code
 from .evm import (
     RW,
@@ -430,10 +430,12 @@ def check_state_row(row: Row, row_prev: Row, row_next: Row, tables: Tables, rand
     # 0.1. address is linear combination of 10 x 16bit limbs and also in range
     for limb in row.address_limbs():
         assert_in_range(limb, 0, 2**16 - 1)
-    assert row.address() == linear_combine(row.address_limbs(), FQ(2**16), range_check=False)
+    assert row.address() == linear_combine_bytes(
+        row.address_limbs(), FQ(2**16), range_check=False
+    )
 
     # 0.2. address is RLC encoded
-    assert row.storage_key() == linear_combine(row.storage_key_bytes(), randomness)
+    assert row.storage_key() == linear_combine_bytes(row.storage_key_bytes(), randomness)
 
     # 0.3. is_write is boolean
     assert row.is_write in [0, 1]

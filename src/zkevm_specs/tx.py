@@ -6,7 +6,7 @@ from .util import (
     U160,
     U256,
     U64,
-    linear_combine,
+    linear_combine_bytes,
     GAS_COST_TX_CALL_DATA_PER_NON_ZERO_BYTE,
     GAS_COST_TX_CALL_DATA_PER_ZERO_BYTE,
 )
@@ -224,14 +224,16 @@ class SignVerifyChip:
         )
 
         # 2. Verify that the first 20 bytes of the pub_key_hash equal the address
-        addr_expr = linear_combine(list(reversed(self.pub_key_hash.le_bytes[-20:])), FQ(2**8))
+        addr_expr = linear_combine_bytes(
+            list(reversed(self.pub_key_hash.le_bytes[-20:])), FQ(2**8)
+        )
         assert (
             addr_expr == self.address
         ), f"{assert_msg}: {hex(addr_expr.n)} != {hex(self.address.n)}"
 
         # 3. Verify that the signed message in the ecdsa_chip with RLC encoding
         # corresponds to msg_hash_rlc
-        msg_hash_rlc_expr = is_not_padding * linear_combine(self.msg_hash_bytes, randomness)
+        msg_hash_rlc_expr = is_not_padding * linear_combine_bytes(self.msg_hash_bytes, randomness)
         assert (
             msg_hash_rlc_expr == self.msg_hash_rlc
         ), f"{assert_msg}: {hex(msg_hash_rlc_expr.n)} != {hex(self.msg_hash_rlc.n)}"
