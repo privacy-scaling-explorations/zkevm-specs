@@ -97,7 +97,7 @@ def return_revert(instruction: Instruction):
 
     # E.
     if not is_return:
-        rwc_delta += instruction.curr.reversible_write_counter
+        rwc_delta += int(instruction.curr.reversible_write_counter)
 
     if instruction.curr.is_root:
         # B2. End the execution
