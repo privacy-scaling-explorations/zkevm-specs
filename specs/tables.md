@@ -22,6 +22,7 @@ Proved by the tx circuit.
 | $TxID  | CallDataGasCost     | 0          | $value  |
 | $TxID  | TxSignHash          | 0          | $value  |
 | $TxID  | CallData            | $ByteIndex | $value  |
+| $TxID  | TxInvalid           | 0          | $value  |
 | $TxID  | Pad                 | 0          | $value  |
 
 NOTE: `CallDataGasCost` and `TxSignHash` are values calculated by the verifier

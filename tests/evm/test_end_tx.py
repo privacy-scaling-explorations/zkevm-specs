@@ -50,6 +50,36 @@ TESTING_DATA = (
         20000,  # current_cumulative_gas_used
         True,  # success
     ),
+    # Tx invalid
+    (
+        Transaction(
+            id=1,
+            caller_address=0xFE,
+            callee_address=CALLEE_ADDRESS,
+            gas=65000,
+            gas_price=int(2e9),
+            invalid_tx=1,
+        ),
+        65000,
+        0,
+        False,
+        0,
+    ),
+    # Last Tx invalid
+    (
+        Transaction(
+            id=2,
+            caller_address=0xFE,
+            callee_address=CALLEE_ADDRESS,
+            gas=65000,
+            gas_price=int(2e9),
+            invalid_tx=1,
+        ),
+        65000,
+        0,
+        True,
+        21000,
+    ),
 )
 
 
