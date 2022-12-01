@@ -81,10 +81,11 @@ if the opcode is RETURN or REVERT, respectively.
 If `min(return_length, call_context[ReturnDataLength, callee_id])` is zero, it
 does not perform the copy circuit lookup.
 
-**E** - Reverting the state changes is handled by the `ReversionInfo` used when
-*making reversible writes, so we do not need to do any additional work in this
-*gadget.
-
+**E** - The rw lookups needed for reverting the state changes are handled by the
+*`ReversionInfo` used when making reversible writes, so we do not need to make
+*them in this gadget. However, the step state transition of the `rw_counter`
+*will be increased by `instruction.curr.reversible_write_counter` to account for
+*making the reversions.
 
 ### Gas cost
 
@@ -102,6 +103,7 @@ expansion, the gas cost is 0.
         - If case B: + 1 (`call_context` lookup)
         - If case C: + 12 (`rw_table` lookups from transition to restored context)
         - If case D: + 2 (`call_context` lookup) + 2 * `copy_length` (copy circuit)
+        - If case E: `reversible_write_counter` `rw_table` lookups for reversion
     - gas left: `caller_gas_left - return_gas_cost`
     - restore context to caller context
 3. Lookups (outside of `rw_table`)
