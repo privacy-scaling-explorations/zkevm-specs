@@ -27,6 +27,10 @@ The circuit exposes a table which looks like:
 | $addr   | StorageMod              | $key | $valuePrev    | $value       | $rootPrev | $root |
 | $addr   | NonExistingStorageProof | $key | 0             | 0            | $root     | $root |
 
+Note that `StorageMod` proof also supports storage leaf creation and storage leaf deletion,
+`NonceMod` also supports account leaf creation with nonce value and the rest of fields set to default, and
+`BalanceMod` also supports account leaf creation with balance value and the rest of fields set to default.
+
 The proof returned by `eth getProof` looks like:
 
 ```
