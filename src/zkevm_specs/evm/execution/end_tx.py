@@ -41,14 +41,17 @@ def end_tx(instruction: Instruction):
 
     # constrain tx status matches with `PostStateOrStatus` of TxReceipt tag in RW
     instruction.constrain_equal(
-        is_persistent, instruction.tx_receipt_write(tx_id, TxReceiptFieldTag.PostStateOrStatus)
+        (not is_tx_invalid) and is_persistent,
+        instruction.tx_receipt_write(tx_id, TxReceiptFieldTag.PostStateOrStatus),
     )
 
     # constrain log id matches with `LogLength` of TxReceipt tag in RW
     log_id = instruction.tx_receipt_write(tx_id, TxReceiptFieldTag.LogLength)
     instruction.constrain_equal(log_id, instruction.curr.log_id)
+    # constrain tx status matches with `PostStateOrStatus` of TxReceipt tag in RW
+    if is_tx_invalid:
+        instruction.constrain_zero(log_id)
 
-    # constrain `CumulativeGasUsed` of TxReceipt tag in RW
     is_first_tx = tx_id == 1
     if is_first_tx:  # check if it is the first tx
         current_cumulative_gas_used = FQ(0)
