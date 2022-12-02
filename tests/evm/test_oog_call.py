@@ -106,14 +106,11 @@ def test_root_call(
     callee_bytecode_hash = RLC(callee.code_hash(), randomness)
 
     is_success = False
-    callee_rw_counter_end_of_reversion = 0
 
     # fmt: off
     rw_dictionary = (
         RWDictionary(24)
         .call_context_read(1, CallContextFieldTag.TxId, 1)
-        .call_context_read(1, CallContextFieldTag.RwCounterEndOfReversion, caller_ctx.rw_counter_end_of_reversion)
-        .call_context_read(1, CallContextFieldTag.IsPersistent, caller_ctx.is_persistent)
         .call_context_read(1, CallContextFieldTag.IsStatic, False)
         .stack_read(1, 1017, RLC(stack.gas, randomness))
         .stack_read(1, 1018, RLC(callee.address, randomness))
@@ -123,7 +120,7 @@ def test_root_call(
         .stack_read(1, 1022, RLC(stack.rd_offset, randomness))
         .stack_read(1, 1023, RLC(stack.rd_length, randomness))
         .stack_write(1, 1023, RLC(is_success, randomness))
-        .tx_access_list_account_write(1, callee.address, True, is_warm_access, rw_counter_of_reversion=caller_ctx.rw_counter_end_of_reversion - caller_ctx.reversible_write_counter)
+        .tx_access_list_account_read(1, callee.address, True, is_warm_access,)
         .account_read(callee.address, AccountFieldTag.Balance, callee_balance)
         .account_read(callee.address, AccountFieldTag.Nonce, RLC(callee.nonce, randomness))
         .account_read(callee.address, AccountFieldTag.CodeHash, callee_bytecode_hash)

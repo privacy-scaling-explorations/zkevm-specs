@@ -510,7 +510,22 @@ class RWDictionary:
             rw_counter_of_reversion=rw_counter_of_reversion,
         )
 
-    def tx_access_list_account_storage_write(
+    def tx_access_list_account_read(
+        self,
+        tx_id: IntOrFQ,
+        account_address: IntOrFQ,
+        value: bool,
+        value_prev: bool,
+    ) -> RWDictionary:
+        return self._state_read(
+            RWTableTag.TxAccessListAccount,
+            key1=FQ(tx_id),
+            key2=FQ(account_address),
+            value=FQ(value),
+            value_prev=FQ(value_prev),
+        )
+
+    def tx_access_list_account_storage_read(
         self,
         tx_id: IntOrFQ,
         account_address: IntOrFQ,
@@ -647,6 +662,29 @@ class RWDictionary:
                 aux0=aux0,
                 rw_counter=rw_counter_of_reversion,
             )
+
+    def _state_read(
+            self,
+            tag: RWTableTag,
+            key1: Expression = FQ(0),
+            key2: Expression = FQ(0),
+            key3: Expression = FQ(0),
+            key4: Expression = FQ(0),
+            value: Expression = FQ(0),
+            value_prev: Expression = FQ(0),
+            aux0: Expression = FQ(0),
+    ) -> RWDictionary:
+        self._append(
+            RW.Read,
+            tag=tag,
+            key1=key1,
+            key2=key2,
+            key3=key3,
+            key4=key4,
+            value=value,
+            value_prev=value_prev,
+            aux0=aux0,
+        )
 
     def _append(
         self,
