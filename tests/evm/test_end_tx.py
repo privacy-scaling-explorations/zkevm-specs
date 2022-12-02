@@ -111,7 +111,7 @@ def test_end_tx(
             .tx_refund_read(tx.id, refund)
             .account_write(tx.caller_address, AccountFieldTag.Balance, RLC(caller_balance, randomness), RLC(caller_balance_prev, randomness))
             .account_write(block.coinbase, AccountFieldTag.Balance, RLC(coinbase_balance, randomness), RLC(coinbase_balance_prev, randomness))
-            .tx_receipt_write(tx.id, TxReceiptFieldTag.PostStateOrStatus, 1)
+            .tx_receipt_write(tx.id, TxReceiptFieldTag.PostStateOrStatus, 1 - tx.invalid_tx)
             .tx_receipt_write(tx.id, TxReceiptFieldTag.LogLength, 0)
         # fmt: on
     )
