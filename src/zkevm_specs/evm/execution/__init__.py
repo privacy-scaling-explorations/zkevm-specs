@@ -44,7 +44,7 @@ from .sdiv_smod import sdiv_smod
 from .sha3 import sha3
 from .shl_shr import shl_shr
 from .stop import stop
-from .return_ import *
+from .return_revert import *
 from .extcodecopy import *
 from .oog_constant import *
 from .oog_call import *
@@ -94,7 +94,7 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.SDIV_SMOD: sdiv_smod,
     ExecutionState.SHL_SHR: shl_shr,
     ExecutionState.STOP: stop,
-    ExecutionState.RETURN: return_,
+    ExecutionState.RETURN: return_revert,
     ExecutionState.ErrorOutOfGasConstant: oog_constant,
     ExecutionState.ErrorInvalidJump: invalid_jump,
     ExecutionState.ErrorOutOfGasCALL: oog_call,

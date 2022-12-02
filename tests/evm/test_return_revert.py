@@ -21,33 +21,44 @@ from zkevm_specs.util import rand_fq, RLC, memory_expansion
 CALLEE_MEMORY = [0x00] * 4 + [0x22] * 32
 
 
-def gen_return_bytecode(return_offset: int, return_length: int) -> Bytecode:
-    """Generate a return bytecode that has 64 bytes of memory initialized and
-    returns with offset `return_offset` and length `return_length`"""
-    return (
+def gen_bytecode(is_return: bool, offset: int, length: int) -> Bytecode:
+    """Generate bytecode that has 64 bytes of memory initialized and returns with `offset` and `length`"""
+    bytecode = (
         Bytecode()
         .push(0x2222222222222222222222222222222222222222222222222222222222222222, n_bytes=32)
         .push(4, n_bytes=1)
         .mstore()  # mem_size = 32 * 2 = 64
-        .push(return_length, n_bytes=1)
-        .push(return_offset, n_bytes=1)
-        .return_()
+        .push(length, n_bytes=1)
+        .push(offset, n_bytes=1)
     )
+
+    if is_return:
+        bytecode.return_()
+    else:
+        bytecode.revert()
+
+    return bytecode
 
 
 TESTING_DATA_IS_ROOT_NOT_CREATE = (
-    (Transaction(), 4, 10),  # No memory expansion
-    (Transaction(), 4, 100),  # Memory expansion (64 -> 128)
+    (Transaction(), True, 4, 10),  # RETURN, no memory expansion
+    (Transaction(), False, 4, 10),  # REVERT, no memory expansion
+    (Transaction(), True, 4, 100),  # RETURN, memory expansion (64 -> 128)
+    (Transaction(), False, 4, 100),  # REVERT, memory expansion (64 -> 128)
 )
 
 
-@pytest.mark.parametrize("tx, return_offset, return_length", TESTING_DATA_IS_ROOT_NOT_CREATE)
-def test_return_is_root_not_create(tx: Transaction, return_offset: int, return_length: int):
+@pytest.mark.parametrize(
+    "tx, is_return, return_offset, return_length", TESTING_DATA_IS_ROOT_NOT_CREATE
+)
+def test_is_root_not_create(
+    tx: Transaction, is_return: bool, return_offset: int, return_length: int
+):
     randomness = rand_fq()
 
     block = Block()
 
-    bytecode = gen_return_bytecode(return_offset, return_length)
+    bytecode = gen_bytecode(is_return, return_offset, return_length)
     bytecode_hash = RLC(bytecode.hash(), randomness)
 
     return_offset_rlc = RLC(return_offset, randomness)
@@ -65,10 +76,10 @@ def test_return_is_root_not_create(tx: Transaction, return_offset: int, return_l
         bytecode_table=set(bytecode.table_assignments(randomness)),
         rw_table=set(
             RWDictionary(24)
-            .call_context_read(callee_id, CallContextFieldTag.IsSuccess, 1)
+            .call_context_read(callee_id, CallContextFieldTag.IsSuccess, int(is_return))
             .stack_read(callee_id, 1022, return_offset_rlc)
             .stack_read(callee_id, 1023, return_length_rlc)
-            .call_context_read(callee_id, CallContextFieldTag.IsPersistent, 1)
+            .call_context_read(callee_id, CallContextFieldTag.IsPersistent, int(is_return))
             .rws
         ),
     )
@@ -116,25 +127,59 @@ CallContext = namedtuple(
 )
 
 TESTING_DATA_NOT_ROOT_NOT_CREATE = (
-    (CallContext(), 4, 8),  # No memory expansion, return_length < caller_return_length
-    (CallContext(), 4, 10),  # No memory expansion, return_length = caller_return_length
-    (CallContext(), 4, 20),  # No memory expansion, return_length > caller_return_length
-    (CallContext(), 4, 100),  # Memory expansion (64 -> 128)
+    (
+        CallContext(),
+        True,
+        4,
+        8,
+    ),  # RETURN, no memory expansion, return_length < caller_return_length
+    (
+        CallContext(),
+        False,
+        4,
+        8,
+    ),  # REVERT, no memory expansion, return_length < caller_return_length
+    (
+        CallContext(),
+        True,
+        4,
+        10,
+    ),  # RETURN, no memory expansion, return_length = caller_return_length
+    (
+        CallContext(),
+        False,
+        4,
+        10,
+    ),  # REVERT, no memory expansion, return_length = caller_return_length
+    (
+        CallContext(),
+        True,
+        4,
+        20,
+    ),  # RETURN, no memory expansion, return_length > caller_return_length
+    (
+        CallContext(),
+        False,
+        4,
+        20,
+    ),  # REVERT, no memory expansion, return_length > caller_return_length
+    (CallContext(), True, 4, 100),  # RETURN, memory expansion (64 -> 128)
+    (CallContext(), False, 4, 100),  # REVERT, memory expansion (64 -> 128)
 )
 
 
 @pytest.mark.parametrize(
-    "caller_ctx, return_offset, return_length", TESTING_DATA_NOT_ROOT_NOT_CREATE
+    "caller_ctx, is_return, return_offset, return_length", TESTING_DATA_NOT_ROOT_NOT_CREATE
 )
-def test_return_not_root_not_create(
-    caller_ctx: CallContext, return_offset: int, return_length: int
+def test_not_root_not_create(
+    caller_ctx: CallContext, is_return: bool, return_offset: int, return_length: int
 ):
     randomness = rand_fq()
 
     return_offset_rlc = RLC(return_offset, randomness)
     return_length_rlc = RLC(return_length, randomness)
 
-    callee_bytecode = gen_return_bytecode(return_offset, return_length)
+    callee_bytecode = gen_bytecode(is_return, return_offset, return_length)
 
     caller_id = 1
     callee_id = 24
@@ -154,7 +199,7 @@ def test_return_not_root_not_create(
     # Entries before the memory copy
     rw_dict = (
         rw_dict
-        .call_context_read(callee_id, CallContextFieldTag.IsSuccess, 1)
+        .call_context_read(callee_id, CallContextFieldTag.IsSuccess, int(is_return))
         .stack_read(callee_id, 1022, return_offset_rlc)
         .stack_read(callee_id, 1023, return_length_rlc)
         .call_context_read(callee_id, CallContextFieldTag.ReturnDataOffset, caller_return_offset)

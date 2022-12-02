@@ -18,7 +18,7 @@ The operations recorded in the state proof are:
 - `TxAccessListAccountStorage`: State of the account storage access list
 - `AccountDestructed`: State of destruction of an account
 
-Each operation uses diferent parameters for indexing.  See [RW Table](./tables.md#rw_table) for the complete details.
+Each operation uses different parameters for indexing.  See [RW Table](./tables.md#rw_table) for the complete details.
 
 The concatenation of all table keys becomes the unique index for data. Each record will be attached with a `ReadWriteCounter`, and the records are constraint to be in group by their unique index first and to be sorted by their `ReadWriteCounter` increasingly. Given the access to previous record, each target has their own format and rules to update, for example, values in `Memory` should fit in 8-bit.
 
