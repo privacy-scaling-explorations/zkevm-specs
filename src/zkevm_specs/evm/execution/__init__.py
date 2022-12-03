@@ -38,6 +38,7 @@ from .gasprice import *
 from .storage import *
 from .selfbalance import *
 from .extcodehash import *
+from .extcodesize import *
 from .log import *
 from .bitwise import not_opcode
 from .sdiv_smod import sdiv_smod
@@ -87,6 +88,7 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.GASPRICE: gasprice,
     ExecutionState.EXTCODECOPY: extcodecopy,
     ExecutionState.EXTCODEHASH: extcodehash,
+    ExecutionState.EXTCODESIZE: extcodesize,
     ExecutionState.EXP: exp,
     ExecutionState.LOG: log,
     ExecutionState.CALL_OP: callop,
