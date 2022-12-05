@@ -17,6 +17,7 @@ from ..opcode import Opcode
 def oog_call(instruction: Instruction):
     # retrieve op code associated to oog call error
     opcode = instruction.opcode_lookup(True)
+    # TODO: add CallCode etc.when handle ErrorOutOfGasCALLCODE in future implementation
     instruction.constrain_equal(opcode, Opcode.CALL)
 
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
