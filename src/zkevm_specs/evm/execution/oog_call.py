@@ -20,7 +20,7 @@ def oog_call(instruction: Instruction):
     instruction.constrain_equal(opcode, Opcode.CALL)
 
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
-    is_static = instruction.call_context_lookup(CallContextFieldTag.IsStatic)
+    instruction.call_context_lookup(CallContextFieldTag.IsStatic)
     # Lookup values from stack
     instruction.stack_pop()
     callee_address_rlc = instruction.stack_pop()

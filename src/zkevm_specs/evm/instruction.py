@@ -772,17 +772,17 @@ class Instruction:
         return row
 
     def state_read(
-            self,
-            tag: RWTableTag,
-            key1: Optional[Expression] = None,
-            key2: Optional[Expression] = None,
-            key3: Optional[Expression] = None,
-            key4: Optional[Expression] = None,
-            value: Optional[Expression] = None,
-            value_prev: Optional[Expression] = None,
-            aux0: Optional[Expression] = None,
+        self,
+        tag: RWTableTag,
+        key1: Optional[Expression] = None,
+        key2: Optional[Expression] = None,
+        key3: Optional[Expression] = None,
+        key4: Optional[Expression] = None,
+        value: Optional[Expression] = None,
+        value_prev: Optional[Expression] = None,
+        aux0: Optional[Expression] = None,
     ) -> RWTableRow:
-        row = self.rw_lookup(RW.Write, tag, key1, key2, key3, key4, value, value_prev, aux0)
+        row = self.rw_lookup(RW.Read, tag, key1, key2, key3, key4, value, value_prev, aux0)
         return row
 
     def call_context_lookup(
@@ -953,15 +953,14 @@ class Instruction:
         return row.value_prev.expr()
 
     def read_account_to_access_list(
-            self,
-            tx_id: Expression,
-            account_address: Expression,
+        self,
+        tx_id: Expression,
+        account_address: Expression,
     ) -> FQ:
         row = self.state_read(
             RWTableTag.TxAccessListAccount,
             tx_id,
             account_address,
-            value=FQ(1),
         )
         return row.value_prev.expr()
 

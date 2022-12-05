@@ -515,14 +515,13 @@ class RWDictionary:
         tx_id: IntOrFQ,
         account_address: IntOrFQ,
         value: bool,
-        value_prev: bool,
     ) -> RWDictionary:
         return self._state_read(
             RWTableTag.TxAccessListAccount,
             key1=FQ(tx_id),
             key2=FQ(account_address),
             value=FQ(value),
-            value_prev=FQ(value_prev),
+            value_prev=FQ(value),
         )
 
     def tx_access_list_account_storage_read(
@@ -664,17 +663,17 @@ class RWDictionary:
             )
 
     def _state_read(
-            self,
-            tag: RWTableTag,
-            key1: Expression = FQ(0),
-            key2: Expression = FQ(0),
-            key3: Expression = FQ(0),
-            key4: Expression = FQ(0),
-            value: Expression = FQ(0),
-            value_prev: Expression = FQ(0),
-            aux0: Expression = FQ(0),
+        self,
+        tag: RWTableTag,
+        key1: Expression = FQ(0),
+        key2: Expression = FQ(0),
+        key3: Expression = FQ(0),
+        key4: Expression = FQ(0),
+        value: Expression = FQ(0),
+        value_prev: Expression = FQ(0),
+        aux0: Expression = FQ(0),
     ) -> RWDictionary:
-        self._append(
+        return self._append(
             RW.Read,
             tag=tag,
             key1=key1,
