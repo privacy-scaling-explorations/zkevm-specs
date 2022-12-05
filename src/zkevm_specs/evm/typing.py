@@ -524,7 +524,7 @@ class RWDictionary:
             value_prev=FQ(value),
         )
 
-    def tx_access_list_account_storage_read(
+    def tx_access_list_account_storage_write(
         self,
         tx_id: IntOrFQ,
         account_address: IntOrFQ,
