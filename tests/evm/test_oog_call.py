@@ -223,7 +223,8 @@ def test_oog_call_not_root(caller_ctx: CallerContext, callee: Account):
             .stack_read(2, 1022, RLC(stack.rd_offset, randomness))
             .stack_read(2, 1023, RLC(stack.rd_length, randomness))
             .stack_write(2, 1023, RLC(False, randomness))
-            .tx_access_list_account_read(1, callee.address, is_warm_access)            .account_read(callee.address, AccountFieldTag.Balance, callee_balance)
+            .tx_access_list_account_read(1, callee.address, is_warm_access)
+            .account_read(callee.address, AccountFieldTag.Balance, callee_balance)
             .account_read(callee.address, AccountFieldTag.Nonce, RLC(callee.nonce, randomness))
             .account_read(callee.address, AccountFieldTag.CodeHash, callee_bytecode_hash)
             # restore context operations
