@@ -94,7 +94,7 @@ def end_block(instruction: Instruction):
             # 1a. total_valid_txs is 0 in empty block
             instruction.constrain_equal(total_valid_txs, FQ(0))
         else:
-            # 1b. total_valid_txs matches the tx_id that corresponds to the final step.
+            # 1b. total_txs matches the tx_id that corresponds to the final step.
             instruction.constrain_equal(
                 instruction.call_context_lookup(CallContextFieldTag.TxId), total_txs
             )

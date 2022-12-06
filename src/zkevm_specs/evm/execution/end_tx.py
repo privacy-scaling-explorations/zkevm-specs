@@ -18,9 +18,9 @@ def end_tx(instruction: Instruction):
     refund = instruction.tx_refund_read(tx_id)
     effective_refund = instruction.min(max_refund, refund, 8)
 
-    # gas_used & refund == 0 if tx is invalid
-    instruction.constrain_zero(is_tx_invalid * gas_used)
-    instruction.constrain_zero(is_tx_invalid * effective_refund)
+    # refund == 0 if tx is invalid
+    if is_tx_invalid == 1:
+        instruction.constrain_zero(effective_refund)
 
     # Add effective_refund * gas_price back to caller's balance
     tx_gas_price = instruction.tx_gas_price(tx_id)
@@ -48,10 +48,11 @@ def end_tx(instruction: Instruction):
     # constrain log id matches with `LogLength` of TxReceipt tag in RW
     log_id = instruction.tx_receipt_write(tx_id, TxReceiptFieldTag.LogLength)
     instruction.constrain_equal(log_id, instruction.curr.log_id)
-    # constrain tx status matches with `PostStateOrStatus` of TxReceipt tag in RW
-    if is_tx_invalid:
+    # log_id is 0 if tx is invalid.
+    if is_tx_invalid == 1:
         instruction.constrain_zero(log_id)
 
+    # constrain `CumulativeGasUsed` of TxReceipt tag in RW
     is_first_tx = tx_id == 1
     if is_first_tx:  # check if it is the first tx
         current_cumulative_gas_used = FQ(0)
