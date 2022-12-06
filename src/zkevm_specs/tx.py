@@ -318,6 +318,8 @@ def padding_tx(tx_id: int) -> List[Row]:
         Row(FQ(tx_id), FQ(Tag.Value), FQ(0), FQ(0)),
         Row(FQ(tx_id), FQ(Tag.CallDataLength), FQ(0), FQ(0)),
         Row(FQ(tx_id), FQ(Tag.CallDataGasCost), FQ(0), FQ(0)),
+        Row(FQ(tx_id), FQ(Tag.TxInvalid), FQ(0), FQ(0)),
+        Row(FQ(tx_id), FQ(Tag.AccessListGasCost), FQ(0), FQ(0)),
         Row(FQ(tx_id), FQ(Tag.TxSignHash), FQ(0), FQ(0)),
     ]
 
@@ -358,6 +360,16 @@ def tx2witness(
         ]
     )
 
+    # TODO: support (EIP 2930) type TX
+    # access_list_gas_cost = sum(
+    #     [
+    #         GAS_COST_ACCESS_LIST_ADDRESS
+    #         + len(access_tuple.storage_keys) * GAS_COST_ACCESS_LIST_STORAGE
+    #         for access_tuple in tx.access_list
+    #     ]
+    # )
+    access_list_gas_cost = 0
+
     tx_id = FQ(index + 1)
     rows: List[Row] = []
     rows.append(Row(tx_id, FQ(Tag.Nonce), FQ(0), FQ(tx.nonce)))
@@ -369,6 +381,9 @@ def tx2witness(
     rows.append(Row(tx_id, FQ(Tag.Value), FQ(0), RLC(tx.value, randomness).expr()))
     rows.append(Row(tx_id, FQ(Tag.CallDataLength), FQ(0), FQ(len(tx.data))))
     rows.append(Row(tx_id, FQ(Tag.CallDataGasCost), FQ(0), FQ(call_data_gas_cost)))
+    # here these 2 invalid flags are set by prover, and checking is deferred to begin_tx.
+    rows.append(Row(tx_id, FQ(Tag.TxInvalid), FQ(0), FQ(0)))
+    rows.append(Row(tx_id, FQ(Tag.AccessListGasCost), FQ(0), FQ(access_list_gas_cost)))
     tx_sign_hash_rlc = RLC(int.from_bytes(tx_sign_hash, "big"), randomness).expr()
     rows.append(Row(tx_id, FQ(Tag.TxSignHash), FQ(0), tx_sign_hash_rlc))
     for byte_index, byte in enumerate(tx.data):

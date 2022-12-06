@@ -5,6 +5,7 @@ from typing import (
     Iterator,
     List,
     MutableSequence,
+    NamedTuple,
     NewType,
     Optional,
     Sequence,
@@ -24,6 +25,8 @@ from ..util import (
     RLC,
     Expression,
     keccak256,
+    GAS_COST_ACCESS_LIST_ADDRESS,
+    GAS_COST_ACCESS_LIST_STORAGE,
     GAS_COST_TX_CALL_DATA_PER_NON_ZERO_BYTE,
     GAS_COST_TX_CALL_DATA_PER_ZERO_BYTE,
     EMPTY_CODE_HASH,
@@ -120,6 +123,11 @@ class Block:
         ]
 
 
+class AccessTuple(NamedTuple):
+    address: U160
+    storage_keys: List[U256]
+
+
 class Transaction:
     id: int
     nonce: U64
@@ -130,6 +138,7 @@ class Transaction:
     value: U256
     call_data: bytes
     invalid_tx: int
+    access_list: List[AccessTuple()]
 
     def __init__(
         self,
@@ -142,6 +151,7 @@ class Transaction:
         value: U256 = U256(0),
         call_data: bytes = bytes(),
         invalid_tx: int = 0,
+        access_list: List[AccessTuple()] = list(),
     ) -> None:
         self.id = id
         self.nonce = nonce
@@ -152,10 +162,11 @@ class Transaction:
         self.value = value
         self.call_data = call_data
         self.invalid_tx = invalid_tx
+        self.access_list = access_list
 
     @classmethod
     def padding(obj, id: int):
-        tx = obj(id, U64(0), U64(0), U256(0), U160(0), U160(0), U256(0), bytes(), 0)
+        tx = obj(id, U64(0), U64(0), U256(0), U160(0), U160(0), U256(0), bytes(), 0, list())
         return tx
 
     def call_data_gas_cost(self) -> int:
@@ -170,6 +181,15 @@ class Transaction:
             ),
             self.call_data,
             0,
+        )
+
+    def access_list_gas_cost(self) -> int:
+        return sum(
+            [
+                GAS_COST_ACCESS_LIST_ADDRESS
+                + len(access_tuple.storage_keys) * GAS_COST_ACCESS_LIST_STORAGE
+                for access_tuple in self.access_list
+            ]
         )
 
     def table_fixed(self, randomness: FQ) -> List[TxTableRow]:
@@ -214,15 +234,21 @@ class Transaction:
             ),
             TxTableRow(
                 FQ(self.id),
-                FQ(TxContextFieldTag.TxSignHash),
-                FQ(0),
-                FQ(1234),  # Mock value for TxSignHash
-            ),
-            TxTableRow(
-                FQ(self.id),
                 FQ(TxContextFieldTag.TxInvalid),
                 FQ(0),
                 FQ(self.invalid_tx),
+            ),
+            TxTableRow(
+                FQ(self.id),
+                FQ(TxContextFieldTag.AccessListGasCost),
+                FQ(0),
+                FQ(self.access_list_gas_cost()),
+            ),
+            TxTableRow(
+                FQ(self.id),
+                FQ(TxContextFieldTag.TxSignHash),
+                FQ(0),
+                FQ(1234),  # Mock value for TxSignHash
             ),
         ]
 

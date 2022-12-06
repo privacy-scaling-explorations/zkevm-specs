@@ -49,7 +49,7 @@ def begin_tx(instruction: Instruction):
     tx_calldata_gas_cost = instruction.tx_context_lookup(tx_id, TxContextFieldTag.CallDataGasCost)
     tx_cost_gas = GAS_COST_CREATION_TX if tx_is_create == 1 else GAS_COST_TX
     # TODO: Handle gas cost of tx level access list (EIP 2930)
-    tx_accesslist_gas = 0
+    tx_accesslist_gas = instruction.tx_context_lookup(tx_id, TxContextFieldTag.AccessListGasCost)
     tx_intrinsic_gas = tx_calldata_gas_cost + tx_cost_gas + tx_accesslist_gas
 
     # check instrinsic gas

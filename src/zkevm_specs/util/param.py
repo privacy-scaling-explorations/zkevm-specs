@@ -72,6 +72,11 @@ GAS_COST_CALL_WITH_VALUE = 9000
 GAS_COST_NEW_ACCOUNT = 25000
 # Gas stipend given if call with non-zero value
 GAS_STIPEND_CALL_WITH_VALUE = 2300
+# Gas cost of warming up an account with the access list
+GAS_COST_ACCESS_LIST_ADDRESS = 2400
+# Gas cost of warming up a storage with the access list
+GAS_COST_ACCESS_LIST_STORAGE = 1900
+
 
 # Quotient for max refund of gas used
 MAX_REFUND_QUOTIENT_OF_GAS_USED = 5

@@ -9,11 +9,12 @@ from zkevm_specs.evm import (
     CallContextFieldTag,
     Block,
     Transaction,
+    AccessTuple,
     Account,
     Bytecode,
     RWDictionary,
 )
-from zkevm_specs.util import rand_fq, rand_address, rand_range, RLC, EMPTY_CODE_HASH, U64
+from zkevm_specs.util import rand_fq, rand_address, rand_range, rand_word, RLC, EMPTY_CODE_HASH, U64
 
 RETURN_BYTECODE = Bytecode().return_(0, 0)
 REVERT_BYTECODE = Bytecode().revert(0, 0)
@@ -123,6 +124,32 @@ TESTING_DATA = (
             invalid_tx=1,
         ),
         CALLEE_WITH_REVERT_BYTECODE,
+        True,  # is success because the tx is skipped
+    ),
+    # Transfer with sufficient intrinsic gas
+    (
+        Transaction(
+            caller_address=0xFE,
+            callee_address=CALLEE_ADDRESS,
+            gas=21080 + 2400 + 1900 * 2,
+            value=int(1e17),
+            invalid_tx=0,
+            access_list=[AccessTuple(address=0xFE, storage_keys=[rand_word(), rand_word()])],
+        ),
+        CALLEE_WITH_NOTHING,
+        True,  # is success because the tx is skipped
+    ),
+    # Transfer with insufficient intrinsic gas
+    (
+        Transaction(
+            caller_address=0xFE,
+            callee_address=CALLEE_ADDRESS,
+            gas=21080,
+            value=int(1e17),
+            invalid_tx=1,
+            access_list=[AccessTuple(address=0xFE, storage_keys=[rand_word(), rand_word()])],
+        ),
+        CALLEE_WITH_NOTHING,
         True,  # is success because the tx is skipped
     ),
 )

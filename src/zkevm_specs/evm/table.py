@@ -155,9 +155,10 @@ class TxContextFieldTag(IntEnum):
     Value = auto()
     CallDataLength = auto()
     CallDataGasCost = auto()
+    TxInvalid = auto()
+    AccessListGasCost = auto()
     TxSignHash = auto()
     CallData = auto()
-    TxInvalid = auto()
 
 
 class BytecodeFieldTag(IntEnum):
