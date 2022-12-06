@@ -41,14 +41,25 @@ def begin_tx(instruction: Instruction):
     gas_fee, carry = instruction.mul_word_by_u64(tx_gas_price, tx_gas)
     instruction.constrain_zero(carry)
 
+    # intrinsic gas
+    # G_0 = sum([G_txdatazero if CallData[i] == 0 else G_txdatanonzero for i in len(CallData)]) +
+    #       (G_txcreate if tx_to == 0 or 0) +
+    #       G_transaction +
+    #       sum([G_accesslistaddress + G_accessliststorage * len(TA[j]) for j in len(TA)])
+    tx_calldata_gas_cost = instruction.tx_context_lookup(tx_id, TxContextFieldTag.CallDataGasCost)
+    tx_cost_gas = GAS_COST_CREATION_TX if tx_is_create == 1 else GAS_COST_TX
     # TODO: Handle gas cost of tx level access list (EIP 2930)
-    tx_call_data_gas_cost = instruction.tx_context_lookup(tx_id, TxContextFieldTag.CallDataGasCost)
-    gas_left = (
-        tx_gas.expr()
-        - (GAS_COST_CREATION_TX if tx_is_create == 1 else GAS_COST_TX)
-        - tx_call_data_gas_cost.expr()
-    )
-    instruction.constrain_gas_left_not_underflow(gas_left)
+    tx_accesslist_gas = 0
+    tx_intrinsic_gas = tx_calldata_gas_cost + tx_cost_gas + tx_accesslist_gas
+
+    # check instrinsic gas
+    gas_not_enough = int(tx_gas.expr()) < int(tx_intrinsic_gas)
+
+    if not gas_not_enough:
+        gas_left = tx_gas.expr() - tx_intrinsic_gas
+        instruction.constrain_gas_left_not_underflow(gas_left)
+    else:
+        gas_left = tx_gas.expr()
 
     # Prepare access list of caller and callee
     instruction.constrain_zero(instruction.add_account_to_access_list(tx_id, tx_caller_address))
@@ -64,7 +75,7 @@ def begin_tx(instruction: Instruction):
     )
     sender_balance_prev = sender_balance_pair[1]
     balance_not_enough = sender_balance_prev.int_value < tx_value.int_value + gas_fee.int_value
-    invalid_tx = 1 - (1 - balance_not_enough) * (is_nonce_valid)
+    invalid_tx = 1 - (1 - balance_not_enough) * (1 - gas_not_enough) * (is_nonce_valid)
     # prover should not give incorrect is_tx_invalid flag.
     instruction.constrain_equal(is_tx_invalid, invalid_tx)
 
