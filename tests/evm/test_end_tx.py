@@ -42,10 +42,10 @@ TESTING_DATA = (
         Transaction(
             id=3, caller_address=0xFE, callee_address=CALLEE_ADDRESS, gas=21000, gas_price=int(2e9)
         ),
-        0,
-        0,
+        0, # gas_left
+        0, # refund
         True,
-        20000,
+        20000, # current_cumulative_gas_used
     ),
 )
 

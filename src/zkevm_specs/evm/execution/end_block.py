@@ -1,12 +1,18 @@
-from ...util import FQ
+from ...util import FQ, N_BYTES_GAS
 from ..instruction import Instruction, Transition
-from ..table import CallContextFieldTag, TxTableRow, TxContextFieldTag
+from ..table import CallContextFieldTag, TxTableRow, TxContextFieldTag, BlockContextFieldTag, TxReceiptFieldTag
 from typing import Set
 
 # EndBlock is an execution state that constraints the following:
-# A. Once the EndBlock state is reached, there's no other execution states appearing until the end of the EVM Circuit.  In particular, after the first EndBlock, there will be no new lookups to the rw_table.
-# B. The number of meaningful entries (non-padding) in the rw_table match the rw_counter after the EndBlock state is processed.
-# C. The number of txs processed by the EVM Circuit match the number of txs in the TxTable
+# A. Once the EndBlock state is reached, there's no other execution states
+# appearing until the end of the EVM Circuit.  In particular, after the first
+# EndBlock, there will be no new lookups to the rw_table.
+#
+# B. The number of meaningful entries (non-padding) in the rw_table match the
+# rw_counter after the EndBlock state is processed.
+#
+# C. The number of txs processed by the EVM Circuit match the number of txs in
+# the TxTable
 #
 # As an extra point:
 # D. We need to prove that at least one EndBlock state exists
@@ -59,6 +65,7 @@ def end_block(instruction: Instruction):
     total_rws = (1 - is_empty_block) * (instruction.curr.rw_counter - 1 + 1)
 
     if instruction.is_last_step:
+        # tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
         # 1. Constraint total_txs witness values depending on the empty block case.
         if is_empty_block == FQ(1):
             # 1a. total_txs is 0 in empty block
@@ -68,6 +75,14 @@ def end_block(instruction: Instruction):
             instruction.constrain_equal(
                 instruction.call_context_lookup(CallContextFieldTag.TxId), total_txs
             )
+            # 4. Verify that CumulativeGasUsed does not exceed the block gas limit.
+            gas_limit = instruction.block_context_lookup(BlockContextFieldTag.GasLimit)
+            cumulative_gas = instruction.tx_receipt_read(
+                    total_txs,
+                    TxReceiptFieldTag.CumulativeGasUsed
+                    )
+            limit_exceeded, _ = instruction.compare( gas_limit, cumulative_gas, N_BYTES_GAS )
+            instruction.constrain_equal(limit_exceeded, FQ(0))
 
         # 2. If total_txs == max_txs, we know we have covered all txs from the tx_table.
         # If not, we need to check that the rest of txs in the table are
@@ -80,17 +95,16 @@ def end_block(instruction: Instruction):
                 instruction.tx_context_lookup(FQ(total_txs + 1), TxContextFieldTag.CallerAddress),
                 FQ(0),
             )
-            # Since every tx lookup done in the EVM circuit must succeed
-            # and uses a unique tx_id, we know that at
-            # least there are total_tx meaningful txs in
-            # the tx_table. We conclude that the number of
+            # Since every tx lookup done in the EVM circuit must succeed and
+            # uses a unique tx_id, we know that at least there are total_tx
+            # meaningful txs in the tx_table. We conclude that the number of
             # meaningful txs in the tx_table is total_tx.
 
         # 3. Verify rw_counter counts to the same number of meaningful rows in
         # rw_table to ensure there is no malicious insertion.
         # Verify that there are at most total_rws meaningful entries in the rw_table
         instruction.rw_table_start_lookup(FQ(1))
-        instruction.rw_table_start_lookup(max_rws - total_rws)
+        # instruction.rw_table_start_lookup(max_rws - total_rws)
         # Since every lookup done in the EVM circuit must succeed and uses a unique
         # rw_counter, we know that at least there are total_rws meaningful entries
         # in the rw_table.
