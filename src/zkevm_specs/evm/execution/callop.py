@@ -108,10 +108,14 @@ def callop(instruction: Instruction):
     has_value = 1 - instruction.is_zero(value)
     instruction.constrain_zero(has_value * is_static)
 
-    # Verify transfer
-    _, (_, callee_balance_prev) = instruction.transfer(
-        caller_address, callee_address, value, callee_reversion_info
-    )
+    if is_call == 1:
+        # Verify transfer only for CALL opcode.
+        _, (_, callee_balance) = instruction.transfer(
+            caller_address, callee_address, value, callee_reversion_info
+        )
+    else:
+        # Get callee balance for CALLCODE, DELEGATECALL and STATICCALL opcodes.
+        callee_balance = instruction.account_read(callee_address, AccountFieldTag.Balance)
 
     # Verify gas cost
     callee_nonce = instruction.account_read(callee_address, AccountFieldTag.Nonce)
@@ -119,10 +123,12 @@ def callop(instruction: Instruction):
     is_empty_code_hash = instruction.is_equal(
         callee_code_hash, instruction.rlc_encode(EMPTY_CODE_HASH, 32)
     )
+    # TODO:
+    # Suppose to fix to use non-existing proofs for account existence after it
+    # has been used for one opcode in zkevm-circuit.
+    # https://github.com/privacy-scaling-explorations/zkevm-circuits/pull/907
     is_account_empty = (
-        instruction.is_zero(callee_nonce)
-        * instruction.is_zero(callee_balance_prev)
-        * is_empty_code_hash
+        instruction.is_zero(callee_nonce) * instruction.is_zero(callee_balance) * is_empty_code_hash
     )
     gas_cost = (
         instruction.select(
@@ -161,10 +167,11 @@ def callop(instruction: Instruction):
                 expected_value,
             )
 
-        # Both CALL and CALLCODE opcodes have an extra stack pop `value`, and
-        # opcode DELEGATECALL has two extra call context lookups - parent caller
-        # address and value.
-        rw_counter_delta = 23 + is_call + is_callcode + is_delegatecall * 2
+        # For CALL opcode, it has an extra stack pop `value` and two account write for `transfer` call (+3).
+        # For CALLCODE opcode, it has an extra stack pop `value` and one account read for callee balance (+2).
+        # For DELEGATECALL opcode, has two extra call context lookups for current caller address and value (+2).
+        # For STATICCALL opcode, it has one account read for callee balance (+1).
+        rw_counter_delta = 21 + is_call * 3 + is_callcode * 2 + is_delegatecall * 3 + is_staticcall
         stack_pointer_delta = 5 + is_call + is_callcode
 
         instruction.constrain_step_state_transition(
@@ -181,7 +188,8 @@ def callop(instruction: Instruction):
             code_hash=Transition.same(),
         )
     else:
-        rw_counter_delta = 43 + is_call + is_callcode + is_delegatecall * 2
+        # Similar as above comment.
+        rw_counter_delta = 41 + is_call * 3 + is_callcode * 2 + is_delegatecall * 3 + is_staticcall
         stack_pointer_delta = 5 + is_call + is_callcode
 
         # Save caller's call state

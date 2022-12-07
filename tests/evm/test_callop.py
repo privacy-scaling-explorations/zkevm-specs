@@ -184,6 +184,7 @@ def test_callop(
     is_call = 1 if opcode == Opcode.CALL else 0
     is_callcode = 1 if opcode == Opcode.CALLCODE else 0
     is_delegatecall = 1 if opcode == Opcode.DELEGATECALL else 0
+    is_staticcall = 1 if opcode == Opcode.STATICCALL else 0
 
     # Set `is_static == 1` for both DELEGATECALL and STATICCALL opcodes, or when
     # `stack.value == 0` for both CALL and CALLCODE opcodes.
@@ -266,10 +267,11 @@ def test_callop(
         )
     )
 
-    # Both CALL and CALLCODE opcodes have an extra stack pop `value`, and opcode
-    # DELEGATECALL has two extra call context lookups - parent caller address
-    # and value.
-    call_id = 23 + is_call + is_callcode + is_delegatecall * 2
+    # For CALL opcode, it has an extra stack pop `value` and two account write for `transfer` call (+3).
+    # For CALLCODE opcode, it has an extra stack pop `value` and one account read for callee balance (+2).
+    # For DELEGATECALL opcode, has two extra call context lookups for current caller address and value (+2).
+    # For STATICCALL opcode, it has one account read for callee balance (+1).
+    call_id = 21 + is_call * 3 + is_callcode * 2 + is_delegatecall * 3 + is_staticcall
     rw_counter = call_id
     next_program_counter = 232 if is_call + is_callcode == 1 else 199
     stack_pointer = 1018 - is_call - is_callcode
@@ -329,9 +331,15 @@ def test_callop(
     callee_balance = RLC(callee.balance + value, randomness)
 
     # fmt: off
+    if is_call == 1:
+        rw_dictionary \
+            .account_write(caller.address, AccountFieldTag.Balance, caller_balance, caller_balance_prev, rw_counter_of_reversion=None if callee_is_persistent else callee_rw_counter_end_of_reversion) \
+            .account_write(callee.address, AccountFieldTag.Balance, callee_balance, callee_balance_prev, rw_counter_of_reversion=None if callee_is_persistent else callee_rw_counter_end_of_reversion - 1)
+    else:
+        rw_dictionary \
+            .account_read(callee.address, AccountFieldTag.Balance, RLC(callee.balance, randomness))
+
     rw_dictionary \
-        .account_write(caller.address, AccountFieldTag.Balance, caller_balance, caller_balance_prev, rw_counter_of_reversion=None if callee_is_persistent else callee_rw_counter_end_of_reversion) \
-        .account_write(callee.address, AccountFieldTag.Balance, callee_balance, callee_balance_prev, rw_counter_of_reversion=None if callee_is_persistent else callee_rw_counter_end_of_reversion - 1) \
         .account_read(callee.address, AccountFieldTag.Nonce, RLC(callee.nonce, randomness)) \
         .account_read(code_address, AccountFieldTag.CodeHash, callee_bytecode_hash)
 
