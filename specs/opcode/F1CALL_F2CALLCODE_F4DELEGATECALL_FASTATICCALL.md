@@ -25,7 +25,8 @@ It creates a new sub context as setting caller address to parent caller's and ca
 - For opcode `STATICCALL`:
 It does not allow any state modifying instructions (is_static == 1) or sending ether to callee in the sub context.
 
-And both `DELEGATECALL` and `STATICCALL` opcodes only pop 6 words from stack `gas`, `callee_address`, `call_data_offset`, `call_data_length`, `return_data_offset` and `return_data_length` (except the third popped word `value` for both `CALL` and `CALLCODE` opcodes).
+Both `DELEGATECALL` and `STATICCALL` opcodes only pop 6 words from stack `gas`, `callee_address`, `call_data_offset`, `call_data_length`, `return_data_offset` and `return_data_length` (except the third popped word `value` for both `CALL` and `CALLCODE` opcodes).
+There should be no `transfer` invocation for `CALLCODE`, `DELEGATECALL`and `STATICCALL` (except `CALL`).
 
 Before switching call context to the new one, it does several things:
 
@@ -34,7 +35,7 @@ Before switching call context to the new one, it does several things:
 3. Calculate `gas_cost` and check `gas_left` is enough
 4. Calculate `callee_gas_left` for new context by rule in EIP150
 5. Check `depth` is less than `1024`
-6. Check `value` could be transfer (zero for both `DELEGATECALL` and `STATICCALL` opcodes)
+6. Check `value` could be transferred (only for `CALL` and `CALLCODE` opcodes)
 
 The memory size is calculated as follows:
 
@@ -84,7 +85,7 @@ callee_gas_left := min(gas_available - floor(gas_available / 64), gas)
 
 After switching call context, it does:
 
-1. Transfer `value` (zero for both `DELEGATECALL` and `STATICCALL` opcodes)
+1. Transfer `value` (only for `CALL` opcode)
 2. Execution
    1. If `callee_address` is a precompiled, it runs the pre-defined handler
    2. Otherwise, it takes callee's code for execution
