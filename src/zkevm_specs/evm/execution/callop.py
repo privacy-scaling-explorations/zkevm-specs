@@ -169,7 +169,7 @@ def callop(instruction: Instruction):
 
         # For CALL opcode, it has an extra stack pop `value` and two account write for `transfer` call (+3).
         # For CALLCODE opcode, it has an extra stack pop `value` and one account read for callee balance (+2).
-        # For DELEGATECALL opcode, has two extra call context lookups for current caller address and value (+2).
+        # For DELEGATECALL opcode, has two extra call context lookups for current caller address and value, and one account read for callee balance (+3).
         # For STATICCALL opcode, it has one account read for callee balance (+1).
         rw_counter_delta = 21 + is_call * 3 + is_callcode * 2 + is_delegatecall * 3 + is_staticcall
         stack_pointer_delta = 5 + is_call + is_callcode
