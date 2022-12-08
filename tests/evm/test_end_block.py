@@ -54,19 +54,19 @@ def test_end_block(is_last_step: bool, empty_block: bool, max_txs: int):
                 )
             )
             # append receipt
-            # rw_rows.append(
-            #     RWTableRow(
-            #         FQ(23),
-            #         FQ(RW.Read),
-            #         FQ(RWTableTag.TxReceipt),
-            #         FQ(0),
-            #         FQ(TxReceiptFieldTag.PostStateOrStatus),
-            #         value=FQ(0),
-            #     )
-            # )
             rw_rows.append(
                 RWTableRow(
                     FQ(23),
+                    FQ(RW.Read),
+                    FQ(RWTableTag.TxReceipt),
+                    FQ(0),
+                    FQ(TxReceiptFieldTag.PostStateOrStatus),
+                    value=FQ(0),
+                )
+            )
+            rw_rows.append(
+                RWTableRow(
+                    FQ(24),
                     FQ(RW.Read),
                     key0=FQ(RWTableTag.TxReceipt),
                     key1=FQ(tx.id),
@@ -76,21 +76,9 @@ def test_end_block(is_last_step: bool, empty_block: bool, max_txs: int):
                     value=FQ(0),
                 )
             )
-            # rw_rows.append(
-            #     RWTableRow(
-            #         FQ(24),
-            #         FQ(RW.Read),
-            #         key0=FQ(RWTableTag.TxReceipt),
-            #         key1=tx.id,
-            #         key2=FQ(0),
-            #         key3=FQ(TxReceiptFieldTag.CumulativeGasUsed),
-            #         key4=FQ(0),
-            #         value=FQ(0),
-            #     )
-            # )
             rw_rows.append(
                 RWTableRow(
-                    FQ(24),
+                    FQ(25),
                     FQ(RW.Read),
                     FQ(RWTableTag.TxReceipt),
                     FQ(0),

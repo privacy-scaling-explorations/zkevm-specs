@@ -1,6 +1,12 @@
 from ...util import FQ, N_BYTES_GAS
 from ..instruction import Instruction, Transition
-from ..table import CallContextFieldTag, TxTableRow, TxContextFieldTag, BlockContextFieldTag, TxReceiptFieldTag
+from ..table import (
+    CallContextFieldTag,
+    TxTableRow,
+    TxContextFieldTag,
+    BlockContextFieldTag,
+    TxReceiptFieldTag,
+)
 from typing import Set
 
 # EndBlock is an execution state that constraints the following:
@@ -78,10 +84,12 @@ def end_block(instruction: Instruction):
             # 4. Verify that CumulativeGasUsed does not exceed the block gas limit.
             gas_limit = instruction.block_context_lookup(BlockContextFieldTag.GasLimit)
             cumulative_gas = instruction.tx_receipt_read(
-                    total_txs,
-                    TxReceiptFieldTag.CumulativeGasUsed
-                    )
-            limit_exceeded, _ = instruction.compare( gas_limit, cumulative_gas, N_BYTES_GAS )
+                total_txs,
+                TxReceiptFieldTag.CumulativeGasUsed,
+                # +1 to rw_counter to skip lookup to PostStateOrStatus
+                instruction.curr.rw_counter + instruction.rw_counter_offset + 1,
+            )
+            limit_exceeded, _ = instruction.compare(gas_limit, cumulative_gas, N_BYTES_GAS)
             instruction.constrain_equal(limit_exceeded, FQ(0))
 
         # 2. If total_txs == max_txs, we know we have covered all txs from the tx_table.
