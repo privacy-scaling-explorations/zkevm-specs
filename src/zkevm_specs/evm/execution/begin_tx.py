@@ -54,12 +54,7 @@ def begin_tx(instruction: Instruction):
 
     # check instrinsic gas
     gas_not_enough = int(tx_gas.expr()) < int(tx_intrinsic_gas)
-
-    if not gas_not_enough:
-        gas_left = tx_gas.expr() - tx_intrinsic_gas
-        instruction.constrain_gas_left_not_underflow(gas_left)
-    else:
-        gas_left = tx_gas.expr()
+    gas_left = tx_gas.expr() if gas_not_enough else tx_gas.expr() - tx_intrinsic_gas
 
     # Prepare access list of caller and callee
     instruction.constrain_zero(instruction.add_account_to_access_list(tx_id, tx_caller_address))
