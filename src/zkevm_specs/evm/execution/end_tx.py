@@ -41,7 +41,7 @@ def end_tx(instruction: Instruction):
 
     # constrain tx status matches with `PostStateOrStatus` of TxReceipt tag in RW
     instruction.constrain_equal(
-        (1 - is_tx_invalid) * is_persistent,
+        (1 - is_tx_invalid.expr()) * is_persistent,
         instruction.tx_receipt_write(tx_id, TxReceiptFieldTag.PostStateOrStatus),
     )
 

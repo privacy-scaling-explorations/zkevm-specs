@@ -31,7 +31,7 @@ def begin_tx(instruction: Instruction):
     is_tx_invalid = instruction.tx_context_lookup(tx_id, TxContextFieldTag.TxInvalid)
     tx_nonce = instruction.tx_context_lookup(tx_id, TxContextFieldTag.Nonce)
     nonce, nonce_prev = instruction.account_write(tx_caller_address, AccountFieldTag.Nonce)
-    is_nonce_valid = instruction.is_zero(tx_nonce - nonce_prev)
+    is_nonce_valid = instruction.is_zero(tx_nonce.expr() - nonce_prev)
     instruction.constrain_equal(nonce, nonce_prev.expr() + 1 - is_tx_invalid)
 
     # TODO: Implement EIP 1559 (currently it supports legacy transaction format)
@@ -50,7 +50,7 @@ def begin_tx(instruction: Instruction):
     tx_cost_gas = GAS_COST_CREATION_TX if tx_is_create == 1 else GAS_COST_TX
     # TODO: Handle gas cost of tx level access list (EIP 2930)
     tx_accesslist_gas = instruction.tx_context_lookup(tx_id, TxContextFieldTag.AccessListGasCost)
-    tx_intrinsic_gas = tx_calldata_gas_cost + tx_cost_gas + tx_accesslist_gas
+    tx_intrinsic_gas = tx_calldata_gas_cost.expr() + tx_cost_gas + tx_accesslist_gas.expr()
 
     # check instrinsic gas
     gas_not_enough = int(tx_gas.expr()) < int(tx_intrinsic_gas)

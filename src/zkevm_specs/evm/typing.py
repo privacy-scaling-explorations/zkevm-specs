@@ -138,7 +138,7 @@ class Transaction:
     value: U256
     call_data: bytes
     invalid_tx: int
-    access_list: List[AccessTuple()]
+    access_list: List[AccessTuple[...]]
 
     def __init__(
         self,
