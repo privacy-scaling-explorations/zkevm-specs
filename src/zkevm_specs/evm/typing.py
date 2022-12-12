@@ -138,7 +138,7 @@ class Transaction:
     value: U256
     call_data: bytes
     invalid_tx: int
-    access_list: List[AccessTuple[...]]
+    access_list: List[AccessTuple]
 
     def __init__(
         self,
@@ -151,7 +151,7 @@ class Transaction:
         value: U256 = U256(0),
         call_data: bytes = bytes(),
         invalid_tx: int = 0,
-        access_list: List[AccessTuple()] = list(),
+        access_list: List[AccessTuple] = list(),
     ) -> None:
         self.id = id
         self.nonce = nonce

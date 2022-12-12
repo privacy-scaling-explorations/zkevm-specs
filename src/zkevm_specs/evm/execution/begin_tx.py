@@ -31,8 +31,8 @@ def begin_tx(instruction: Instruction):
     is_tx_invalid = instruction.tx_context_lookup(tx_id, TxContextFieldTag.TxInvalid)
     tx_nonce = instruction.tx_context_lookup(tx_id, TxContextFieldTag.Nonce)
     nonce, nonce_prev = instruction.account_write(tx_caller_address, AccountFieldTag.Nonce)
-    is_nonce_valid = instruction.is_zero(tx_nonce.expr() - nonce_prev)
-    instruction.constrain_equal(nonce, nonce_prev.expr() + 1 - is_tx_invalid)
+    is_nonce_valid = instruction.is_zero(tx_nonce.expr() - nonce_prev.expr())
+    instruction.constrain_equal(nonce, nonce_prev.expr() + 1 - is_tx_invalid.expr())
 
     # TODO: Implement EIP 1559 (currently it supports legacy transaction format)
     # Calculate gas fee
