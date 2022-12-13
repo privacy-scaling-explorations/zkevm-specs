@@ -23,6 +23,9 @@ from typing import Set
 # As an extra point:
 # D. We need to prove that at least one EndBlock state exists
 #
+# Also:
+# E. We need to prove that CumulativeGasCost does not excee the gas limit
+#
 # We prove (A) by constraining the transition rule that after an EndBlock
 # state, only an EndBlock state can follow.
 #
@@ -45,6 +48,9 @@ from typing import Set
 # EndBlock.  This will require the EndBlock to have height = 1 in the circuit,
 # which can be achieved after reducing the number of cells used in the state
 # selector.
+#
+# We prove (E) by quering the block table for the gas limit and the rw table for
+# the cumulative gas and ensuring CumulativeGasCost <= GasLimit.
 
 # Count the max number of txs that the TxTable can hold by counting rows of
 # type CallerAddress.
@@ -68,10 +74,9 @@ def end_block(instruction: Instruction):
     # Note that rw_counter starts at 1
     is_empty_block = instruction.is_zero(instruction.curr.rw_counter - 1)
     # If the block is not empty, we will do 1 call_context lookup
-    total_rws = (1 - is_empty_block) * (instruction.curr.rw_counter - 1 + 1)
+    total_rws = (1 - is_empty_block) * (instruction.curr.rw_counter - 1 + 4)
 
     if instruction.is_last_step:
-        # tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
         # 1. Constraint total_txs witness values depending on the empty block case.
         if is_empty_block == FQ(1):
             # 1a. total_txs is 0 in empty block
@@ -112,7 +117,7 @@ def end_block(instruction: Instruction):
         # rw_table to ensure there is no malicious insertion.
         # Verify that there are at most total_rws meaningful entries in the rw_table
         instruction.rw_table_start_lookup(FQ(1))
-        # instruction.rw_table_start_lookup(max_rws - total_rws)
+        instruction.rw_table_start_lookup(max_rws - total_rws)
         # Since every lookup done in the EVM circuit must succeed and uses a unique
         # rw_counter, we know that at least there are total_rws meaningful entries
         # in the rw_table.
