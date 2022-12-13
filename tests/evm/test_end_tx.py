@@ -26,6 +26,7 @@ TESTING_DATA = (
         4800,
         False,
         0,
+        True,
     ),
     # Tx with capped refund
     (
@@ -36,6 +37,7 @@ TESTING_DATA = (
         38400,
         False,
         100,
+        True,
     ),
     # Last tx
     (
@@ -44,17 +46,23 @@ TESTING_DATA = (
         ),
         0,  # gas_left
         0,  # refund
-        True,
+        True,  # is_last_tx
         20000,  # current_cumulative_gas_used
+        True,  # success
     ),
 )
 
 
 @pytest.mark.parametrize(
-    "tx, gas_left, refund, is_last_tx, current_cumulative_gas_used", TESTING_DATA
+    "tx, gas_left, refund, is_last_tx, current_cumulative_gas_used, success", TESTING_DATA
 )
 def test_end_tx(
-    tx: Transaction, gas_left: int, refund: int, is_last_tx: bool, current_cumulative_gas_used: int
+    tx: Transaction,
+    gas_left: int,
+    refund: int,
+    is_last_tx: bool,
+    current_cumulative_gas_used: int,
+    success: bool,
 ):
     randomness = rand_fq()
 
@@ -127,4 +135,5 @@ def test_end_tx(
                 call_id=1 if is_last_tx else 0,
             ),
         ],
+        success=success,
     )
