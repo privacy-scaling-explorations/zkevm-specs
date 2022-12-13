@@ -22,6 +22,7 @@ from .calldatacopy import *
 from .calldataload import *
 from .codecopy import *
 from .codesize import *
+from .comparator import *
 from .exp import *
 from .gas import *
 from .iszero import *
@@ -78,6 +79,7 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.PUSH: push,
     ExecutionState.RETURNDATASIZE: returndatasize,
     ExecutionState.RETURNDATACOPY: returndatacopy,
+    ExecutionState.CMP: cmp,
     ExecutionState.SCMP: scmp,
     ExecutionState.GAS: gas,
     ExecutionState.SHA3: sha3,
