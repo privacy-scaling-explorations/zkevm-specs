@@ -17,21 +17,27 @@ def verify_steps(
     steps: List[StepState],
     begin_with_first_step: bool = False,
     end_with_last_step: bool = False,
+    success: bool = True,
 ):
     if end_with_last_step:
         steps.append(DUMMY_STEP_STATE)
 
+    ok = True
     for idx, (curr, next) in enumerate(zip(steps, steps[1:])):
-        verify_step(
-            Instruction(
-                randomness=randomness,
-                tables=tables,
-                curr=curr,
-                next=next,
-                is_first_step=begin_with_first_step and idx == 0,
-                is_last_step=end_with_last_step and idx == len(steps) - 2,
+        try:
+            verify_step(
+                Instruction(
+                    randomness=randomness,
+                    tables=tables,
+                    curr=curr,
+                    next=next,
+                    is_first_step=begin_with_first_step and idx == 0,
+                    is_last_step=end_with_last_step and idx == len(steps) - 2,
+                )
             )
-        )
+        except AssertionError as e:
+            ok = False
+    assert ok == success
 
 
 def verify_step(instruction: Instruction):
