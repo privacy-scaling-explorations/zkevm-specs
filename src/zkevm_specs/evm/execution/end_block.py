@@ -74,7 +74,7 @@ def end_block(instruction: Instruction):
     # Note that rw_counter starts at 1
     is_empty_block = instruction.is_zero(instruction.curr.rw_counter - 1)
     # If the block is not empty, we will do 1 call_context lookup
-    total_rws = (1 - is_empty_block) * (instruction.curr.rw_counter - 1 + 4)
+    total_rws = (1 - is_empty_block) * (instruction.curr.rw_counter - 1 + 2)
 
     if instruction.is_last_step:
         # 1. Constraint total_txs witness values depending on the empty block case.
@@ -91,8 +91,6 @@ def end_block(instruction: Instruction):
             cumulative_gas = instruction.tx_receipt_read(
                 total_txs,
                 TxReceiptFieldTag.CumulativeGasUsed,
-                # +1 to rw_counter to skip lookup to PostStateOrStatus
-                instruction.curr.rw_counter + instruction.rw_counter_offset + 1,
             )
             limit_exceeded, _ = instruction.compare(gas_limit, cumulative_gas, N_BYTES_GAS)
             instruction.constrain_equal(limit_exceeded, FQ(0))

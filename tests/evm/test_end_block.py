@@ -59,20 +59,10 @@ def test_end_block(
                     value=FQ(tx.id),
                 )
             )
-            # append receipt
+            # append CumlativeGasUsed
             rw_rows.append(
                 RWTableRow(
                     FQ(23),
-                    FQ(RW.Read),
-                    FQ(RWTableTag.TxReceipt),
-                    FQ(0),
-                    FQ(TxReceiptFieldTag.PostStateOrStatus),
-                    value=FQ(0),
-                )
-            )
-            rw_rows.append(
-                RWTableRow(
-                    FQ(24),
                     FQ(RW.Read),
                     key0=FQ(RWTableTag.TxReceipt),
                     key1=FQ(tx.id),
@@ -80,16 +70,6 @@ def test_end_block(
                     key3=FQ(TxReceiptFieldTag.CumulativeGasUsed),
                     key4=FQ(0),
                     value=FQ(cumulative_gas),
-                )
-            )
-            rw_rows.append(
-                RWTableRow(
-                    FQ(25),
-                    FQ(RW.Read),
-                    FQ(RWTableTag.TxReceipt),
-                    FQ(0),
-                    FQ(TxReceiptFieldTag.LogLength),
-                    value=FQ(0),
                 )
             )
 
