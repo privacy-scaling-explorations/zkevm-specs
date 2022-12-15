@@ -642,6 +642,7 @@ class Instruction:
         self,
         tx_id: Expression,
         field_tag: TxReceiptFieldTag,
+        rw_counter: Optional[Expression] = None,
     ) -> Expression:
         value = self.rw_lookup(
             RW.Read,
@@ -650,6 +651,7 @@ class Instruction:
             key2=FQ(0),
             key3=FQ(field_tag),
             key4=FQ(0),
+            rw_counter=rw_counter,
         ).value
         return value
 
