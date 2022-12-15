@@ -1,0 +1,2 @@
+def dataCopy():
+    raise NotImplementedError

@@ -78,7 +78,7 @@ class ExecutionState(IntEnum):
     REVERT = auto()
     SELFDESTRUCT = auto()
 
-    # Error cases
+    # Opcode's error cases
     ErrorInvalidOpcode = auto()
     # For opcodes which triggers stackoverflow by doing push more than pop,
     # or stackunderflow by doing pop and DUP, SWAP which peek deeper element directly
@@ -125,7 +125,16 @@ class ExecutionState(IntEnum):
     ErrorOutOfGasSTATICCALL = auto()
     ErrorOutOfGasSELFDESTRUCT = auto()
 
-    # TODO: Precompile success and error cases
+    # Precompile's successful cases
+    ECRECOVER = auto()
+    SHA256 = auto()
+    RIPEMD160 = auto()
+    DATA_COPY = auto()
+    BIG_MOD_EXP = auto()
+    BN254_ADD = auto()
+    BN254_SCALAR_MUL = auto()
+    BN254_PAIRING = auto()
+    BLAKE2F = auto()
 
     def expr(self) -> FQ:
         return FQ(self)
@@ -342,6 +351,24 @@ class ExecutionState(IntEnum):
             return [Opcode.REVERT]
         elif self == ExecutionState.SELFDESTRUCT:
             return [Opcode.SELFDESTRUCT]
+        elif self == ExecutionState.ECRECOVER:
+            return [Opcode.ECRECOVER]
+        elif self == ExecutionState.SHA256:
+            return [Opcode.SHA256]
+        elif self == ExecutionState.RIPEMD160:
+            return [Opcode.RIPEMD160]
+        elif self == ExecutionState.DATA_COPY:
+            return [Opcode.DATA_COPY]
+        elif self == ExecutionState.BIG_MOD_EXP:
+            return [Opcode.BIG_MOD_EXP]
+        elif self == ExecutionState.BN254_ADD:
+            return [Opcode.BN254_ADD]
+        elif self == ExecutionState.BN254_SCALAR_MUL:
+            return [Opcode.BN254_SCALAR_MUL]
+        elif self == ExecutionState.BN254_PAIRING:
+            return [Opcode.BN254_PAIRING]
+        elif self == ExecutionState.BLAKE2F:
+            return [Opcode.BLAKE2F]
         elif self == ExecutionState.ErrorInvalidOpcode:
             return invalid_opcodes()
         elif self == ExecutionState.ErrorStack:

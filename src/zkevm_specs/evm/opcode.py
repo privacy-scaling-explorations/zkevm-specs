@@ -149,6 +149,17 @@ class Opcode(IntEnum):
     REVERT = 0xFD
     SELFDESTRUCT = 0xFF
 
+    # precompile
+    ECRECOVER = 0x101
+    SHA256 = 0x102
+    RIPEMD160 = 0x103
+    DATA_COPY = 0x104
+    BIG_MOD_EXP = 0x105
+    BN254_ADD = 0x106
+    BN254_SCALAR_MUL = 0x107
+    BN254_PAIRING = 0x108
+    BLAKE2F = 0x109
+
     def expr(self) -> FQ:
         return FQ(self)
 
@@ -347,6 +358,15 @@ OPCODE_INFO_MAP: Final[Dict[Opcode, OpcodeInfo]] = dict(
         Opcode.STATICCALL: OpcodeInfo(-5, 1018, GAS_COST_WARM_ACCESS, True),
         Opcode.REVERT: OpcodeInfo(-2, 1022, GAS_COST_ZERO, True),
         Opcode.SELFDESTRUCT: OpcodeInfo(-1, 1023, GAS_COST_SELF_DESTRUCT, True),
+        Opcode.ECRECOVER: OpcodeInfo(0, 1024, EcrecoverGas, True),
+        Opcode.SHA256: OpcodeInfo(0, 1024, Sha256BaseGas, True),
+        Opcode.RIPEMD160: OpcodeInfo(0, 1024, Ripemd160BaseGas, True),
+        Opcode.DATA_COPY: OpcodeInfo(0, 1024, IdentityBaseGas, True),
+        Opcode.BIG_MOD_EXP: OpcodeInfo(0, 1024, DummyBigModExp, True),
+        Opcode.BN254_ADD: OpcodeInfo(0, 1024, DummyBn254Add, True),
+        Opcode.BN254_SCALAR_MUL: OpcodeInfo(0, 1024, DummyBn254ScalarMul, True),
+        Opcode.BN254_PAIRING: OpcodeInfo(0, 1024, DummyBn254Pairing, True),
+        Opcode.BLAKE2F: OpcodeInfo(0, 1024, DummyBlake2f, True),
     }
 )
 

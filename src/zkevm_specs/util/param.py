@@ -102,3 +102,64 @@ MAX_COPY_BYTES = 32
 PUBLIC_INPUTS_BLOCK_LEN = 7 + 256  # Length of block public data
 PUBLIC_INPUTS_EXTRA_LEN = 3  # Length of fields that don't belong to any table
 PUBLIC_INPUTS_TX_LEN = 10  # Length of tx public data (without calldata)
+
+
+# Precompiled contract gas prices
+
+# Elliptic curve sender recovery gas price
+EcrecoverGas = 3000
+# Base price for a SHA256 operation
+Sha256BaseGas = 60
+# Per-word price for a SHA256 operation
+Sha256PerWordGas = 12
+# Base price for a RIPEMD160 operation
+Ripemd160BaseGas = 600
+# Per-word price for a RIPEMD160 operation
+Ripemd160PerWordGas = 120
+# Base price for a data copy operation
+IdentityBaseGas = 15
+# Per-work price for a data copy operation
+IdentityPerWordGas = 3
+
+# Byzantium gas needed for an elliptic curve addition
+Bn256AddGasByzantium = 500
+# Gas needed for an elliptic curve addition
+Bn256AddGasIstanbul = 150
+# Byzantium gas needed for an elliptic curve scalar multiplication
+Bn256ScalarMulGasByzantium = 40000
+# Gas needed for an elliptic curve scalar multiplication
+Bn256ScalarMulGasIstanbul = 6000
+# Byzantium base price for an elliptic curve pairing check
+Bn256PairingBaseGasByzantium = 100000
+# Base price for an elliptic curve pairing check
+Bn256PairingBaseGasIstanbul = 45000
+# Byzantium per-point price for an elliptic curve pairing check
+Bn256PairingPerPointGasByzantium = 80000
+# Per-point price for an elliptic curve pairing check
+Bn256PairingPerPointGasIstanbul = 34000
+
+# Price for BLS12-381 elliptic curve G1 point addition
+Bls12381G1AddGas = 600
+# Price for BLS12-381 elliptic curve G1 point scalar multiplication
+Bls12381G1MulGas = 12000
+# Price for BLS12-381 elliptic curve G2 point addition
+Bls12381G2AddGas = 4500
+# Price for BLS12-381 elliptic curve G2 point scalar multiplication
+Bls12381G2MulGas = 55000
+# Base gas price for BLS12-381 elliptic curve pairing check
+Bls12381PairingBaseGas = 115000
+# Per-point pair gas price for BLS12-381 elliptic curve pairing check
+Bls12381PairingPerPairGas = 23000
+# Gas price for BLS12-381 mapping field element to G1 operation
+Bls12381MapG1Gas = 5500
+# Gas price for BLS12-381 mapping field element to G2 operation
+Bls12381MapG2Gas = 110000
+
+# The way to calculate gas is complicated so this is temporary gas cost
+# It will be supported after a while
+# Todo: correct the way to calculate gas
+DummyBigModExp = 200
+DummyBn254Add = 150
+DummyBn254ScalarMul = 6000
+DummyBn254Pairing = 45000
+DummyBlake2f = 0
