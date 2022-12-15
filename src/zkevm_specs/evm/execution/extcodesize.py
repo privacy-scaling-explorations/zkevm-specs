@@ -27,7 +27,6 @@ def extcodesize(instruction: Instruction):
         code_size = instruction.bytecode_length(code_hash)
     else:  # exists == 0
         instruction.account_read(address, AccountFieldTag.NonExisting)
-        code_size = RLC(0)
 
     instruction.constrain_equal(
         instruction.select(exists, code_size, FQ(0)),
