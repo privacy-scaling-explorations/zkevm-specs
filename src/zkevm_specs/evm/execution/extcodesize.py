@@ -39,4 +39,5 @@ def extcodesize(instruction: Instruction):
         program_counter=Transition.delta(1),
         stack_pointer=Transition.same(),
         dynamic_gas_cost=instruction.select(is_warm, FQ(0), FQ(EXTRA_GAS_COST_ACCOUNT_COLD_ACCESS)),
+        reversible_write_counter=Transition.delta(1),
     )
