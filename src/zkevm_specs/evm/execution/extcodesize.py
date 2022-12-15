@@ -3,7 +3,6 @@ from ...util import (
     FQ,
     N_BYTES_ACCOUNT_ADDRESS,
     N_BYTES_U64,
-    RLC,
 )
 from ..instruction import Instruction, Transition
 from ..opcode import Opcode
