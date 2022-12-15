@@ -6,13 +6,13 @@ from ..opcode import Opcode
 def cmp(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
 
-    is_eq, is_gt = instruction.pair_select(opcode, Opcode.EQ, Opcode.GT)
+    is_eq = instruction.is_equal(opcode, Opcode.EQ)
+    is_gt = instruction.is_equal(opcode, Opcode.GT)
 
     a = instruction.stack_pop()
     b = instruction.stack_pop()
     c = instruction.stack_push()
 
-    print("limbs", a, b, c)
     # swap a and b if the opcode is GT
     (aa, bb) = (b, a) if is_gt == 1 else (a, b)
 
@@ -25,7 +25,6 @@ def cmp(instruction: Instruction):
     a_hi = instruction.bytes_to_fq(a8s[16:])
     b_lo = instruction.bytes_to_fq(b8s[:16])
     b_hi = instruction.bytes_to_fq(b8s[16:])
-    cc = instruction.bytes_to_fq(c8s[:31])
 
     # `a[0..16] <= b[0..16]`
     lt_lo, eq_lo = instruction.compare(a_lo, b_lo, 16)
@@ -39,7 +38,7 @@ def cmp(instruction: Instruction):
     result = eq if is_eq == 1 else lt
 
     instruction.constrain_equal(
-        cc,
+        c,
         FQ(result),
     )
 
