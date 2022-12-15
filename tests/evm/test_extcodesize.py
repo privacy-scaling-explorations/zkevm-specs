@@ -116,6 +116,7 @@ def test_extcodesize(address: U160, code: bytes, exists: int, is_warm: bool, is_
                 stack_pointer=1023,
                 gas_left=GAS_COST_WARM_ACCESS + (not is_warm) * EXTRA_GAS_COST_ACCOUNT_COLD_ACCESS,
                 aux_data=exists,
+                reversible_write_counter=reversible_write_counter,
             ),
             StepState(
                 execution_state=ExecutionState.STOP if is_persistent else ExecutionState.REVERT,
@@ -127,6 +128,7 @@ def test_extcodesize(address: U160, code: bytes, exists: int, is_warm: bool, is_
                 program_counter=1,
                 stack_pointer=1023,
                 gas_left=0,
+                reversible_write_counter=reversible_write_counter + 1,
             ),
         ],
     )
