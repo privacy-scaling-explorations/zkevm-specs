@@ -54,7 +54,7 @@ All byte data is accumulated per byte (with one byte per row) into `value_rlc` a
 ```
 first_bytecode.value_rlc := firstbytecode.value
 
-next.value_rlc := curr.value_rlc * r + next.value
+next.value_rlc := cur.value_rlc * r + next.value
 ```
 
 For detecting which byte is code and which byte is push data the [Push table](#push-table) is used. This table allows finding out how many bytes an opcode pushes. This is used to set `push_data_left` (`push_data_size + 1`) if and only if the current byte is code (the first byte in any bytecode is code).
@@ -63,91 +63,91 @@ If a row contains a non-zero value for `push_data_left` on its previous row we k
 
 ```
 first_bytecode.is_code := 1
-curr.is_code := curr.push_data_left == 0
-next.push_data_left := curr.byte_push_size if curr.is_code else curr.push_data_left - 1
+cur.is_code := cur.push_data_left == 0
+next.push_data_left := cur.byte_push_size if cur.is_code else cur.push_data_left - 1
 ```
 
 The fixed columns `q_first` and `q_last` should be zero for all rows, except the first one where `q_first := 1` and the last one where `q_last:=1`.
 
 ## Circuit constrains
 
-All circuit constrains are based on the current row (`curr`) and the `next` row.
+All circuit constrains are based on the current row (`cur`) and the `next` row.
 
-First of all if `curr.q_first` or `curr.q_last` are `1`, then `curr.tag == Header`.
+First of all if `cur.q_first` or `cur.q_last` are `1`, then `cur.tag == Header`.
 
-We should have the following contrains based on `curr.tag` and `next.tag` (state transition), for all rows except the last one (`curr.q_last == 1`).
+We should have the following contrains based on `cur.tag` and `next.tag` (state transition), for all rows except the last one (`cur.q_last == 1`).
 
-To enable lookup all `curr.tag == Header` rows should have:
-
-```
-assert curr.index == 0
-assert curr.value == curr.length
-```
-
-Also, each `curr.tag == Byte` should have:
+To enable lookup all `cur.tag == Header` rows should have:
 
 ```
-assert push_data_size_table_lookup(curr.value, curr.push_data_size)
-assert curr.is_code == (curr.push_data_left == 0)
-if curr.is_code:
-    assert next.push_data_left == curr.push_data_size
+assert cur.index == 0
+assert cur.value == cur.length
+```
+
+Also, each `cur.tag == Byte` should have:
+
+```
+assert push_data_size_table_lookup(cur.value, cur.push_data_size)
+assert cur.is_code == (cur.push_data_left == 0)
+if cur.is_code:
+    assert next.push_data_left == cur.push_data_size
 else:
-    assert next.push_data_left == curr.push_data_left - 1
+    assert next.push_data_left == cur.push_data_left - 1
 ```
 
 This way we make sure is_code and next.push_data_left has the right values.
 
-### curr.tag == Header and next.tag == Header
+### cur.tag == Header and next.tag == Header
 
 We are in a transition from a empty bytecode to the begining of another bytecode that could be empty or not.
 
 Hence:
 ```
-assert curr.length == 0
-assert curr.hash == EMPTY_HASH
+assert cur.length == 0
+assert cur.hash == EMPTY_HASH
 ```
 
-### curr.tag == Header and next.tag == Byte
+### cur.tag == Header and next.tag == Byte
 
 We are at the begining of a non-empty bytecode.
 
 Hence:
 
 ```
-assert next.length == curr.length
+assert next.length == cur.length
 assert next.index == 0
 assert next.is_code == 1
-assert next.hash == curr.hash
+assert next.hash == cur.hash
 assert next.value_rlc == next.value
 ```
 
-### curr.tag == Bytecode and next.tag == Byte
+### cur.tag == Bytecode and next.tag == Byte
 
 We are working on an actual bytecode byte that is not the last one.
 
 Hence:
 
 ```
-assert next.length == curr.length
-assert next.index == curr.index + 1
-assert next.hash == curr.hash
-assert next.value_rlc == curr.value_rlc * randomness + next.value
+assert next.length == cur.length
+assert next.index == cur.index + 1
+assert next.hash == cur.hash
+assert next.value_rlc == cur.value_rlc * randomness + next.value
 ```
 
 We make sure that `index` is incremented and `value_rlc` is accumulated.
 
-### curr.tag == Bytecode and next.tag == Header
+### cur.tag == Bytecode and next.tag == Header
 
 We are at the last byte of a bytecode.
 
 Hence:
 
 ```
-assert curr.index + 1 == curr.length
-assert keccak256_table_lookup(curr.hash, curr.length, curr.value_rlc)
+assert cur.index + 1 == cur.length
+assert keccak256_table_lookup(cur.hash, cur.length, cur.value_rlc)
 ```
 
-First, we make sure that the bytecode has `curr.length` bytes in the table.
+First, we make sure that the bytecode has `cur.length` bytes in the table.
 
 Second, we ensure that the byte data passed into the circuit matches the data the prover gave as input (all the byte data is accumulated into `value_rlc`). This has the consequence that the circuit _requires_ the full bytecode to be a part of its state, otherwise the prover could pass in invalid byte data for the specified hash.
 
