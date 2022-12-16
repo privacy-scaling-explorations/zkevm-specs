@@ -150,15 +150,16 @@ class Opcode(IntEnum):
     SELFDESTRUCT = 0xFF
 
     # precompile
-    ECRECOVER = 0x101
-    SHA256 = 0x102
-    RIPEMD160 = 0x103
-    DATA_COPY = 0x104
-    BIG_MOD_EXP = 0x105
-    BN254_ADD = 0x106
-    BN254_SCALAR_MUL = 0x107
-    BN254_PAIRING = 0x108
-    BLAKE2F = 0x109
+    # Todo: id is wrong
+    ECRECOVER = 0xB1
+    SHA256 = 0xB2
+    RIPEMD160 = 0xB3
+    DATACOPY = 0xB4
+    BIGMODEXP = 0xB5
+    BN254ADD = 0xB6
+    BN254SCALARMUL = 0xB7
+    BN254PAIRING = 0xB8
+    BLAKE2F = 0xB9
 
     def expr(self) -> FQ:
         return FQ(self)
@@ -361,11 +362,11 @@ OPCODE_INFO_MAP: Final[Dict[Opcode, OpcodeInfo]] = dict(
         Opcode.ECRECOVER: OpcodeInfo(0, 1024, EcrecoverGas, True),
         Opcode.SHA256: OpcodeInfo(0, 1024, Sha256BaseGas, True),
         Opcode.RIPEMD160: OpcodeInfo(0, 1024, Ripemd160BaseGas, True),
-        Opcode.DATA_COPY: OpcodeInfo(0, 1024, IdentityBaseGas, True),
-        Opcode.BIG_MOD_EXP: OpcodeInfo(0, 1024, DummyBigModExp, True),
-        Opcode.BN254_ADD: OpcodeInfo(0, 1024, DummyBn254Add, True),
-        Opcode.BN254_SCALAR_MUL: OpcodeInfo(0, 1024, DummyBn254ScalarMul, True),
-        Opcode.BN254_PAIRING: OpcodeInfo(0, 1024, DummyBn254Pairing, True),
+        Opcode.DATACOPY: OpcodeInfo(0, 1024, IdentityBaseGas, True),
+        Opcode.BIGMODEXP: OpcodeInfo(0, 1024, DummyBigModExp, True),
+        Opcode.BN254ADD: OpcodeInfo(0, 1024, DummyBn254Add, True),
+        Opcode.BN254SCALARMUL: OpcodeInfo(0, 1024, DummyBn254ScalarMul, True),
+        Opcode.BN254PAIRING: OpcodeInfo(0, 1024, DummyBn254Pairing, True),
         Opcode.BLAKE2F: OpcodeInfo(0, 1024, DummyBlake2f, True),
     }
 )

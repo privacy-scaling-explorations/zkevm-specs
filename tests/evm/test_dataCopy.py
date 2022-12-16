@@ -1,117 +1,146 @@
+import math
 import pytest
-from collections import namedtuple
+from itertools import chain
+from typing import Mapping, Sequence, Tuple
+
 from zkevm_specs.evm import (
-    Account,
     AccountFieldTag,
-    Block,
     Bytecode,
     CallContextFieldTag,
     ExecutionState,
     Opcode,
+    RW,
     RWDictionary,
+    RWTableTag,
     StepState,
     Tables,
     verify_steps,
+    CopyCircuit,
+    CopyDataTypeTag,
 )
+from zkevm_specs.copy_circuit import verify_copy_table
 from zkevm_specs.util import (
-    EMPTY_CODE_HASH,
-    GAS_COST_ACCOUNT_COLD_ACCESS,
-    GAS_COST_CALL_WITH_VALUE,
-    GAS_COST_NEW_ACCOUNT,
-    GAS_COST_WARM_ACCESS,
-    GAS_STIPEND_CALL_WITH_VALUE,
-    RLC,
-    U256,
     rand_fq,
+    rand_bytes,
+    memory_word_size,
+    memory_expansion,
+    IdentityPerWordGas,
+    GAS_COST_COPY,
+    MAX_N_BYTES_COPY_TO_MEMORY,
+    MEMORY_EXPANSION_QUAD_DENOMINATOR,
+    MEMORY_EXPANSION_LINEAR_COEFF,
+    RLC,
 )
 
-CallContext = namedtuple(
-    "CallContext",
-    [
-        "rw_counter_end_of_reversion",
-        "is_persistent",
-        "gas_left",
-        "memory_size",
-        "reversible_write_counter",
-    ],
-    defaults=[0, True, 0, 0, 2],
-)
-Stack = namedtuple(
-    "Stack",
-    ["gas", "value", "cd_offset", "cd_length", "rd_offset", "rd_length"],
-    defaults=[0, 0, 0, 0, 0, 0],
-)
-Expected = namedtuple(
-    "Expected",
-    ["caller_gas_left", "callee_gas_left", "next_memory_size"],
-)
-
-CALLER = Account(address=0xFE, balance=int(1e20))
-DATACOPY_PRECOMPILE_ADDRESS = Account(address=0x04)
-PARENT_CALLER = Account(address=0xFD, balance=int(1e20))
-PARENT_VALUE = int(5e18)
-CALL_CONTEXT = CallContext(gas_left=100000, is_persistent=True)
-STACKS = [
-    Stack(),
-    Stack(value=int(1e18)),
-    Stack(gas=100),
-    Stack(gas=100000),
-    Stack(cd_offset=64, cd_length=320, rd_offset=0, rd_length=32),
-    Stack(cd_offset=0, cd_length=32, rd_offset=64, rd_length=320),
-    Stack(cd_offset=0xFFFFFF, cd_length=0, rd_offset=0xFFFFFF, rd_length=0),
-]
-IS_WARM_ACCESS = False
+CALL_ID = 1
+CALLEE_ID = 2
+CALLEE_MEMORY = [0x00] * 32 + [0x11] * 32
 TESTING_DATA = (
-    (
-        Opcode.CALL,
-        CALLER,
-        DATACOPY_PRECOMPILE_ADDRESS,
-        PARENT_CALLER,
-        PARENT_VALUE,
-        CALL_CONTEXT,
-        STACKS,
-        IS_WARM_ACCESS,
-        Expected(
-            caller_gas_left=0,
-            callee_gas_left=1,
-            next_memory_size=5,
-        ),
-    ),
+    # simple cases
+    (0, 32, 0, 32),
 )
 
 
 @pytest.mark.parametrize(
-    "opcode, caller, callee, parent_caller, parent_value, caller_ctx, stack, is_warm_access, expected",
-    TESTING_DATA,
+    "call_data_offset, call_data_length, return_data_offset, return_data_length", TESTING_DATA
 )
 def test_dataCopy(
-    opcode: Opcode,
-    caller: Account,
-    callee: Account,
-    parent_caller: Account,
-    parent_value: int,
-    caller_ctx: CallContext,
-    stack: Stack,
-    is_warm_access: bool,
-    expected: Expected,
+    call_data_offset: int,
+    call_data_length: int,
+    return_data_offset: int,
+    return_data_length: int,
 ):
     randomness = rand_fq()
 
-    is_call = 1 if opcode == Opcode.CALL else 0
+    size = call_data_length
+    call_data_offset_rlc = RLC(call_data_offset, randomness)
+    call_data_length_rlc = RLC(call_data_length, randomness)
+    return_data_offset_rlc = RLC(return_data_offset, randomness)
+    return_data_length_rlc = RLC(return_data_length, randomness)
 
-    value = stack.value if is_call == 1 else 0
+    code = Bytecode().dataCopy().stop()
+    code_hash = RLC(code.hash(), randomness)
 
-    if is_call == 1:
-        caller_bytecode = (
-            Bytecode()
-            .call(
-                stack.gas,
-                callee.address,
-                value,
-                stack.cd_offset,
-                stack.cd_length,
-                stack.rd_offset,
-                stack.rd_length,
-            )
-            .stop()
+    data_word_size = math.ceil((size + 31) / 32)
+    gas = Opcode.DATACOPY.constant_gas_cost() + data_word_size * IdentityPerWordGas
+
+    rw_dictionary = (
+        RWDictionary(1)
+        .call_context_read(CALL_ID, CallContextFieldTag.LastCalleeId, CALLEE_ID)
+        .call_context_read(
+            CALL_ID, CallContextFieldTag.LastCalleeReturnDataLength, return_data_length
         )
+        .call_context_read(
+            CALL_ID, CallContextFieldTag.LastCalleeReturnDataOffset, return_data_offset
+        )
+    )
+
+    # rw counter before memory writes
+    rw_counter_interim = rw_dictionary.rw_counter
+    steps = [
+        StepState(
+            execution_state=ExecutionState.DATA_COPY,
+            rw_counter=1,
+            call_id=CALL_ID,
+            is_root=True,
+            code_hash=code_hash,
+            program_counter=99,
+            stack_pointer=1021,
+            memory_size=size,
+            gas_left=gas,
+        ),
+    ]
+
+    src_data = dict(
+        [
+            (i, CALLEE_MEMORY[i] if i < len(CALLEE_MEMORY) else 0)
+            for i in range(return_data_offset, return_data_offset + return_data_length)
+        ]
+    )
+    copy_circuit = CopyCircuit().copy(
+        randomness,
+        rw_dictionary,
+        CALLEE_ID,
+        CopyDataTypeTag.Memory,
+        CALL_ID,
+        CopyDataTypeTag.Memory,
+        return_data_offset,
+        return_data_offset + size,
+        return_data_offset,
+        size,
+        src_data,
+    )
+
+    # rw counter after memory writes
+    rw_counter_final = rw_dictionary.rw_counter
+    assert rw_counter_final - rw_counter_interim == size * 2  # 1 copy == 1 read & 1 write
+
+    steps.append(
+        StepState(
+            execution_state=ExecutionState.STOP,
+            rw_counter=rw_dictionary.rw_counter,
+            call_id=CALL_ID,
+            is_root=True,
+            code_hash=code_hash,
+            program_counter=100,
+            stack_pointer=1024,
+            memory_size=size,
+            gas_left=0,
+        )
+    )
+
+    tables = Tables(
+        block_table=set(),
+        tx_table=set(),
+        bytecode_table=set(code.table_assignments(randomness)),
+        rw_table=set(rw_dictionary.rws),
+        copy_circuit=copy_circuit.rows,
+    )
+
+    verify_copy_table(copy_circuit, tables, randomness)
+
+    verify_steps(
+        randomness=randomness,
+        tables=tables,
+        steps=steps,
+    )

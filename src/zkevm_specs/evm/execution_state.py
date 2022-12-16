@@ -358,15 +358,15 @@ class ExecutionState(IntEnum):
         elif self == ExecutionState.RIPEMD160:
             return [Opcode.RIPEMD160]
         elif self == ExecutionState.DATA_COPY:
-            return [Opcode.DATA_COPY]
+            return [Opcode.DATACOPY]
         elif self == ExecutionState.BIG_MOD_EXP:
-            return [Opcode.BIG_MOD_EXP]
+            return [Opcode.BIGMODEXP]
         elif self == ExecutionState.BN254_ADD:
-            return [Opcode.BN254_ADD]
+            return [Opcode.BN254ADD]
         elif self == ExecutionState.BN254_SCALAR_MUL:
-            return [Opcode.BN254_SCALAR_MUL]
+            return [Opcode.BN254SCALARMUL]
         elif self == ExecutionState.BN254_PAIRING:
-            return [Opcode.BN254_PAIRING]
+            return [Opcode.BN254PAIRING]
         elif self == ExecutionState.BLAKE2F:
             return [Opcode.BLAKE2F]
         elif self == ExecutionState.ErrorInvalidOpcode:
