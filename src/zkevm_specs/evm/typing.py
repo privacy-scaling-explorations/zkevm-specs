@@ -321,7 +321,7 @@ class Bytecode:
                 if self.idx == 0:
                     self.idx += 1
                     return BytecodeTableRow(
-                        self.hash, FQ(BytecodeFieldTag.Length), FQ(0), FQ(0), FQ(len(self.code))
+                        self.hash, FQ(BytecodeFieldTag.Header), FQ(0), FQ(0), FQ(len(self.code))
                     )
 
                 if self.idx > len(self.code):

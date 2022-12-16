@@ -17,13 +17,15 @@ def verify(k, bytecodes, randomness, success):
     rows = assign_bytecode_circuit(k, bytecodes, randomness)
     try:
         for (idx, row) in enumerate(rows):
-            prev_row = rows[(idx - 1) % len(rows)]
             next_row = rows[(idx + 1) % len(rows)]
-            check_bytecode_row(row, prev_row, next_row, push_table, keccak_table, randomness)
+            check_bytecode_row(row, next_row, push_table, keccak_table, randomness)
             ok = True
     except AssertionError as e:
         if success:
             traceback.print_exc()
+            print(idx)
+            print(row)
+            print(next_row)
         ok = False
     assert ok == success
 
@@ -53,7 +55,7 @@ def test_bytecode_unrolling():
     for i in range(len(rows)):
         rows[i] = BytecodeTableRow(hash.expr(), rows[i][1], rows[i][2], rows[i][3], rows[i][4])
     # Prepend the length of bytecode to rows
-    rows.insert(0, BytecodeTableRow(hash.expr(), BytecodeFieldTag.Length, 0, 0, len(bytecode)))
+    rows.insert(0, BytecodeTableRow(hash.expr(), BytecodeFieldTag.Header, 0, 0, len(bytecode)))
     # Unroll the bytecode
     unrolled = unroll(bytes(bytecode), randomness)
     # Check if the bytecode was unrolled correctly
@@ -69,7 +71,7 @@ def test_bytecode_empty():
 
 def test_bytecode_full():
     bytecodes = [unroll(bytes([7] * (2**k - 1)), randomness)]
-    verify(k, bytecodes, randomness, True)
+    verify(k, bytecodes, randomness, False) # Last row must be tag=Header
 
 
 def test_bytecode_incomplete():
@@ -85,7 +87,7 @@ def test_bytecode_multiple():
         unroll(bytes([Opcode.ADD, Opcode.PUSH32]), randomness),
         unroll(bytes([Opcode.ADD, Opcode.PUSH32, Opcode.ADD]), randomness),
     ]
-    verify(k, bytecodes, randomness, True)
+    verify(k, bytecodes, randomness, False) # Push without data must fail
 
 
 def test_bytecode_invalid_hash_data():
@@ -183,7 +185,7 @@ def test_bytecode_invalid_is_code():
         ),
         randomness,
     )
-    verify(k, [unrolled], randomness, True)
+    verify(k, [unrolled], randomness, False) # Push without data must fail
 
     # The first row, i.e. index == 0 is taken up by the tag Length.
     # Mark the 3rd byte as code (is push data from the first PUSH1)

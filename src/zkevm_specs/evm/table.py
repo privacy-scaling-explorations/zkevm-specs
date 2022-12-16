@@ -164,7 +164,7 @@ class BytecodeFieldTag(IntEnum):
     Tag for BytecodeTable lookup.
     """
 
-    Length = 1
+    Header = 1
     Byte = 2
 
 
