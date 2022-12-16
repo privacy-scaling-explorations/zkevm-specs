@@ -121,7 +121,7 @@ assert next.hash == cur.hash
 assert next.value_rlc == next.value
 ```
 
-### cur.tag == Bytecode and next.tag == Byte
+### cur.tag == Byte and next.tag == Byte
 
 We are working on an actual bytecode byte that is not the last one.
 
