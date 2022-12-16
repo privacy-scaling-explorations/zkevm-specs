@@ -1,8 +1,8 @@
-from typing import Sequence, Union, Tuple, Set, NamedTuple
+from typing import Sequence, Tuple, Set, NamedTuple
 from collections import namedtuple
 from .util import keccak256, EMPTY_HASH, FQ, RLC
 from .evm import get_push_size, BytecodeFieldTag, BytecodeTableRow
-from .encoding import U8, U256, is_circuit_code
+from .encoding import is_circuit_code
 
 # Row in the circuit
 Row = namedtuple(
@@ -13,6 +13,7 @@ Row = namedtuple(
 class UnrolledBytecode(NamedTuple):
     bytes: bytes
     rows: Sequence[BytecodeTableRow]
+
 
 @is_circuit_code
 def check_bytecode_row(
@@ -53,6 +54,7 @@ def check_bytecode_row(
     if cur.q_last == 1:
         assert cur.tag == BytecodeFieldTag.Header
 
+
 @is_circuit_code
 def check_bytecode_row_header_to_byte(cur: Row, next: Row):
     assert next.length == cur.length
@@ -61,10 +63,12 @@ def check_bytecode_row_header_to_byte(cur: Row, next: Row):
     assert next.hash == cur.hash
     assert next.value_rlc == next.value
 
+
 @is_circuit_code
 def check_bytecode_row_header_to_header(cur: Row, randomness: int):
     assert cur.length == 0
     assert cur.hash == RLC(EMPTY_HASH, randomness).expr()
+
 
 @is_circuit_code
 def check_bytecode_row_byte_to_byte(cur: Row, next: Row, r: int):
@@ -73,10 +77,12 @@ def check_bytecode_row_byte_to_byte(cur: Row, next: Row, r: int):
     assert next.hash == cur.hash
     assert next.value_rlc == cur.value_rlc * r + next.value
 
+
 @is_circuit_code
 def check_bytecode_row_byte_to_header(cur: Row, keccak_table: Set[Tuple[int, int, int]]):
     assert cur.index + 1 == cur.length
     assert (cur.value_rlc, cur.length, cur.hash) in keccak_table
+
 
 # Populate the circuit matrix
 def assign_bytecode_circuit(k: int, bytecodes: Sequence[UnrolledBytecode], randomness: int):
@@ -106,14 +112,14 @@ def assign_bytecode_circuit(k: int, bytecodes: Sequence[UnrolledBytecode], rando
                     q_first=offset == 0,
                     q_last=offset == last_row_offset,
                     hash=row.bytecode_hash,
-                    tag= row.field_tag,
-                    index= row.index,
-                    value= row.value,
-                    is_code= row.is_code,
-                    push_data_left= push_data_left,
-                    value_rlc= value_rlc,
+                    tag=row.field_tag,
+                    index=row.index,
+                    value=row.value,
+                    is_code=row.is_code,
+                    push_data_left=push_data_left,
+                    value_rlc=value_rlc,
                     length=len(bytecode.bytes),
-                    push_data_size= push_data_size,
+                    push_data_size=push_data_size,
                 )
             )
 
@@ -126,17 +132,17 @@ def assign_bytecode_circuit(k: int, bytecodes: Sequence[UnrolledBytecode], rando
     for idx in range(offset, 2**k):
         rows.append(
             Row(
-                q_first= idx == 0,
-                q_last= idx == last_row_offset,
-                hash= RLC(EMPTY_HASH, randomness).expr(),
-                tag= BytecodeFieldTag.Header,
-                index= 0,
-                value= 0,
-                is_code= False,
-                push_data_left= 0,
-                value_rlc= 0,
-                length= 0,
-                push_data_size= 0
+                q_first=idx == 0,
+                q_last=idx == last_row_offset,
+                hash=RLC(EMPTY_HASH, randomness).expr(),
+                tag=BytecodeFieldTag.Header,
+                index=0,
+                value=0,
+                is_code=False,
+                push_data_left=0,
+                value_rlc=0,
+                length=0,
+                push_data_size=0,
             )
         )
 
