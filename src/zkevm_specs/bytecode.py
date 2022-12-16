@@ -67,7 +67,7 @@ def check_bytecode_row_header_to_byte(cur: Row, next: Row):
 @is_circuit_code
 def check_bytecode_row_header_to_header(cur: Row, randomness: int):
     assert cur.length == 0
-    assert cur.hash == RLC(EMPTY_HASH, randomness).expr()
+    assert cur.hash == RLC(EMPTY_HASH, FQ(randomness)).expr()
 
 
 @is_circuit_code
@@ -134,7 +134,7 @@ def assign_bytecode_circuit(k: int, bytecodes: Sequence[UnrolledBytecode], rando
             Row(
                 q_first=idx == 0,
                 q_last=idx == last_row_offset,
-                hash=RLC(EMPTY_HASH, randomness).expr(),
+                hash=RLC(EMPTY_HASH, FQ(randomness)).expr(),
                 tag=BytecodeFieldTag.Header,
                 index=0,
                 value=0,
