@@ -23,7 +23,7 @@ The collumn `tag` (advice) makes the circuit behave as a state machine, selectin
 | `push_table.push_size`| Push Table: The number of bytes pushed for this byte as opcode      |
 
 
-After all the bytecodes have been added, the rest of the rows are filled with padding in the form of `tag == Header && length == 0 && value ==0` rows.
+After all the bytecodes have been added, the rest of the rows are filled with padding in the form of `tag == Header && length == 0 && value == 0 && hash == EMPTY_HASH` rows.
 
 Additionally we will need two collumns for IsZeroChip for `length` and `push_data_left`
 
@@ -57,9 +57,9 @@ first_bytecode.value_rlc := firstbytecode.value
 next.value_rlc := cur.value_rlc * r + next.value
 ```
 
-For detecting which byte is code and which byte is push data the [Push table](#push-table) is used. This table allows finding out how many bytes an opcode pushes. This is used to set `push_data_left` (`push_data_size + 1`) if and only if the current byte is code (the first byte in any bytecode is code).
+For detecting which byte is code and which byte is push data the [Push table](#push-table) is used. This table allows finding out how many bytes an opcode pushes. This is used to set `next.push_data_left` if and only if the current byte is code (the first byte in any bytecode is code).
 
-If a row contains a non-zero value for `push_data_left` on its previous row we know the current byte is an opcode:
+If a row contains a non-zero value for `push_data_left` we know the current byte is an opcode:
 
 ```
 first_bytecode.is_code := 1
@@ -67,7 +67,7 @@ cur.is_code := cur.push_data_left == 0
 next.push_data_left := cur.byte_push_size if cur.is_code else cur.push_data_left - 1
 ```
 
-The fixed columns `q_first` and `q_last` should be zero for all rows, except the first one where `q_first := 1` and the last one where `q_last:=1`.
+The fixed columns `q_first` and `q_last` should be zero for all rows, except the first one where `q_first := 1` and the last one where `q_last := 1`.
 
 ## Circuit constrains
 
