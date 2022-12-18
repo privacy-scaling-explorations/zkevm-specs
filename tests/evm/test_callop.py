@@ -74,6 +74,7 @@ def expected(
             return 0
         return (offset + length + 31) // 32
 
+    is_call = 1 if opcode == Opcode.CALL else 0
     # Both CALL and CALLCODE opcodes have argument `value` on stack, but no for
     # DELEGATECALL or STATICCALL.
     has_value = stack.value != 0 if opcode in [Opcode.CALL, Opcode.CALLCODE] else False
@@ -87,7 +88,12 @@ def expected(
     ) // 512 + 3 * (next_memory_size - caller_ctx.memory_size)
     gas_cost = (
         (GAS_COST_WARM_ACCESS if is_warm_access else GAS_COST_ACCOUNT_COLD_ACCESS)
-        + has_value * (GAS_COST_CALL_WITH_VALUE + callee.is_empty() * GAS_COST_NEW_ACCOUNT)
+        + has_value
+        * (
+            GAS_COST_CALL_WITH_VALUE
+            # Only CALL opcode could invoke transfer to make empty account into non-empty.
+            + is_call * callee.is_empty() * GAS_COST_NEW_ACCOUNT
+        )
         + memory_expansion_gas_cost
     )
     gas_available = caller_ctx.gas_left - gas_cost
@@ -186,6 +192,8 @@ def test_callop(
     is_delegatecall = 1 if opcode == Opcode.DELEGATECALL else 0
     is_staticcall = 1 if opcode == Opcode.STATICCALL else 0
 
+    callee_exists = 0 if callee.is_empty() else 1
+
     # Set `is_static == 1` for both DELEGATECALL and STATICCALL opcodes, or when
     # `stack.value == 0` for both CALL and CALLCODE opcodes.
     value = stack.value if is_call + is_callcode == 1 else 0
@@ -268,10 +276,10 @@ def test_callop(
     )
 
     # For CALL opcode, it has an extra stack pop `value` and two account write for `transfer` call (+3).
-    # For CALLCODE opcode, it has an extra stack pop `value` and one account read for callee balance (+2).
-    # For DELEGATECALL opcode, has two extra call context lookups for current caller address and value, and one account read for callee balance (+3).
-    # For STATICCALL opcode, it has one account read for callee balance (+1).
-    call_id = 21 + is_call * 3 + is_callcode * 2 + is_delegatecall * 3 + is_staticcall
+    # For CALLCODE opcode, it has an extra stack pop `value` and one account read for caller balance (+2).
+    # For DELEGATECALL opcode, it has two extra call context lookups for current caller address and value (+2).
+    # No extra lookups for STATICCALL opcode.
+    call_id = 20 + is_call * 3 + is_callcode * 2 + is_delegatecall * 2
     rw_counter = call_id
     next_program_counter = 232 if is_call + is_callcode == 1 else 199
     stack_pointer = 1018 - is_call - is_callcode
@@ -332,16 +340,21 @@ def test_callop(
 
     # fmt: off
     if is_call == 1:
+        # For `transfer` invocation.
         rw_dictionary \
             .account_write(caller.address, AccountFieldTag.Balance, caller_balance, caller_balance_prev, rw_counter_of_reversion=None if callee_is_persistent else callee_rw_counter_end_of_reversion) \
             .account_write(callee.address, AccountFieldTag.Balance, callee_balance, callee_balance_prev, rw_counter_of_reversion=None if callee_is_persistent else callee_rw_counter_end_of_reversion - 1)
+    elif is_callcode == 1:
+        # Get caller balance to constrain it should be greater or equal to stack `value`.
+        rw_dictionary \
+            .account_read(caller.address, AccountFieldTag.Balance, RLC(caller.balance, randomness))
+
+    if callee_exists == 1:
+        rw_dictionary \
+            .account_read(code_address, AccountFieldTag.CodeHash, callee_bytecode_hash)
     else:
         rw_dictionary \
-            .account_read(callee.address, AccountFieldTag.Balance, RLC(callee.balance, randomness))
-
-    rw_dictionary \
-        .account_read(callee.address, AccountFieldTag.Nonce, RLC(callee.nonce, randomness)) \
-        .account_read(code_address, AccountFieldTag.CodeHash, callee_bytecode_hash)
+            .account_read(code_address, AccountFieldTag.NonExisting, RLC(1, randomness))
 
     if is_empty_code_hash:
         rw_dictionary \
@@ -403,6 +416,7 @@ def test_callop(
                 gas_left=caller_ctx.gas_left,
                 memory_size=caller_ctx.memory_size,
                 reversible_write_counter=caller_ctx.reversible_write_counter,
+                aux_data=callee_exists,
             ),
             (
                 StepState(

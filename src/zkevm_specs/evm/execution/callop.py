@@ -109,32 +109,48 @@ def callop(instruction: Instruction):
     instruction.constrain_zero(has_value * is_static)
 
     if is_call == 1:
-        # Verify transfer only for CALL opcode.
-        _, (_, callee_balance) = instruction.transfer(
+        # For CALL opcode, verify transfer, and get caller balance before
+        # transfer to constrain it should be greater or equal to stack `value`.
+        (_, caller_balance), _ = instruction.transfer(
             caller_address, callee_address, value, callee_reversion_info
         )
-    else:
-        # Get callee balance for CALLCODE, DELEGATECALL and STATICCALL opcodes.
-        callee_balance = instruction.account_read(callee_address, AccountFieldTag.Balance)
+    elif is_callcode == 1:
+        # For CALLCODE opcode, get caller balance to constrain it should be
+        # greater or equal to stack `value`.
+        caller_balance = instruction.account_read(caller_address, AccountFieldTag.Balance)
 
-    # Verify gas cost
-    callee_nonce = instruction.account_read(callee_address, AccountFieldTag.Nonce)
-    callee_code_hash = instruction.account_read(code_address, AccountFieldTag.CodeHash)
-    is_empty_code_hash = instruction.is_equal(
-        callee_code_hash, instruction.rlc_encode(EMPTY_CODE_HASH, 32)
-    )
-    # TODO:
-    # Suppose to fix to use non-existing proofs for account existence after it
-    # has been used for one opcode in zkevm-circuit.
-    # https://github.com/privacy-scaling-explorations/zkevm-circuits/pull/907
-    is_account_empty = (
-        instruction.is_zero(callee_nonce) * instruction.is_zero(callee_balance) * is_empty_code_hash
-    )
+    # For both CALL and CALLCODE opcodes, verify caller balance is greater or
+    # equal to stack `value`.
+    if is_call + is_callcode == 1:
+        value_lt_caller_balance, value_eq_caller_balance = instruction.compare_word(
+            value, caller_balance
+        )
+        instruction.constrain_zero(1 - value_lt_caller_balance - value_eq_caller_balance)
+
+    # Load callee account `exists` value from auxilary witness data.
+    callee_exists = instruction.curr.aux_data
+
+    if callee_exists == 1:
+        # Get callee code hash.
+        callee_code_hash = instruction.account_read(code_address, AccountFieldTag.CodeHash)
+        is_empty_code_hash = instruction.is_equal(
+            callee_code_hash, instruction.rlc_encode(EMPTY_CODE_HASH, 32)
+        )
+    else:  # callee_exists == 0
+        instruction.account_read(code_address, AccountFieldTag.NonExisting)
+        is_empty_code_hash = FQ(1)
+
+    # Verify gas cost.
     gas_cost = (
         instruction.select(
             is_warm_access, FQ(GAS_COST_WARM_ACCESS), FQ(GAS_COST_ACCOUNT_COLD_ACCESS)
         )
-        + has_value * (GAS_COST_CALL_WITH_VALUE + is_account_empty * GAS_COST_NEW_ACCOUNT)
+        + has_value
+        * (
+            GAS_COST_CALL_WITH_VALUE
+            # Only CALL opcode could invoke transfer to make empty account into non-empty.
+            + is_call * (1 - callee_exists) * GAS_COST_NEW_ACCOUNT
+        )
         + memory_expansion_gas_cost
     )
 
@@ -168,10 +184,10 @@ def callop(instruction: Instruction):
             )
 
         # For CALL opcode, it has an extra stack pop `value` and two account write for `transfer` call (+3).
-        # For CALLCODE opcode, it has an extra stack pop `value` and one account read for callee balance (+2).
-        # For DELEGATECALL opcode, has two extra call context lookups for current caller address and value, and one account read for callee balance (+3).
-        # For STATICCALL opcode, it has one account read for callee balance (+1).
-        rw_counter_delta = 21 + is_call * 3 + is_callcode * 2 + is_delegatecall * 3 + is_staticcall
+        # For CALLCODE opcode, it has an extra stack pop `value` and one account read for caller balance (+2).
+        # For DELEGATECALL opcode, it has two extra call context lookups for current caller address and value (+2).
+        # No extra lookups for STATICCALL opcode.
+        rw_counter_delta = 20 + is_call * 3 + is_callcode * 2 + is_delegatecall * 2
         stack_pointer_delta = 5 + is_call + is_callcode
 
         instruction.constrain_step_state_transition(
@@ -189,7 +205,7 @@ def callop(instruction: Instruction):
         )
     else:
         # Similar as above comment.
-        rw_counter_delta = 41 + is_call * 3 + is_callcode * 2 + is_delegatecall * 3 + is_staticcall
+        rw_counter_delta = 40 + is_call * 3 + is_callcode * 2 + is_delegatecall * 2
         stack_pointer_delta = 5 + is_call + is_callcode
 
         # Save caller's call state
