@@ -345,7 +345,7 @@ def test_callop(
             .account_write(caller.address, AccountFieldTag.Balance, caller_balance, caller_balance_prev, rw_counter_of_reversion=None if callee_is_persistent else callee_rw_counter_end_of_reversion) \
             .account_write(callee.address, AccountFieldTag.Balance, callee_balance, callee_balance_prev, rw_counter_of_reversion=None if callee_is_persistent else callee_rw_counter_end_of_reversion - 1)
     elif is_callcode == 1:
-        # Get caller balance to constrain it should be greater or equal to stack `value`.
+        # Get caller balance to constrain it should be greater than or equal to stack `value`.
         rw_dictionary \
             .account_read(caller.address, AccountFieldTag.Balance, RLC(caller.balance, randomness))
 

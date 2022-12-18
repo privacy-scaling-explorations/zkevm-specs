@@ -110,17 +110,18 @@ def callop(instruction: Instruction):
 
     if is_call == 1:
         # For CALL opcode, verify transfer, and get caller balance before
-        # transfer to constrain it should be greater or equal to stack `value`.
+        # transfer to constrain it should be greater than or equal to stack
+        # `value`.
         (_, caller_balance), _ = instruction.transfer(
             caller_address, callee_address, value, callee_reversion_info
         )
     elif is_callcode == 1:
         # For CALLCODE opcode, get caller balance to constrain it should be
-        # greater or equal to stack `value`.
+        # greater than or equal to stack `value`.
         caller_balance = instruction.account_read(caller_address, AccountFieldTag.Balance)
 
-    # For both CALL and CALLCODE opcodes, verify caller balance is greater or
-    # equal to stack `value`.
+    # For both CALL and CALLCODE opcodes, verify caller balance is greater than
+    # or equal to stack `value`.
     if is_call + is_callcode == 1:
         value_lt_caller_balance, value_eq_caller_balance = instruction.compare_word(
             value, caller_balance
