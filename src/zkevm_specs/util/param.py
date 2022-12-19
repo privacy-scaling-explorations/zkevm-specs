@@ -157,7 +157,7 @@ Bls12381MapG2Gas = 110000
 
 # The way to calculate gas is complicated so this is temporary gas cost
 # It will be supported after a while
-# Todo: correct the way to calculate gas
+# TODO: correct the way to calculate gas
 DummyBigModExp = 200
 DummyBn254Add = 150
 DummyBn254ScalarMul = 6000

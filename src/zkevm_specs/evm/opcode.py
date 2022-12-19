@@ -150,7 +150,7 @@ class Opcode(IntEnum):
     SELFDESTRUCT = 0xFF
 
     # precompile
-    # Todo: id is wrong
+    # TODO: id is wrong
     ECRECOVER = 0xB1
     SHA256 = 0xB2
     RIPEMD160 = 0xB3
