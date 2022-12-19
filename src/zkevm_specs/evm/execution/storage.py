@@ -6,10 +6,11 @@ from ...util import (
     SSTORE_SET_GAS,
     SSTORE_RESET_GAS,
     SSTORE_CLEARS_SCHEDULE,
+    RLC,
 )
 from ..instruction import Instruction, Transition
 from ..opcode import Opcode
-from ..table import CallContextFieldTag
+from ..table import CallContextFieldTag, AccountStorageTag
 
 
 def sload(instruction: Instruction):
@@ -22,8 +23,20 @@ def sload(instruction: Instruction):
 
     storage_key = instruction.stack_pop()
 
+    # Load account `exists` value from auxilary witness data.
+    exists = instruction.curr.aux_data
+
+    if exists == 0:
+        instruction.account_storage_field_read(callee_address, AccountStorageTag.NonExisting)
+
+    account_read = (
+        instruction.account_storage_read(callee_address, storage_key, tx_id)
+        if exists == 1
+        else RLC(0)
+    )
+
     instruction.constrain_equal(
-        instruction.account_storage_read(callee_address, storage_key, tx_id),
+        account_read,
         instruction.stack_push(),
     )
 
@@ -38,7 +51,7 @@ def sload(instruction: Instruction):
 
     instruction.step_state_transition_in_same_context(
         opcode,
-        rw_counter=Transition.delta(8),
+        rw_counter=Transition.delta(9),
         program_counter=Transition.delta(1),
         stack_pointer=Transition.delta(0),
         reversible_write_counter=Transition.delta(1),
@@ -61,12 +74,24 @@ def sstore(instruction: Instruction):
 
     storage_key = instruction.stack_pop()
     storage_value = instruction.stack_pop()
-    value, value_prev, original_value = instruction.account_storage_write(
-        callee_address,
-        storage_key,
-        tx_id,
-        reversion_info,
+
+    # Load account `exists` value from auxilary witness data.
+    exists = instruction.curr.aux_data
+    # If the account doesn't exist, we can't write to it.
+    if exists == 0:
+        instruction.account_storage_field_read(callee_address, AccountStorageTag.NonExisting)
+
+    value, value_prev, original_value = (
+        instruction.account_storage_write(
+            callee_address,
+            storage_key,
+            tx_id,
+            reversion_info,
+        )
+        if exists == 1
+        else [RLC(0), RLC(0), RLC(0)]
     )
+
     instruction.constrain_equal(storage_value, value)
 
     is_warm = instruction.add_account_storage_to_access_list(
