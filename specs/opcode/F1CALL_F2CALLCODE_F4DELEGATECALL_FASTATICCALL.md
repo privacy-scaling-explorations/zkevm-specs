@@ -26,7 +26,7 @@ It creates a new sub context as setting caller address to parent caller's and ca
 It does not allow any state modifying instructions (is_static == 1) or sending ether to callee in the sub context.
 
 Both `DELEGATECALL` and `STATICCALL` opcodes only pop 6 words from stack `gas`, `callee_address`, `call_data_offset`, `call_data_length`, `return_data_offset` and `return_data_length` (except the third popped word `value` for both `CALL` and `CALLCODE` opcodes).
-There should be no `transfer` invocation for `CALLCODE`, `DELEGATECALL`and `STATICCALL` (except `CALL`).
+There should be no `transfer` invocation for `CALLCODE`, `DELEGATECALL`and `STATICCALL` (only for CALL).
 
 Before switching call context to the new one, it does several things:
 
