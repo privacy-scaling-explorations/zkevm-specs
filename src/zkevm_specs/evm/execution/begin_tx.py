@@ -53,7 +53,8 @@ def begin_tx(instruction: Instruction):
     tx_intrinsic_gas = tx_calldata_gas_cost.expr() + tx_cost_gas + tx_accesslist_gas.expr()
 
     # check instrinsic gas
-    gas_not_enough = int(tx_gas.expr()) < int(tx_intrinsic_gas)
+    MAX_N_BYTES = 31 
+    gas_not_enough, _ = instruction.compare(tx_gas, tx_intrinsic_gas, MAX_N_BYTES)
     gas_left = tx_gas.expr() if gas_not_enough else tx_gas.expr() - tx_intrinsic_gas
 
     # Prepare access list of caller and callee
