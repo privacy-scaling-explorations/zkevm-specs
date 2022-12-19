@@ -215,6 +215,7 @@ class AccountFieldTag(IntEnum):
     CodeHash = auto()
     NonExisting = auto()
 
+
 class AccountStorageTag(IntEnum):
     NonExisting = auto()
 

@@ -924,12 +924,18 @@ class Instruction:
         )
         return cast_expr(row.value, RLC), cast_expr(row.value_prev, RLC), cast_expr(row.aux0, RLC)
 
-    def account_storage_field_read(self, account_address: Expression, account_storage_tag: AccountStorageTag) -> RLC:
+    def account_storage_field_read(
+        self, account_address: Expression, account_storage_tag: AccountStorageTag
+    ) -> RLC:
         return cast_expr(
             self.rw_lookup(
-                RW.Read, RWTableTag.AccountStorage, key2=account_address, key3=FQ(account_storage_tag)
-            ).value, RLC,
-    )
+                RW.Read,
+                RWTableTag.AccountStorage,
+                key2=account_address,
+                key3=FQ(account_storage_tag),
+            ).value,
+            RLC,
+        )
 
     def add_account_to_access_list(
         self,
