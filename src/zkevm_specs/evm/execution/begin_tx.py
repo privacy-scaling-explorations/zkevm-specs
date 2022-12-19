@@ -70,7 +70,11 @@ def begin_tx(instruction: Instruction):
         reversion_info,
     )
     sender_balance_prev = sender_balance_pair[1]
-    balance_not_enough = sender_balance_prev.int_value < tx_value.int_value + gas_fee.int_value
+    balance_not_enough, _ = instruction.compare(
+      instruction.rlc_to_fq(sender_balance_prev, MAX_N_BYTES),
+      instruction.rlc_to_fq(tx_value, MAX_N_BYTES) + instruction.rlc_to_fq(gas_fee, MAX_N_BYTES),
+      MAX_N_BYTES,
+    )
     invalid_tx = 1 - (1 - balance_not_enough) * (1 - gas_not_enough) * (is_nonce_valid)
     # prover should not give incorrect is_tx_invalid flag.
     instruction.constrain_equal(is_tx_invalid, invalid_tx)
