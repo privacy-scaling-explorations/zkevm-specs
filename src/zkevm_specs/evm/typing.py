@@ -31,6 +31,7 @@ from ..util import (
 from .table import (
     RW,
     AccountFieldTag,
+    AccountStorageTag,
     BlockContextFieldTag,
     BlockTableRow,
     BytecodeFieldTag,
@@ -606,6 +607,23 @@ class RWDictionary:
             value_prev=value_prev,
             aux0=value_committed,
             rw_counter_of_reversion=rw_counter_of_reversion,
+        )
+
+    def account_storage_field_read(
+        self,
+        account_address: IntOrFQ,
+        storage_field_tag: AccountStorageTag,
+        value: Union[int, FQ, RLC],
+    ) -> RWDictionary:
+        if isinstance(value, int):
+            value = FQ(value)
+        return self._append(
+            RW.Read,
+            RWTableTag.AccountStorage,
+            key2=FQ(account_address),
+            key3=FQ(storage_field_tag),
+            value=value,
+            value_prev=value,
         )
 
     def _state_write(
