@@ -112,6 +112,10 @@ NOTE: `kN` means `keyN`
 | $counter | $isWrite    | Stack                      | $callID     | $stackPointer      |                            |                     | $value     | 0               | $root              |
 | $counter | $isWrite    | Memory                     | $callID     | $memoryAddress     |                            |                     | $value     | 0               | $root              |
 | $counter | $isWrite    | AccountStorage             | $txID       | $address           |                            | $storageKey         | $value     | $committedValue |
+|          |             |                            |             |                    |                            |                     |           |                  |       |
+|          |             |                            |             |                    | *AccountStorageTag*        |                     |           |                  |       |
+| $counter | false       | AccountStorage             |             | $address           | NonExisting                |                     | 0         | 0                | $root |
+|          |             |                            |             |                    |                            |                     |           |                  |                 |
 |          |             |                            |             |                    |                            |                     |            |            |                 |
 |          |             |                            |             |                    | *TxLogTag*                 |                     |            |            |                 |
 | $counter | true        | TxLog                      | $txID       | $logID,0           | Address                    | 0                   | $value     | 0               | $root              |

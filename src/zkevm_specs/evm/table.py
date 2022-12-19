@@ -215,6 +215,9 @@ class AccountFieldTag(IntEnum):
     CodeHash = auto()
     NonExisting = auto()
 
+class AccountStorageTag(IntEnum):
+    NonExisting = auto()
+
 
 class CallContextFieldTag(IntEnum):
     """
@@ -341,6 +344,12 @@ class MPTProofType(IntEnum):
         elif field_tag == AccountFieldTag.NonExisting:
             return MPTProofType.NonExistingAccountProof
         raise Exception("Unexpected AccountFieldTag value")
+
+    @staticmethod
+    def from_account_storage_tag(storage_tag: AccountStorageTag) -> MPTProofType:
+        if storage_tag == AccountStorageTag.NonExisting:
+            return MPTProofType.NonExistingStorageProof
+        raise Exception("Unexpected AccountStorageTag value")
 
 
 class WrongQueryKey(Exception):
