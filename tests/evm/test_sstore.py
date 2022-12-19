@@ -64,6 +64,7 @@ def gen_test_cases():
                             caller_address=rand_address(), callee_address=rand_address()
                         ),  # tx
                         bytes([i for i in range(32, 0, -1)]),  # storage_key
+                        1,  # storage_existance_hint
                         value_case[0],  # new_value
                         value_case[1],  # value_prev_diff
                         value_case[2],  # original_value_diff
@@ -78,12 +79,13 @@ TESTING_DATA = gen_test_cases()
 
 
 @pytest.mark.parametrize(
-    "tx, storage_key_be_bytes, value_be_bytes, value_prev_be_bytes, original_value_be_bytes, warm, is_success",
+    "tx, storage_key_be_bytes, exists, value_be_bytes, value_prev_be_bytes, original_value_be_bytes, warm, is_success",
     TESTING_DATA,
 )
 def test_sstore(
     tx: Transaction,
     storage_key_be_bytes: bytes,
+    exists: int,
     value_be_bytes: bytes,
     value_prev_be_bytes: bytes,
     original_value_be_bytes: bytes,
@@ -130,27 +132,48 @@ def test_sstore(
                     gas_refund = gas_refund + SSTORE_SET_GAS - SLOAD_GAS
                 else:
                     gas_refund = gas_refund + SSTORE_RESET_GAS - SLOAD_GAS
+    rw_dictionary = (
+        RWDictionary(1)
+        .call_context_read(1, CallContextFieldTag.TxId, tx.id)
+        .call_context_read(1, CallContextFieldTag.IsStatic, 0)
+        .call_context_read(1, CallContextFieldTag.RwCounterEndOfReversion, 0 if is_success else 14)
+        .call_context_read(1, CallContextFieldTag.IsPersistent, is_success)
+        .call_context_read(1, CallContextFieldTag.CalleeAddress, tx.callee_address)
+        .stack_read(1, 1022, RLC(storage_key, randomness))
+        .stack_read(1, 1023, RLC(value, randomness))
+        .tx_access_list_account_storage_write(
+            tx.id,
+            tx.callee_address,
+            RLC(storage_key, randomness),
+            1,
+            1 if warm else 0,
+            rw_counter_of_reversion=None if is_success else 13,
+        )
+        .tx_refund_write(
+            tx.id, gas_refund, gas_refund_prev, rw_counter_of_reversion=None if is_success else 12
+        )
+    )
+
+    if exists == 1:
+        rw_dictionary.account_storage_write(
+            tx.callee_address,
+            RLC(storage_key, randomness),
+            RLC(value, randomness),
+            RLC(value_prev, randomness),
+            tx.id,
+            RLC(value_committed, randomness),
+            rw_counter_of_reversion=None if is_success else 14,
+        )
+    else:
+        rw_dictionary.account_storage_field_read(
+            tx.callee_address, AccountStorageTag.NonExisting, RLC(exists, randomness)
+        )
 
     tables = Tables(
         block_table=set(Block().table_assignments(randomness)),
         tx_table=set(tx.table_assignments(randomness)),
         bytecode_table=set(bytecode.table_assignments(randomness)),
-        rw_table=set(
-            # fmt: off
-            RWDictionary(1)
-            .call_context_read(1, CallContextFieldTag.TxId, tx.id)
-            .call_context_read(1, CallContextFieldTag.IsStatic, 0)
-            .call_context_read(1, CallContextFieldTag.RwCounterEndOfReversion, 0 if is_success else 14)
-            .call_context_read(1, CallContextFieldTag.IsPersistent, is_success)
-            .call_context_read(1, CallContextFieldTag.CalleeAddress, tx.callee_address)
-            .stack_read(1, 1022, RLC(storage_key, randomness))
-            .stack_read(1, 1023, RLC(value, randomness))
-            .account_storage_write(tx.callee_address, RLC(storage_key, randomness), RLC(value, randomness), RLC(value_prev, randomness), tx.id, RLC(value_committed, randomness), rw_counter_of_reversion=None if is_success else 14)
-            .tx_access_list_account_storage_write(tx.id, tx.callee_address, RLC(storage_key, randomness), 1, 1 if warm else 0, rw_counter_of_reversion=None if is_success else 13)
-            .tx_refund_write(tx.id, gas_refund, gas_refund_prev, rw_counter_of_reversion=None if is_success else 12)
-            .rws
-            # fmt: on
-        ),
+        rw_table=set(rw_dictionary.rws),
     )
 
     verify_steps(
@@ -168,6 +191,7 @@ def test_sstore(
                 stack_pointer=1022,
                 reversible_write_counter=0,
                 gas_left=expected_gas_cost,
+                aux_data=exists,
             ),
             StepState(
                 execution_state=ExecutionState.STOP if is_success else ExecutionState.REVERT,
