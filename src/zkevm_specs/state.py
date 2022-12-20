@@ -83,7 +83,7 @@ class Row(NamedTuple):
 
     root: FQ
 
-    # lexicographic_ordering_selector is the selector for transition checks and this is set 0 if first Row otherwise 1
+    # lexicographic_ordering_selector is the selector for transition checks and is set 0 for the first Row and 1 otherwise.
     lexicographic_ordering_selector: FQ
 
     # fmt: on
