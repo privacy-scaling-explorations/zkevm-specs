@@ -25,7 +25,7 @@ The `EXTCODECOPY` circuit constrains the values popped from stack, call context/
    - `memory_offset` is at the second position of the stack
    - `code_offset` is at the third position of the stack
    - `size` is at the fourth position of the stack
-   - `code_hash` from the address
+   - `code_hash` from the address if witness value `exists == 1`. Otherwise only lookup the account non-existing proof.
    - `code_size` from the bytecode table
    - `tx_id`, `rw_counter_end_of_reversion`, `is_persistent` from call context
    - `address` is added to the transaction access list if not already present
