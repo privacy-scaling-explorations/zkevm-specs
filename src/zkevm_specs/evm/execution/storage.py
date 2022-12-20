@@ -51,7 +51,7 @@ def sload(instruction: Instruction):
 
     instruction.step_state_transition_in_same_context(
         opcode,
-        rw_counter=Transition.delta(9),
+        rw_counter=Transition.delta(8),
         program_counter=Transition.delta(1),
         stack_pointer=Transition.delta(0),
         reversible_write_counter=Transition.delta(1),
