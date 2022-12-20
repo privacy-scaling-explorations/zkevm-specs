@@ -73,7 +73,7 @@ def gen_test_cases():
                             value_case[1],  # if exists == 1 else bytes([0]),  # value_prev_diff
                             value_case[2],  # if exists == 1 else bytes([0]),  # original_value_diff
                             warm_case,  # is_warm_storage_key
-                            persist_case if exists else False,  # is_not_reverted
+                            persist_case,  # is_not_reverted
                         )
                     )
     return test_cases
@@ -162,17 +162,15 @@ def test_sstore(
             tx.callee_address, AccountStorageTag.NonExisting, RLC(1 - exists, randomness)
         )
 
-    (
-        rw_dictionary.tx_access_list_account_storage_write(
-            tx.id,
-            tx.callee_address,
-            RLC(storage_key, randomness),
-            1,
-            1 if warm else 0,
-            rw_counter_of_reversion=None if is_success else 13,
-        ).tx_refund_write(
-            tx.id, gas_refund, gas_refund_prev, rw_counter_of_reversion=None if is_success else 12
-        )
+    rw_dictionary.tx_access_list_account_storage_write(
+        tx.id,
+        tx.callee_address,
+        RLC(storage_key, randomness),
+        1,
+        1 if warm else 0,
+        rw_counter_of_reversion=None if is_success else 13,
+    ).tx_refund_write(
+        tx.id, gas_refund, gas_refund_prev, rw_counter_of_reversion=None if is_success else 12
     )
 
     tables = Tables(
