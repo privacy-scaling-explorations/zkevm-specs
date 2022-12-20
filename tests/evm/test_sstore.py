@@ -10,6 +10,8 @@ from zkevm_specs.evm import (
     Block,
     Bytecode,
     RWDictionary,
+    AccountStorageTag,
+    AccountFieldTag,
 )
 from zkevm_specs.util import (
     rand_fq,
@@ -30,48 +32,50 @@ def gen_test_cases():
             bytes([i for i in range(0, 32, 1)]),
             bytes([i for i in range(0, 32, 1)]),
         ],  # value_prev == value
-        [
-            bytes([1]),
-            bytes([0]),
-            bytes([0]),
-        ],  # value_prev != value, original_value == value_prev, original_value == 0
-        [
-            bytes([2]),
-            bytes([1]),
-            bytes([1]),
-        ],  # value_prev != value, original_value == value_prev, original_value != 0
-        [
-            bytes([3]),
-            bytes([2]),
-            bytes([1]),
-        ],  # value_prev != value, original_value != value_prev
-        [
-            bytes([1]),
-            bytes([2]),
-            bytes([1]),
-        ],  # value_prev != value, original_value != value_prev, value == original_value
+        # [
+        #     bytes([1]),
+        #     bytes([0]),
+        #     bytes([0]),
+        # ],  # value_prev != value, original_value == value_prev, original_value == 0
+        # [
+        #     bytes([2]),
+        #     bytes([1]),
+        #     bytes([1]),
+        # ],  # value_prev != value, original_value == value_prev, original_value != 0
+        # [
+        #     bytes([3]),
+        #     bytes([2]),
+        #     bytes([1]),
+        # ],  # value_prev != value, original_value != value_prev
+        # [
+        #     bytes([1]),
+        #     bytes([2]),
+        #     bytes([1]),
+        # ],  # value_prev != value, original_value != value_prev, value == original_value
     ]
     warm_cases = [False, True]
     persist_cases = [True, False]
+    exists_storage = [0, 1]
 
     test_cases = []
     for value_case in value_cases:
         for warm_case in warm_cases:
             for persist_case in persist_cases:
-                test_cases.append(
-                    (
-                        Transaction(
-                            caller_address=rand_address(), callee_address=rand_address()
-                        ),  # tx
-                        bytes([i for i in range(32, 0, -1)]),  # storage_key
-                        1,  # storage_existance_hint
-                        value_case[0],  # new_value
-                        value_case[1],  # value_prev_diff
-                        value_case[2],  # original_value_diff
-                        warm_case,  # is_warm_storage_key
-                        persist_case,  # is_not_reverted
+                for exists in exists_storage:
+                    test_cases.append(
+                        (
+                            Transaction(
+                                caller_address=rand_address(), callee_address=rand_address()
+                            ),  # tx
+                            bytes([i for i in range(32, 0, -1)]),  # storage_key
+                            exists,  # storage_existance_hint
+                            value_case[0],  # if exists == 1 else bytes([0]),  # new_value
+                            value_case[1],  # if exists == 1 else bytes([0]),  # value_prev_diff
+                            value_case[2],  # if exists == 1 else bytes([0]),  # original_value_diff
+                            warm_case,  # is_warm_storage_key
+                            persist_case if exists else False,  # is_not_reverted
+                        )
                     )
-                )
     return test_cases
 
 
@@ -141,17 +145,6 @@ def test_sstore(
         .call_context_read(1, CallContextFieldTag.CalleeAddress, tx.callee_address)
         .stack_read(1, 1022, RLC(storage_key, randomness))
         .stack_read(1, 1023, RLC(value, randomness))
-        .tx_access_list_account_storage_write(
-            tx.id,
-            tx.callee_address,
-            RLC(storage_key, randomness),
-            1,
-            1 if warm else 0,
-            rw_counter_of_reversion=None if is_success else 13,
-        )
-        .tx_refund_write(
-            tx.id, gas_refund, gas_refund_prev, rw_counter_of_reversion=None if is_success else 12
-        )
     )
 
     if exists == 1:
@@ -166,8 +159,21 @@ def test_sstore(
         )
     else:
         rw_dictionary.account_storage_field_read(
-            tx.callee_address, AccountStorageTag.NonExisting, RLC(exists, randomness)
+            tx.callee_address, AccountStorageTag.NonExisting, RLC(1 - exists, randomness)
         )
+
+    (
+        rw_dictionary.tx_access_list_account_storage_write(
+            tx.id,
+            tx.callee_address,
+            RLC(storage_key, randomness),
+            1,
+            1 if warm else 0,
+            rw_counter_of_reversion=None if is_success else 13,
+        ).tx_refund_write(
+            tx.id, gas_refund, gas_refund_prev, rw_counter_of_reversion=None if is_success else 12
+        )
+    )
 
     tables = Tables(
         block_table=set(Block().table_assignments(randomness)),

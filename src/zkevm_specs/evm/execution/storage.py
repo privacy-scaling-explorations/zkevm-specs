@@ -92,7 +92,8 @@ def sstore(instruction: Instruction):
         else [RLC(0), RLC(0), RLC(0)]
     )
 
-    instruction.constrain_equal(storage_value, value)
+    if exists == 1:
+        instruction.constrain_equal(storage_value, value)
 
     is_warm = instruction.add_account_storage_to_access_list(
         tx_id,

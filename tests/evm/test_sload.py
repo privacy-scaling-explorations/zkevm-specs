@@ -71,8 +71,8 @@ def test_sload(
     bytecode = Bytecode().push32(storage_key_be_bytes).sload().stop()
     bytecode_hash = RLC(bytecode.hash(), randomness)
 
-    value = RLC(2, randomness) if exists else RLC(0, randomness) 
-    value_committed = RLC(0, randomness) if exists else RLC(0, randomness) 
+    value = RLC(2, randomness) if exists else RLC(0, randomness)
+    value_committed = RLC(0, randomness) if exists else RLC(0, randomness)
 
     rw_counter_end_of_reversion = 19
     reversible_write_counter = 3
