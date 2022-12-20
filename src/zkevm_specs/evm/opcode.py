@@ -364,9 +364,9 @@ OPCODE_INFO_MAP: Final[Dict[Opcode, OpcodeInfo]] = dict(
         Opcode.RIPEMD160: OpcodeInfo(0, 1024, Ripemd160BaseGas, True),
         Opcode.DATACOPY: OpcodeInfo(0, 1024, IdentityBaseGas, True),
         Opcode.BIGMODEXP: OpcodeInfo(0, 1024, DummyBigModExp, True),
-        Opcode.BN254ADD: OpcodeInfo(0, 1024, DummyBn254Add, True),
-        Opcode.BN254SCALARMUL: OpcodeInfo(0, 1024, DummyBn254ScalarMul, True),
-        Opcode.BN254PAIRING: OpcodeInfo(0, 1024, DummyBn254Pairing, True),
+        Opcode.BN254ADD: OpcodeInfo(0, 1024, Bn256AddGas, True),
+        Opcode.BN254SCALARMUL: OpcodeInfo(0, 1024, Bn256ScalarMulGas, True),
+        Opcode.BN254PAIRING: OpcodeInfo(0, 1024, Bn256PairingBaseGas, True),
         Opcode.BLAKE2F: OpcodeInfo(0, 1024, DummyBlake2f, True),
     }
 )

@@ -59,7 +59,7 @@ def dataCopy(instruction: Instruction):
         call_data_offset + size,
         FQ(0),
         return_data_length,
-        instruction.curr.rw_counter + instruction.rw_counter_offset,
+        instruction.curr.rw_counter + instruction.rw_counter_offset + copy_rwc_inc,
     )
 
     # Update last callee information
@@ -77,7 +77,7 @@ def dataCopy(instruction: Instruction):
 
     instruction.step_state_transition_in_same_context(
         opcode,
-        rw_counter=Transition.delta(instruction.rw_counter_offset + copy_rwc_inc),
+        rw_counter=Transition.delta(instruction.rw_counter_offset + 2 * copy_rwc_inc),
         program_counter=Transition.delta(0),
         stack_pointer=Transition.delta(0),
         memory_size=Transition.to(size),
