@@ -39,7 +39,14 @@ TESTING_DATA = (
     (
         Transaction(caller_address=rand_address(), callee_address=rand_address()),
         bytes([i for i in range(32, 0, -1)]),
-        1,
+        1,  # Storage doesn't exist for this account
+        False,
+        False,
+    ),
+    (
+        Transaction(caller_address=rand_address(), callee_address=rand_address()),
+        bytes([i for i in range(32, 0, -1)]),
+        0,
         False,
         False,
     ),
@@ -64,8 +71,8 @@ def test_sload(
     bytecode = Bytecode().push32(storage_key_be_bytes).sload().stop()
     bytecode_hash = RLC(bytecode.hash(), randomness)
 
-    value = RLC(2, randomness)
-    value_committed = RLC(0, randomness)
+    value = RLC(2, randomness) if exists else RLC(0, randomness) 
+    value_committed = RLC(0, randomness) if exists else RLC(0, randomness) 
 
     rw_counter_end_of_reversion = 19
     reversible_write_counter = 3
@@ -81,8 +88,19 @@ def test_sload(
         .call_context_read(1, CallContextFieldTag.IsPersistent, is_persistent)
         .call_context_read(1, CallContextFieldTag.CalleeAddress, tx.callee_address)
         .stack_read(1, 1023, storage_key)
-        .stack_write(1, 1023, value)
-        .tx_access_list_account_storage_write(
+    )
+
+    if exists == 1:
+        rw_dictionary.account_storage_read(
+            tx.callee_address, storage_key, value, tx.id, value_committed
+        )
+    else:
+        rw_dictionary.account_storage_field_read(
+            tx.callee_address, AccountStorageTag.NonExisting, RLC(1 - exists, randomness)
+        )
+
+    (
+        rw_dictionary.stack_write(1, 1023, value).tx_access_list_account_storage_write(
             tx.id,
             tx.callee_address,
             storage_key,
@@ -93,15 +111,6 @@ def test_sload(
             else rw_counter_end_of_reversion - reversible_write_counter,
         )
     )
-
-    if exists == 1:
-        rw_dictionary.account_storage_read(
-            tx.callee_address, storage_key, value, tx.id, value_committed
-        )
-    else:
-        rw_dictionary.account_storage_field_read(
-            tx.callee_address, AccountStorageTag.NonExisting, RLC(exists, randomness)
-        )
 
     tables = Tables(
         block_table=set(Block().table_assignments(randomness)),
@@ -129,7 +138,7 @@ def test_sload(
             ),
             StepState(
                 execution_state=ExecutionState.STOP if is_persistent else ExecutionState.REVERT,
-                rw_counter=14,
+                rw_counter=17,
                 call_id=1,
                 is_root=True,
                 is_create=False,
