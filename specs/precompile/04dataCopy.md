@@ -10,6 +10,7 @@ The `dataCopy` precompile returns its input.
 2. Do a busmapping lookup for CallContext last Call's CallDataLength.
 3. Do a busmapping lookup for CallContext last Call's ReturnDataOffset.
 4. Do a busmapping lookup for CallContext last Call's ReturnDataLength.
+4. Do a busmapping lookup for CallContext last Call's ID.
 5. Do a CopyTable lookup to verify the copy from calldata to current call context memory.
 6. Do a CopyTable lookup to verify the copy from calldata to precompile call context memory.
 
@@ -24,7 +25,7 @@ The gas cost of `dataCopy` precompile consists of two parts:
 
 1. prId == 0x04
 2. state transition:
-   - rw_counter + 4
+   - rw_counter + 5 + 2 * `copy_length`
    - gas + 15 + dynamic cost (copier cost)
 
 ## Code

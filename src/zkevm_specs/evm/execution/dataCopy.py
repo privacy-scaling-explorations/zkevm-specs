@@ -1,23 +1,10 @@
-from typing import Optional, Sequence, Tuple, Union, List
-
-from ..instruction import Instruction, Transition
+from ..instruction import Instruction
 from ..table import (
-    AccountFieldTag,
-    BlockContextFieldTag,
-    BytecodeFieldTag,
     CallContextFieldTag,
-    FixedTableRow,
-    RWTableRow,
-    Tables,
-    FixedTableTag,
-    TxContextFieldTag,
     RW,
-    RWTableTag,
-    TxLogFieldTag,
-    TxReceiptFieldTag,
     CopyDataTypeTag,
 )
-from ...util import FQ, N_BYTES_MEMORY_ADDRESS, N_BYTES_MEMORY_SIZE, IdentityPerWordGas
+from ...util import FQ, IdentityPerWordGas
 
 
 def dataCopy(instruction: Instruction):
