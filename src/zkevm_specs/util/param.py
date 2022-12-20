@@ -130,8 +130,5 @@ Bn256PairingBaseGas = 45000
 # Per-point price for an elliptic curve pairing check
 Bn256PairingPerPointGas = 34000
 
-# The way to calculate gas is complicated so this is temporary gas cost
-# It will be supported after a while
-# TODO: correct the way to calculate gas
-DummyBigModExp = 200
-DummyBlake2f = 0
+BigModExpBaseGas = 0
+Blake2fBaseGas = 0

@@ -33,6 +33,8 @@ def dataCopy(instruction: Instruction):
     opcall_call_id = instruction.call_context_lookup(CallContextFieldTag.CallerId, RW.Read)
     precompile_call_id = instruction.curr.call_id
 
+    rwc_delta = 5
+
     # Copy current call data to return data
     size = call_data_length.expr()
     copy_rwc_inc, _ = instruction.copy_lookup(
@@ -46,6 +48,7 @@ def dataCopy(instruction: Instruction):
         return_data_offset + return_data_length.expr(),
         instruction.curr.rw_counter + instruction.rw_counter_offset,
     )
+    rwc_delta += int(size)
 
     # Copy current call data to next call context memory
     copy_rwc_inc, _ = instruction.copy_lookup(
@@ -59,6 +62,7 @@ def dataCopy(instruction: Instruction):
         return_data_length,
         instruction.curr.rw_counter + instruction.rw_counter_offset + copy_rwc_inc,
     )
+    rwc_delta += int(size)
 
     # Update last callee information
     for (field_tag, expected_value) in [
@@ -76,7 +80,7 @@ def dataCopy(instruction: Instruction):
     # Restore caller state to next StepState
     instruction.step_state_transition_to_restored_context(
         rw_counter_delta=rwc_delta,
-        return_data_offset=return_offset,
-        return_data_length=return_length,
+        return_data_offset=return_data_offset,
+        return_data_length=return_data_length,
         gas_left=instruction.curr.gas_left - gas_cost,
     )

@@ -10,7 +10,7 @@ from ...util import (
     N_BYTES_GAS,
     RLC,
 )
-from ..instruction import Instruction, Transition
+from ..instruction import Instruction, Transition, FixedTableTag
 from ..opcode import Opcode
 from ..table import RW, CallContextFieldTag, AccountFieldTag
 from ..precompiled import PrecompiledAddress
@@ -144,8 +144,7 @@ def callop(instruction: Instruction):
     )
 
     if callee_address in list(PrecompiledAddress):
-        # TODO: Handle precompile
-        raise NotImplementedError
+        instruction.fixed_lookup(FixedTableTag.PrecompileAddress, callee_address)
     elif is_empty_code_hash == FQ(1):
         # Make sure call is successful
         instruction.constrain_equal(is_success, FQ(1))
