@@ -21,8 +21,6 @@ from ...util import FQ, N_BYTES_MEMORY_ADDRESS, N_BYTES_MEMORY_SIZE, IdentityPer
 
 
 def dataCopy(instruction: Instruction):
-    opcode = instruction.opcode_lookup(True)
-
     call_data_offset = instruction.call_context_lookup(CallContextFieldTag.CallDataOffset, RW.Read)
     call_data_length = instruction.call_context_lookup(CallContextFieldTag.CallDataLength, RW.Read)
     return_data_offset = instruction.call_context_lookup(
@@ -32,8 +30,8 @@ def dataCopy(instruction: Instruction):
         CallContextFieldTag.ReturnDataLength, RW.Read
     )
 
-    opcall_call_id = instruction.curr.call_id
-    precompile_call_id = instruction.next.call_id
+    opcall_call_id = instruction.call_context_lookup(CallContextFieldTag.CallerId, RW.Read)
+    precompile_call_id = instruction.curr.call_id
 
     # Copy current call data to return data
     size = call_data_length.expr()
@@ -75,11 +73,10 @@ def dataCopy(instruction: Instruction):
 
     gas_cost = instruction.memory_copier_gas_cost(call_data_length, FQ(0), IdentityPerWordGas)
 
-    instruction.step_state_transition_in_same_context(
-        opcode,
-        rw_counter=Transition.delta(instruction.rw_counter_offset + 2 * copy_rwc_inc),
-        program_counter=Transition.delta(0),
-        stack_pointer=Transition.delta(0),
-        memory_size=Transition.to(size),
-        dynamic_gas_cost=gas_cost,
+    # Restore caller state to next StepState
+    instruction.step_state_transition_to_restored_context(
+        rw_counter_delta=rwc_delta,
+        return_data_offset=return_offset,
+        return_data_length=return_length,
+        gas_left=instruction.curr.gas_left - gas_cost,
     )
