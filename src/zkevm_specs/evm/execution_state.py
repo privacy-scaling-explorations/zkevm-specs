@@ -9,6 +9,7 @@ from .opcode import (
     stack_underflow_pairs,
     state_write_opcodes,
 )
+from .precompiled import PrecompiledAddress
 
 
 class ExecutionState(IntEnum):
@@ -357,6 +358,27 @@ class ExecutionState(IntEnum):
             return stack_overflow_pairs() + stack_underflow_pairs()
         elif self == ExecutionState.ErrorWriteProtection:
             return state_write_opcodes()
+        return []
+
+    def responsible_precompile_address(self) -> Sequence[int]:
+        if self == ExecutionState.ECRECOVER:
+            return [PrecompiledAddress.ECRECOVER]
+        elif self == ExecutionState.SHA256:
+            return [PrecompiledAddress.SHA256]
+        elif self == ExecutionState.RIPEMD160:
+            return [PrecompiledAddress.RIPEMD160]
+        elif self == ExecutionState.DATA_COPY:
+            return [PrecompiledAddress.DATA_COPY]
+        elif self == ExecutionState.BIG_MOD_EXP:
+            return [PrecompiledAddress.BIG_MOD_EXP]
+        elif self == ExecutionState.BN254_ADD:
+            return [PrecompiledAddress.BN256_ADD]
+        elif self == ExecutionState.BN254_SCALAR_MUL:
+            return [PrecompiledAddress.BN256_SCALAR_MUL]
+        elif self == ExecutionState.BN254_PAIRING:
+            return [PrecompiledAddress.BN256_PAIRING]
+        elif self == ExecutionState.BLAKE2F:
+            return [PrecompiledAddress.BLAKE2F]
         return []
 
     def halts(self) -> bool:

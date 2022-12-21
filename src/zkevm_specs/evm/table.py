@@ -100,8 +100,9 @@ class FixedTableTag(IntEnum):
             ]
         elif self == FixedTableTag.PrecompileAddress:
             return [
-                FixedTableRow(FQ(self), FQ(precompile), FQ(0), FQ(0))
-                for precompile in List(PrecompiledAddress)
+                FixedTableRow(FQ(self), FQ(execution_state), FQ(precompile_address), FQ(0))
+                for execution_state in list(ExecutionState)
+                for precompile_address in execution_state.responsible_precompile_address()
             ]
         elif self == FixedTableTag.PrecompileBaseGas:
             return [

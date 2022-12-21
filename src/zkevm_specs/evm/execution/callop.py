@@ -144,7 +144,9 @@ def callop(instruction: Instruction):
     )
 
     if callee_address in list(PrecompiledAddress):
-        instruction.fixed_lookup(FixedTableTag.PrecompileAddress, callee_address)
+        instruction.fixed_lookup(
+            FixedTableTag.PrecompileAddress, instruction.next.execution_state, callee_address
+        )
     elif is_empty_code_hash == FQ(1):
         # Make sure call is successful
         instruction.constrain_equal(is_success, FQ(1))
