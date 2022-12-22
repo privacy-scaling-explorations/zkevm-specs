@@ -35,7 +35,7 @@ def dataCopy(instruction: Instruction):
         return_data_offset + return_data_length.expr(),
         instruction.curr.rw_counter + instruction.rw_counter_offset,
     )
-    rwc_delta += int(size) * 2
+    rwc_delta += int(copy_rwc_inc)
 
     # Copy current call data to next call context memory
     copy_rwc_inc, _ = instruction.copy_lookup(
@@ -49,7 +49,7 @@ def dataCopy(instruction: Instruction):
         return_data_length,
         instruction.curr.rw_counter + instruction.rw_counter_offset + copy_rwc_inc,
     )
-    rwc_delta += int(size) * 2
+    rwc_delta += int(copy_rwc_inc)
 
     # Update last callee information
     for (field_tag, expected_value) in [
@@ -61,6 +61,7 @@ def dataCopy(instruction: Instruction):
             instruction.call_context_lookup(field_tag, RW.Write, call_id=opcall_call_id),
             expected_value,
         )
+    rwc_delta += 3
 
     gas_cost = instruction.memory_copier_gas_cost(call_data_length, FQ(0), IdentityPerWordGas)
 
