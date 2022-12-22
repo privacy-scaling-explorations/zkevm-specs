@@ -66,8 +66,8 @@ def begin_tx(instruction: Instruction):
     sender_balance_pair, _ = instruction.transfer_with_gas_fee(
         tx_caller_address,
         tx_callee_address,
-        (1 - is_tx_invalid) * tx_value,
-        (1 - is_tx_invalid) * gas_fee,
+        RLC(0) if (is_tx_invalid.expr() == 1) else tx_value,
+        RLC(0) if (is_tx_invalid.expr() == 1) else gas_fee,
         reversion_info,
     )
     sender_balance_prev = sender_balance_pair[1]
