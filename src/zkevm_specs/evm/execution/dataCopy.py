@@ -35,7 +35,7 @@ def dataCopy(instruction: Instruction):
         return_data_offset + return_data_length.expr(),
         instruction.curr.rw_counter + instruction.rw_counter_offset,
     )
-    rwc_delta += int(size)
+    rwc_delta += int(size) * 2
 
     # Copy current call data to next call context memory
     copy_rwc_inc, _ = instruction.copy_lookup(
@@ -49,7 +49,7 @@ def dataCopy(instruction: Instruction):
         return_data_length,
         instruction.curr.rw_counter + instruction.rw_counter_offset + copy_rwc_inc,
     )
-    rwc_delta += int(size)
+    rwc_delta += int(size) * 2
 
     # Update last callee information
     for (field_tag, expected_value) in [

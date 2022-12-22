@@ -31,14 +31,15 @@ from zkevm_specs.util import (
     MEMORY_EXPANSION_QUAD_DENOMINATOR,
     MEMORY_EXPANSION_LINEAR_COEFF,
     RLC,
+    FQ,
 )
 
-CALL_ID = 1
+CALLER_ID = 1
 CALLEE_ID = 2
 CALLEE_MEMORY = [0x00] * 32 + [0x11] * 32
 TESTING_DATA = (
     # simple cases
-    (0, 32, 0, 32),
+    (0, 5, 0, 5),
 )
 
 
@@ -54,6 +55,8 @@ def test_dataCopy(
     randomness = rand_fq()
 
     size = call_data_length
+    call_id = CALLEE_ID
+    precompile_id = CALLER_ID
     call_data_offset_rlc = RLC(call_data_offset, randomness)
     call_data_length_rlc = RLC(call_data_length, randomness)
     return_data_offset_rlc = RLC(return_data_offset, randomness)
@@ -67,13 +70,11 @@ def test_dataCopy(
 
     rw_dictionary = (
         RWDictionary(1)
-        .call_context_read(CALL_ID, CallContextFieldTag.LastCalleeId, CALLEE_ID)
-        .call_context_read(
-            CALL_ID, CallContextFieldTag.LastCalleeReturnDataLength, return_data_length
-        )
-        .call_context_read(
-            CALL_ID, CallContextFieldTag.LastCalleeReturnDataOffset, return_data_offset
-        )
+        .call_context_read(call_id, CallContextFieldTag.CallDataOffset, call_data_offset)
+        .call_context_read(call_id, CallContextFieldTag.CallDataLength, call_data_length)
+        .call_context_read(call_id, CallContextFieldTag.ReturnDataOffset, return_data_offset)
+        .call_context_read(call_id, CallContextFieldTag.ReturnDataLength, return_data_length)
+        .call_context_read(call_id, CallContextFieldTag.CallerId, CALLEE_ID)
     )
 
     # rw counter before memory writes
@@ -82,7 +83,7 @@ def test_dataCopy(
         StepState(
             execution_state=ExecutionState.DATACOPY,
             rw_counter=1,
-            call_id=CALL_ID,
+            call_id=call_id,
             is_root=True,
             code_hash=code_hash,
             program_counter=99,
@@ -98,29 +99,46 @@ def test_dataCopy(
             for i in range(return_data_offset, return_data_offset + return_data_length)
         ]
     )
-    copy_circuit = CopyCircuit().copy(
-        randomness,
-        rw_dictionary,
-        CALLEE_ID,
-        CopyDataTypeTag.Memory,
-        CALL_ID,
-        CopyDataTypeTag.Memory,
-        return_data_offset,
-        return_data_offset + size,
-        return_data_offset,
-        size,
-        src_data,
+
+    copy_circuit = (
+        CopyCircuit()
+        .copy(
+            randomness,
+            rw_dictionary,
+            call_id,
+            CopyDataTypeTag.Memory,
+            call_id,
+            CopyDataTypeTag.Memory,
+            call_data_offset,
+            call_data_offset + size,
+            return_data_offset,
+            size,
+            src_data,
+        )
+        .copy(
+            randomness,
+            rw_dictionary,
+            call_id,
+            CopyDataTypeTag.Memory,
+            precompile_id,
+            CopyDataTypeTag.Memory,
+            call_data_offset,
+            call_data_offset + size,
+            FQ(0),
+            size,
+            src_data,
+        )
     )
 
     # rw counter after memory writes
     rw_counter_final = rw_dictionary.rw_counter
-    assert rw_counter_final - rw_counter_interim == size * 2  # 1 copy == 1 read & 1 write
+    assert rw_counter_final - rw_counter_interim == size * 4  # 1 copy == 1 read & 1 write
 
     steps.append(
         StepState(
             execution_state=ExecutionState.STOP,
             rw_counter=rw_dictionary.rw_counter,
-            call_id=CALL_ID,
+            call_id=call_id,
             is_root=True,
             code_hash=code_hash,
             program_counter=100,
@@ -141,7 +159,7 @@ def test_dataCopy(
     verify_copy_table(copy_circuit, tables, randomness)
 
     verify_steps(
-        randomness=randomness,
-        tables=tables,
-        steps=steps,
+        randomness,
+        tables,
+        steps,
     )
