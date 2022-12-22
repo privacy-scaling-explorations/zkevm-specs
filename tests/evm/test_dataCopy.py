@@ -9,6 +9,7 @@ from zkevm_specs.evm import (
     CallContextFieldTag,
     ExecutionState,
     Opcode,
+    Precompile,
     RW,
     RWDictionary,
     RWTableTag,
@@ -58,7 +59,7 @@ def test_dataCopy(
     return_data_offset_rlc = RLC(return_data_offset, randomness)
     return_data_length_rlc = RLC(return_data_length, randomness)
 
-    code = Bytecode().dataCopy().stop()
+    code = Precompile().dataCopy().stop()
     code_hash = RLC(code.hash(), randomness)
 
     data_word_size = math.ceil((size + 31) / 32)
@@ -79,7 +80,7 @@ def test_dataCopy(
     rw_counter_interim = rw_dictionary.rw_counter
     steps = [
         StepState(
-            execution_state=ExecutionState.DATA_COPY,
+            execution_state=ExecutionState.DATACOPY,
             rw_counter=1,
             call_id=CALL_ID,
             is_root=True,

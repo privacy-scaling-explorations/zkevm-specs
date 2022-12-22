@@ -9,7 +9,7 @@ from .opcode import (
     stack_underflow_pairs,
     state_write_opcodes,
 )
-from .precompiled import PrecompiledAddress
+from .precompiled import Precompile
 
 
 class ExecutionState(IntEnum):
@@ -130,8 +130,8 @@ class ExecutionState(IntEnum):
     ECRECOVER = auto()
     SHA256 = auto()
     RIPEMD160 = auto()
-    DATA_COPY = auto()
-    BIG_MOD_EXP = auto()
+    DATACOPY = auto()
+    BIGMODEXP = auto()
     BN254_ADD = auto()
     BN254_SCALAR_MUL = auto()
     BN254_PAIRING = auto()
@@ -362,23 +362,23 @@ class ExecutionState(IntEnum):
 
     def responsible_precompile_address(self) -> Sequence[int]:
         if self == ExecutionState.ECRECOVER:
-            return [PrecompiledAddress.ECRECOVER]
+            return [Precompile.ECRECOVER]
         elif self == ExecutionState.SHA256:
-            return [PrecompiledAddress.SHA256]
+            return [Precompile.SHA256]
         elif self == ExecutionState.RIPEMD160:
-            return [PrecompiledAddress.RIPEMD160]
-        elif self == ExecutionState.DATA_COPY:
-            return [PrecompiledAddress.DATA_COPY]
-        elif self == ExecutionState.BIG_MOD_EXP:
-            return [PrecompiledAddress.BIG_MOD_EXP]
+            return [Precompile.RIPEMD160]
+        elif self == ExecutionState.DATACOPY:
+            return [Precompile.DATACOPY]
+        elif self == ExecutionState.BIGMODEXP:
+            return [Precompile.BIGMODEXP]
         elif self == ExecutionState.BN254_ADD:
-            return [PrecompiledAddress.BN256_ADD]
+            return [Precompile.BN256ADD]
         elif self == ExecutionState.BN254_SCALAR_MUL:
-            return [PrecompiledAddress.BN256_SCALAR_MUL]
+            return [Precompile.BN256SCALARMUL]
         elif self == ExecutionState.BN254_PAIRING:
-            return [PrecompiledAddress.BN256_PAIRING]
+            return [Precompile.BN256PAIRING]
         elif self == ExecutionState.BLAKE2F:
-            return [PrecompiledAddress.BLAKE2F]
+            return [Precompile.BLAKE2F]
         return []
 
     def halts(self) -> bool:

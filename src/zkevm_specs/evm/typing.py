@@ -48,6 +48,7 @@ from .table import (
     ExpCircuitRow,
 )
 from .opcode import get_push_size, Opcode
+from .precompiled import Precompile
 
 POW2 = 2**256
 
@@ -242,19 +243,31 @@ def init_is_code(code: bytearray) -> MutableSequence[bool]:
 class Bytecode:
     code: bytearray
     is_code: MutableSequence[bool]
+    is_include_precompile: bool
 
     def __init__(
-        self, code: Optional[bytearray] = None, is_code: Optional[MutableSequence[bool]] = None
+        self,
+        code: Optional[bytearray] = None,
+        is_code: Optional[MutableSequence[bool]] = None,
+        is_include_precompile: bool = False,
     ) -> None:
         self.code = bytearray() if code is None else code
         self.is_code = init_is_code(self.code) if is_code is None else is_code
+        self.is_include_precompile = is_include_precompile
 
     def __getattr__(self, name: str):
         def method(*args) -> Bytecode:
+            opcode: Opcode | Precompile
             try:
                 opcode = Opcode[name.removesuffix("_").upper()]
             except KeyError:
-                raise ValueError(f"Invalid opcode {name}")
+                if self.is_include_precompile:
+                    try:
+                        opcode = Precompile[name.removesuffix("_").upper()]
+                    except KeyError:
+                        raise ValueError(f"Invalid opcode {name}")
+                else:
+                    raise ValueError(f"Invalid opcode {name}")
 
             if opcode.is_push():
                 assert len(args) == 1

@@ -13,7 +13,7 @@ from ...util import (
 from ..instruction import Instruction, Transition, FixedTableTag
 from ..opcode import Opcode
 from ..table import RW, CallContextFieldTag, AccountFieldTag
-from ..precompiled import PrecompiledAddress
+from ..precompiled import Precompile
 
 
 def callop(instruction: Instruction):
@@ -143,7 +143,7 @@ def callop(instruction: Instruction):
         all_but_one_64th_gas,
     )
 
-    if callee_address in list(PrecompiledAddress):
+    if callee_address in list(Precompile):
         instruction.fixed_lookup(
             FixedTableTag.PrecompileAddress, instruction.next.execution_state, callee_address
         )

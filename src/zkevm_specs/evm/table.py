@@ -5,7 +5,7 @@ from itertools import chain, product
 from dataclasses import dataclass, field, fields
 
 from .opcode import constant_gas_cost_pairs
-from .precompiled import base_gas_cost_pairs, PrecompiledAddress
+from .precompiled import base_gas_cost_pairs
 
 from ..util import Expression, FQ, RLC, word_to_lo_hi, word_to_64s
 from .execution_state import ExecutionState
