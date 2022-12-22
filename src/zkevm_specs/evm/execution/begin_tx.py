@@ -56,7 +56,7 @@ def begin_tx(instruction: Instruction):
     # check instrinsic gas
     MAX_N_BYTES = 31
     gas_not_enough, _ = instruction.compare(tx_gas, tx_intrinsic_gas, MAX_N_BYTES)
-    gas_left = tx_gas.expr() if gas_not_enough else tx_gas.expr() - tx_intrinsic_gas
+    gas_left = tx_gas.expr() if gas_not_enough == 1 else tx_gas.expr() - tx_intrinsic_gas
 
     # Prepare access list of caller and callee
     instruction.constrain_zero(instruction.add_account_to_access_list(tx_id, tx_caller_address))
