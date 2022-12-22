@@ -54,7 +54,7 @@ def begin_tx(instruction: Instruction):
     tx_intrinsic_gas = tx_calldata_gas_cost.expr() + tx_cost_gas + tx_accesslist_gas.expr()
 
     # check instrinsic gas
-    MAX_N_BYTES = 31 
+    MAX_N_BYTES = 31
     gas_not_enough, _ = instruction.compare(tx_gas, tx_intrinsic_gas, MAX_N_BYTES)
     gas_left = tx_gas.expr() if gas_not_enough else tx_gas.expr() - tx_intrinsic_gas
 
@@ -72,9 +72,9 @@ def begin_tx(instruction: Instruction):
     )
     sender_balance_prev = sender_balance_pair[1]
     balance_not_enough, _ = instruction.compare(
-      instruction.rlc_to_fq(sender_balance_prev, MAX_N_BYTES),
-      instruction.rlc_to_fq(tx_value, MAX_N_BYTES) + instruction.rlc_to_fq(gas_fee, MAX_N_BYTES),
-      MAX_N_BYTES,
+        instruction.rlc_to_fq(sender_balance_prev, MAX_N_BYTES),
+        instruction.rlc_to_fq(tx_value, MAX_N_BYTES) + instruction.rlc_to_fq(gas_fee, MAX_N_BYTES),
+        MAX_N_BYTES,
     )
     invalid_tx = 1 - (1 - balance_not_enough) * (1 - gas_not_enough) * (is_nonce_valid)
     # prover should not give incorrect is_tx_invalid flag.
