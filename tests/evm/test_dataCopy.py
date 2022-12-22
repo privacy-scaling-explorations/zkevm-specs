@@ -59,11 +59,11 @@ def test_dataCopy(
     return_data_offset_rlc = RLC(return_data_offset, randomness)
     return_data_length_rlc = RLC(return_data_length, randomness)
 
-    code = Precompile().dataCopy().stop()
+    code = Bytecode(is_include_precompile=True).dataCopy().stop()
     code_hash = RLC(code.hash(), randomness)
 
     data_word_size = math.ceil((size + 31) / 32)
-    gas = Opcode.DATACOPY.constant_gas_cost() + data_word_size * IdentityPerWordGas
+    gas = Precompile.DATACOPY.base_gas_cost() + data_word_size * IdentityPerWordGas
 
     rw_dictionary = (
         RWDictionary(1)
