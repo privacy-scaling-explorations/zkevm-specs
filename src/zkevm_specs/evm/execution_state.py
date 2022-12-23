@@ -9,7 +9,6 @@ from .opcode import (
     stack_underflow_pairs,
     state_write_opcodes,
 )
-from .precompiled import Precompile
 
 
 class ExecutionState(IntEnum):
@@ -132,9 +131,9 @@ class ExecutionState(IntEnum):
     RIPEMD160 = auto()
     DATACOPY = auto()
     BIGMODEXP = auto()
-    BN254_ADD = auto()
-    BN254_SCALAR_MUL = auto()
-    BN254_PAIRING = auto()
+    BN256_ADD = auto()
+    BN256_SCALAR_MUL = auto()
+    BN256_PAIRING = auto()
     BLAKE2F = auto()
 
     def expr(self) -> FQ:
@@ -360,27 +359,6 @@ class ExecutionState(IntEnum):
             return state_write_opcodes()
         return []
 
-    def responsible_precompile_address(self) -> Sequence[int]:
-        if self == ExecutionState.ECRECOVER:
-            return [Precompile.ECRECOVER]
-        elif self == ExecutionState.SHA256:
-            return [Precompile.SHA256]
-        elif self == ExecutionState.RIPEMD160:
-            return [Precompile.RIPEMD160]
-        elif self == ExecutionState.DATACOPY:
-            return [Precompile.DATACOPY]
-        elif self == ExecutionState.BIGMODEXP:
-            return [Precompile.BIGMODEXP]
-        elif self == ExecutionState.BN254_ADD:
-            return [Precompile.BN256ADD]
-        elif self == ExecutionState.BN254_SCALAR_MUL:
-            return [Precompile.BN256SCALARMUL]
-        elif self == ExecutionState.BN254_PAIRING:
-            return [Precompile.BN256PAIRING]
-        elif self == ExecutionState.BLAKE2F:
-            return [Precompile.BLAKE2F]
-        return []
-
     def halts(self) -> bool:
         return self.halts_in_success() or self.halts_in_exception() or self == ExecutionState.REVERT
 
@@ -422,3 +400,17 @@ class ExecutionState(IntEnum):
             ExecutionState.ErrorOutOfGasSTATICCALL,
             ExecutionState.ErrorOutOfGasSELFDESTRUCT,
         ]
+
+
+def precompile_execution_states() -> Sequence[ExecutionState]:
+    return [
+        ExecutionState.ECRECOVER,
+        ExecutionState.SHA256,
+        ExecutionState.RIPEMD160,
+        ExecutionState.DATACOPY,
+        ExecutionState.BIGMODEXP,
+        ExecutionState.BN256_ADD,
+        ExecutionState.BN256_SCALAR_MUL,
+        ExecutionState.BN256_PAIRING,
+        ExecutionState.BLAKE2F,
+    ]

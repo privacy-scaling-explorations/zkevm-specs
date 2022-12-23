@@ -1,7 +1,7 @@
 from ...util import GAS_COST_TX, GAS_COST_CREATION_TX, EMPTY_CODE_HASH, FQ, RLC, cast_expr
 from ..execution_state import ExecutionState
 from ..instruction import Instruction, Transition
-from ..precompiled import Precompile
+from ..precompile import Precompile
 from ..table import CallContextFieldTag, TxContextFieldTag, AccountFieldTag
 
 

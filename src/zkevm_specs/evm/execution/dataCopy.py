@@ -1,6 +1,7 @@
 from ..instruction import Instruction
 from ..table import (
     CallContextFieldTag,
+    FixedTableTag,
     RW,
     CopyDataTypeTag,
 )
@@ -8,6 +9,11 @@ from ...util import FQ, IdentityPerWordGas
 
 
 def dataCopy(instruction: Instruction):
+    instruction.fixed_lookup(
+        FixedTableTag.PrecompileInfo,
+        FQ(instruction.curr.execution_state),
+        instruction.call_context_lookup(CallContextFieldTag.CalleeAddress, RW.Read),
+    )
     call_data_offset = instruction.call_context_lookup(CallContextFieldTag.CallDataOffset, RW.Read)
     call_data_length = instruction.call_context_lookup(CallContextFieldTag.CallDataLength, RW.Read)
     return_data_offset = instruction.call_context_lookup(

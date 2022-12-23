@@ -48,7 +48,7 @@ from .table import (
     ExpCircuitRow,
 )
 from .opcode import get_push_size, Opcode
-from .precompiled import Precompile
+from .precompile import Precompile
 
 POW2 = 2**256
 
