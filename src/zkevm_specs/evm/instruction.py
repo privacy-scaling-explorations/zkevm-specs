@@ -19,6 +19,7 @@ from ..util import (
 )
 from .execution_state import ExecutionState
 from .opcode import Opcode
+from .precompile import Precompile
 from .step import StepState
 from .table import (
     AccountFieldTag,
@@ -393,6 +394,13 @@ class Instruction:
         hi_lt, hi_eq = self.compare(lhs_hi, rhs_hi, 16)
         lo_lt, lo_eq = self.compare(lhs_lo, rhs_lo, 16)
         return FQ(hi_lt + hi_eq * lo_lt), FQ(hi_eq * lo_eq)
+
+    def precompile(self, address: Expression) -> FQ:
+        try:
+            Precompile(address.expr().n)
+            return FQ(1)
+        except ValueError:
+            return FQ(0)
 
     def min(self, lhs: Expression, rhs: Expression, n_bytes: int) -> FQ:
         lt, _ = self.compare(lhs, rhs, n_bytes)

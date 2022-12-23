@@ -145,12 +145,12 @@ def callop(instruction: Instruction):
 
     # Make sure the state transition to ExecutionState for precompile if and
     # only if the callee address is one of precompile
-    is_precompile, _ = instruction.compare(callee_address, FQ(len(Precompile)), 20)
+    is_precompile = instruction.precompile(callee_address)
     instruction.constrain_equal(
         is_precompile, FQ(instruction.next.execution_state in precompile_execution_states())
     )
 
-    if is_empty_code_hash == FQ(1) and not is_precompile:
+    if is_empty_code_hash == FQ(1) and is_precompile == FQ(0):
         # Make sure call is successful
         instruction.constrain_equal(is_success, FQ(1))
 
