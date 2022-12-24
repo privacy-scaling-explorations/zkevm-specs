@@ -1,11 +1,7 @@
+from zkevm_specs.evm.util.call_gadget import CallGadget
 from ...util import (
     FQ,
-    N_BYTES_ACCOUNT_ADDRESS,
     EMPTY_CODE_HASH,
-    GAS_COST_WARM_ACCESS,
-    GAS_COST_ACCOUNT_COLD_ACCESS,
-    GAS_COST_CALL_WITH_VALUE,
-    GAS_COST_NEW_ACCOUNT,
 )
 from ..instruction import Instruction, Transition
 from ..table import CallContextFieldTag, AccountFieldTag
@@ -22,30 +18,9 @@ def oog_call(instruction: Instruction):
 
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
     instruction.call_context_lookup(CallContextFieldTag.IsStatic)
-    # Lookup values from stack
-    instruction.stack_pop()
-    callee_address_rlc = instruction.stack_pop()
-    value = instruction.stack_pop()
-    cd_offset_rlc = instruction.stack_pop()
-    cd_length_rlc = instruction.stack_pop()
-    rd_offset_rlc = instruction.stack_pop()
-    rd_length_rlc = instruction.stack_pop()
-    is_success = instruction.stack_push()
-    instruction.constrain_zero(is_success)
 
-    cd_offset, cd_length = instruction.memory_offset_and_length(cd_offset_rlc, cd_length_rlc)
-    rd_offset, rd_length = instruction.memory_offset_and_length(rd_offset_rlc, rd_length_rlc)
-
-    # Verify memory expansion
-    next_memory_size, memory_expansion_gas_cost = instruction.memory_expansion_dynamic_length(
-        cd_offset,
-        cd_length,
-        rd_offset,
-        rd_length,
-    )
-
-    has_value = 1 - instruction.is_zero(value)
-    callee_address = instruction.rlc_to_fq(callee_address_rlc, N_BYTES_ACCOUNT_ADDRESS)
+    call_gadget = CallGadget(instruction, FQ(1))
+    callee_address = call_gadget.callee_address
 
     # TODO: handle PrecompiledContract oog cases
 
@@ -64,13 +39,7 @@ def oog_call(instruction: Instruction):
     is_account_empty = (
         instruction.is_zero(callee_nonce) * instruction.is_zero(callee_balance) * is_empty_code_hash
     )
-    gas_cost = (
-        instruction.select(
-            is_warm_access, FQ(GAS_COST_WARM_ACCESS), FQ(GAS_COST_ACCOUNT_COLD_ACCESS)
-        )
-        + has_value * (GAS_COST_CALL_WITH_VALUE + is_account_empty * GAS_COST_NEW_ACCOUNT)
-        + memory_expansion_gas_cost
-    )
+    gas_cost = call_gadget.gas_cost(is_warm_access, FQ(1), is_account_empty)
 
     # verify gas is insufficient
     gas_not_enough, _ = instruction.compare(instruction.curr.gas_left, gas_cost, N_BYTES_GAS)
