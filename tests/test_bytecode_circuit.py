@@ -70,8 +70,11 @@ def test_bytecode_empty():
 
 
 def test_bytecode_full():
-    bytecodes = [unroll(bytes([7] * (2**k - 1)), randomness)]
-    verify(k, bytecodes, randomness, False)  # Last row must be tag=Header
+    bytecodes = [
+        unroll(bytes([7] * (2**k - 2)), randomness),
+        unroll(bytes([]), randomness),  # Last row must be tag=Header
+    ]
+    verify(k, bytecodes, randomness, True)
 
 
 def test_bytecode_incomplete():
