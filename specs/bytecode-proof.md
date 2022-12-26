@@ -75,7 +75,7 @@ All circuit constraints are based on the current row (`cur`) and the `next` row.
 
 First of all if `cur.q_first` or `cur.q_last` are `1`, then `cur.tag == Header`.
 
-We should have the following contrains based on `cur.tag` and `next.tag` (state transition), for all rows except the last one (`cur.q_last == 1`).
+We should have the following constraint based on `cur.tag` and `next.tag` (state transition), for all rows except the last one (`cur.q_last == 1`).
 
 To enable lookup all `cur.tag == Header` rows should have:
 
