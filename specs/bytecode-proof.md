@@ -59,7 +59,7 @@ next.value_rlc := cur.value_rlc * r + next.value
 
 For detecting which byte is code and which byte is push data the [Push table](#push-table) is used. This table allows finding out how many bytes an opcode pushes. This is used to set `next.push_data_left` if and only if the current byte is code (the first byte in any bytecode is code).
 
-If a row contains a non-zero value for `push_data_left` we know the current byte is an opcode:
+If a row contains a zero value for `push_data_left` we know the current byte is an opcode:
 
 ```
 first_bytecode.is_code := 1
