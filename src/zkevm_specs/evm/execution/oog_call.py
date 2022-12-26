@@ -1,8 +1,5 @@
 from zkevm_specs.evm.util.call_gadget import CallGadget
-from ...util import (
-    FQ,
-    EMPTY_CODE_HASH,
-)
+from ...util import FQ
 from ..instruction import Instruction, Transition
 from ..table import CallContextFieldTag, AccountFieldTag
 from ..execution_state import ExecutionState
@@ -31,15 +28,12 @@ def oog_call(instruction: Instruction):
     callee_balance = instruction.account_read(callee_address, AccountFieldTag.Balance)
     # Verify gas cost
     callee_nonce = instruction.account_read(callee_address, AccountFieldTag.Nonce)
-    callee_code_hash = instruction.account_read(callee_address, AccountFieldTag.CodeHash)
+    is_empty_code_hash, _ = call_gadget.is_empty_code_hash()
 
-    is_empty_code_hash = instruction.is_equal(
-        callee_code_hash, instruction.rlc_encode(EMPTY_CODE_HASH, 32)
-    )
     is_account_empty = (
         instruction.is_zero(callee_nonce) * instruction.is_zero(callee_balance) * is_empty_code_hash
     )
-    gas_cost = call_gadget.gas_cost(is_warm_access, FQ(1), is_account_empty)
+    gas_cost = call_gadget.gas_cost(is_warm_access, is_account_empty)
 
     # verify gas is insufficient
     gas_not_enough, _ = instruction.compare(instruction.curr.gas_left, gas_cost, N_BYTES_GAS)

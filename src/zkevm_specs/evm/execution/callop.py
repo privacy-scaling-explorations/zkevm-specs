@@ -1,6 +1,5 @@
 from zkevm_specs.evm.util.call_gadget import CallGadget
 from ...util import (
-    EMPTY_CODE_HASH,
     FQ,
     GAS_STIPEND_CALL_WITH_VALUE,
     RLC,
@@ -116,7 +115,8 @@ def callop(instruction: Instruction):
         is_empty_code_hash = FQ(1)
 
     # Verify gas cost.
-    gas_cost = call_gadget.gas_cost(is_warm_access, is_call, FQ(0) if callee_exists == 1 else FQ(1))
+    # Only CALL opcode could invoke transfer to make empty account into non-empty.
+    gas_cost = call_gadget.gas_cost(is_warm_access, FQ(0) if callee_exists == 1 else is_call)
     callee_gas_left = call_gadget.callee_gas_left(gas_cost)
 
     # Make sure the state transition to ExecutionState for precompile if and
