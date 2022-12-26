@@ -4,7 +4,7 @@ The bytecode proof helps the EVM proof by making the bytecode (identified by its
 
 ## Circuit Layout
 
-The collumn `tag` (advice) makes the circuit behave as a state machine, selecting different constrains depending on the current and next row value. The `tag` collumn can have two different values: Header, Byte. A row of `tag==Header` preceeds a series of `tag==Byte` rows that contain a complete bytecode sequence. The row `tag==Header` contains the length of the bytecode and the hash of the bytecode, each `tag==Byte` contains one byte of the bytecode, bytecode hash, its lenght and other for the push data.
+The column `tag` (advice) makes the circuit behave as a state machine, selecting different constraints depending on the current and next row value. The `tag` column can have two different values: Header, Byte. A row of `tag==Header` precedes a series of `tag==Byte` rows that contain a complete bytecode sequence. The row `tag==Header` contains the length of the bytecode and the hash of the bytecode, each `tag==Byte` contains one byte of the bytecode, bytecode hash, its length and other for the push data.
 
 
 | Column                | Description                                                         |
