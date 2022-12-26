@@ -15,11 +15,11 @@ from ..instruction import Instruction
 
 
 class CallGadget:
-    is_success: FQ
+    is_success: RLC
+    value: RLC
 
     gas: FQ
     callee_address: FQ
-    value: FQ
     cd_offset: FQ
     cd_length: FQ
     rd_offset: FQ
@@ -71,7 +71,7 @@ class CallGadget:
             self.rd_length,
         )
 
-    def has_value(self) -> int:
+    def has_value(self) -> FQ:
         return 1 - self.instruction.is_zero(self.value)
 
     def is_call_succeeded(self) -> bool:
