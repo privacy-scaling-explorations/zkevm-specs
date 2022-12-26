@@ -71,7 +71,7 @@ The fixed columns `q_first` and `q_last` should be zero for all rows, except the
 
 ## Circuit constrains
 
-All circuit constrains are based on the current row (`cur`) and the `next` row.
+All circuit constraints are based on the current row (`cur`) and the `next` row.
 
 First of all if `cur.q_first` or `cur.q_last` are `1`, then `cur.tag == Header`.
 
