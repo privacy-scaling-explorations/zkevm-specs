@@ -95,7 +95,7 @@ else:
     assert next.push_data_left == cur.push_data_left - 1
 ```
 
-This way we make sure is_code and next.push_data_left has the right values.
+This way we make sure is_code and next.push_data_left have the right values.
 
 ### cur.tag == Header and next.tag == Header
 
