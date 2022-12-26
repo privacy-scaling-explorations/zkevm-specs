@@ -41,9 +41,9 @@ def verify(
 def test_state_ok():
     # fmt: off
     ops = [
-        StartOp(),
-        StartOp(),
-        StartOp(),
+        StartOp(rw_counter=1, rw=RW.Read, lexicographic_ordering_selector=0),
+        StartOp(rw_counter=2, rw=RW.Read),
+        StartOp(rw_counter=3, rw=RW.Read),
 
         MemoryOp(rw_counter=1, rw=RW.Read,  call_id=1, mem_addr=0, value=0),
         MemoryOp(rw_counter=2, rw=RW.Write, call_id=1, mem_addr=0, value=42),
@@ -65,11 +65,11 @@ def test_state_ok():
         TxRefundOp(rw_counter=14, rw=RW.Write, tx_id=1, value=FQ(1)),
         TxRefundOp(rw_counter=15, rw=RW.Write, tx_id=1, value=FQ(1)),
 
-        TxAccessListAccountOp(rw_counter=16, rw=RW.Read, tx_id=1, addr=0x12345678, value=FQ(1)),
-        TxAccessListAccountOp(rw_counter=17, rw=RW.Read, tx_id=1, addr=0x12345678, value=FQ(1)),
+        TxAccessListAccountOp(rw_counter=16, rw=RW.Read, tx_id=1, addr=0x12345678, value=FQ(0)),
+        TxAccessListAccountOp(rw_counter=17, rw=RW.Write, tx_id=1, addr=0x12345678, value=FQ(1)),
 
-        TxAccessListAccountStorageOp(rw_counter=18, rw=RW.Read, tx_id=1, addr=0x12345678, key=0x1516, value=FQ(1)),
-        TxAccessListAccountStorageOp(rw_counter=19, rw=RW.Read, tx_id=1, addr=0x12345678, key=0x1516, value=FQ(1)),
+        TxAccessListAccountStorageOp(rw_counter=18, rw=RW.Read, tx_id=1, addr=0x12345678, key=0x1516, value=FQ(0)),
+        TxAccessListAccountStorageOp(rw_counter=19, rw=RW.Write, tx_id=1, addr=0x12345678, key=0x1516, value=FQ(1)),
 
         AccountDestructedOp(rw_counter=20, rw=RW.Read, addr=0x12345678, value=FQ(1)),
         AccountDestructedOp(rw_counter=21, rw=RW.Read, addr=0x12345678, value=FQ(1)),
@@ -99,7 +99,7 @@ def test_state_ok():
 def test_mpt_updates_ok():
     # fmt: off
     ops = [
-        StartOp(),
+        StartOp(rw_counter=1, rw=RW.Read, lexicographic_ordering_selector=0),
 
         StorageOp(rw_counter=7, rw=RW.Read,  tx_id=1, addr=0x12345678, key=0x1516, value=rlc(789), committed_value=rlc(789)),
         StorageOp(rw_counter=8, rw=RW.Write, tx_id=1, addr=0x12345678, key=0x4959, value=rlc(38491), committed_value=rlc(98765)),
@@ -115,7 +115,7 @@ def test_mpt_updates_ok():
 def test_state_bad_key2():
     # fmt: off
     ops = [
-        StartOp(),
+        StartOp(rw_counter=1, rw=RW.Read, lexicographic_ordering_selector=0),
         MemoryOp(rw_counter=1, rw=RW.Read,  call_id=2, mem_addr=123, value=0),
     ]
     # fmt: on
@@ -129,7 +129,7 @@ def test_state_bad_key2():
 def test_state_bad_key4():
     # fmt: off
     ops = [
-        StartOp(),
+        StartOp(rw_counter=1, rw=RW.Read, lexicographic_ordering_selector=0),
         StorageOp(rw_counter=1, rw=RW.Write, tx_id=1, addr=0x12345678, key=0x15161718, value=rlc(789), committed_value=rlc(789)),
     ]
     # fmt: on
@@ -143,7 +143,7 @@ def test_state_bad_key4():
 def test_state_bad_is_write():
     # fmt: off
     ops = [
-        StartOp(),
+        StartOp(rw_counter=1, rw=RW.Read, lexicographic_ordering_selector=0),
         StorageOp(rw_counter=1, rw=RW.Write, tx_id=1, addr=0x12345678, key=0x15161718, value=rlc(789), committed_value=rlc(789)),
     ]
     # fmt: on
@@ -157,7 +157,7 @@ def test_state_bad_is_write():
 def test_state_keys_non_lexicographic_order():
     # fmt: off
     ops = [
-        StartOp(),
+        StartOp(rw_counter=1, rw=RW.Read, lexicographic_ordering_selector=0),
         StorageOp(rw_counter=1, rw=RW.Write, tx_id=1, addr=0x12345678, key=0x1112, value=rlc(98765), committed_value=rlc(98765)),
         StorageOp(rw_counter=1, rw=RW.Write, tx_id=1, addr=0x12345678, key=0x1111, value=rlc(789), committed_value=rlc(98765)),
     ]
@@ -167,7 +167,7 @@ def test_state_keys_non_lexicographic_order():
 
     # fmt: off
     ops = [
-        StartOp(),
+        StartOp(rw_counter=1, rw=RW.Read, lexicographic_ordering_selector=0),
         StorageOp(rw_counter=1, rw=RW.Write, tx_id=1, addr=0x12345678, key=2 << 250, value=rlc(98765), committed_value=rlc(98765)),
         StorageOp(rw_counter=1, rw=RW.Write, tx_id=1, addr=0x12345678, key=1 << 250, value=rlc(789), committed_value=rlc(98765)),
     ]
@@ -177,7 +177,7 @@ def test_state_keys_non_lexicographic_order():
 
     # fmt: off
     ops = [
-        StartOp(),
+        StartOp(rw_counter=1, rw=RW.Read, lexicographic_ordering_selector=0),
         StorageOp(rw_counter=1, rw=RW.Write, tx_id=1, addr=0x12345678, key=123, value=rlc(98765), committed_value=rlc(98765)),
         StorageOp(rw_counter=1, rw=RW.Write, tx_id=1, addr=0x12345678, key=123, value=rlc(789), committed_value=rlc(98765)),
         MemoryOp(rw_counter=2, rw=RW.Read,  call_id=1, mem_addr=0, value=0),
@@ -188,7 +188,7 @@ def test_state_keys_non_lexicographic_order():
 
     # fmt: off
     ops = [
-        StartOp(),
+        StartOp(rw_counter=1, rw=RW.Read, lexicographic_ordering_selector=0),
         MemoryOp(rw_counter=1, rw=RW.Read,  call_id=2, mem_addr=0, value=0),
         MemoryOp(rw_counter=2, rw=RW.Read,  call_id=1, mem_addr=0, value=0),
     ]
@@ -201,7 +201,7 @@ def test_state_bad_rwc():
     # fmt: off
     # rwc decreases
     ops = [
-        StartOp(),
+        StartOp(rw_counter=1, rw=RW.Read, lexicographic_ordering_selector=0),
         MemoryOp(rw_counter=2, rw=RW.Read,  call_id=2, mem_addr=123, value=0),
         MemoryOp(rw_counter=1, rw=RW.Read,  call_id=2, mem_addr=123, value=0),
     ]
@@ -214,7 +214,7 @@ def test_state_bad_read_consistency():
     # fmt: off
     # Read a 0 after writing a 8
     ops = [
-        StartOp(),
+        StartOp(rw_counter=1, rw=RW.Read, lexicographic_ordering_selector=0),
         MemoryOp(rw_counter=1, rw=RW.Read,  call_id=2, mem_addr=123, value=0),
         MemoryOp(rw_counter=2, rw=RW.Write, call_id=2, mem_addr=123, value=8),
         MemoryOp(rw_counter=3, rw=RW.Read,  call_id=2, mem_addr=123, value=0),
@@ -224,47 +224,42 @@ def test_state_bad_read_consistency():
     verify(ops, tables, randomness, success=False)
 
 
-def test_start_bad():
-    # fmt: off
-    ops = [
-        StartOp(),
-        MemoryOp(rw_counter=1, rw=RW.Read,  call_id=2, mem_addr=123, value=0),
-    ]
-    # fmt: on
-    rows = assign_state_circuit(ops, r)
-    # rw_counter is 1 on Tag.Start
-    rows[0] = rows[0]._replace(rw_counter=FQ(1))
-    tables = Tables(mpt_table_from_ops(ops, randomness))
-    verify(rows, tables, randomness, success=False)
-
-
 def first_memory_op(rw_counter=1, rw=RW.Write, call_id=1, mem_addr=2**32 - 1, value=3):
     return MemoryOp(rw_counter, rw, call_id, mem_addr, value)
 
 
 def test_first_memory_op_ok():
-    ops = [StartOp(), first_memory_op()]
+    ops = [StartOp(rw_counter=1, rw=RW.Read, lexicographic_ordering_selector=0), first_memory_op()]
     tables = Tables(mpt_table_from_ops(ops, randomness))
     verify(ops, tables, randomness, success=True)
 
 
 def test_memory_bad_address():
     # memory address too big
-    ops = [StartOp(), first_memory_op(mem_addr=2**32)]
+    ops = [
+        StartOp(rw_counter=1, rw=RW.Read, lexicographic_ordering_selector=0),
+        first_memory_op(mem_addr=2**32),
+    ]
     tables = Tables(mpt_table_from_ops(ops, randomness))
     verify(ops, tables, randomness, success=False)
 
 
 def test_memory_bad_first_access():
     # first access is a read but value != 0
-    ops = [StartOp(), first_memory_op(rw=RW.Read)]
+    ops = [
+        StartOp(rw_counter=1, rw=RW.Read, lexicographic_ordering_selector=0),
+        first_memory_op(rw=RW.Read),
+    ]
     tables = Tables(mpt_table_from_ops(ops, randomness))
     verify(ops, tables, randomness, success=False)
 
 
 def test_memory_bad_value_range():
     # memory value too big
-    ops = [StartOp(), first_memory_op(value=2**8)]
+    ops = [
+        StartOp(rw_counter=1, rw=RW.Read, lexicographic_ordering_selector=0),
+        first_memory_op(value=2**8),
+    ]
     tables = Tables(mpt_table_from_ops(ops, randomness))
     verify(ops, tables, randomness, success=False)
 
@@ -273,7 +268,7 @@ def test_stack_bad_first_access():
     # fmt: off
     # first stack operation is read
     ops = [
-        StartOp(),
+        StartOp(rw_counter=1, rw=RW.Read, lexicographic_ordering_selector=0),
         StackOp(rw_counter=1, rw=RW.Read, call_id=1, stack_ptr=1023, value=rlc(4321)),
     ]
     # fmt: on
@@ -285,7 +280,7 @@ def test_stack_bad_stack_ptr_range():
     # fmt: off
     # stack pointer is too big
     ops = [
-        StartOp(),
+        StartOp(rw_counter=1, rw=RW.Read, lexicographic_ordering_selector=0),
         StackOp(rw_counter=1, rw=RW.Write, call_id=1, stack_ptr=1024, value=rlc(4321)),
     ]
     # fmt: on
@@ -297,7 +292,7 @@ def test_stack_bad_stack_ptr_inc():
     # fmt: off
     # stack pointer increases by 2
     ops = [
-        StartOp(),
+        StartOp(rw_counter=1, rw=RW.Read, lexicographic_ordering_selector=0),
         StackOp(rw_counter=1, rw=RW.Write, call_id=1, stack_ptr=1021, value=rlc(4321)),
         StackOp(rw_counter=2, rw=RW.Write, call_id=1, stack_ptr=1023, value=rlc(4321)),
     ]
@@ -310,7 +305,7 @@ def test_tx_log_bad():
     # fmt: off
     # tx_id change must be increasing
     ops = [
-        StartOp(),
+        StartOp(rw_counter=1, rw=RW.Read, lexicographic_ordering_selector=0),
         TxLogOp(rw_counter=2, rw=RW.Write, tx_id=2, log_id=1, field_tag=TxLogFieldTag.Data, index=0, value=FQ(10)),
         TxLogOp(rw_counter=1, rw=RW.Write, tx_id=2, log_id=2, field_tag=TxLogFieldTag.Address, index=0, value=FQ(124)),
         TxLogOp(rw_counter=3, rw=RW.Write, tx_id=1, log_id=2, field_tag=TxLogFieldTag.Data, index=0, value=FQ(255)),
@@ -324,7 +319,7 @@ def test_tx_receipt_bad():
     # fmt: off
     # PostStateOrStatus is invalid
     ops = [
-        StartOp(),
+        StartOp(rw_counter=1, rw=RW.Read, lexicographic_ordering_selector=0),
         TxReceiptOp(rw_counter=1, rw=RW.Read, tx_id=1, field_tag=TxReceiptFieldTag.PostStateOrStatus, value=FQ(3)),
     ]
     # fmt: on
@@ -334,7 +329,7 @@ def test_tx_receipt_bad():
     # fmt: off
     # tx_id is decreasing when changes
     ops = [
-        StartOp(),
+        StartOp(rw_counter=1, rw=RW.Read, lexicographic_ordering_selector=0),
         TxReceiptOp(rw_counter=1, rw=RW.Read, tx_id=2, field_tag=TxReceiptFieldTag.PostStateOrStatus, value=FQ(3)),
         TxReceiptOp(rw_counter=2, rw=RW.Read, tx_id=1, field_tag=TxReceiptFieldTag.CumulativeGasUsed, value=FQ(200)),
     ]
@@ -345,7 +340,7 @@ def test_tx_receipt_bad():
     # fmt: off
     # tx_id is not increasing by one
     ops = [
-        StartOp(),
+        StartOp(rw_counter=1, rw=RW.Read, lexicographic_ordering_selector=0),
         TxReceiptOp(rw_counter=1, rw=RW.Read, tx_id=1, field_tag=TxReceiptFieldTag.PostStateOrStatus, value=FQ(3)),
         TxReceiptOp(rw_counter=2, rw=RW.Read, tx_id=5, field_tag=TxReceiptFieldTag.CumulativeGasUsed, value=FQ(200)),
     ]
@@ -358,7 +353,7 @@ def test_rw_counter_zero_bad():
     # fmt: off
     # rw_counter is 0 but tag is not Start
     ops = [
-        StartOp(),
+        StartOp(rw_counter=1, rw=RW.Read, lexicographic_ordering_selector=0),
         MemoryOp(rw_counter=0, rw=RW.Read,  call_id=2, mem_addr=123, value=0),
     ]
     # fmt: on
@@ -370,7 +365,7 @@ def test_storage_committed_value_bad():
     # fmt: off
     # Committed value changes but keys don't
     ops = [
-        StartOp(),
+        StartOp(rw_counter=1, rw=RW.Read, lexicographic_ordering_selector=0),
         StorageOp(rw_counter=1, rw=RW.Write, tx_id=1, addr=0x12345678, key=0x15161718, value=rlc(789), committed_value=rlc(789)),
         StorageOp(rw_counter=2, rw=RW.Write, tx_id=1, addr=0x12345678, key=0x15161718, value=rlc(123), committed_value=rlc(123)),
     ]

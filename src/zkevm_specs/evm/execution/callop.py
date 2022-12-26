@@ -1,37 +1,55 @@
 from ...util import (
+    EMPTY_CODE_HASH,
     FQ,
+    GAS_COST_ACCOUNT_COLD_ACCESS,
+    GAS_COST_CALL_WITH_VALUE,
+    GAS_COST_NEW_ACCOUNT,
+    GAS_COST_WARM_ACCESS,
+    GAS_STIPEND_CALL_WITH_VALUE,
     N_BYTES_ACCOUNT_ADDRESS,
     N_BYTES_GAS,
-    EMPTY_CODE_HASH,
-    GAS_COST_WARM_ACCESS,
-    GAS_COST_ACCOUNT_COLD_ACCESS,
-    GAS_COST_NEW_ACCOUNT,
-    GAS_COST_CALL_WITH_VALUE,
-    GAS_STIPEND_CALL_WITH_VALUE,
+    RLC,
 )
 from ..instruction import Instruction, Transition
+from ..opcode import Opcode
 from ..table import RW, CallContextFieldTag, AccountFieldTag
 from ..precompiled import PrecompiledAddress
 
 
-def call(instruction: Instruction):
-    instruction.responsible_opcode_lookup(instruction.opcode_lookup(True))
+def callop(instruction: Instruction):
+    opcode = instruction.opcode_lookup(True)
+    is_call, is_callcode, is_delegatecall, is_staticcall = instruction.multiple_select(
+        opcode, (Opcode.CALL, Opcode.CALLCODE, Opcode.DELEGATECALL, Opcode.STATICCALL)
+    )
+    instruction.responsible_opcode_lookup(opcode)
 
     callee_call_id = instruction.curr.rw_counter
 
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
     reversion_info = instruction.reversion_info()
     caller_address = instruction.call_context_lookup(CallContextFieldTag.CalleeAddress)
-    is_static = instruction.call_context_lookup(CallContextFieldTag.IsStatic)
+    is_static = instruction.select(
+        is_staticcall, FQ(1), instruction.call_context_lookup(CallContextFieldTag.IsStatic)
+    )
     depth = instruction.call_context_lookup(CallContextFieldTag.Depth)
+    parent_caller_address, parent_call_value = (
+        (
+            instruction.call_context_lookup(CallContextFieldTag.CallerAddress),
+            instruction.call_context_lookup(CallContextFieldTag.Value),
+        )
+        if is_delegatecall == 1
+        else (RLC(0), RLC(0))
+    )
 
     # Verify depth is less than 1024
     instruction.range_lookup(depth, 1024)
 
     # Lookup values from stack
     gas_rlc = instruction.stack_pop()
-    callee_address_rlc = instruction.stack_pop()
-    value = instruction.stack_pop()
+    code_address_rlc = instruction.stack_pop()
+    # The third stack pop `value` is not present for both DELEGATECALL and
+    # STATICCALL opcodes.
+    value = instruction.stack_pop() if is_call + is_callcode == 1 else RLC(0)
     cd_offset_rlc = instruction.stack_pop()
     cd_length_rlc = instruction.stack_pop()
     rd_offset_rlc = instruction.stack_pop()
@@ -42,7 +60,19 @@ def call(instruction: Instruction):
     instruction.constrain_bool(is_success)
 
     # Recomposition of random linear combination to integer
-    callee_address = instruction.rlc_to_fq(callee_address_rlc, N_BYTES_ACCOUNT_ADDRESS)
+    code_address = instruction.rlc_to_fq(code_address_rlc, N_BYTES_ACCOUNT_ADDRESS)
+
+    # For opcode CALLCODE:
+    # - callee_address = caller_address
+    #
+    # For opcode DELEGATECALL:
+    # - callee_address = caller_address
+    # - caller_address = parent_caller_address
+    #
+    # Variable `code_address` will be used to get code hash.
+    callee_address = instruction.select(is_callcode + is_delegatecall, caller_address, code_address)
+    caller_address = instruction.select(is_delegatecall, parent_caller_address, caller_address)
+
     gas = instruction.rlc_to_fq(gas_rlc, N_BYTES_GAS)
     gas_is_u64 = instruction.is_zero(instruction.sum(gas_rlc.le_bytes[N_BYTES_GAS:]))
     cd_offset, cd_length = instruction.memory_offset_and_length(cd_offset_rlc, cd_length_rlc)
@@ -56,8 +86,8 @@ def call(instruction: Instruction):
         rd_length,
     )
 
-    # Add callee to access list
-    is_warm_access = instruction.add_account_to_access_list(tx_id, callee_address, reversion_info)
+    # Add `code_address` to access list
+    is_warm_access = instruction.add_account_to_access_list(tx_id, code_address, reversion_info)
 
     # Propagate rw_counter_end_of_reversion and is_persistent
     callee_reversion_info = instruction.reversion_info(call_id=callee_call_id)
@@ -78,27 +108,50 @@ def call(instruction: Instruction):
     has_value = 1 - instruction.is_zero(value)
     instruction.constrain_zero(has_value * is_static)
 
-    # Verify transfer
-    _, (_, callee_balance_prev) = instruction.transfer(
-        caller_address, callee_address, value, callee_reversion_info
-    )
+    if is_call == 1:
+        # For CALL opcode, verify transfer, and get caller balance before
+        # transfer to constrain it should be greater than or equal to stack
+        # `value`.
+        (_, caller_balance), _ = instruction.transfer(
+            caller_address, callee_address, value, callee_reversion_info
+        )
+    elif is_callcode == 1:
+        # For CALLCODE opcode, get caller balance to constrain it should be
+        # greater than or equal to stack `value`.
+        caller_balance = instruction.account_read(caller_address, AccountFieldTag.Balance)
 
-    # Verify gas cost
-    callee_nonce = instruction.account_read(callee_address, AccountFieldTag.Nonce)
-    callee_code_hash = instruction.account_read(callee_address, AccountFieldTag.CodeHash)
-    is_empty_code_hash = instruction.is_equal(
-        callee_code_hash, instruction.rlc_encode(EMPTY_CODE_HASH, 32)
-    )
-    is_account_empty = (
-        instruction.is_zero(callee_nonce)
-        * instruction.is_zero(callee_balance_prev)
-        * is_empty_code_hash
-    )
+    # For both CALL and CALLCODE opcodes, verify caller balance is greater than
+    # or equal to stack `value`.
+    if is_call + is_callcode == 1:
+        value_lt_caller_balance, value_eq_caller_balance = instruction.compare_word(
+            value, caller_balance
+        )
+        instruction.constrain_zero(1 - value_lt_caller_balance - value_eq_caller_balance)
+
+    # Load callee account `exists` value from auxilary witness data.
+    callee_exists = instruction.curr.aux_data
+
+    if callee_exists == 1:
+        # Get callee code hash.
+        callee_code_hash = instruction.account_read(code_address, AccountFieldTag.CodeHash)
+        is_empty_code_hash = instruction.is_equal(
+            callee_code_hash, instruction.rlc_encode(EMPTY_CODE_HASH, 32)
+        )
+    else:  # callee_exists == 0
+        instruction.account_read(code_address, AccountFieldTag.NonExisting)
+        is_empty_code_hash = FQ(1)
+
+    # Verify gas cost.
     gas_cost = (
         instruction.select(
             is_warm_access, FQ(GAS_COST_WARM_ACCESS), FQ(GAS_COST_ACCOUNT_COLD_ACCESS)
         )
-        + has_value * (GAS_COST_CALL_WITH_VALUE + is_account_empty * GAS_COST_NEW_ACCOUNT)
+        + has_value
+        * (
+            GAS_COST_CALL_WITH_VALUE
+            # Only CALL opcode could invoke transfer to make empty account into non-empty.
+            + is_call * (1 - callee_exists) * GAS_COST_NEW_ACCOUNT
+        )
         + memory_expansion_gas_cost
     )
 
@@ -131,10 +184,17 @@ def call(instruction: Instruction):
                 expected_value,
             )
 
+        # For CALL opcode, it has an extra stack pop `value` and two account write for `transfer` call (+3).
+        # For CALLCODE opcode, it has an extra stack pop `value` and one account read for caller balance (+2).
+        # For DELEGATECALL opcode, it has two extra call context lookups for current caller address and value (+2).
+        # No extra lookups for STATICCALL opcode.
+        rw_counter_delta = 20 + is_call * 3 + is_callcode * 2 + is_delegatecall * 2
+        stack_pointer_delta = 5 + is_call + is_callcode
+
         instruction.constrain_step_state_transition(
-            rw_counter=Transition.delta(24),
+            rw_counter=Transition.delta(rw_counter_delta),
             program_counter=Transition.delta(1),
-            stack_pointer=Transition.delta(6),
+            stack_pointer=Transition.delta(stack_pointer_delta),
             gas_left=Transition.delta(has_value * GAS_STIPEND_CALL_WITH_VALUE - gas_cost),
             memory_size=Transition.to(next_memory_size),
             reversible_write_counter=Transition.delta(3),
@@ -145,10 +205,17 @@ def call(instruction: Instruction):
             code_hash=Transition.same(),
         )
     else:
+        # Similar as above comment.
+        rw_counter_delta = 40 + is_call * 3 + is_callcode * 2 + is_delegatecall * 2
+        stack_pointer_delta = 5 + is_call + is_callcode
+
         # Save caller's call state
         for (field_tag, expected_value) in [
             (CallContextFieldTag.ProgramCounter, instruction.curr.program_counter + 1),
-            (CallContextFieldTag.StackPointer, instruction.curr.stack_pointer + 6),
+            (
+                CallContextFieldTag.StackPointer,
+                instruction.curr.stack_pointer + stack_pointer_delta,
+            ),
             (CallContextFieldTag.GasLeft, instruction.curr.gas_left - gas_cost - callee_gas_left),
             (CallContextFieldTag.MemorySize, next_memory_size),
             (
@@ -168,12 +235,15 @@ def call(instruction: Instruction):
             (CallContextFieldTag.TxId, tx_id.expr()),
             (CallContextFieldTag.Depth, depth.expr() + 1),
             (CallContextFieldTag.CallerAddress, caller_address.expr()),
-            (CallContextFieldTag.CalleeAddress, callee_address),
+            (CallContextFieldTag.CalleeAddress, callee_address.expr()),
             (CallContextFieldTag.CallDataOffset, cd_offset),
             (CallContextFieldTag.CallDataLength, cd_length),
             (CallContextFieldTag.ReturnDataOffset, rd_offset),
             (CallContextFieldTag.ReturnDataLength, rd_length),
-            (CallContextFieldTag.Value, value.expr()),
+            (
+                CallContextFieldTag.Value,
+                instruction.select(is_delegatecall, parent_call_value.expr(), value.expr()),
+            ),
             (CallContextFieldTag.IsSuccess, is_success.expr()),
             (CallContextFieldTag.IsStatic, is_static.expr()),
             (CallContextFieldTag.LastCalleeId, FQ(0)),
@@ -192,7 +262,7 @@ def call(instruction: Instruction):
         callee_gas_left += has_value * GAS_STIPEND_CALL_WITH_VALUE
 
         instruction.step_state_transition_to_new_context(
-            rw_counter=Transition.delta(44),
+            rw_counter=Transition.delta(rw_counter_delta),
             call_id=Transition.to(callee_call_id),
             is_root=Transition.to(False),
             is_create=Transition.to(False),

@@ -14,6 +14,9 @@ N_BYTES_PROGRAM_COUNTER = 8
 N_BYTES_U64 = 8
 # Number of bytes of an EVM word (u256)
 N_BYTES_WORD = 32
+# Number of bytes of stack pointer(1024)
+N_BYTES_STACK = 2
+
 
 # Gas cost of free step
 GAS_COST_ZERO = 0
@@ -31,6 +34,8 @@ GAS_COST_MID = 8
 GAS_COST_SLOW = 10
 # Gas cost of ext step
 GAS_COST_EXT = 20
+# Gas cost (dynamic) per exponent byte-size
+GAS_COST_EXP_PER_BYTE = 50
 # Gas cost of SHA3
 GAS_COST_SHA3 = 30
 # Gas cost of CREATE

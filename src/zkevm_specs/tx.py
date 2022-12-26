@@ -6,7 +6,7 @@ from .util import (
     U160,
     U256,
     U64,
-    linear_combine,
+    linear_combine_bytes,
     GAS_COST_TX_CALL_DATA_PER_NON_ZERO_BYTE,
     GAS_COST_TX_CALL_DATA_PER_ZERO_BYTE,
 )
@@ -224,14 +224,16 @@ class SignVerifyChip:
         )
 
         # 2. Verify that the first 20 bytes of the pub_key_hash equal the address
-        addr_expr = linear_combine(list(reversed(self.pub_key_hash.le_bytes[-20:])), FQ(2**8))
+        addr_expr = linear_combine_bytes(
+            list(reversed(self.pub_key_hash.le_bytes[-20:])), FQ(2**8)
+        )
         assert (
             addr_expr == self.address
         ), f"{assert_msg}: {hex(addr_expr.n)} != {hex(self.address.n)}"
 
         # 3. Verify that the signed message in the ecdsa_chip with RLC encoding
         # corresponds to msg_hash_rlc
-        msg_hash_rlc_expr = is_not_padding * linear_combine(self.msg_hash_bytes, randomness)
+        msg_hash_rlc_expr = is_not_padding * linear_combine_bytes(self.msg_hash_bytes, randomness)
         assert (
             msg_hash_rlc_expr == self.msg_hash_rlc
         ), f"{assert_msg}: {hex(msg_hash_rlc_expr.n)} != {hex(self.msg_hash_rlc.n)}"
@@ -268,7 +270,7 @@ def verify_circuit(
 
         # SignVerifyChip constraint verification.  Padding txs rows contain
         # 0 in all values.  The SignVerifyChip skips the verification when
-        # the msg_hash_rlc == 0.
+        # the caller_address == 0.
         sign_verifications[tx_index].verify(keccak_table, randomness, assert_msg)
 
         # 0. Copy constraints using fixed offsets between the tx rows and the SignVerifyChip
@@ -303,6 +305,21 @@ class Transaction(NamedTuple):
         if self.to is None:
             return bytes(0)
         return self.to.to_bytes(20, "big")
+
+
+def padding_tx(tx_id: int) -> List[Row]:
+    return [
+        Row(FQ(tx_id), FQ(Tag.Nonce), FQ(0), FQ(0)),
+        Row(FQ(tx_id), FQ(Tag.Gas), FQ(0), FQ(0)),
+        Row(FQ(tx_id), FQ(Tag.GasPrice), FQ(0), FQ(0)),
+        Row(FQ(tx_id), FQ(Tag.CallerAddress), FQ(0), FQ(0)),
+        Row(FQ(tx_id), FQ(Tag.CalleeAddress), FQ(0), FQ(0)),
+        Row(FQ(tx_id), FQ(Tag.IsCreate), FQ(0), FQ(0)),
+        Row(FQ(tx_id), FQ(Tag.Value), FQ(0), FQ(0)),
+        Row(FQ(tx_id), FQ(Tag.CallDataLength), FQ(0), FQ(0)),
+        Row(FQ(tx_id), FQ(Tag.CallDataGasCost), FQ(0), FQ(0)),
+        Row(FQ(tx_id), FQ(Tag.TxSignHash), FQ(0), FQ(0)),
+    ]
 
 
 def tx2witness(
@@ -400,18 +417,20 @@ def txs2witness(
     assert len(tx_dyn_rows) <= MAX_CALLDATA_BYTES
 
     # Fill all the rows in the fixed region to reach MAX_TXS * Tag.TxSignHash
-    # with pad rows in the front.  These front padding rows use a sequential id
-    # starting at 1 in the tx_id field used to prove a lower bound on the
-    # number padding rows in the fixed region.   And fill all the rows in the
-    # dynamic region to reach MAX_CALLDATA_BYTES with pad rows in the back.
+    # offset in the bottom.  These front padding txs use sequential tx_id that
+    # continue from the real txs.  Padding txs have all values at 0 (and in
+    # particular, are defined with CallerAddress = 0), and they can used to
+    # prove a lower bound on the number padding txs in the fixed region.
+    # Then fill all the rows in the dynamic region to reach MAX_CALLDATA_BYTES with
+    # pad rows in the back.
+    tx_padding_rows = []
+    for i in range(len(txs), MAX_TXS):
+        tx_padding_rows += padding_tx(i + 1)
     rows = (
-        [
-            Row(FQ(i + 1), FQ(Tag.Pad), FQ(0), FQ(0))
-            for i in range((MAX_TXS - len(txs)) * Tag.TxSignHash)
-        ]
-        + tx_fixed_rows
+        tx_fixed_rows
+        + tx_padding_rows
         + tx_dyn_rows
-        + [Row(FQ(0), FQ(Tag.Pad), FQ(0), FQ(0))] * (MAX_CALLDATA_BYTES - len(tx_dyn_rows))
+        + [Row(FQ(0), FQ(Tag.CallData), FQ(0), FQ(0))] * (MAX_CALLDATA_BYTES - len(tx_dyn_rows))
     )
 
     dummy_ecdsa_chip = ECDSAVerifyChip(
@@ -427,6 +446,6 @@ def txs2witness(
     )
     # Fill the rest of sign_verifications with the witnessess assigned to 0s
     # and dummy ecdsa vefification values to disable the verification.
-    sign_verifications = [padding_sign_verification] * (MAX_TXS - len(txs)) + sign_verifications
+    sign_verifications = sign_verifications + [padding_sign_verification] * (MAX_TXS - len(txs))
 
     return Witness(rows, keccak_table, sign_verifications)

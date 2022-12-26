@@ -23,13 +23,9 @@ def stop(instruction: Instruction):
     instruction.constrain_equal(FQ(instruction.curr.is_root), is_to_end_tx)
 
     if instruction.curr.is_root:
-        # When a transaction ends with STOP, this call must be persistent
-        is_persistent = instruction.call_context_lookup(CallContextFieldTag.IsPersistent)
-        instruction.constrain_equal(is_persistent, FQ(1))
-
         # Do step state transition
         instruction.constrain_step_state_transition(
-            rw_counter=Transition.delta(2),
+            rw_counter=Transition.delta(1),
             call_id=Transition.same(),
         )
     else:

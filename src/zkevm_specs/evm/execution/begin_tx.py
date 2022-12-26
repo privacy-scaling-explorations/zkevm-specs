@@ -10,9 +10,12 @@ def begin_tx(instruction: Instruction):
 
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId, call_id=call_id)
     reversion_info = instruction.reversion_info(call_id=call_id)
+    instruction.constrain_equal(
+        instruction.call_context_lookup(CallContextFieldTag.IsSuccess, call_id=call_id),
+        reversion_info.is_persistent,
+    )
 
     if instruction.is_first_step:
-        instruction.constrain_equal(instruction.curr.rw_counter, FQ(1))
         instruction.constrain_equal(tx_id, FQ(1))
 
     tx_caller_address = instruction.tx_context_lookup(tx_id, TxContextFieldTag.CallerAddress)
@@ -20,6 +23,9 @@ def begin_tx(instruction: Instruction):
     tx_is_create = instruction.tx_context_lookup(tx_id, TxContextFieldTag.IsCreate)
     tx_value = cast_expr(instruction.tx_context_lookup(tx_id, TxContextFieldTag.Value), RLC)
     tx_call_data_length = instruction.tx_context_lookup(tx_id, TxContextFieldTag.CallDataLength)
+
+    # CallerAddress != 0 (not a padding tx)
+    instruction.constrain_not_zero(tx_caller_address)
 
     # Verify nonce
     tx_nonce = instruction.tx_context_lookup(tx_id, TxContextFieldTag.Nonce)
@@ -79,7 +85,7 @@ def begin_tx(instruction: Instruction):
             # Do step state transition
             instruction.constrain_equal(instruction.next.execution_state, ExecutionState.EndTx)
             instruction.constrain_step_state_transition(
-                rw_counter=Transition.delta(9), call_id=Transition.to(call_id)
+                rw_counter=Transition.delta(10), call_id=Transition.to(call_id)
             )
         else:
 
@@ -109,7 +115,7 @@ def begin_tx(instruction: Instruction):
                 )
 
             instruction.step_state_transition_to_new_context(
-                rw_counter=Transition.delta(22),
+                rw_counter=Transition.delta(23),
                 call_id=Transition.to(call_id),
                 is_root=Transition.to(True),
                 is_create=Transition.to(False),

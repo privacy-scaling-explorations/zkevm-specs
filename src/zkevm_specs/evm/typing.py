@@ -45,8 +45,11 @@ from .table import (
     CopyDataTypeTag,
     CopyCircuitRow,
     KeccakTableRow,
+    ExpCircuitRow,
 )
 from .opcode import get_push_size, Opcode
+
+POW2 = 2**256
 
 
 class Block:
@@ -133,8 +136,8 @@ class Transaction:
         nonce: U64 = U64(0),
         gas: U64 = U64(21000),
         gas_price: U256 = U256(int(2e9)),
-        caller_address: U160 = U160(0),
-        callee_address: U160 = None,
+        caller_address: U160 = U160(0xCAFE),
+        callee_address: Optional[U160] = None,
         value: U256 = U256(0),
         call_data: bytes = bytes(),
     ) -> None:
@@ -146,6 +149,11 @@ class Transaction:
         self.callee_address = callee_address
         self.value = value
         self.call_data = call_data
+
+    @classmethod
+    def padding(obj, id: int):
+        tx = obj(id, U64(0), U64(0), U256(0), U160(0), U160(0), U256(0), bytes())
+        return tx
 
     def call_data_gas_cost(self) -> int:
         return reduce(
@@ -161,54 +169,57 @@ class Transaction:
             0,
         )
 
+    def table_fixed(self, randomness: FQ) -> List[TxTableRow]:
+        return [
+            TxTableRow(FQ(self.id), FQ(TxContextFieldTag.Nonce), FQ(0), FQ(self.nonce)),
+            TxTableRow(FQ(self.id), FQ(TxContextFieldTag.Gas), FQ(0), FQ(self.gas)),
+            TxTableRow(
+                FQ(self.id),
+                FQ(TxContextFieldTag.GasPrice),
+                FQ(0),
+                RLC(self.gas_price, randomness),
+            ),
+            TxTableRow(
+                FQ(self.id), FQ(TxContextFieldTag.CallerAddress), FQ(0), FQ(self.caller_address)
+            ),
+            TxTableRow(
+                FQ(self.id),
+                FQ(TxContextFieldTag.CalleeAddress),
+                FQ(0),
+                FQ(0 if self.callee_address is None else self.callee_address),
+            ),
+            TxTableRow(
+                FQ(self.id),
+                FQ(TxContextFieldTag.IsCreate),
+                FQ(0),
+                FQ(self.callee_address is None),
+            ),
+            TxTableRow(
+                FQ(self.id), FQ(TxContextFieldTag.Value), FQ(0), RLC(self.value, randomness)
+            ),
+            TxTableRow(
+                FQ(self.id),
+                FQ(TxContextFieldTag.CallDataLength),
+                FQ(0),
+                FQ(len(self.call_data)),
+            ),
+            TxTableRow(
+                FQ(self.id),
+                FQ(TxContextFieldTag.CallDataGasCost),
+                FQ(0),
+                FQ(self.call_data_gas_cost()),
+            ),
+            TxTableRow(
+                FQ(self.id),
+                FQ(TxContextFieldTag.TxSignHash),
+                FQ(0),
+                FQ(1234),  # Mock value for TxSignHash
+            ),
+        ]
+
     def table_assignments(self, randomness: FQ) -> Iterator[TxTableRow]:
         return chain(
-            [
-                TxTableRow(FQ(self.id), FQ(TxContextFieldTag.Nonce), FQ(0), FQ(self.nonce)),
-                TxTableRow(FQ(self.id), FQ(TxContextFieldTag.Gas), FQ(0), FQ(self.gas)),
-                TxTableRow(
-                    FQ(self.id),
-                    FQ(TxContextFieldTag.GasPrice),
-                    FQ(0),
-                    RLC(self.gas_price, randomness),
-                ),
-                TxTableRow(
-                    FQ(self.id), FQ(TxContextFieldTag.CallerAddress), FQ(0), FQ(self.caller_address)
-                ),
-                TxTableRow(
-                    FQ(self.id),
-                    FQ(TxContextFieldTag.CalleeAddress),
-                    FQ(0),
-                    FQ(0 if self.callee_address is None else self.callee_address),
-                ),
-                TxTableRow(
-                    FQ(self.id),
-                    FQ(TxContextFieldTag.IsCreate),
-                    FQ(0),
-                    FQ(self.callee_address is None),
-                ),
-                TxTableRow(
-                    FQ(self.id), FQ(TxContextFieldTag.Value), FQ(0), RLC(self.value, randomness)
-                ),
-                TxTableRow(
-                    FQ(self.id),
-                    FQ(TxContextFieldTag.CallDataLength),
-                    FQ(0),
-                    FQ(len(self.call_data)),
-                ),
-                TxTableRow(
-                    FQ(self.id),
-                    FQ(TxContextFieldTag.CallDataGasCost),
-                    FQ(0),
-                    FQ(self.call_data_gas_cost()),
-                ),
-                TxTableRow(
-                    FQ(self.id),
-                    FQ(TxContextFieldTag.TxSignHash),
-                    FQ(0),
-                    FQ(1234),  # Mock value for TxSignHash
-                ),
-            ],
+            self.table_fixed(randomness),
             map(
                 lambda item: TxTableRow(
                     FQ(self.id), FQ(TxContextFieldTag.CallData), FQ(item[0]), FQ(item[1])
@@ -343,8 +354,8 @@ class Account:
         address: U160 = U160(0),
         nonce: U256 = U256(0),
         balance: U256 = U256(0),
-        code: Bytecode = None,
-        storage: Storage = None,
+        code: Optional[Bytecode] = None,
+        storage: Optional[Storage] = None,
     ) -> None:
         self.address = address
         self.nonce = nonce
@@ -472,7 +483,7 @@ class RWDictionary:
         tx_id: IntOrFQ,
         refund: IntOrFQ,
         refund_prev: IntOrFQ,
-        rw_counter_of_reversion: int = None,
+        rw_counter_of_reversion: Optional[int] = None,
     ) -> RWDictionary:
         return self._state_write(
             RWTableTag.TxRefund,
@@ -488,7 +499,7 @@ class RWDictionary:
         account_address: IntOrFQ,
         value: bool,
         value_prev: bool,
-        rw_counter_of_reversion: int = None,
+        rw_counter_of_reversion: Optional[int] = None,
     ) -> RWDictionary:
         return self._state_write(
             RWTableTag.TxAccessListAccount,
@@ -499,6 +510,20 @@ class RWDictionary:
             rw_counter_of_reversion=rw_counter_of_reversion,
         )
 
+    def tx_access_list_account_read(
+        self,
+        tx_id: IntOrFQ,
+        account_address: IntOrFQ,
+        value: bool,
+    ) -> RWDictionary:
+        return self._state_read(
+            RWTableTag.TxAccessListAccount,
+            key1=FQ(tx_id),
+            key2=FQ(account_address),
+            value=FQ(value),
+            value_prev=FQ(value),
+        )
+
     def tx_access_list_account_storage_write(
         self,
         tx_id: IntOrFQ,
@@ -506,7 +531,7 @@ class RWDictionary:
         storage_key: RLC,
         value: bool,
         value_prev: bool,
-        rw_counter_of_reversion: int = None,
+        rw_counter_of_reversion: Optional[int] = None,
     ) -> RWDictionary:
         return self._state_write(
             RWTableTag.TxAccessListAccountStorage,
@@ -538,7 +563,7 @@ class RWDictionary:
         field_tag: AccountFieldTag,
         value: Union[int, FQ, RLC],
         value_prev: Union[int, FQ, RLC],
-        rw_counter_of_reversion: int = None,
+        rw_counter_of_reversion: Optional[int] = None,
     ) -> RWDictionary:
         if isinstance(value, int):
             value = FQ(value)
@@ -582,7 +607,7 @@ class RWDictionary:
         value_prev: RLC,
         tx_id: IntOrFQ,
         value_committed: RLC,
-        rw_counter_of_reversion: int = None,
+        rw_counter_of_reversion: Optional[int] = None,
     ) -> RWDictionary:
         if isinstance(tx_id, int):
             tx_id = FQ(tx_id)
@@ -607,7 +632,7 @@ class RWDictionary:
         value: Expression = FQ(0),
         value_prev: Expression = FQ(0),
         aux0: Expression = FQ(0),
-        rw_counter_of_reversion: int = None,
+        rw_counter_of_reversion: Optional[int] = None,
     ) -> RWDictionary:
         self._append(
             RW.Write,
@@ -637,6 +662,29 @@ class RWDictionary:
                 rw_counter=rw_counter_of_reversion,
             )
 
+    def _state_read(
+        self,
+        tag: RWTableTag,
+        key1: Expression = FQ(0),
+        key2: Expression = FQ(0),
+        key3: Expression = FQ(0),
+        key4: Expression = FQ(0),
+        value: Expression = FQ(0),
+        value_prev: Expression = FQ(0),
+        aux0: Expression = FQ(0),
+    ) -> RWDictionary:
+        return self._append(
+            RW.Read,
+            tag=tag,
+            key1=key1,
+            key2=key2,
+            key3=key3,
+            key4=key4,
+            value=value,
+            value_prev=value_prev,
+            aux0=aux0,
+        )
+
     def _append(
         self,
         rw: RW,
@@ -648,7 +696,7 @@ class RWDictionary:
         value: Expression = FQ(0),
         value_prev: Expression = FQ(0),
         aux0: Expression = FQ(0),
-        rw_counter: int = None,
+        rw_counter: Optional[int] = None,
     ) -> RWDictionary:
         if rw_counter is None:
             rw_counter = self.rw_counter
@@ -690,6 +738,134 @@ class KeccakCircuit:
             )
         )
         return self
+
+
+class ExpCircuit:
+    rows: List[ExpCircuitRow]
+    pad_rows: List[ExpCircuitRow]
+
+    def __init__(self, pad_rows: Optional[List[ExpCircuitRow]] = None) -> None:
+        self.rows = []
+        self.pad_rows = []
+        if pad_rows is not None:
+            self.pad_rows = pad_rows
+
+    def table(self) -> Sequence[ExpCircuitRow]:
+        return self.rows + self.pad_rows
+
+    def add_event(self, base: int, exponent: int, randomness: FQ, identifier: IntOrFQ):
+        steps: List[Tuple[int, int, int]] = []
+        exponentiation = self._exp_by_squaring(base, exponent, steps)
+        steps.reverse()
+        self._append_steps(base, exponent, exponentiation, steps, randomness, identifier)
+        self._append_padding_row(identifier)
+        return self
+
+    def _exp_by_squaring(self, base: int, exponent: int, steps: List[Tuple[int, int, int]]):
+        # we assume that base and exponent are both < 2**256
+        if exponent == 0:
+            return 1
+        if exponent == 1:
+            return base
+
+        exp1 = self._exp_by_squaring(base, exponent // 2, steps)
+        exp2 = (exp1 * exp1) % POW2
+        steps.append((exp1, exp1, exp2))
+        if exponent % 2 == 0:
+            # exponent is even
+            return exp2
+        else:
+            # exponent is odd
+            exp = (base * exp2) % POW2
+            steps.append((exp2, base, exp))
+            return exp
+
+    def _append_steps(
+        self,
+        base: int,
+        exponent: int,
+        exponentiation: int,
+        steps: List[Tuple[int, int, int]],
+        randomness: FQ,
+        identifier: IntOrFQ,
+    ):
+        base_rlc = RLC(base, randomness, n_bytes=32)
+        for i, step in enumerate(steps):
+            # multiplication gadget
+            a, b, d = step[0], step[1], step[2]
+            # exp table
+            quotient, is_odd = divmod(exponent, 2)
+            exponent_rlc = RLC(exponent, randomness, n_bytes=32)
+            self._append_step(
+                identifier,
+                FQ(1 if i == len(steps) - 1 else 0),
+                base_rlc,
+                exponent_rlc,
+                RLC(d, randomness, n_bytes=32),
+                RLC(a, randomness, n_bytes=32),
+                RLC(b, randomness, n_bytes=32),
+                RLC(0, randomness, n_bytes=32),
+                RLC(d, randomness, n_bytes=32),
+                RLC(quotient, randomness, n_bytes=32),
+                RLC(is_odd, randomness, n_bytes=32),
+            )
+            if is_odd == 0:
+                # exponent is even
+                exponent = exponent // 2
+            else:
+                # exponent is odd
+                exponent = exponent - 1
+
+    def _append_padding_row(self, identifier: IntOrFQ):
+        self.rows.append(
+            ExpCircuitRow(
+                q_usable=FQ.zero(),
+                is_step=FQ.zero(),
+                identifier=FQ(identifier),
+                is_last=FQ.zero(),
+                base=RLC(0),
+                exponent=RLC(0),
+                exponentiation=RLC(0),
+                a=RLC(0),
+                b=RLC(0),
+                c=RLC(0),
+                d=RLC(0),
+                q=RLC(0),
+                r=RLC(0),
+            )
+        )
+
+    def _append_step(
+        self,
+        identifier: IntOrFQ,
+        is_last: IntOrFQ,
+        base: RLC,
+        exponent: RLC,
+        exponentiation: RLC,
+        a: RLC,
+        b: RLC,
+        c: RLC,
+        d: RLC,
+        quotient: RLC,
+        remainder: RLC,
+    ):
+        self.rows.append(
+            ExpCircuitRow(
+                q_usable=FQ.one(),
+                is_step=FQ.one(),
+                identifier=FQ(identifier),
+                is_last=FQ(is_last),
+                base=base,
+                exponent=exponent,
+                exponentiation=exponentiation,
+                a=a,
+                b=b,
+                c=c,
+                d=d,
+                q=quotient,
+                r=remainder,
+            )
+        )
 
 
 class CopyCircuit:

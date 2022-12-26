@@ -1,11 +1,14 @@
 from __future__ import annotations
-from typing import Any, List, Mapping, Optional, Sequence, Set, Type, TypeVar, Union
+from typing import Any, List, Mapping, Optional, Sequence, Set, Tuple, Type, TypeVar, Union
 from enum import IntEnum, auto
 from itertools import chain, product
 from dataclasses import dataclass, field, fields
 
-from ..util import Expression, FQ
+from .opcode import constant_gas_cost_pairs
+
+from ..util import Expression, FQ, RLC, word_to_lo_hi, word_to_64s
 from .execution_state import ExecutionState
+from .opcode import stack_bounds
 
 
 class FixedTableTag(IntEnum):
@@ -27,6 +30,8 @@ class FixedTableTag(IntEnum):
     BitwiseXor = auto()  # lhs, rhs, lhs ^ rhs, 0
     ResponsibleOpcode = auto()  # execution_state, opcode, aux
     Pow2 = auto()  # value, value_pow
+    OpcodeConstantGas = auto()  # opcode constant gas
+    OpcodeStack = auto()  # opcode stack info for stack error purpose
 
     def table_assignments(self) -> List[FixedTableRow]:
         if self == FixedTableTag.Range5:
@@ -69,6 +74,18 @@ class FixedTableTag(IntEnum):
                     execution_state.responsible_opcode(),
                 )
             ]
+        elif self == FixedTableTag.OpcodeConstantGas:
+            return [
+                FixedTableRow(FQ(self), FQ(code[0]), FQ(code[1]), FQ(0))
+                for code in constant_gas_cost_pairs()
+            ]
+        elif self == FixedTableTag.OpcodeStack:
+            return [
+                # flag | op code |  min stack | max stack
+                FixedTableRow(FQ(self), FQ(pair[0]), FQ(pair[1] if pair[1] > 0 else 0), FQ(pair[2]))
+                for pair in stack_bounds()
+            ]
+
         elif self == FixedTableTag.Pow2:
             return [
                 FixedTableRow(
@@ -140,7 +157,6 @@ class TxContextFieldTag(IntEnum):
     CallDataGasCost = auto()
     TxSignHash = auto()
     CallData = auto()
-    Pad = auto()
 
 
 class BytecodeFieldTag(IntEnum):
@@ -197,6 +213,7 @@ class AccountFieldTag(IntEnum):
     Nonce = auto()
     Balance = auto()
     CodeHash = auto()
+    NonExisting = auto()
 
 
 class CallContextFieldTag(IntEnum):
@@ -300,6 +317,32 @@ class CopyDataTypeTag(IntEnum):
     RlcAcc = auto()
 
 
+class MPTProofType(IntEnum):
+    """
+    Tag for MPT lookup.
+    """
+
+    NonceMod = 1
+    BalanceMod = 2
+    CodeHashMod = 3
+    NonExistingAccountProof = 4
+    AccountDeleteMod = 5
+    StorageMod = 6
+    NonExistingStorageProof = 7
+
+    @staticmethod
+    def from_account_field_tag(field_tag: AccountFieldTag) -> MPTProofType:
+        if field_tag == AccountFieldTag.Nonce:
+            return MPTProofType.NonceMod
+        if field_tag == AccountFieldTag.Balance:
+            return MPTProofType.BalanceMod
+        elif field_tag == AccountFieldTag.CodeHash:
+            return MPTProofType.CodeHashMod
+        elif field_tag == AccountFieldTag.NonExisting:
+            return MPTProofType.NonExistingAccountProof
+        raise Exception("Unexpected AccountFieldTag value")
+
+
 class WrongQueryKey(Exception):
     def __init__(self, table_name: str, diff: Set[str]) -> None:
         self.message = f"Lookup {table_name} with invalid keys {diff}"
@@ -380,7 +423,7 @@ class RWTableRow(TableRow):
 @dataclass(frozen=True)
 class MPTTableRow(TableRow):
     address: Expression
-    field_tag: Expression
+    proof_type: Expression
     storage_key: Expression
     root: Expression
     root_prev: Expression
@@ -434,6 +477,41 @@ class KeccakTableRow(TableRow):
     output: FQ
 
 
+@dataclass
+class ExpCircuitRow(TableRow):
+    q_usable: FQ
+    # columns from the exponentiation table
+    is_step: FQ
+    identifier: FQ  # rw_counter
+    is_last: FQ
+    base: RLC
+    exponent: RLC
+    exponentiation: RLC
+    # columns from the MulAddGadget (a*b + c == d)
+    a: RLC
+    b: RLC
+    c: RLC
+    d: RLC
+    # columns from the parity check (2*q + r == exponent)
+    q: RLC
+    r: RLC
+
+
+@dataclass(frozen=True)
+class ExpTableRow(TableRow):
+    is_step: FQ
+    identifier: FQ
+    is_last: FQ
+    base_limb0: FQ
+    base_limb1: FQ
+    base_limb2: FQ
+    base_limb3: FQ
+    exponent_lo: FQ
+    exponent_hi: FQ
+    exponentiation_lo: FQ
+    exponentiation_hi: FQ
+
+
 class Tables:
     """
     A collection of lookup tables used in EVM circuit.
@@ -446,6 +524,7 @@ class Tables:
     rw_table: Set[RWTableRow]
     copy_table: Set[CopyTableRow]
     keccak_table: Set[KeccakTableRow]
+    exp_table: Set[ExpTableRow]
 
     def __init__(
         self,
@@ -453,8 +532,9 @@ class Tables:
         tx_table: Set[TxTableRow],
         bytecode_table: Set[BytecodeTableRow],
         rw_table: Union[Set[Sequence[Expression]], Set[RWTableRow]],
-        copy_circuit: Sequence[CopyCircuitRow] = None,
-        keccak_table: Sequence[KeccakTableRow] = None,
+        copy_circuit: Optional[Sequence[CopyCircuitRow]] = None,
+        keccak_table: Optional[Sequence[KeccakTableRow]] = None,
+        exp_circuit: Optional[Sequence[ExpCircuitRow]] = None,
     ) -> None:
         self.block_table = block_table
         self.tx_table = tx_table
@@ -467,6 +547,8 @@ class Tables:
             self.copy_table = self._convert_copy_circuit_to_table(copy_circuit)
         if keccak_table is not None:
             self.keccak_table = set(keccak_table)
+        if exp_circuit is not None:
+            self.exp_table = self._convert_exp_circuit_to_table(exp_circuit)
 
     def _convert_copy_circuit_to_table(self, copy_circuit: Sequence[CopyCircuitRow]):
         rows: List[CopyTableRow] = []
@@ -492,6 +574,29 @@ class Tables:
                         rwc_inc=first_row.rwc_inc_left,
                     )
                 )
+        return set(rows)
+
+    def _convert_exp_circuit_to_table(self, exp_circuit: Sequence[ExpCircuitRow]):
+        rows: List[ExpTableRow] = []
+        for i, row in enumerate(exp_circuit):
+            base_limbs = word_to_64s(row.base)
+            exponent_lo_hi = word_to_lo_hi(row.exponent)
+            exponentiation_lo_hi = word_to_lo_hi(row.exponentiation)
+            rows.append(
+                ExpTableRow(
+                    is_step=FQ.one(),
+                    identifier=row.identifier,
+                    is_last=row.is_last,
+                    base_limb0=base_limbs[0],
+                    base_limb1=base_limbs[1],
+                    base_limb2=base_limbs[2],
+                    base_limb3=base_limbs[3],
+                    exponent_lo=exponent_lo_hi[0],
+                    exponent_hi=exponent_lo_hi[1],
+                    exponentiation_lo=exponentiation_lo_hi[0],
+                    exponentiation_hi=exponentiation_lo_hi[1],
+                )
+            )
         return set(rows)
 
     def fixed_lookup(
@@ -533,7 +638,7 @@ class Tables:
         bytecode_hash: Expression,
         field_tag: Expression,
         index: Expression,
-        is_code: Expression = None,
+        is_code: Optional[Expression] = None,
     ) -> BytecodeTableRow:
         query = {
             "bytecode_hash": bytecode_hash,
@@ -548,13 +653,13 @@ class Tables:
         rw_counter: Expression,
         rw: Expression,
         tag: Expression,
-        key1: Expression = None,
-        key2: Expression = None,
-        key3: Expression = None,
-        key4: Expression = None,
-        value: Expression = None,
-        value_prev: Expression = None,
-        aux0: Expression = None,
+        key1: Optional[Expression] = None,
+        key2: Optional[Expression] = None,
+        key3: Optional[Expression] = None,
+        key4: Optional[Expression] = None,
+        value: Optional[Expression] = None,
+        value_prev: Optional[Expression] = None,
+        aux0: Optional[Expression] = None,
     ) -> RWTableRow:
         query = {
             "rw_counter": rw_counter,
@@ -581,7 +686,7 @@ class Tables:
         dst_addr: Expression,
         length: Expression,
         rw_counter: Expression,
-        log_id: Expression = None,
+        log_id: Optional[Expression] = None,
     ) -> CopyTableRow:
         if dst_type == CopyDataTypeTag.TxLog:
             assert log_id is not None
@@ -606,6 +711,26 @@ class Tables:
             "acc_input": value_rlc,
         }
         return lookup(KeccakTableRow, self.keccak_table, query)
+
+    def exp_lookup(
+        self,
+        identifier: Expression,
+        is_last: Expression,
+        base_limbs: Tuple[Expression, ...],
+        exponent: Tuple[Expression, Expression],
+    ):
+        query = {
+            "is_step": FQ.one().expr(),
+            "identifier": identifier.expr(),
+            "is_last": is_last.expr(),
+            "base_limb0": base_limbs[0].expr(),
+            "base_limb1": base_limbs[1].expr(),
+            "base_limb2": base_limbs[2].expr(),
+            "base_limb3": base_limbs[3].expr(),
+            "exponent_lo": exponent[0].expr(),
+            "exponent_hi": exponent[1].expr(),
+        }
+        return lookup(ExpTableRow, self.exp_table, query)
 
 
 T = TypeVar("T", bound=TableRow)

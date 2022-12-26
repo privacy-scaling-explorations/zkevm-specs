@@ -1,10 +1,13 @@
-import traceback
-from typing import Union, List, Callable
-from eth_keys import keys
-from eth_utils import keccak
-import rlp
-from zkevm_specs.public_inputs import *
-from zkevm_specs.util import FQ, RLC, U64, U256, U160
+from typing import Union, Callable
+from zkevm_specs.public_inputs import (
+    Witness,
+    PublicData,
+    public_data2witness,
+    verify_circuit,
+    Block,
+    Transaction,
+)
+from zkevm_specs.util import FQ, U64, U256, U160
 import random
 from random import randrange, randbytes
 
@@ -68,7 +71,7 @@ def rand_block() -> Block:
         parent_hash=rand_u256(),
         uncle_hash=rand_u256(),
         coinbase=rand_u160(),
-        root=rand_u256(),
+        state_root=rand_u256(),
         tx_hash=rand_u256(),
         receipt_hash=rand_u256(),
         bloom=randbytes(256),
@@ -100,12 +103,12 @@ def rand_tx(calldata_len: int) -> Transaction:
 def rand_public_data(txs_len: int, MAX_CALLDATA_BYTES: int) -> PublicData:
     chain_id = U64(randrange(1, 128))
     block = rand_block()
-    block_prev_root = rand_u256()
+    state_root_prev = rand_u256()
     block_hashes = [rand_u256() for _ in range(256)]
     txs = []
     for i in range(txs_len):
         txs.append(rand_tx(randrange(0, MAX_CALLDATA_BYTES // txs_len)))
-    return PublicData(chain_id, block, block_prev_root, block_hashes, txs)
+    return PublicData(chain_id, block, state_root_prev, block_hashes, txs)
 
 
 def test_basic():
@@ -118,7 +121,7 @@ def test_basic():
     verify(public_data, MAX_TXS, MAX_CALLDATA_BYTES, rand_rpi)
 
 
-def override_not_success(override: Callable[Witness, None]):
+def override_not_success(override: Callable[[Witness], None]):
     random.seed(0)
 
     MAX_TXS = 2
@@ -196,13 +199,6 @@ def test_bad_rand_rpi_chain_id_pub():
 def test_bad_rand_rpi_state_root_pub():
     def override(witness):
         witness.public_inputs.state_root = FQ(123)
-
-    override_not_success(override)
-
-
-def test_bad_rand_rpi_state_root_prev_pub():
-    def override(witness):
-        witness.public_inputs.state_root_prev = FQ(123)
 
     override_not_success(override)
 
