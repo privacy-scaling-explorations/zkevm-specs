@@ -19,6 +19,8 @@ from zkevm_specs.evm import (
     verify_steps,
     CopyCircuit,
     CopyDataTypeTag,
+    precompile_info_pairs,
+    FixedTableRow,
 )
 from zkevm_specs.copy_circuit import verify_copy_table
 from zkevm_specs.util import (
@@ -38,6 +40,7 @@ from zkevm_specs.util import (
 CALLER_ID = 1
 CALLEE_ID = 2
 CALLEE_MEMORY = [0x00] * 32 + [0x11] * 32
+DATACOPY_PRECOMPILE_ADDRESS = 0x04
 CallContext = namedtuple(
     "CallContext",
     [
@@ -86,6 +89,9 @@ def test_dataCopy(
 
     rw_dictionary = (
         RWDictionary(1)
+        .call_context_read(
+            precompile_id, CallContextFieldTag.CalleeAddress, DATACOPY_PRECOMPILE_ADDRESS
+        )
         .call_context_read(precompile_id, CallContextFieldTag.CallDataOffset, call_data_offset)
         .call_context_read(precompile_id, CallContextFieldTag.CallDataLength, call_data_length)
         .call_context_read(precompile_id, CallContextFieldTag.ReturnDataOffset, return_data_offset)
