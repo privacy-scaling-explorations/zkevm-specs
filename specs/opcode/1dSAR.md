@@ -1,8 +1,8 @@
-# SAR opcodes
+# SAR opcode
 
 ## Procedure
 
-The `SAR` opcode also shifts the bits towards the least significant one, and the bits moved before the first one are discarded. But the new bits are set to 0 if the previous most significant bit was 0, otherwise the new bits are set to 1.
+The `SAR` opcode shifts the bits towards the least significant one. The bits moved before the first one are discarded, the new bits are set to 0 if the previous most significant bit was 0, otherwise the new bits are set to 1.
 
 ### EVM behavior
 
@@ -13,13 +13,14 @@ Both `a` and `b` are considered as `signed` 256-bit values.
 ### Circuit behavior
 
 To prove the `SAR` opcode, we first get the stack word `a`, `shift` and `b` to construct a gadget that proves `a >> shift == b`.
-For opcode `SAR`, `shift` is an `unsigned` value, but both `a` and `b` are `signed`. A `signed` value is either negative or non-negative (postive and zero), it is negative if the highest bit is 1, otherwise it is non-negative.
 
-As usual, we use 32 cells to represent word `a` and `b`, where each cell holds a 8-bit value. Then split each word into four 64-bit limbs denoted by `a64s[idx]` and `b64s[idx]` where idx in `(0, 1, 2, 3)`.
-We put the lower `n` bits of a limb into the `lo` array, and put the higher `64 - n` bits into the `hi` array, where `n` is `shift % 64`. During the right shift operation, the `lo` array will move to higher bits of the result, and the `hi` array will move to lower bits of the result.
+The `shift` is an `unsigned` value, but both `a` and `b` are `signed` values. A `signed` value is either negative or non-negative. The value is negative if the highest bit is 1, otherwise it is non-negative.
+
+As usual, we use 32 cells to represent word `a` and `b`, where each cell holds an 8-bit value. Then split each word into four 64-bit limbs denoted by `a64s[idx]` and `b64s[idx]` where idx in `(0, 1, 2, 3)`.
+
+We put the lower `n` bits of a limb into the `lo` array, and put the higher `64 - n` bits into the `hi` array, where `n = shift % 64`. During the right shift operation, the `lo` array will move to higher bits of the result, and the `hi` array will move to next lower bits.
 
 The following figure illustrates how shift right works under the case of `shift < 64`.
-
 ```
 +-------------------------------+-------------------------------+-----
 |a0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10| 11| 12| 13| 14| 15| ...
@@ -32,10 +33,9 @@ The following figure illustrates how shift right works under the case of `shift 
              +-------------------------------+------------------------
 ```
 
-For opcode `SAR`, the top new bits are set to 1 if `a` is negative, set to 0 otherwise.
+Specially the top new bits are set to 1 if `a` is negative, otherwise set to 0.
 
 More formally, the variables are defined as follows:
-
 ```
 is_neg = is_neg(a)
 shf0 = bytes_to_fq(shift.le_bytes[:1])
@@ -57,9 +57,9 @@ shf_div64_eq3 = is_zero(shf_div64 - 3)
 
 `b64s` could be calculated by these variables:
 
-* Initialized `b64s`: It should be `[0xFFFFFFFFFFFFFFFF] * 4` if `is_neg`, `[0] * 4` otherwise.
-* `b64s[3 - shf_div64]`: It could be calculated by `a64s_hi[3] + p_top`.
+* Initialization: It should be `[0xFFFFFFFFFFFFFFFF] * 4` if `a` is negative, `[0] * 4` otherwise.
 * `b64s[k]`: It could be calculated by `a64s_hi[k + shf_div64] + a64s_lo[k + shf_div64 + 1] * p_hi` where `k < 3 - shf_div64`.
+* `b64s[3 - shf_div64]`: It could be calculated by `a64s_hi[3] + p_top`.
 
 Now putting things together, the constraints can be constructed as follows:
 
