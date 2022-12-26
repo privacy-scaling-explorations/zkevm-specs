@@ -17,7 +17,7 @@ The column `tag` (advice) makes the circuit behave as a state machine, selecting
 | `is_code`             | `1` if the byte is code, `0` if the byte is PUSH data               |
 | `push_data_left`      | The number of PUSH data bytes that still follow the current row     |
 | `value_rlc`           | The accumulator containing the current and previous bytes RLC       |
-| `length`              | The bytecode length, that could be 0 for empty byrecodes and padding|
+| `length`              | The bytecode length, that could be 0 for empty bytecodes and padding|
 | `push_data_size`      | The number of bytes pushed for the current byte                     |
 | `push_table.byte`     | Push Table: A byte value                                            |
 | `push_table.push_size`| Push Table: The number of bytes pushed for this byte as opcode      |
