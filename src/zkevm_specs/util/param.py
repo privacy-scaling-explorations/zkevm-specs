@@ -1,3 +1,6 @@
+# Maximum integer value of u64
+MAX_U64 = 2**64 - 1
+
 # Maximun number of bytes with composition value that doesn't wrap around the field
 MAX_N_BYTES = 31
 # Number of bytes of account address
@@ -102,6 +105,3 @@ MAX_COPY_BYTES = 32
 PUBLIC_INPUTS_BLOCK_LEN = 7 + 256  # Length of block public data
 PUBLIC_INPUTS_EXTRA_LEN = 3  # Length of fields that don't belong to any table
 PUBLIC_INPUTS_TX_LEN = 10  # Length of tx public data (without calldata)
-
-# This value is used for the SAR opcode
-MAX_U64 = 0xFFFFFFFFFFFFFFFF

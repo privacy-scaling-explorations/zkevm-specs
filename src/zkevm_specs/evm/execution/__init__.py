@@ -41,7 +41,7 @@ from .extcodehash import *
 from .extcodesize import *
 from .log import *
 from .bitwise import not_opcode
-from .sar import *
+from .sar import sar
 from .sdiv_smod import sdiv_smod
 from .sha3 import sha3
 from .shl_shr import shl_shr
