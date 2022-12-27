@@ -20,7 +20,9 @@ As usual, we use 32 cells to represent word `a` and `b`, where each cell holds a
 
 We put the lower `n` bits of a limb into the `lo` array, and put the higher `64 - n` bits into the `hi` array, where `n = shift % 64`. During the right shift operation, the `lo` array will move to higher bits of the result, and the `hi` array will move to next lower bits.
 
-The following figure illustrates how shift right works under the case of `shift < 64`.
+#### Special case (shift < 64)
+
+The following figure illustrates how `SAR` opcode works under the case of `shift < 64`.
 ```
 +-------------------------------+-------------------------------+-----
 |a0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10| 11| 12| 13| 14| 15| ...
@@ -33,34 +35,48 @@ The following figure illustrates how shift right works under the case of `shift 
              +-------------------------------+------------------------
 ```
 
-Specially the top new bits are set to 1 if `a` is negative, otherwise set to 0.
-
-More formally, the variables are defined as follows:
+First we could define below constants for calculating `b64s`.
 ```
 MAX_U64 = 2**64 - 1
 is_neg = is_neg(a)
-shf0 = bytes_to_fq(shift.le_bytes[:1])
 shf_div64 = shift // 64
 shf_mod64 = shift % 64
 p_lo = 1 << shf_mod64
 p_hi = 1 << (64 - shf_mod64)
-# The new bits are set to 1 if negative.
+# The top new bits are set to 1 if `a` is negative, otherwise set to 0.
 p_top = is_neg * (MAX_U64 - p_hi + 1))
-shf_lt256 = compare_word(shift, RLC(256))
 a64s = word_to_64s(a)
 a64s_lo[idx] = a64s[idx] % p_lo
 a64s_hi[idx] = a64s[idx] / p_lo
+```
+
+Under this special case of `shift < 64`, `b64s` could be calculated as:
+```
+b64s[0] = a64s_hi[0] + a64s_lo[1] * p_hi
+b64s[1] = a64s_hi[1] + a64s_lo[2] * p_hi
+b64s[2] = a64s_hi[2] + a64s_lo[3] * p_hi
+b64s[3] = a64s_hi[3] + p_top
+```
+
+#### Common case
+
+For common case, we should add more variables as:
+```
+shf0 = bytes_to_fq(shift.le_bytes[:1])
+shf_lt256 = compare_word(shift, RLC(256))
 shf_div64_eq0 = is_zero(shf_div64)
 shf_div64_eq1 = is_zero(shf_div64 - 1)
 shf_div64_eq2 = is_zero(shf_div64 - 2)
 shf_div64_eq3 = is_zero(shf_div64 - 3)
 ```
 
-`b64s` could be calculated by these variables:
+Then `b64s` could be calculated as:
 
 * Initialization: It should be `[MAX_U64] * 4` if `a` is negative, `[0] * 4` otherwise.
 * `b64s[k]`: It could be calculated by `a64s_hi[k + shf_div64] + a64s_lo[k + shf_div64 + 1] * p_hi` where `k < 3 - shf_div64`.
 * `b64s[3 - shf_div64]`: It could be calculated by `a64s_hi[3] + p_top`.
+
+#### Circuit Constraints
 
 Now putting things together, the constraints can be constructed as follows:
 
