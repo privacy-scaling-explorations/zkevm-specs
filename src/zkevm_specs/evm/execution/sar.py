@@ -63,7 +63,6 @@ def check_witness(
     p_top: FQ,
     is_neg: FQ,
 ):
-    instruction.constrain_bool(is_neg)
     shf_lt256 = instruction.is_zero(instruction.sum(shift.le_bytes[1:]))
     for idx in range(4):
         offset = idx * N_BYTES_U64
@@ -122,6 +121,13 @@ def check_witness(
     instruction.constrain_equal(
         instruction.bytes_to_fq(shift.le_bytes[:1]),
         shf_mod64 + shf_div64 * 64,
+    )
+
+    # `is_neg` constraints
+    instruction.constrain_bool(is_neg)
+    instruction.sign_byte_lookup(
+        instruction.bytes_to_fq(a.le_bytes[31:]),
+        instruction.select(is_neg, FQ(255), FQ(0)),
     )
 
     # `p_lo == pow(2, shf_mod64)` and `p_hi == pow(2, 64 - shf_mod64)`.

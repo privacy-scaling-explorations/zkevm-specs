@@ -120,13 +120,18 @@ shf_div64_eq3 = is_zero(shf_div64 - 3)
 
 * `shift[0]`: It should be equal to `shf_mod64 + shf_div64 * 64`.
 
-5. `Pow2` table look up:
+5. `is_neg` constraints:
+
+* Constrain `is_neg` must be a boolean (0 or 1).
+* Assign `sign_byte = 255` if `is_neg == 1`, otherwise `sign_byte = 0`, then lookup `SignByte` table by tuple `(a_highest_byte, sign_byte)`.
+
+6. `Pow2` table look up:
 
 * First build `Pow2` table by tuple `(value, value_pow)` which meets `value_pow == pow(2, value)`.
 
 * Look up for `p_lo == pow(2, shf_mod64)` and `p_hi == pow(2, 64 - shf_mod64)`.
 
-6. Stack pop and push:
+7. Stack pop and push:
 
 * Pop word `a`
 * Pop word `shift`

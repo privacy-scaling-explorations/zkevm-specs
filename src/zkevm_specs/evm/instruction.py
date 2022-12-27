@@ -1075,6 +1075,10 @@ class Instruction:
     def pow2_lookup(self, value: Expression, pow_lo128: Expression, pow_hi128: Expression):
         self.fixed_lookup(FixedTableTag.Pow2, value, pow_lo128, pow_hi128)
 
+    # `sign_byte == 0xff` if (value as i8 < 0) otherwise `sign_byte == 0`.
+    def sign_byte_lookup(self, value: Expression, sign_byte: Expression):
+        self.fixed_lookup(FixedTableTag.SignByte, value, sign_byte, FQ(0))
+
     def copy_lookup(
         self,
         src_id: Expression,
