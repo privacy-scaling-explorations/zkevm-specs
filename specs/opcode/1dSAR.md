@@ -46,7 +46,7 @@ p_lo = 1 << shf_mod64
 p_hi = 1 << (64 - shf_mod64)
 # The new bits are set to 1 if negative.
 p_top = is_neg * (MAX_U64 - p_hi + 1))
-shf_lt256 = is_zero(sum(shift[1:]))
+shf_lt256 = compare_word(shift, RLC(256))
 a64s = word_to_64s(a)
 a64s_lo[idx] = a64s[idx] % p_lo
 a64s_hi[idx] = a64s[idx] / p_lo
@@ -66,7 +66,7 @@ Now putting things together, the constraints can be constructed as follows:
 
 1. `a64s` and `b64s` constraints:
 
-* First calculate `shf_lt256` as `is_zero(sum(shift[1:]))`.
+* First calculate `shf_lt256` as `compare_word(shift, RLC(256))`.
 * `a64s[idx]`: It should be equal to `from_bytes(a[8 * idx : 8 * (idx + 1)])` where idx in `(0, 1, 2, 3)`.
 * `b64s[idx] * shf_lt256 + is_neg * (1 - shf_lt256) * MAX_U64`: It should be equal to `from_bytes(b[8 * idx : 8 * (idx + 1)])` where idx in `(0, 1, 2, 3)`.
 

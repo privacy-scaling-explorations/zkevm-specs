@@ -63,7 +63,7 @@ def check_witness(
     p_top: FQ,
     is_neg: FQ,
 ):
-    shf_lt256 = instruction.is_zero(instruction.sum(shift.le_bytes[1:]))
+    shf_lt256, _ = instruction.compare_word(shift, RLC(256))
     for idx in range(4):
         offset = idx * N_BYTES_U64
 
