@@ -1,4 +1,9 @@
-from zkevm_specs.evm.util.call_gadget import CallGadget
+from zkevm_specs.evm.util.call_gadget import (
+    common_call_gas_cost,
+    common_call_is_empty_code_hash,
+    common_call_stack_pop,
+)
+from zkevm_specs.util.param import N_BYTES_GAS
 from ...util import (
     FQ,
     GAS_STIPEND_CALL_WITH_VALUE,
@@ -38,7 +43,7 @@ def callop(instruction: Instruction):
     # Verify depth is less than 1024
     instruction.range_lookup(depth, 1024)
 
-    call_gadget = CallGadget(instruction, FQ(0), is_call + is_callcode)
+    call_data = common_call_stack_pop(instruction, FQ(0), is_call + is_callcode)
     # For opcode CALLCODE:
     # - callee_address = caller_address
     #
@@ -46,30 +51,29 @@ def callop(instruction: Instruction):
     # - callee_address = caller_address
     # - caller_address = parent_caller_address
     #
-    # Variable `code_address` will be used to get code hash.
     callee_address = instruction.select(
-        is_callcode + is_delegatecall, caller_address, call_gadget.callee_address
+        is_callcode + is_delegatecall, caller_address, call_data.callee_address
     )
     caller_address = instruction.select(is_delegatecall, parent_caller_address, caller_address)
 
-    # Add `code_address` to access list
+    # Add `callee_address` to access list
     is_warm_access = instruction.add_account_to_access_list(
-        tx_id, call_gadget.callee_address, reversion_info
+        tx_id, call_data.callee_address, reversion_info
     )
 
     # Check not is_static if call has value
-    has_value = call_gadget.has_value()
+    has_value = 1 - instruction.is_zero(call_data.value)
     instruction.constrain_zero(has_value * is_static)
 
     # Propagate rw_counter_end_of_reversion and is_persistent
     callee_reversion_info = instruction.reversion_info(call_id=callee_call_id)
     instruction.constrain_equal(
         callee_reversion_info.is_persistent,
-        reversion_info.is_persistent * call_gadget.is_success.expr(),
+        reversion_info.is_persistent * call_data.is_success.expr(),
     )
-    is_reverted_by_caller = call_gadget.is_call_succeeded() and reversion_info.is_persistent == FQ(
-        0
-    )
+    is_reverted_by_caller = call_data.is_success.expr() == FQ(
+        1
+    ) and reversion_info.is_persistent == FQ(0)
     if is_reverted_by_caller:
         # Propagate rw_counter_end_of_reversion when callee succeeds but one of callers revert at some point.
         # Note that we subtract it with current caller's reversible_write_counter as callee's endpoint, where caller's
@@ -84,7 +88,7 @@ def callop(instruction: Instruction):
         # transfer to constrain it should be greater than or equal to stack
         # `value`.
         (_, caller_balance), _ = instruction.transfer(
-            caller_address, callee_address, call_gadget.value, callee_reversion_info
+            caller_address, callee_address, call_data.value, callee_reversion_info
         )
     elif is_callcode == 1:
         # For CALLCODE opcode, get caller balance to constrain it should be
@@ -95,29 +99,34 @@ def callop(instruction: Instruction):
     # or equal to stack `value`.
     if is_call + is_callcode == 1:
         value_lt_caller_balance, value_eq_caller_balance = instruction.compare_word(
-            call_gadget.value, caller_balance
+            call_data.value, caller_balance
         )
         instruction.constrain_zero(1 - value_lt_caller_balance - value_eq_caller_balance)
 
-    # Check calle account existence with code_hash != 0
-    callee_exists = FQ(1) - instruction.is_zero(callee_code_hash)
-
-    if callee_exists == 1:
-        # Get callee code hash.
-        callee_code_hash = instruction.account_read(
-            call_gadget.callee_address, AccountFieldTag.CodeHash
-        )
-        is_empty_code_hash = instruction.is_equal(
-            callee_code_hash, instruction.rlc_encode(EMPTY_CODE_HASH, 32)
-        )
-    else:  # callee_exists == 0
-        instruction.account_read(call_gadget.callee_address, AccountFieldTag.NonExisting)
-        is_empty_code_hash = FQ(1)
+    callee_exists, is_empty_code_hash, callee_code_hash = common_call_is_empty_code_hash(
+        instruction, call_data.callee_address, FQ(0)
+    )
 
     # Verify gas cost.
-    # Only CALL opcode could invoke transfer to make empty account into non-empty.
-    gas_cost = call_gadget.gas_cost(is_warm_access, FQ(0) if callee_exists == 1 else is_call)
-    callee_gas_left = call_gadget.callee_gas_left(gas_cost)
+    gas_cost = common_call_gas_cost(
+        instruction,
+        has_value,
+        call_data.memory_expansion_gas_cost,
+        is_warm_access,
+        FQ(0)
+        if callee_exists == 1
+        else is_call,  # Only CALL opcode could invoke transfer to make empty account into non-empty.
+    )
+    # Apply EIP 150.
+    # Note that sufficient gas_left is checked implicitly by constant_divmod.
+    gas_available = instruction.curr.gas_left - gas_cost
+    one_64th_gas, _ = instruction.constant_divmod(gas_available, FQ(64), N_BYTES_GAS)
+    all_but_one_64th_gas = gas_available - one_64th_gas
+    callee_gas_left = instruction.select(
+        call_data.is_u64_gas,
+        instruction.min(all_but_one_64th_gas, call_data.gas, N_BYTES_GAS),
+        all_but_one_64th_gas,
+    )
 
     # Make sure the state transition to ExecutionState for precompile if and
     # only if the callee address is one of precompile
@@ -128,7 +137,7 @@ def callop(instruction: Instruction):
 
     if is_empty_code_hash == FQ(1) and is_precompile == FQ(0):
         # Make sure call is successful
-        instruction.constrain_equal(call_gadget.is_success, FQ(1))
+        instruction.constrain_equal(call_data.is_success, FQ(1))
 
         # Empty return_data
         for (field_tag, expected_value) in [
@@ -153,7 +162,7 @@ def callop(instruction: Instruction):
             program_counter=Transition.delta(1),
             stack_pointer=Transition.delta(stack_pointer_delta),
             gas_left=Transition.delta(has_value * GAS_STIPEND_CALL_WITH_VALUE - gas_cost),
-            memory_size=Transition.to(call_gadget.next_memory_size),
+            memory_size=Transition.to(call_data.next_memory_size),
             reversible_write_counter=Transition.delta(3),
             # Always stay same
             call_id=Transition.same(),
@@ -174,7 +183,7 @@ def callop(instruction: Instruction):
                 instruction.curr.stack_pointer + stack_pointer_delta,
             ),
             (CallContextFieldTag.GasLeft, instruction.curr.gas_left - gas_cost - callee_gas_left),
-            (CallContextFieldTag.MemorySize, call_gadget.next_memory_size),
+            (CallContextFieldTag.MemorySize, call_data.next_memory_size),
             (
                 CallContextFieldTag.ReversibleWriteCounter,
                 instruction.curr.reversible_write_counter + 1,
@@ -193,17 +202,17 @@ def callop(instruction: Instruction):
             (CallContextFieldTag.Depth, depth.expr() + 1),
             (CallContextFieldTag.CallerAddress, caller_address.expr()),
             (CallContextFieldTag.CalleeAddress, callee_address.expr()),
-            (CallContextFieldTag.CallDataOffset, call_gadget.cd_offset),
-            (CallContextFieldTag.CallDataLength, call_gadget.cd_length),
-            (CallContextFieldTag.ReturnDataOffset, call_gadget.rd_offset),
-            (CallContextFieldTag.ReturnDataLength, call_gadget.rd_length),
+            (CallContextFieldTag.CallDataOffset, call_data.cd_offset),
+            (CallContextFieldTag.CallDataLength, call_data.cd_length),
+            (CallContextFieldTag.ReturnDataOffset, call_data.rd_offset),
+            (CallContextFieldTag.ReturnDataLength, call_data.rd_length),
             (
                 CallContextFieldTag.Value,
                 instruction.select(
-                    is_delegatecall, parent_call_value.expr(), call_gadget.value.expr()
+                    is_delegatecall, parent_call_value.expr(), call_data.value.expr()
                 ),
             ),
-            (CallContextFieldTag.IsSuccess, call_gadget.is_success.expr()),
+            (CallContextFieldTag.IsSuccess, call_data.is_success.expr()),
             (CallContextFieldTag.IsStatic, is_static.expr()),
             (CallContextFieldTag.LastCalleeId, FQ(0)),
             (CallContextFieldTag.LastCalleeReturnDataOffset, FQ(0)),
