@@ -61,11 +61,23 @@ def test_dataCopy(
     call_id = CALLER_ID
     precompile_id = CALLEE_ID
 
-    code = Bytecode(is_include_precompile=True).dataCopy().stop()
-    code_hash = RLC(code.hash(), randomness)
-
     data_word_size = (size + 31) // 32
     gas = Precompile.DATACOPY.base_gas_cost() + data_word_size * IdentityPerWordGas
+
+    code = (
+        Bytecode()
+        .call(
+            gas,
+            Precompile.DATACOPY,
+            0,
+            call_data_offset,
+            call_data_length,
+            return_data_offset,
+            return_data_length,
+        )
+        .stop()
+    )
+    code_hash = RLC(code.hash(), randomness)
 
     rw_dictionary = (
         # fmt: off

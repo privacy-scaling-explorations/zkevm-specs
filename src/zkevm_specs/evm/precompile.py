@@ -22,18 +22,6 @@ class Precompile(IntEnum):
     def base_gas_cost(self) -> int:
         return PRECOMPILE_INFO_MAP[self].base_gas
 
-    def is_push(self) -> bool:
-        return False
-
-    def is_dup(self) -> bool:
-        return False
-
-    def is_swap(self) -> bool:
-        return False
-
-    def max_stack_pointer(self) -> int:
-        return 0
-
 
 class PrecompileInfo:
     """
