@@ -245,9 +245,12 @@ class Instruction:
         return_data_offset: Expression,
         return_data_length: Expression,
         gas_left: Expression,
+        caller_id: Optional[Expression] = None,
     ):
+        rw_counter_delta += 11 + int(caller_id is None)
         # Read caller's context for restore
-        caller_id = self.call_context_lookup(CallContextFieldTag.CallerId)
+        if caller_id is None:
+            caller_id = self.call_context_lookup(CallContextFieldTag.CallerId)
         [
             caller_is_root,
             caller_is_create,
@@ -296,7 +299,7 @@ class Instruction:
             reversible_write_counter = self.curr.reversible_write_counter
 
         self.constrain_step_state_transition(
-            rw_counter=Transition.delta(rw_counter_delta + 12),
+            rw_counter=Transition.delta(rw_counter_delta),
             call_id=Transition.to(caller_id),
             is_root=Transition.to(caller_is_root),
             is_create=Transition.to(caller_is_create),

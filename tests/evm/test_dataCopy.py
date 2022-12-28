@@ -1,38 +1,22 @@
-import math
 import pytest
 from collections import namedtuple
-from itertools import chain
-from typing import Mapping, Sequence, Tuple
 
 from zkevm_specs.evm import (
-    AccountFieldTag,
     Bytecode,
     CallContextFieldTag,
     ExecutionState,
-    Opcode,
     Precompile,
-    RW,
     RWDictionary,
-    RWTableTag,
     StepState,
     Tables,
     verify_steps,
     CopyCircuit,
     CopyDataTypeTag,
-    precompile_info_pairs,
-    FixedTableRow,
 )
 from zkevm_specs.copy_circuit import verify_copy_table
 from zkevm_specs.util import (
     rand_fq,
-    rand_bytes,
-    memory_word_size,
-    memory_expansion,
     IdentityPerWordGas,
-    GAS_COST_COPY,
-    MAX_N_BYTES_COPY_TO_MEMORY,
-    MEMORY_EXPANSION_QUAD_DENOMINATOR,
-    MEMORY_EXPANSION_LINEAR_COEFF,
     RLC,
     FQ,
 )
@@ -76,27 +60,23 @@ def test_dataCopy(
     size = call_data_length
     call_id = CALLER_ID
     precompile_id = CALLEE_ID
-    call_data_offset_rlc = RLC(call_data_offset, randomness)
-    call_data_length_rlc = RLC(call_data_length, randomness)
-    return_data_offset_rlc = RLC(return_data_offset, randomness)
-    return_data_length_rlc = RLC(return_data_length, randomness)
 
     code = Bytecode(is_include_precompile=True).dataCopy().stop()
     code_hash = RLC(code.hash(), randomness)
 
-    data_word_size = math.ceil((size + 31) / 32)
+    data_word_size = (size + 31) // 32
     gas = Precompile.DATACOPY.base_gas_cost() + data_word_size * IdentityPerWordGas
 
     rw_dictionary = (
+        # fmt: off
         RWDictionary(1)
-        .call_context_read(
-            precompile_id, CallContextFieldTag.CalleeAddress, DATACOPY_PRECOMPILE_ADDRESS
-        )
+        .call_context_read(precompile_id, CallContextFieldTag.CalleeAddress, DATACOPY_PRECOMPILE_ADDRESS)
+        .call_context_read(precompile_id, CallContextFieldTag.CallerId, call_id)
         .call_context_read(precompile_id, CallContextFieldTag.CallDataOffset, call_data_offset)
         .call_context_read(precompile_id, CallContextFieldTag.CallDataLength, call_data_length)
         .call_context_read(precompile_id, CallContextFieldTag.ReturnDataOffset, return_data_offset)
         .call_context_read(precompile_id, CallContextFieldTag.ReturnDataLength, return_data_length)
-        .call_context_read(precompile_id, CallContextFieldTag.CallerId, call_id)
+        # fmt: on
     )
 
     # rw counter before memory writes
@@ -157,9 +137,8 @@ def test_dataCopy(
     assert rw_counter_final - rw_counter_interim == size * 4  # 1 copy == 1 read & 1 write
 
     rw_dictionary = (
-        rw_dictionary.call_context_write(call_id, CallContextFieldTag.LastCalleeId, precompile_id)
-        .call_context_write(call_id, CallContextFieldTag.LastCalleeReturnDataOffset, FQ(0))
-        .call_context_write(call_id, CallContextFieldTag.LastCalleeReturnDataLength, size)
+        # fmt: off
+        rw_dictionary
         .call_context_read(call_id, CallContextFieldTag.IsRoot, caller_ctx.is_root)
         .call_context_read(call_id, CallContextFieldTag.IsCreate, caller_ctx.is_create)
         .call_context_read(call_id, CallContextFieldTag.CodeHash, code_hash)
@@ -167,9 +146,11 @@ def test_dataCopy(
         .call_context_read(call_id, CallContextFieldTag.StackPointer, caller_ctx.stack_pointer)
         .call_context_read(call_id, CallContextFieldTag.GasLeft, caller_ctx.gas_left)
         .call_context_read(call_id, CallContextFieldTag.MemorySize, caller_ctx.memory_size)
-        .call_context_read(
-            call_id, CallContextFieldTag.ReversibleWriteCounter, caller_ctx.reversible_write_counter
-        )
+        .call_context_read(call_id, CallContextFieldTag.ReversibleWriteCounter, caller_ctx.reversible_write_counter)
+        .call_context_write(call_id, CallContextFieldTag.LastCalleeId, precompile_id)
+        .call_context_write(call_id, CallContextFieldTag.LastCalleeReturnDataOffset, FQ(0))
+        .call_context_write(call_id, CallContextFieldTag.LastCalleeReturnDataLength, size)
+        # fmt: on
     )
 
     steps.append(
@@ -177,11 +158,11 @@ def test_dataCopy(
             execution_state=ExecutionState.STOP,
             rw_counter=rw_dictionary.rw_counter,
             call_id=call_id,
-            is_root=True,
+            is_root=caller_ctx.is_root,
             code_hash=code_hash,
-            program_counter=100,
-            stack_pointer=1024,
-            memory_size=size,
+            program_counter=caller_ctx.program_counter,
+            stack_pointer=caller_ctx.stack_pointer,
+            memory_size=caller_ctx.memory_size,
             gas_left=0,
         )
     )
