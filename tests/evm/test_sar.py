@@ -26,7 +26,6 @@ TESTING_MAX_POSITIVE = 2**255 - 1
 # Negative sign (the highest bit is 1)
 TESTING_NEGATIVE_SIGN = 2**255
 
-# gupeng
 TESTING_DATA = [
     (Opcode.SAR, 8, 0x1234),
     (Opcode.SAR, 17, 0x5678),

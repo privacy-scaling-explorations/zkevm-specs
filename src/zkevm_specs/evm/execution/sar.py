@@ -1,4 +1,11 @@
-from ...util import FQ, MAX_U64, N_BYTES_U64, RLC, int_is_neg
+from ...util import (
+    FQ,
+    MAX_U64,
+    N_BYTES_U64,
+    RLC,
+    int_is_neg,
+    word_to_lo_hi,
+)
 from ..instruction import Instruction, Transition
 from ..typing import Sequence
 
@@ -20,7 +27,6 @@ def sar(instruction: Instruction):
         p_lo,
         p_hi,
         p_top,
-        is_neg,
     ) = gen_witness(instruction, shift, a)
     check_witness(
         instruction,
@@ -36,7 +42,6 @@ def sar(instruction: Instruction):
         p_lo,
         p_hi,
         p_top,
-        is_neg,
     )
 
     instruction.step_state_transition_in_same_context(
@@ -61,9 +66,11 @@ def check_witness(
     p_lo: FQ,
     p_hi: FQ,
     p_top: FQ,
-    is_neg: FQ,
 ):
-    shf_lt256, _ = instruction.compare_word(shift, RLC(256))
+    is_neg, _ = instruction.compare(FQ(127), FQ(a.le_bytes[31]), 1)
+    shf_lo, shf_hi = instruction.word_to_lo_hi(shift)
+    shf_hi_is_zero = instruction.is_zero(shf_hi)
+
     for idx in range(4):
         offset = idx * N_BYTES_U64
 
@@ -75,18 +82,22 @@ def check_witness(
 
         # b64s constraint
         instruction.constrain_equal(
-            b64s[idx] * shf_lt256 + is_neg * (1 - shf_lt256) * MAX_U64,
+            instruction.select(shf_hi_is_zero, b64s[idx], is_neg * MAX_U64),
             instruction.bytes_to_fq(b.le_bytes[offset : offset + N_BYTES_U64]),
         )
 
-        # Constrains `a64s[idx] == a64s_lo[idx] + a64s_hi[idx] * p_lo`.
+        # Constrain `a64s[idx] == a64s_lo[idx] + a64s_hi[idx] * p_lo`.
         instruction.constrain_equal(a64s[idx], a64s_lo[idx] + a64s_hi[idx] * p_lo)
 
-        # Constrains `a64s_lo[idx] < p_lo`.
-        a64s_lo_lt_p_lo, _ = instruction.compare(a64s_lo[idx], p_lo, N_BYTES_U64)
+        # Constrain `a64s_lo[idx] < p_lo`.
+        a64s_lo_lt_p_lo, _ = instruction.compare(a64s_lo[idx], p_lo, 16)
         instruction.constrain_equal(a64s_lo_lt_p_lo, FQ(1))
 
-    # merge contraints
+        # Constrain `a64s_hi[idx] < p_hi`.
+        a64s_hi_lt_p_hi, _ = instruction.compare(a64s_hi[idx], p_hi, 16)
+        instruction.constrain_equal(a64s_hi_lt_p_hi, FQ(1))
+
+    # Merge contraints
     shf_div64_eq0 = instruction.is_zero(shf_div64)
     shf_div64_eq1 = instruction.is_zero(shf_div64 - 1)
     shf_div64_eq2 = instruction.is_zero(shf_div64 - 2)
@@ -117,11 +128,8 @@ def check_witness(
         (a64s_hi[3] + p_top) * shf_div64_eq0 + is_neg * MAX_U64 * (1 - shf_div64_eq0),
     )
 
-    # shift constraint
-    instruction.constrain_equal(
-        instruction.bytes_to_fq(shift.le_bytes[:1]),
-        shf_mod64 + shf_div64 * 64,
-    )
+    # Shift constraint
+    instruction.constrain_equal(shf_lo, shf_mod64 + shf_div64 * 64)
 
     # `is_neg` constraints
     instruction.constrain_bool(is_neg)
@@ -137,14 +145,14 @@ def check_witness(
 
 def gen_witness(instruction: Instruction, shift: RLC, a: RLC):
     is_neg = int_is_neg(a.int_value)
-    shf0 = shift.le_bytes[0]
-    shf_div64 = shf0 // 64
-    shf_mod64 = shf0 % 64
+    shf_lo, shf_hi = word_to_lo_hi(shift)
+    shf_div64 = shf_lo.n // 64
+    shf_mod64 = shf_lo.n % 64
     p_lo = 1 << shf_mod64
     p_hi = 1 << (64 - shf_mod64)
 
     # The new bits should be set to 1 if negative.
-    p_top = is_neg * (MAX_U64 - p_hi + 1)
+    p_top = is_neg * (MAX_U64 + 1 - p_hi)
 
     # Each of the four `a64s` limbs is split into two parts `a64s_lo` and
     # `a64s_hi` at position `shf_mod64`. `a64s_lo` is the lower `shf_mod64`
@@ -157,9 +165,10 @@ def gen_witness(instruction: Instruction, shift: RLC, a: RLC):
         a64s_hi[idx] = FQ(a64s[idx].n // p_lo)
 
     b64s = [FQ(MAX_U64 if is_neg else 0)] * 4
-    b64s[3 - shf_div64] = a64s_hi[3] + p_top
-    for k in range(3 - shf_div64):
-        b64s[k] = a64s_hi[k + shf_div64] + a64s_lo[k + shf_div64 + 1] * p_hi
+    if shf_div64 < 4:
+        b64s[3 - shf_div64] = a64s_hi[3] + p_top
+        for k in range(3 - shf_div64):
+            b64s[k] = a64s_hi[k + shf_div64] + a64s_lo[k + shf_div64 + 1] * p_hi
 
     return (
         a64s,
@@ -171,5 +180,4 @@ def gen_witness(instruction: Instruction, shift: RLC, a: RLC):
         FQ(p_lo),
         FQ(p_hi),
         FQ(p_top),
-        FQ(is_neg),
     )
