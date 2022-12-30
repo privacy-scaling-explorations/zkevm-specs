@@ -90,7 +90,7 @@ def test_bytecode_multiple():
         unroll(bytes([Opcode.ADD, Opcode.PUSH32]), randomness),
         unroll(bytes([Opcode.ADD, Opcode.PUSH32, Opcode.ADD]), randomness),
     ]
-    verify(k, bytecodes, randomness, False)  # Push without data must fail
+    verify(k, bytecodes, randomness, True)
 
 
 def test_bytecode_invalid_hash_data():
@@ -188,7 +188,7 @@ def test_bytecode_invalid_is_code():
         ),
         randomness,
     )
-    verify(k, [unrolled], randomness, False)  # Push without data must fail
+    verify(k, [unrolled], randomness, True)
 
     # The first row, i.e. index == 0 is taken up by the tag Length.
     # Mark the 3rd byte as code (is push data from the first PUSH1)

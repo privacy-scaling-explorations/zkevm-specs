@@ -41,10 +41,6 @@ def check_bytecode_row(
         if cur.tag == BytecodeFieldTag.Byte:
             assert (cur.value, cur.push_data_size) in push_table
             assert cur.is_code == (cur.push_data_left == 0)
-            if cur.is_code == 1:
-                assert next.push_data_left == cur.push_data_size
-            else:
-                assert next.push_data_left == cur.push_data_left - 1
 
             if next.tag == BytecodeFieldTag.Byte:
                 check_bytecode_row_byte_to_byte(cur, next, randomness)
@@ -76,6 +72,10 @@ def check_bytecode_row_byte_to_byte(cur: Row, next: Row, r: int):
     assert next.index == cur.index + 1
     assert next.hash == cur.hash
     assert next.value_rlc == cur.value_rlc * r + next.value
+    if cur.is_code == 1:
+        assert next.push_data_left == cur.push_data_size
+    else:
+        assert next.push_data_left == cur.push_data_left - 1
 
 
 @is_circuit_code
