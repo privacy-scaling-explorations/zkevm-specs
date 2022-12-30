@@ -52,7 +52,7 @@ Each following row unrolls a single byte (using `tag = Byte` and `value = the ac
 All byte data is accumulated per byte (with one byte per row) into `value_rlc` as follows, where r is a challenge:
 
 ```
-first_bytecode.value_rlc := firstbytecode.value
+first_bytecode.value_rlc := first_bytecode.value
 
 next.value_rlc := cur.value_rlc * r + next.value
 ```
