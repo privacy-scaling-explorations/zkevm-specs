@@ -64,6 +64,7 @@ TESTING_DATA = (
         0,
         False,
         0,
+        True,  # success
     ),
     # Last Tx invalid
     (
@@ -79,6 +80,7 @@ TESTING_DATA = (
         0,
         True,
         21000,
+        True,  # success
     ),
 )
 
