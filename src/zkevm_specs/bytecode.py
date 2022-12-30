@@ -49,6 +49,7 @@ def check_bytecode_row(
 
     if cur.q_last == 1:
         assert cur.tag == BytecodeFieldTag.Header
+        check_bytecode_row_header_to_header(cur, randomness)
 
 
 @is_circuit_code
