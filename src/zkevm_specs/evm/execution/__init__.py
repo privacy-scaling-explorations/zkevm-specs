@@ -14,6 +14,7 @@ from .mulmod import *
 from .balance import *
 from .block_ctx import *
 from .blockhash import *
+from .byte import *
 from .callop import *
 from .calldatasize import *
 from .caller import *
@@ -75,6 +76,7 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.CODESIZE: codesize,
     ExecutionState.BlockCtx: blockctx,
     ExecutionState.BLOCKHASH: blockhash,
+    ExecutionState.BYTE: byte,
     ExecutionState.JUMP: jump,
     ExecutionState.JUMPI: jumpi,
     ExecutionState.PUSH: push,

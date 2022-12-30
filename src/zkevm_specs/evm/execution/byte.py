@@ -1,8 +1,4 @@
-from typing import Sequence, Tuple
-from functools import reduce
-
 from ..instruction import Instruction, Transition
-from ...encoding import U8
 from ...util import FQ
 
 
@@ -16,7 +12,7 @@ def byte(instruction: Instruction):
     index = a.le_bytes
     value = b.le_bytes
 
-    # Any index value >= 256 always returns all zeros
+    # Any index >= 32 always returns all zeros
     is_msb_sum_zero = instruction.is_zero(FQ(sum(index[1:])))
 
     # Byte 0:
