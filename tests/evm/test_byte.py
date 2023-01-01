@@ -1,4 +1,5 @@
 import pytest
+from random import randrange
 from zkevm_specs.util import rand_fq, rand_word, RLC
 from zkevm_specs.encoding import u256_to_u8s
 from zkevm_specs.evm import (
@@ -12,13 +13,14 @@ from zkevm_specs.evm import (
     RWDictionary,
 )
 
-NOT_TESTING_DATA = [
-    (0, 0, 0),
-    (31, 0xFF, 0xFF),
-]
+
+def gen_test_data():
+    u256_max = 115792089237316195423570985008687907853269984665640564039457584007913129639935
+    x = randrange(u256_max)
+    return [(i, x, (x >> (248 - i * 8)) & 0xFF) for i in range(1, 32)]
 
 
-@pytest.mark.parametrize("a, b, c", NOT_TESTING_DATA)
+@pytest.mark.parametrize("a, b, c", gen_test_data())
 def test_byte(a: int, b: int, c: int):
     randomness = rand_fq()
 

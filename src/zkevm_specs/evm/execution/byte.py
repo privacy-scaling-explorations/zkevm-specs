@@ -19,7 +19,7 @@ def byte(instruction: Instruction):
     # Check byte per byte if we need to copy the value
     # to result. We're only directly checking the LSB byte
     # of the index here, so also make sure the byte
-    # is only copied when index < 256.
+    # is only copied when index < 32.
     is_byte_selected = [instruction.is_equal(FQ(index[0]), FQ(31 - idx)) for idx in range(32)]
 
     selected_byte = FQ(0)
