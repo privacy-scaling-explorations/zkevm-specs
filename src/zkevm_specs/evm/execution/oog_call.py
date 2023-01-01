@@ -17,13 +17,13 @@ from ..opcode import Opcode
 def oog_call(instruction: Instruction):
     # retrieve op code associated to oog call error
     opcode = instruction.opcode_lookup(True)
+    # TODO: add CallCode etc.when handle ErrorOutOfGasCALLCODE in future implementation
     instruction.constrain_equal(opcode, Opcode.CALL)
 
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
-    reversion_info = instruction.reversion_info()
-    is_static = instruction.call_context_lookup(CallContextFieldTag.IsStatic)
+    instruction.call_context_lookup(CallContextFieldTag.IsStatic)
     # Lookup values from stack
-    gas_rlc = instruction.stack_pop()
+    instruction.stack_pop()
     callee_address_rlc = instruction.stack_pop()
     value = instruction.stack_pop()
     cd_offset_rlc = instruction.stack_pop()
@@ -44,15 +44,13 @@ def oog_call(instruction: Instruction):
         rd_length,
     )
 
-    # Check not is_static if call has value
     has_value = 1 - instruction.is_zero(value)
-    instruction.constrain_zero(has_value * is_static)
     callee_address = instruction.rlc_to_fq(callee_address_rlc, N_BYTES_ACCOUNT_ADDRESS)
 
     # TODO: handle PrecompiledContract oog cases
 
     # Add callee to access list
-    is_warm_access = instruction.add_account_to_access_list(tx_id, callee_address, reversion_info)
+    is_warm_access = instruction.read_account_to_access_list(tx_id, callee_address)
 
     # lookup balance of callee
     callee_balance = instruction.account_read(callee_address, AccountFieldTag.Balance)
@@ -91,14 +89,14 @@ def oog_call(instruction: Instruction):
     if instruction.curr.is_root:
         # Do step state transition
         instruction.constrain_step_state_transition(
-            rw_counter=Transition.delta(17),
+            rw_counter=Transition.delta(15),
             call_id=Transition.same(),
         )
     else:
         # when it is internal call, need to restore caller's state as finishing this call.
         # Restore caller state to next StepState
         instruction.step_state_transition_to_restored_context(
-            rw_counter_delta=17,
+            rw_counter_delta=15,
             return_data_offset=FQ(0),
             return_data_length=FQ(0),
             gas_left=instruction.curr.gas_left,

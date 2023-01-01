@@ -6,7 +6,7 @@ from .util import (
     U64,
     U160,
     U256,
-    linear_combine,
+    linear_combine_bytes,
     PUBLIC_INPUTS_BLOCK_LEN as BLOCK_LEN,
     PUBLIC_INPUTS_EXTRA_LEN as EXTRA_LEN,
     PUBLIC_INPUTS_TX_LEN as TX_LEN,
@@ -495,7 +495,7 @@ def public_data2witness(
         len(raw_public_inputs)
         == BLOCK_LEN + 1 + EXTRA_LEN + 3 * (TX_LEN * MAX_TXS + 1) + MAX_CALLDATA_BYTES
     )
-    rpi_rlc = linear_combine(raw_public_inputs, rand_rpi, range_check=False)
+    rpi_rlc = linear_combine_bytes(raw_public_inputs, rand_rpi, range_check=False)
     # NOTE: End rlc calculation of raw_public_inputs.
 
     rpi_rlc_acc_col = [raw_public_inputs[-1]]

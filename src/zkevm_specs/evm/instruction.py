@@ -650,6 +650,7 @@ class Instruction:
         self,
         tx_id: Expression,
         field_tag: TxReceiptFieldTag,
+        rw_counter: Optional[Expression] = None,
     ) -> Expression:
         value = self.rw_lookup(
             RW.Read,
@@ -658,6 +659,7 @@ class Instruction:
             key2=FQ(0),
             key3=FQ(field_tag),
             key4=FQ(0),
+            rw_counter=rw_counter,
         ).value
         return value
 
@@ -694,7 +696,7 @@ class Instruction:
 
     def bytecode_length(self, bytecode_hash: Expression) -> Expression:
         return self.tables.bytecode_lookup(
-            bytecode_hash, FQ(BytecodeFieldTag.Length), FQ(0), FQ(0)
+            bytecode_hash, FQ(BytecodeFieldTag.Header), FQ(0), FQ(0)
         ).value
 
     def tx_gas_price(self, tx_id: Expression) -> RLC:
@@ -777,6 +779,20 @@ class Instruction:
                 aux0=row.aux0,
             )
 
+        return row
+
+    def state_read(
+        self,
+        tag: RWTableTag,
+        key1: Optional[Expression] = None,
+        key2: Optional[Expression] = None,
+        key3: Optional[Expression] = None,
+        key4: Optional[Expression] = None,
+        value: Optional[Expression] = None,
+        value_prev: Optional[Expression] = None,
+        aux0: Optional[Expression] = None,
+    ) -> RWTableRow:
+        row = self.rw_lookup(RW.Read, tag, key1, key2, key3, key4, value, value_prev, aux0)
         return row
 
     def call_context_lookup(
@@ -943,6 +959,18 @@ class Instruction:
             account_address,
             value=FQ(1),
             reversion_info=reversion_info,
+        )
+        return row.value_prev.expr()
+
+    def read_account_to_access_list(
+        self,
+        tx_id: Expression,
+        account_address: Expression,
+    ) -> FQ:
+        row = self.state_read(
+            RWTableTag.TxAccessListAccount,
+            tx_id,
+            account_address,
         )
         return row.value_prev.expr()
 

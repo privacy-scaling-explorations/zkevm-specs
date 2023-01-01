@@ -3,7 +3,7 @@ from copy import deepcopy
 
 from zkevm_specs.bytecode import *
 from zkevm_specs.evm import Opcode, Bytecode, BytecodeFieldTag, BytecodeTableRow, is_push
-from zkevm_specs.util import RLC, rand_fq
+from zkevm_specs.util import RLC, rand_fq, U256
 
 # Unroll the bytecode
 def unroll(bytecode, randomness):
@@ -12,18 +12,24 @@ def unroll(bytecode, randomness):
 
 # Verify the bytecode circuit with the given data
 def verify(k, bytecodes, randomness, success):
+    rows = assign_bytecode_circuit(k, bytecodes, randomness)
+    verify_rows(bytecodes, rows, success)
+
+
+def verify_rows(bytecodes, rows, success):
     push_table = assign_push_table()
     keccak_table = assign_keccak_table(map(lambda v: v.bytes, bytecodes), randomness)
-    rows = assign_bytecode_circuit(k, bytecodes, randomness)
     try:
         for (idx, row) in enumerate(rows):
-            prev_row = rows[(idx - 1) % len(rows)]
             next_row = rows[(idx + 1) % len(rows)]
-            check_bytecode_row(row, prev_row, next_row, push_table, keccak_table, randomness)
+            check_bytecode_row(row, next_row, push_table, keccak_table, randomness)
             ok = True
     except AssertionError as e:
         if success:
             traceback.print_exc()
+            print(idx)
+            print(row)
+            print(next_row)
         ok = False
     assert ok == success
 
@@ -53,7 +59,7 @@ def test_bytecode_unrolling():
     for i in range(len(rows)):
         rows[i] = BytecodeTableRow(hash.expr(), rows[i][1], rows[i][2], rows[i][3], rows[i][4])
     # Prepend the length of bytecode to rows
-    rows.insert(0, BytecodeTableRow(hash.expr(), BytecodeFieldTag.Length, 0, 0, len(bytecode)))
+    rows.insert(0, BytecodeTableRow(hash.expr(), BytecodeFieldTag.Header, 0, 0, len(bytecode)))
     # Unroll the bytecode
     unrolled = unroll(bytes(bytecode), randomness)
     # Check if the bytecode was unrolled correctly
@@ -68,7 +74,10 @@ def test_bytecode_empty():
 
 
 def test_bytecode_full():
-    bytecodes = [unroll(bytes([7] * (2**k - 1)), randomness)]
+    bytecodes = [
+        unroll(bytes([7] * (2**k - 2)), randomness),
+        unroll(bytes([]), randomness),  # Last row must be tag=Header
+    ]
     verify(k, bytecodes, randomness, True)
 
 
@@ -203,3 +212,69 @@ def test_bytecode_invalid_is_code():
     row = unrolled.rows[7]
     invalid.rows[7] = BytecodeTableRow(row.bytecode_hash, row.field_tag, row.index, 1, row.value)
     verify(k, [invalid], randomness, False)
+
+
+def test_last_row():
+    unrolled = unroll(bytes([8, 2, 3, 8, 9, 7, 128]), randomness)
+    verify(k, [unrolled], randomness, True)
+
+    # last row has length != 0
+    rows = assign_bytecode_circuit(k, [unrolled], randomness)
+    rows[-1] = Row(
+        q_first=0,
+        q_last=1,
+        hash=RLC(EMPTY_HASH, FQ(randomness)).expr(),
+        tag=BytecodeFieldTag.Header,
+        index=0,
+        value=0,
+        is_code=False,
+        push_data_left=0,
+        value_rlc=0,
+        length=1000,
+        push_data_size=0,
+    )
+    verify_rows([unrolled], rows, False)
+
+    # last row has hash != EMPTY_HASH
+    NOT_EMPTY_HASH = U256(
+        int.from_bytes(
+            keccak256(bytes("why is there something instead of nothing?", "utf-8")), "big"
+        )
+    )
+    rows = assign_bytecode_circuit(k, [unrolled], randomness)
+    rows[-1] = Row(
+        q_first=0,
+        q_last=1,
+        hash=RLC(NOT_EMPTY_HASH, FQ(randomness)).expr(),
+        tag=BytecodeFieldTag.Header,
+        index=0,
+        value=0,
+        is_code=False,
+        push_data_left=0,
+        value_rlc=0,
+        length=0,
+        push_data_size=0,
+    )
+    verify_rows([unrolled], rows, False)
+
+    # last row is not Header
+    NOT_EMPTY_HASH = U256(
+        int.from_bytes(
+            keccak256(bytes("why is there something instead of nothing?", "utf-8")), "big"
+        )
+    )
+    rows = assign_bytecode_circuit(k, [unrolled], randomness)
+    rows[-1] = Row(
+        q_first=0,
+        q_last=1,
+        hash=RLC(NOT_EMPTY_HASH, FQ(randomness)).expr(),
+        tag=BytecodeFieldTag.Byte,
+        index=0,
+        value=0,
+        is_code=False,
+        push_data_left=0,
+        value_rlc=0,
+        length=0,
+        push_data_size=0,
+    )
+    verify_rows([unrolled], rows, False)

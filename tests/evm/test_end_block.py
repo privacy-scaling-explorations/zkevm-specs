@@ -11,6 +11,7 @@ from zkevm_specs.evm import (
     RW,
     CallContextFieldTag,
     TxContextFieldTag,
+    TxReceiptFieldTag,
     TxTableRow,
     Block,
     Transaction,
@@ -18,19 +19,25 @@ from zkevm_specs.evm import (
 from zkevm_specs.util import rand_fq, FQ
 
 TESTING_DATA = (
-    # (is_last_step, empty_block, max_txs)
-    (False, False, 2),
-    (True, False, 2),
-    (True, False, 1),
-    (True, True, 1),
+    # (is_last_step, empty_block, max_txs, cumulative_gas, success)
+    (False, False, 2, 0, True),
+    (True, False, 2, 0, True),
+    (True, False, 1, 0, True),
+    (True, True, 1, 0, True),
+    (True, False, 1, int(15e6), True),
+    (True, False, 1, int(15e6) + 1, False),
 )
 
 MAX_CALLDATA_BYTES = 0
 MAX_RWS = 32
 
 
-@pytest.mark.parametrize("is_last_step, empty_block, max_txs", TESTING_DATA)
-def test_end_block(is_last_step: bool, empty_block: bool, max_txs: int):
+@pytest.mark.parametrize(
+    "is_last_step, empty_block, max_txs, cumulative_gas, success", TESTING_DATA
+)
+def test_end_block(
+    is_last_step: bool, empty_block: bool, max_txs: int, cumulative_gas: int, success: bool
+):
     randomness = rand_fq()
 
     tx = Transaction()
@@ -52,6 +59,20 @@ def test_end_block(is_last_step: bool, empty_block: bool, max_txs: int):
                     value=FQ(tx.id),
                 )
             )
+            # append CumlativeGasUsed
+            rw_rows.append(
+                RWTableRow(
+                    FQ(23),
+                    FQ(RW.Read),
+                    key0=FQ(RWTableTag.TxReceipt),
+                    key1=FQ(tx.id),
+                    key2=FQ(0),
+                    key3=FQ(TxReceiptFieldTag.CumulativeGasUsed),
+                    key4=FQ(0),
+                    value=FQ(cumulative_gas),
+                )
+            )
+
     rw_padding = [
         RWTableRow(FQ(i + 1), FQ(0), FQ(RWTableTag.Start)) for i in range(MAX_RWS - len(rw_rows))
     ]
@@ -88,4 +109,5 @@ def test_end_block(is_last_step: bool, empty_block: bool, max_txs: int):
             ),
         ],
         end_with_last_step=is_last_step,
+        success=success,
     )
