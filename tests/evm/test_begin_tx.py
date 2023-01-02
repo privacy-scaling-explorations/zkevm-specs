@@ -9,11 +9,12 @@ from zkevm_specs.evm import (
     CallContextFieldTag,
     Block,
     Transaction,
+    AccessTuple,
     Account,
     Bytecode,
     RWDictionary,
 )
-from zkevm_specs.util import rand_fq, rand_address, rand_range, RLC, EMPTY_CODE_HASH
+from zkevm_specs.util import rand_fq, rand_address, rand_range, rand_word, RLC, EMPTY_CODE_HASH, U64
 
 RETURN_BYTECODE = Bytecode().return_(0, 0)
 REVERT_BYTECODE = Bytecode().revert(0, 0)
@@ -89,6 +90,68 @@ TESTING_DATA = (
         CALLEE_WITH_RETURN_BYTECODE,
         True,
     ),
+    # Transfer with wrong nonce
+    (
+        Transaction(
+            caller_address=0xFE,
+            callee_address=CALLEE_ADDRESS,
+            value=int(1e18),
+            nonce=U64(100),
+            invalid_tx=1,
+        ),
+        CALLEE_WITH_NOTHING,
+        True,  # is success because the tx is skipped
+    ),
+    # Transfer with insufficient balance
+    (
+        Transaction(
+            caller_address=0xFE,
+            callee_address=CALLEE_ADDRESS,
+            gas=21080,
+            value=int(1e21),
+            invalid_tx=1,
+        ),
+        CALLEE_WITH_NOTHING,
+        True,  # is success because the tx is skipped
+    ),
+    # Transfer with insufficient balance and ignore the revert code
+    (
+        Transaction(
+            caller_address=0xFE,
+            callee_address=CALLEE_ADDRESS,
+            gas=21080,
+            value=int(1e21),
+            invalid_tx=1,
+        ),
+        CALLEE_WITH_REVERT_BYTECODE,
+        True,  # is success because the tx is skipped
+    ),
+    # Transfer with sufficient intrinsic gas
+    (
+        Transaction(
+            caller_address=0xFE,
+            callee_address=CALLEE_ADDRESS,
+            gas=21080 + 2400 + 1900 * 2,
+            value=int(1e17),
+            invalid_tx=0,
+            access_list=[AccessTuple(address=0xFE, storage_keys=[rand_word(), rand_word()])],
+        ),
+        CALLEE_WITH_NOTHING,
+        True,  # is success because the tx is skipped
+    ),
+    # Transfer with insufficient intrinsic gas
+    (
+        Transaction(
+            caller_address=0xFE,
+            callee_address=CALLEE_ADDRESS,
+            gas=21080,
+            value=int(1e17),
+            invalid_tx=1,
+            access_list=[AccessTuple(address=0xFE, storage_keys=[rand_word(), rand_word()])],
+        ),
+        CALLEE_WITH_NOTHING,
+        True,  # is success because the tx is skipped
+    ),
 )
 
 
@@ -96,11 +159,17 @@ TESTING_DATA = (
 def test_begin_tx(tx: Transaction, callee: Account, is_success: bool):
     randomness = rand_fq()
 
+    is_tx_valid = 1 - tx.invalid_tx
     rw_counter_end_of_reversion = 24
+    caller_nonce_prev = 0
     caller_balance_prev = int(1e20)
     callee_balance_prev = callee.balance
-    caller_balance = caller_balance_prev - (tx.value + tx.gas * tx.gas_price)
-    callee_balance = callee_balance_prev + tx.value
+    caller_balance = (
+        caller_balance_prev - (tx.value + tx.gas * tx.gas_price)
+        if is_tx_valid
+        else caller_balance_prev
+    )
+    callee_balance = callee_balance_prev + tx.value if is_tx_valid else callee_balance_prev
 
     bytecode_hash = RLC(callee.code_hash(), randomness)
 
@@ -111,14 +180,14 @@ def test_begin_tx(tx: Transaction, callee: Account, is_success: bool):
         .call_context_read(1, CallContextFieldTag.RwCounterEndOfReversion, 0 if is_success else rw_counter_end_of_reversion)
         .call_context_read(1, CallContextFieldTag.IsPersistent, is_success)
         .call_context_read(1, CallContextFieldTag.IsSuccess, is_success)
-        .account_write(tx.caller_address, AccountFieldTag.Nonce, tx.nonce + 1, tx.nonce)
+        .account_write(tx.caller_address, AccountFieldTag.Nonce, caller_nonce_prev + is_tx_valid, caller_nonce_prev)
         .tx_access_list_account_write(tx.id, tx.caller_address, True, False)
         .tx_access_list_account_write(tx.id, tx.callee_address, True, False)
         .account_write(tx.caller_address, AccountFieldTag.Balance, RLC(caller_balance, randomness), RLC(caller_balance_prev, randomness), rw_counter_of_reversion=None if is_success else rw_counter_end_of_reversion)
         .account_write(tx.callee_address, AccountFieldTag.Balance, RLC(callee_balance, randomness), RLC(callee_balance_prev, randomness), rw_counter_of_reversion=None if is_success else rw_counter_end_of_reversion - 1)
         .account_read(tx.callee_address, AccountFieldTag.CodeHash, bytecode_hash)
     )
-    if callee.code_hash() != EMPTY_CODE_HASH:
+    if callee.code_hash() != EMPTY_CODE_HASH and is_tx_valid == 1:
         rw_dictionary \
         .call_context_read(1, CallContextFieldTag.Depth, 1) \
         .call_context_read(1, CallContextFieldTag.CallerAddress, tx.caller_address) \
@@ -152,7 +221,7 @@ def test_begin_tx(tx: Transaction, callee: Account, is_success: bool):
             ),
             StepState(
                 execution_state=ExecutionState.EndTx
-                if callee.code_hash() == EMPTY_CODE_HASH
+                if callee.code_hash() == EMPTY_CODE_HASH or is_tx_valid == 0
                 else ExecutionState.PUSH,
                 rw_counter=rw_dictionary.rw_counter,
                 call_id=1,

@@ -61,6 +61,7 @@ def get_tx_table_max_txs(table: Set[TxTableRow]) -> int:
 def end_block(instruction: Instruction):
     max_txs = get_tx_table_max_txs(instruction.tables.tx_table)
     max_rws = len(instruction.tables.rw_table)
+
     total_txs = FQ(
         len(
             [
@@ -71,16 +72,27 @@ def end_block(instruction: Instruction):
             ]
         )
     )
+    # total_valid_txs = total_txs - invalid_txs
+    total_valid_txs = FQ(
+        total_txs
+        - len(
+            [
+                tx_row
+                for tx_row in instruction.tables.tx_table
+                if tx_row.field_tag == TxContextFieldTag.TxInvalid and tx_row.value.expr() == FQ(1)
+            ]
+        )
+    )
     # Note that rw_counter starts at 1
     is_empty_block = instruction.is_zero(instruction.curr.rw_counter - 1)
     # If the block is not empty, we will do 1 call_context lookup
     total_rws = (1 - is_empty_block) * (instruction.curr.rw_counter - 1 + 2)
 
     if instruction.is_last_step:
-        # 1. Constraint total_txs witness values depending on the empty block case.
+        # 1. Constraint total_valid_txs witness values depending on the empty block case.
         if is_empty_block == FQ(1):
-            # 1a. total_txs is 0 in empty block
-            instruction.constrain_equal(total_txs, FQ(0))
+            # 1a. total_valid_txs is 0 in empty block
+            instruction.constrain_equal(total_valid_txs, FQ(0))
         else:
             # 1b. total_txs matches the tx_id that corresponds to the final step.
             instruction.constrain_equal(

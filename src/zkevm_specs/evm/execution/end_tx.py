@@ -7,6 +7,7 @@ from ..table import BlockContextFieldTag, CallContextFieldTag, TxContextFieldTag
 def end_tx(instruction: Instruction):
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
     is_persistent = instruction.call_context_lookup(CallContextFieldTag.IsPersistent)
+    is_tx_invalid = instruction.tx_context_lookup(tx_id, TxContextFieldTag.TxInvalid)
 
     # Handle gas refund (refund is capped to gas_used // MAX_REFUND_QUOTIENT_OF_GAS_USED in EIP 3529)
     tx_gas = instruction.tx_context_lookup(tx_id, TxContextFieldTag.Gas)
@@ -16,6 +17,10 @@ def end_tx(instruction: Instruction):
     )
     refund = instruction.tx_refund_read(tx_id)
     effective_refund = instruction.min(max_refund, refund, 8)
+
+    # refund == 0 if tx is invalid
+    if is_tx_invalid == 1:
+        instruction.constrain_zero(effective_refund)
 
     # Add effective_refund * gas_price back to caller's balance
     tx_gas_price = instruction.tx_gas_price(tx_id)
@@ -36,12 +41,16 @@ def end_tx(instruction: Instruction):
 
     # constrain tx status matches with `PostStateOrStatus` of TxReceipt tag in RW
     instruction.constrain_equal(
-        is_persistent, instruction.tx_receipt_write(tx_id, TxReceiptFieldTag.PostStateOrStatus)
+        (1 - is_tx_invalid.expr()) * is_persistent,
+        instruction.tx_receipt_write(tx_id, TxReceiptFieldTag.PostStateOrStatus),
     )
 
     # constrain log id matches with `LogLength` of TxReceipt tag in RW
     log_id = instruction.tx_receipt_write(tx_id, TxReceiptFieldTag.LogLength)
     instruction.constrain_equal(log_id, instruction.curr.log_id)
+    # log_id is 0 if tx is invalid.
+    if is_tx_invalid == 1:
+        instruction.constrain_zero(log_id)
 
     # constrain `CumulativeGasUsed` of TxReceipt tag in RW
     is_first_tx = tx_id == 1

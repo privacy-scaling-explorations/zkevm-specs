@@ -50,6 +50,38 @@ TESTING_DATA = (
         20000,  # current_cumulative_gas_used
         True,  # success
     ),
+    # Tx invalid
+    (
+        Transaction(
+            id=1,
+            caller_address=0xFE,
+            callee_address=CALLEE_ADDRESS,
+            gas=60000,
+            gas_price=int(2e9),
+            invalid_tx=1,
+        ),
+        60000,
+        0,
+        False,
+        0,
+        True,  # success
+    ),
+    # Last Tx invalid
+    (
+        Transaction(
+            id=2,
+            caller_address=0xFE,
+            callee_address=CALLEE_ADDRESS,
+            gas=65000,
+            gas_price=int(2e9),
+            invalid_tx=1,
+        ),
+        65000,
+        0,
+        True,
+        21000,
+        True,  # success
+    ),
 )
 
 
@@ -81,7 +113,7 @@ def test_end_tx(
             .tx_refund_read(tx.id, refund)
             .account_write(tx.caller_address, AccountFieldTag.Balance, RLC(caller_balance, randomness), RLC(caller_balance_prev, randomness))
             .account_write(block.coinbase, AccountFieldTag.Balance, RLC(coinbase_balance, randomness), RLC(coinbase_balance_prev, randomness))
-            .tx_receipt_write(tx.id, TxReceiptFieldTag.PostStateOrStatus, 1)
+            .tx_receipt_write(tx.id, TxReceiptFieldTag.PostStateOrStatus, 1 - tx.invalid_tx)
             .tx_receipt_write(tx.id, TxReceiptFieldTag.LogLength, 0)
         # fmt: on
     )

@@ -21,11 +21,15 @@ Proved by the tx circuit.
 | $TxID  | CallDataLength      | 0          | $value  |
 | $TxID  | CallDataGasCost     | 0          | $value  |
 | $TxID  | TxSignHash          | 0          | $value  |
+| $TxID  | TxInvalid           | 0          | $value  |
+| $TxID  | AccessListGasCost   | 0          | $value  |
 | $TxID  | CallData            | $ByteIndex | $value  |
 | $TxID  | Pad                 | 0          | $value  |
 
-NOTE: `CallDataGasCost` and `TxSignHash` are values calculated by the verifier
-and used to reduce the circuit complexity.  They may be removed in the future.
+NOTE:
+- `CallDataGasCost` and `TxSignHash` are values calculated by the verifier and used to reduce the circuit complexity.  They may be removed in the future.
+- `TxInvalid` is a flag to tell the circuit which tx is invalid and should not be executed. We check `balance`, `nonce`, and `intrinsic gas` within `begin_tx`, `end_tx`, and `end_block` steps to make sure all txs being processed are valid, and all others are invalid and not executed. Invalid transactions go from the `begin_tx` state directly to the `end_tx` state and do not have any side effects.
+- `AccessListGasCost` is the `accessList` gas cost of the tx, which equals to `sum([G_accesslistaddress + G_accessliststorage * len(TA[j]) for j in len(TA)])` (EIP 2930).
 
 ## `rw_table`
 

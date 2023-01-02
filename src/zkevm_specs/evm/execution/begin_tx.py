@@ -28,10 +28,12 @@ def begin_tx(instruction: Instruction):
     instruction.constrain_not_zero(tx_caller_address)
 
     # Verify nonce
+    is_tx_invalid = instruction.tx_context_lookup(tx_id, TxContextFieldTag.TxInvalid)
     tx_nonce = instruction.tx_context_lookup(tx_id, TxContextFieldTag.Nonce)
     nonce, nonce_prev = instruction.account_write(tx_caller_address, AccountFieldTag.Nonce)
-    instruction.constrain_equal(tx_nonce, nonce_prev)
-    instruction.constrain_equal(nonce, nonce_prev.expr() + 1)
+    is_nonce_valid = instruction.is_zero(tx_nonce.expr() - nonce_prev.expr())
+    # bump the account nonce if the tx is valid
+    instruction.constrain_equal(nonce, nonce_prev.expr() + 1 - is_tx_invalid.expr())
 
     # TODO: Implement EIP 1559 (currently it supports legacy transaction format)
     # Calculate gas fee
@@ -40,27 +42,43 @@ def begin_tx(instruction: Instruction):
     gas_fee, carry = instruction.mul_word_by_u64(tx_gas_price, tx_gas)
     instruction.constrain_zero(carry)
 
+    # intrinsic gas
+    # G_0 = sum([G_txdatazero if CallData[i] == 0 else G_txdatanonzero for i in len(CallData)]) +
+    #       (G_txcreate if tx_to == 0 or 0) +
+    #       G_transaction +
+    #       sum([G_accesslistaddress + G_accessliststorage * len(TA[j]) for j in len(TA)])
+    tx_calldata_gas_cost = instruction.tx_context_lookup(tx_id, TxContextFieldTag.CallDataGasCost)
+    tx_cost_gas = GAS_COST_CREATION_TX if tx_is_create == 1 else GAS_COST_TX
     # TODO: Handle gas cost of tx level access list (EIP 2930)
-    tx_call_data_gas_cost = instruction.tx_context_lookup(tx_id, TxContextFieldTag.CallDataGasCost)
-    gas_left = (
-        tx_gas.expr()
-        - (GAS_COST_CREATION_TX if tx_is_create == 1 else GAS_COST_TX)
-        - tx_call_data_gas_cost.expr()
-    )
-    instruction.constrain_gas_left_not_underflow(gas_left)
+    tx_accesslist_gas = instruction.tx_context_lookup(tx_id, TxContextFieldTag.AccessListGasCost)
+    tx_intrinsic_gas = tx_calldata_gas_cost.expr() + tx_cost_gas + tx_accesslist_gas.expr()
+
+    # check instrinsic gas
+    MAX_N_BYTES = 31
+    gas_not_enough, _ = instruction.compare(tx_gas, tx_intrinsic_gas, MAX_N_BYTES)
+    gas_left = tx_gas.expr() if gas_not_enough == 1 else tx_gas.expr() - tx_intrinsic_gas
 
     # Prepare access list of caller and callee
     instruction.constrain_zero(instruction.add_account_to_access_list(tx_id, tx_caller_address))
     instruction.constrain_zero(instruction.add_account_to_access_list(tx_id, tx_callee_address))
 
     # Verify transfer
-    instruction.transfer_with_gas_fee(
+    sender_balance_pair, _ = instruction.transfer_with_gas_fee(
         tx_caller_address,
         tx_callee_address,
-        tx_value,
-        gas_fee,
+        RLC(0) if (is_tx_invalid.expr() == 1) else tx_value,
+        RLC(0) if (is_tx_invalid.expr() == 1) else gas_fee,
         reversion_info,
     )
+    sender_balance_prev = sender_balance_pair[1]
+    balance_not_enough, _ = instruction.compare(
+        instruction.rlc_to_fq(sender_balance_prev, MAX_N_BYTES),
+        instruction.rlc_to_fq(tx_value, MAX_N_BYTES) + instruction.rlc_to_fq(gas_fee, MAX_N_BYTES),
+        MAX_N_BYTES,
+    )
+    invalid_tx = 1 - (1 - balance_not_enough) * (1 - gas_not_enough) * (is_nonce_valid)
+    # prover should not give incorrect is_tx_invalid flag.
+    instruction.constrain_equal(is_tx_invalid, invalid_tx)
 
     if tx_is_create == 1:
         # TODO: Verify created address
@@ -78,7 +96,7 @@ def begin_tx(instruction: Instruction):
             code_hash, RLC(EMPTY_CODE_HASH, instruction.randomness)
         )
 
-        if is_empty_code_hash == FQ(1):
+        if is_empty_code_hash == FQ(1) or is_tx_invalid == FQ(1):
             # Make sure tx is persistent
             instruction.constrain_equal(reversion_info.is_persistent, FQ(1))
 
