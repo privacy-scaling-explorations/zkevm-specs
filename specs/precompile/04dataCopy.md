@@ -6,13 +6,14 @@ The `dataCopy` precompile returns its input.
 
 ### Circuit behavior
 
-1. Do a busmapping lookup for CallContext last Call's CallDataOffset.
-2. Do a busmapping lookup for CallContext last Call's CallDataLength.
-3. Do a busmapping lookup for CallContext last Call's ReturnDataOffset.
-4. Do a busmapping lookup for CallContext last Call's ReturnDataLength.
-4. Do a busmapping lookup for CallContext last Call's ID.
-5. Do a CopyTable lookup to verify the copy from calldata to current call context memory.
-6. Do a CopyTable lookup to verify the copy from calldata to precompile call context memory.
+1. Do a busmapping lookup for CallContext CalleeAddress.
+2. Do a busmapping lookup for CallContext CallerId.
+3. Do a busmapping lookup for CallContext CallDataOffset.
+4. Do a busmapping lookup for CallContext CallDataLength.
+5. Do a busmapping lookup for CallContext ReturnDataOffset.
+6. Do a busmapping lookup for CallContext ReturnDataLength.
+7. Do a CopyTable lookup to verify the copy from calldata to current call context memory.
+8. Do a CopyTable lookup to verify the copy from calldata to precompile call context memory.
 
 ### Gas cost
 
