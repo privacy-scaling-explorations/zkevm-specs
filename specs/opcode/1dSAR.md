@@ -39,8 +39,11 @@ First we could define below constants for calculating `b64s`.
 ```
 MAX_U64 = 2**64 - 1
 is_neg = is_neg(a)
-shf_div64 = shift // 64
-shf_mod64 = shift % 64
+# Split `shift` into two parts `shf_lo` and `shf_hi`.
+shf_lo, shf_hi = word_to_lo_hi(shift)
+shf_hi_is_zero = is_zero(shf_hi)
+shf_div64 = shf_lo // 64
+shf_mod64 = shf_lo % 64
 p_lo = 1 << shf_mod64
 p_hi = 1 << (64 - shf_mod64)
 # The top new bits are set to 1 if `a` is negative, otherwise set to 0.
@@ -62,8 +65,6 @@ b64s[3] = a64s_hi[3] + p_top
 
 For common case, we should add more variables as:
 ```
-shf0 = bytes_to_fq(shift.le_bytes[:1])
-shf_lt256 = compare_word(shift, RLC(256))
 shf_div64_eq0 = is_zero(shf_div64)
 shf_div64_eq1 = is_zero(shf_div64 - 1)
 shf_div64_eq2 = is_zero(shf_div64 - 2)
@@ -82,9 +83,8 @@ Now putting things together, the constraints can be constructed as follows:
 
 1. `a64s` and `b64s` constraints:
 
-* First calculate `shf_lt256` as `compare_word(shift, RLC(256))`.
 * `a64s[idx]`: It should be equal to `from_bytes(a[8 * idx : 8 * (idx + 1)])` where idx in `(0, 1, 2, 3)`.
-* `b64s[idx] * shf_lt256 + is_neg * (1 - shf_lt256) * MAX_U64`: It should be equal to `from_bytes(b[8 * idx : 8 * (idx + 1)])` where idx in `(0, 1, 2, 3)`.
+* `select(shf_hi_is_zero, b64s[idx], is_neg * MAX_U64)`: It should be equal to `from_bytes(b[8 * idx : 8 * (idx + 1)])` where idx in `(0, 1, 2, 3)`.
 
 2. `a64s_lo` and `a64s_hi` constraints:
 
@@ -132,9 +132,10 @@ shf_div64_eq3 = is_zero(shf_div64 - 3)
   is_neg * MAX_U64 * (1 - shf_div64_eq0)
 ```
 
-4. `shift[0]` constraint:
+4. `shift` constraint:
 
-* `shift[0]`: It should be equal to `shf_mod64 + shf_div64 * 64`.
+* `shf_mod64`: It should be less than 64.
+* `shf_lo`: It should be equal to `shf_mod64 + shf_div64 * 64`.
 
 5. `is_neg` constraints:
 
@@ -151,7 +152,7 @@ shf_div64_eq3 = is_zero(shf_div64 - 3)
 
 * Pop word `a`
 * Pop word `shift`
-* Push word `shift_lt256 * b + is_neg * (1 - shf_lt256) * ((1 << 256) - 1)`
+* Push word `b`
 
 ## Constraints
 

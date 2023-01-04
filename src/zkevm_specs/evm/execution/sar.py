@@ -129,6 +129,8 @@ def check_witness(
     )
 
     # Shift constraint
+    shf_mod64_lt_64, _ = instruction.compare(shf_mod64, FQ(64), 1)
+    instruction.constrain_equal(shf_mod64_lt_64, FQ(1))
     instruction.constrain_equal(shf_lo, shf_mod64 + shf_div64 * 64)
 
     # `is_neg` constraints
