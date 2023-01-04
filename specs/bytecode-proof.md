@@ -73,9 +73,13 @@ The fixed columns `q_first` and `q_last` should be zero for all rows, except the
 
 All circuit constraints are based on the current row (`cur`) and the `next` row.
 
+### `cur.q_first == 1 || cur.q_last == 1`
+
 First of all if `cur.q_first` or `cur.q_last` are `1`, then `cur.tag == Header`.
 
 We should have the following constraint based on `cur.tag` and `next.tag` (state transition), for all rows except the last one (`cur.q_last == 1`).
+
+### `cur.tag == Header`
 
 To enable lookup all `cur.tag == Header` rows should have:
 
@@ -84,15 +88,13 @@ assert cur.index == 0
 assert cur.value == cur.length
 ```
 
+### `cur.tag == Byte`
+
 Also, each `cur.tag == Byte` should have:
 
 ```
 assert push_data_size_table_lookup(cur.value, cur.push_data_size)
 assert cur.is_code == (cur.push_data_left == 0)
-if cur.is_code:
-    assert next.push_data_left == cur.push_data_size
-else:
-    assert next.push_data_left == cur.push_data_left - 1
 ```
 
 This way we make sure is_code and next.push_data_left have the right values.
@@ -132,6 +134,10 @@ assert next.length == cur.length
 assert next.index == cur.index + 1
 assert next.hash == cur.hash
 assert next.value_rlc == cur.value_rlc * randomness + next.value
+if cur.is_code:
+    assert next.push_data_left == cur.push_data_size
+else:
+    assert next.push_data_left == cur.push_data_left - 1
 ```
 
 We make sure that `index` is incremented and `value_rlc` is accumulated.
@@ -151,6 +157,16 @@ First, we make sure that the bytecode has `cur.length` bytes in the table.
 
 Second, we ensure that the byte data passed into the circuit matches the data the prover gave as input (all the byte data is accumulated into `value_rlc`). This has the consequence that the circuit _requires_ the full bytecode to be a part of its state, otherwise the prover could pass in invalid byte data for the specified hash.
 
+### `q_last == 1`
+
+For the row with `q_last == 1` we should enforce the same constrain as when `cur.tag == Header and next.tag == Header` which are:, and as mentioned earlier `cur.tag == Header`
+
+```
+assert cur.length == 0
+assert cur.hash == EMPTY_HASH
+```
+
+As well as (mentioned above) `cur.tag == Header`.
 
 ## Code
 
