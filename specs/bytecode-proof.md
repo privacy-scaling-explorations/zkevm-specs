@@ -27,7 +27,6 @@ After all the bytecodes have been added, the rest of the rows are filled with pa
 
 Additionally we will need one columns for IsZeroChip for `push_data_left`
 
-
 ## Push table
 
 The push lookup table is used to find how many bytes an opcode pushes, which we need to know to detect which byte is code and which byte is not.
