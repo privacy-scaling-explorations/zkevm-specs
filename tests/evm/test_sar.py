@@ -3,7 +3,6 @@ from zkevm_specs.evm import (
     Block,
     Bytecode,
     ExecutionState,
-    Opcode,
     RWDictionary,
     StepState,
     Tables,
@@ -17,7 +16,6 @@ from zkevm_specs.util import (
     rand_fq,
     rand_word,
 )
-from common import generate_nasty_tests
 
 # Maximum negative word value of i256 (integer value of -1)
 TESTING_MAX_NEGATIVE = 2**256 - 1
@@ -27,34 +25,50 @@ TESTING_MAX_POSITIVE = 2**255 - 1
 TESTING_NEGATIVE_SIGN = 2**255
 
 TESTING_DATA = [
-    (Opcode.SAR, 8, 0x1234),
-    (Opcode.SAR, 17, 0x5678),
-    (Opcode.SAR, 0, 0xABCD),
-    (Opcode.SAR, 256, 0xFFFF),
-    (Opcode.SAR, 256 + 8 + 1, 0x12345),
-    (Opcode.SAR, 8, TESTING_NEGATIVE_SIGN + 0x1234),
-    (Opcode.SAR, 17, TESTING_NEGATIVE_SIGN + 0x5678),
-    (Opcode.SAR, 0, TESTING_NEGATIVE_SIGN + 0xABCD),
-    (Opcode.SAR, 256, TESTING_NEGATIVE_SIGN + 0xFFFF),
-    (Opcode.SAR, 256 + 8 + 1, TESTING_NEGATIVE_SIGN + 0x12345),
-    (Opcode.SAR, 8, TESTING_MAX_NEGATIVE),
-    (Opcode.SAR, 129, TESTING_MAX_NEGATIVE),
-    (Opcode.SAR, 300, TESTING_MAX_NEGATIVE),
-    (Opcode.SAR, 8, TESTING_MAX_POSITIVE),
-    (Opcode.SAR, 129, TESTING_MAX_POSITIVE),
-    (Opcode.SAR, 300, TESTING_MAX_POSITIVE),
-    (Opcode.SAR, TESTING_MAX_NEGATIVE, TESTING_MAX_NEGATIVE),
-    (Opcode.SAR, TESTING_MAX_NEGATIVE, TESTING_MAX_POSITIVE),
-    (Opcode.SAR, TESTING_MAX_POSITIVE, TESTING_MAX_NEGATIVE),
-    (Opcode.SAR, TESTING_MAX_POSITIVE, TESTING_MAX_POSITIVE),
-    (Opcode.SAR, rand_word(), rand_word()),
+    (8, 0x1234),
+    (17, 0x5678),
+    (0, 0xABCD),
+    (256, 0xFFFF),
+    (256 + 8 + 1, 0x12345),
+    (8, TESTING_NEGATIVE_SIGN + 0x1234),
+    (17, TESTING_NEGATIVE_SIGN + 0x5678),
+    (0, TESTING_NEGATIVE_SIGN + 0xABCD),
+    (256, TESTING_NEGATIVE_SIGN + 0xFFFF),
+    (256 + 8 + 1, TESTING_NEGATIVE_SIGN + 0x12345),
+    (8, TESTING_MAX_NEGATIVE),
+    (129, TESTING_MAX_NEGATIVE),
+    (300, TESTING_MAX_NEGATIVE),
+    (8, TESTING_MAX_POSITIVE),
+    (129, TESTING_MAX_POSITIVE),
+    (300, TESTING_MAX_POSITIVE),
+    (TESTING_MAX_NEGATIVE, TESTING_MAX_NEGATIVE),
+    (TESTING_MAX_NEGATIVE, TESTING_MAX_POSITIVE),
+    (TESTING_MAX_POSITIVE, TESTING_MAX_NEGATIVE),
+    (TESTING_MAX_POSITIVE, TESTING_MAX_POSITIVE),
+    (rand_word(), rand_word()),
+    # Test cases from eip-145.
+    # https://github.com/ethereum/EIPs/blob/master/EIPS/eip-145.md#sar-arithmetic-shift-right
+    (0, 1),
+    (1, 1),
+    (1, 0),
+    (1, TESTING_NEGATIVE_SIGN),
+    (0xFF, TESTING_NEGATIVE_SIGN),
+    (0x100, TESTING_NEGATIVE_SIGN),
+    (0x101, TESTING_NEGATIVE_SIGN),
+    (0, TESTING_MAX_NEGATIVE),
+    (1, TESTING_MAX_NEGATIVE),
+    (0xFF, TESTING_MAX_NEGATIVE),
+    (0x100, TESTING_MAX_NEGATIVE),
+    (0xFE, 2**254),
+    (0xF8, TESTING_MAX_POSITIVE),
+    (0xFE, TESTING_MAX_POSITIVE),
+    (0xFF, TESTING_MAX_POSITIVE),
+    (0x100, TESTING_MAX_POSITIVE),
 ]
 
-generate_nasty_tests(TESTING_DATA, [Opcode.SAR])
 
-
-@pytest.mark.parametrize("opcode, shift, a", TESTING_DATA)
-def test_sar(opcode: Opcode, shift: int, a: int):
+@pytest.mark.parametrize("shift, a", TESTING_DATA)
+def test_sar(shift: int, a: int):
     b = get_int_neg(-(-get_int_abs(a) >> shift)) if int_is_neg(a) else a >> shift
 
     randomness = rand_fq()
