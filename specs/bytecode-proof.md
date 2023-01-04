@@ -25,7 +25,7 @@ The column `tag` (advice) makes the circuit behave as a state machine, selecting
 
 After all the bytecodes have been added, the rest of the rows are filled with padding in the form of `tag == Header && length == 0 && value == 0 && hash == EMPTY_HASH` rows.
 
-Additionally we will need two columns for IsZeroChip for `length` and `push_data_left`
+Additionally we will need one columns for IsZeroChip for `push_data_left`
 
 
 ## Push table
