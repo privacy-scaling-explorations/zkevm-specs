@@ -4,7 +4,12 @@
 
 ### EVM behavior
 
-The `CALL` opcode transfers specified amount of ether to callee and creates a new call context and switch to it. This is done by popping serveral words from stack:
+- for opcode `CALL`, transfer specified amount of ether to callee and creates a new call context and switch to it
+- for opcode `CALLCODE`, create a new sub context as setting both caller and callee addresses to caller's, but with the code of the given account (callee)
+- for opcode `DELEGATECALL`, create a new sub context as setting caller address to parent caller's and callee address to current caller's, but with the code of the given account (callee). In particular the current `sender` (parent caller) and `value` remain the same.
+- for opcode `STATICCALL`, do not allow any state modifying instructions (is_static == 1) or sending ether to callee in the sub context.
+
+These are done by popping serveral words from stack:
 
 1. `gas` - The amount of gas caller want to give to callee (capped by rule in EIP150)
 2. `callee_address` - The ether recipient whose code is to be executed (by taking the 20 LSB of popped word)
@@ -14,18 +19,6 @@ The `CALL` opcode transfers specified amount of ether to callee and creates a ne
 6. `return_data_offset` - The offset of return_data chunk in caller's memory, which will be set to return_data from callee after call
 7. `return_data_length` - The length of return_data chunk
 
-`CALLCODE`, `DELEGATECALL` and `STATICCALL` opcodes are similar to `CALL`, but have some differences:
-
-- For opcode `CALLCODE`:
-It creates a new sub context as setting both caller and callee addresses to caller's, but with the code of the given account (callee).
-
-- For opcode `DELEGATECALL`:
-It creates a new sub context as setting caller address to parent caller's and callee address to current caller's, but with the code of the given account (callee). In particular the current `sender` (parent caller) and `value` remain the same.
-
-- For opcode `STATICCALL`:
-It does not allow any state modifying instructions (is_static == 1) or sending ether to callee in the sub context.
-
-Both `DELEGATECALL` and `STATICCALL` opcodes only pop 6 words from stack `gas`, `callee_address`, `call_data_offset`, `call_data_length`, `return_data_offset` and `return_data_length` (except the third popped word `value` for both `CALL` and `CALLCODE` opcodes).
 There should be no `transfer` invocation for `CALLCODE`, `DELEGATECALL`and `STATICCALL` (only for CALL).
 
 Before switching call context to the new one, it does several things:
