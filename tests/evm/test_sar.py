@@ -31,7 +31,7 @@ TESTING_DATA = [
     (Opcode.SAR, 17, 0x5678),
     (Opcode.SAR, 0, 0xABCD),
     (Opcode.SAR, 256, 0xFFFF),
-    (Opcode.SHR, 256 + 8 + 1, 0x12345),
+    (Opcode.SAR, 256 + 8 + 1, 0x12345),
     (Opcode.SAR, 8, TESTING_NEGATIVE_SIGN + 0x1234),
     (Opcode.SAR, 17, TESTING_NEGATIVE_SIGN + 0x5678),
     (Opcode.SAR, 0, TESTING_NEGATIVE_SIGN + 0xABCD),
