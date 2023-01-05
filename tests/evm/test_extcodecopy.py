@@ -31,29 +31,29 @@ from zkevm_specs.util import (
 
 TESTING_DATA = (
     # empty code
-    (bytes(), True, True, 1, 0x30000, 0x00, 0x00, 54),  # warm account
-    (bytes(), False, True, 1, 0x30000, 0x00, 0x00, 54),  # cold account
+    (bytes(), True, True, True, 0x30000, 0x00, 0x00, 54),  # warm account
+    (bytes(), False, True, True, 0x30000, 0x00, 0x00, 54),  # cold account
     # non-empty code
-    (bytes([10, 40]), True, True, 1, 0x30000, 0x00, 0x00, 54),  # warm account
-    (bytes([10, 10]), False, True, 1, 0x30000, 0x00, 0x00, 54),  # cold account
+    (bytes([10, 40]), True, True, True, 0x30000, 0x00, 0x00, 54),  # warm account
+    (bytes([10, 10]), False, True, True, 0x30000, 0x00, 0x00, 54),  # cold account
     # code length > 256
-    (rand_bytes(256), True, True, 1, 0x30000, 0x00, 0x00, 54),  # warm account
-    (rand_bytes(256), False, True, 1, 0x30000, 0x00, 0x00, 54),  # cold account
+    (rand_bytes(256), True, True, True, 0x30000, 0x00, 0x00, 54),  # warm account
+    (rand_bytes(256), False, True, True, 0x30000, 0x00, 0x00, 54),  # cold account
     # out of bound cases
-    (rand_bytes(64), True, True, 1, 0x30000, 0x20, 0x00, 260),  # warm account
-    (rand_bytes(64), False, True, 1, 0x30000, 0x20, 0x00, 260),  # cold account
+    (rand_bytes(64), True, True, True, 0x30000, 0x20, 0x00, 260),  # warm account
+    (rand_bytes(64), False, True, True, 0x30000, 0x20, 0x00, 260),  # cold account
     # non-existing account
-    (bytes(), True, True, 0, 0x30000, 0x00, 0x00, 54),  # warm account
-    (bytes(), False, True, 0, 0x30000, 0x00, 0x00, 54),  # cold account
+    (bytes(), True, True, False, 0x30000, 0x00, 0x00, 54),  # warm account
+    (bytes(), False, True, False, 0x30000, 0x00, 0x00, 54),  # cold account
     # non-existing account & code length > 256
-    (rand_bytes(256), True, True, 0, 0x30000, 0x00, 0x00, 54),  # warm account
-    (rand_bytes(256), False, True, 0, 0x30000, 0x00, 0x00, 54),  # cold account
+    (rand_bytes(256), True, True, False, 0x30000, 0x00, 0x00, 54),  # warm account
+    (rand_bytes(256), False, True, False, 0x30000, 0x00, 0x00, 54),  # cold account
     # non-existing account  & non-empty code
-    (bytes([10, 40]), True, True, 0, 0x30000, 0x00, 0x00, 54),  # warm account
-    (bytes([10, 10]), False, True, 0, 0x30000, 0x00, 0x00, 54),  # cold account
+    (bytes([10, 40]), True, True, False, 0x30000, 0x00, 0x00, 54),  # warm account
+    (bytes([10, 10]), False, True, False, 0x30000, 0x00, 0x00, 54),  # cold account
     #  non-existing account  & out of bound cases
-    (rand_bytes(64), True, True, 0, 0x30000, 0x20, 0x00, 260),  # warm account
-    (rand_bytes(64), False, True, 0, 0x30000, 0x20, 0x00, 260),  # cold account
+    (rand_bytes(64), True, True, False, 0x30000, 0x20, 0x00, 260),  # warm account
+    (rand_bytes(64), False, True, False, 0x30000, 0x20, 0x00, 260),  # cold account
 )
 
 
@@ -64,14 +64,14 @@ def test_extcodecopy(
     code: bytes,
     is_warm: bool,
     is_persistent: bool,
-    exists: int,
+    exists: bool,
     address: U160,
     src_addr: U64,
     dst_addr: U64,
     length: U64,
 ):
     randomness = rand_fq()
-    code = code if exists == 1 else bytes()
+    code = code if exists else bytes()
     code_hash = int.from_bytes(keccak256(code), "big")
 
     next_memory_word_size = memory_word_size(dst_addr + length)
@@ -109,12 +109,9 @@ def test_extcodecopy(
             rw_counter_of_reversion=rw_counter_end_of_reversion - reversible_write_counter,
         )
     )
-    if exists == 1:
-        rw_dictionary.account_read(address, AccountFieldTag.CodeHash, RLC(code_hash, randomness))
-    else:
-        rw_dictionary.account_read(
-            address, AccountFieldTag.NonExisting, RLC(1 - exists, randomness)
-        )
+    rw_dictionary.account_read(
+        address, AccountFieldTag.CodeHash, RLC(code_hash if exists else 0, randomness)
+    )
 
     bytecode = Bytecode().extcodecopy()
     bytecode_hash = RLC(bytecode.hash(), randomness)
@@ -129,7 +126,6 @@ def test_extcodecopy(
             program_counter=0,
             stack_pointer=1020,
             gas_left=gas_cost_extcodecopy,
-            aux_data=exists,
         )
     ]
 
@@ -142,7 +138,7 @@ def test_extcodecopy(
             for i in range(len(Bytecode(code).code))
         ]
     )
-    result = RLC(code_hash, randomness).rlc_value if exists == 1 else RLC(0, randomness).rlc_value
+    result = RLC(code_hash if exists else 0, randomness).rlc_value
     copy_circuit = CopyCircuit().copy(
         randomness,
         rw_dictionary,

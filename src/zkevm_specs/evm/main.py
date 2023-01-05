@@ -22,7 +22,7 @@ def verify_steps(
     if end_with_last_step:
         steps.append(DUMMY_STEP_STATE)
 
-    ok = True
+    exception = None
     for idx, (curr, next) in enumerate(zip(steps, steps[1:])):
         try:
             verify_step(
@@ -36,8 +36,13 @@ def verify_steps(
                 )
             )
         except AssertionError as e:
-            ok = False
-    assert ok == success
+            exception = e
+    if success:
+        if exception:
+            raise exception
+        assert exception is None
+    else:
+        assert exception is not None
 
 
 def verify_step(instruction: Instruction):

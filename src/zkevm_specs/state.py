@@ -257,6 +257,8 @@ def check_storage(row: Row, row_prev: Row, row_next: Row, tables: Tables):
     # 4.0. Unused keys are 0
     assert row.field_tag() == 0
 
+    # value = 0 means the leaf doesn't exist. 0->0 transition requires a
+    # non-existing proof.
     is_non_exist = FQ(row.value.expr() == FQ(0)) * FQ(row.committed_value.expr() == FQ(0))
 
     # 4.1. MPT lookup for last access to (address, storage_key)
@@ -304,11 +306,20 @@ def check_account(row: Row, row_prev: Row, row_next: Row, tables: Tables):
     assert row.id() == 0
     assert row.storage_key() == 0
 
+    # We use code_hash = 0 as non-existing account state.  code_hash: 0->0
+    # transition requires a non-existing proof.
+    is_non_exist = (
+        FQ(row.value.expr() == FQ(0))
+        * FQ(row.committed_value.expr() == FQ(0))
+        * FQ(field_tag == FQ(AccountFieldTag.CodeHash))
+    )
+
     # 6.2. MPT storage lookup for last access to (address, field_tag)
     if not all_keys_eq(row, row_next):
         tables.mpt_lookup(
             get_addr(row),
-            FQ(proof_type),
+            is_non_exist * FQ(MPTProofType.NonExistingAccountProof)
+            + (1 - is_non_exist) * FQ(proof_type),
             row.storage_key(),
             row.value,
             row.committed_value,

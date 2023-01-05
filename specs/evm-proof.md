@@ -42,3 +42,48 @@ We call the list of random read-write access records `BusMapping` because it act
 The repeated chip has 2 main states, one is call initialization, another is bytecode execution.
 
 **TODO**
+
+## Account non-existence
+
+The following opcodes contain special cases for non-existing accounts:
+- BALANCE
+- EXTCODEHASH
+- EXTCODECOPY
+- EXTCODESIZE
+- CALL
+- CALLCODE
+- DELEGATECALL
+- STATICCALL
+
+The rest of the opcodes only deal with accounts that are known to exist (by previous conditions).
+
+We encode the state of existence of an account with its value of the
+`code_hash` in the `rw_table` (managed by the State Circuit): `code_hash = 0`
+means that the account doesn't exist, and `code_hash != 0` means that the
+account exists.  We can guarantee this fact with the following properties:
+- Every time an account is created, the `code_hash` is set from zero to a
+  non-zero value.
+    - By the read consistency guaranteed by the State Circuit, we know that if a
+      `code_hash` is non-zero, the account must exist (because it has been created
+      previously)
+- A `code_hash` read with value 0 is translated to a non-existence account
+  proof in the MPT (via the state circuit).
+    - From this we know that if a `code_hash` is read as zero, the account
+      doesn't exist.
+- There are no other valid transitions of `code_hash`.  In summary, the valid
+  transitions are: `0->0`, and `0->H` (where H != 0).  Note that we're not
+  considering account destruction for now.
+
+Since only `code_hash` encodes account existence, we must be careful to never
+read (lookup) another account property unless we have checked that the account
+exists.  This is because the RwTable in the State Circuit has all the entries
+sorted by [Tag, FieldTag], so `CodeHash`, `Nonce` and `Balance` are treated
+independently, which means that a lookup to `Nonce` or `Balance` could suceed
+on a non-existing account if the account is created afterwards.  For this
+reason we must guarantee that:
+- A `Nonce` and `Balance` lookup to an account must only be performed if we
+  have previously verified that the account exists by reading its `CodeHash`
+  and checking it to be non-zero.  This check can be done in the same step (for
+  opcodes that can deal with non-existing accounts), or in a previous step (as
+  a precondition, for opcodes that work with the caller account).
+

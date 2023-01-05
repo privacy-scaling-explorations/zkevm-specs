@@ -19,14 +19,13 @@ def extcodesize(instruction: Instruction):
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
     is_warm = instruction.add_account_to_access_list(tx_id, address, instruction.reversion_info())
 
-    # Load account `exists` value from auxilary witness data.
-    exists = instruction.curr.aux_data
+    code_hash = instruction.account_read(address, AccountFieldTag.CodeHash)
+    # Check account existence with code_hash != 0
+    exists = FQ(1) - instruction.is_zero(code_hash)
 
     if exists == 1:
-        code_hash = instruction.account_read(address, AccountFieldTag.CodeHash)
         code_size = instruction.bytecode_length(code_hash)
     else:  # exists == 0
-        instruction.account_read(address, AccountFieldTag.NonExisting)
         code_size = RLC(0)
 
     instruction.constrain_equal(

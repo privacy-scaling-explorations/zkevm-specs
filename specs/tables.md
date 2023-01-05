@@ -79,7 +79,6 @@ NOTE: `kN` means `keyN`
 | $counter | $isWrite    | Account                    |             | $address           | Nonce                      |                     | $value    | $committedValue  | $root |
 | $counter | $isWrite    | Account                    |             | $address           | Balance                    |                     | $value    | $committedValue  | $root |
 | $counter | $isWrite    | Account                    |             | $address           | CodeHash                   |                     | $value    | $committedValue  | $root |
-| $counter | $isWrite    | Account                    |             | $address           | NonExisting                |                     | 0         | 0                | $root |
 | $counter | true        | AccountDestructed          |             | $address           |                            |                     | $value    | 0                | $root |
 |          |             |                            |             |                    |                            |                     |           |                  |                 |
 |          |             | *CallContext constant*     |             |                    | *CallContextFieldTag* (ro) |                     |           |                  |                 |
