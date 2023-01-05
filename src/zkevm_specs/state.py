@@ -334,8 +334,10 @@ def check_tx_refund(row: Row, row_prev: Row):
     # 7.1 state root does not change
     assert row.root == row_prev.root
 
-    # TODO: Missing constraints
-    # - When keys change, value must be 0
+    # 7.2 First access for a set of all keys
+    # - If READ, value must be 0
+    if not all_keys_eq(row, row_prev) and row.is_write == 0:
+        assert row.value == 0
 
 
 @is_circuit_code
