@@ -1,21 +1,29 @@
-from ..instruction import Instruction, Transition, FixedTableTag
+from ..instruction import Instruction, Transition
+from ..opcode import Opcode
+from ..table import FixedTableTag
 from ...util import FQ
 
 
-def not_opcode(instruction: Instruction):
+def bitwise(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
 
     a = instruction.stack_pop()
-    b = instruction.stack_push()
+    b = instruction.stack_pop()
+    c = instruction.stack_push()
 
-    for i in range(32):
-        byte_a = FQ(a.le_bytes[i])
-        byte_b = FQ(b.le_bytes[i])
-        instruction.fixed_lookup(FixedTableTag.BitwiseXor, byte_a, byte_b, FQ(255))
+    # decode RLC to bytes for a and b
+    a8s = a.le_bytes
+    b8s = b.le_bytes
+    c8s = c.le_bytes
+
+    tag = FixedTableTag.BitwiseAnd + (opcode.n - Opcode.AND)
+
+    for idx in range(32):
+        instruction.fixed_lookup(FixedTableTag(tag), FQ(a8s[idx]), FQ(b8s[idx]), FQ(c8s[idx]))
 
     instruction.step_state_transition_in_same_context(
         opcode,
-        rw_counter=Transition.delta(2),
+        rw_counter=Transition.delta(3),
         program_counter=Transition.delta(1),
-        stack_pointer=Transition.same(),
+        stack_pointer=Transition.delta(1),
     )
