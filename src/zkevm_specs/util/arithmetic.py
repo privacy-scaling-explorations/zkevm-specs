@@ -162,3 +162,15 @@ def mul_add_words(a: RLC, b: RLC, c: RLC, d: RLC) -> Tuple[FQ, Tuple[FQ, FQ], Li
     constraint2 = (t2 + t3 * (2**64) + c_hi + carry_lo, d_hi + carry_hi * (2**128))
 
     return overflow, (carry_lo, carry_hi), [constraint1, constraint2]
+
+
+def get_int_abs(x: int) -> int:
+    return get_int_neg(x) if int_is_neg(x) else x
+
+
+def get_int_neg(x: int) -> int:
+    return 0 if x == 0 else (1 << 256) - x
+
+
+def int_is_neg(x: int) -> int:
+    return x >> 255

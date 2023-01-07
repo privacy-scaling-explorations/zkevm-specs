@@ -9,8 +9,14 @@ from zkevm_specs.evm import (
     Block,
     Bytecode,
 )
-from zkevm_specs.evm.execution.sdiv_smod import get_abs, get_neg, is_neg
-from zkevm_specs.util import rand_fq, rand_word, RLC
+from zkevm_specs.util import (
+    RLC,
+    get_int_abs,
+    get_int_neg,
+    int_is_neg,
+    rand_fq,
+    rand_word,
+)
 from common import generate_nasty_tests
 
 TESTING_DATA = [
@@ -39,22 +45,22 @@ generate_nasty_tests(TESTING_DATA, (Opcode.SDIV, Opcode.SMOD))
 
 @pytest.mark.parametrize("opcode, a, b", TESTING_DATA)
 def test_sdiv_smod(opcode: Opcode, a: int, b: int):
-    a_abs = get_abs(a)
-    b_abs = get_abs(b)
-    a_is_neg = is_neg(a)
-    b_is_neg = is_neg(b)
+    a_abs = get_int_abs(a)
+    b_abs = get_int_abs(b)
+    a_is_neg = int_is_neg(a)
+    b_is_neg = int_is_neg(b)
     if opcode == Opcode.SDIV:
         if b == 0:
             c = 0
         elif a_is_neg == b_is_neg:
             c = a_abs // b_abs
         else:
-            c = get_neg(a_abs // b_abs)
+            c = get_int_neg(a_abs // b_abs)
     else:  # Opcode.SMOD
         if b == 0:
             c = 0
         elif a_is_neg:
-            c = get_neg(a_abs % b_abs)
+            c = get_int_neg(a_abs % b_abs)
         else:
             c = a_abs % b_abs
 
