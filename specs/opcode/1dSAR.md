@@ -47,7 +47,7 @@ shf_mod64 = shf_lo % 64
 p_lo = 1 << shf_mod64
 p_hi = 1 << (64 - shf_mod64)
 # The top new bits are set to 1 if `a` is negative, otherwise set to 0.
-p_top = is_neg * (MAX_U64 - p_hi + 1))
+p_top = is_neg * (MAX_U64 + 1 - p_hi)
 a64s = word_to_64s(a)
 a64s_lo[idx] = a64s[idx] % p_lo
 a64s_hi[idx] = a64s[idx] / p_lo
@@ -135,13 +135,17 @@ shf_div64_eq3 = shf_hi_is_zero * is_zero(shf_div64 - 3)
 * Constrain `is_neg` must be a boolean (0 or 1).
 * Assign `sign_byte = 255` if `is_neg == 1`, otherwise `sign_byte = 0`, then lookup `SignByte` table by tuple `(a_highest_byte, sign_byte)`.
 
-6. `Pow2` table look up:
+6. `p_top` constraint:
+
+* Constrain `p_top == is_neg * (MAX_U64 + 1 - p_hi)`.
+
+7. `Pow2` table look up:
 
 * First build `Pow2` table by tuple `(value, value_pow)` which meets `value_pow == pow(2, value)`.
 
 * Look up for `p_lo == pow(2, shf_mod64)` and `p_hi == pow(2, 64 - shf_mod64)`.
 
-7. Stack pop and push:
+8. Stack pop and push:
 
 * Pop word `a`
 * Pop word `shift`

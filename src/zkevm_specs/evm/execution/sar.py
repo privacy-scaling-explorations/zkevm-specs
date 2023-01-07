@@ -140,6 +140,9 @@ def check_witness(
         instruction.select(is_neg, FQ(255), FQ(0)),
     )
 
+    # `p_top` constraint
+    instruction.constrain_equal(p_top, is_neg * (MAX_U64 + 1 - p_hi))
+
     # `p_lo == pow(2, shf_mod64)` and `p_hi == pow(2, 64 - shf_mod64)`.
     instruction.pow2_lookup(shf_mod64, p_lo, FQ(0))
     instruction.pow2_lookup(64 - shf_mod64, p_hi, FQ(0))
