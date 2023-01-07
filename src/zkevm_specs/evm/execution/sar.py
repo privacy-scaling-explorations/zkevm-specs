@@ -82,7 +82,7 @@ def check_witness(
 
         # b64s constraint
         instruction.constrain_equal(
-            instruction.select(shf_hi_is_zero, b64s[idx], is_neg * MAX_U64),
+            b64s[idx],
             instruction.bytes_to_fq(b.le_bytes[offset : offset + N_BYTES_U64]),
         )
 
@@ -98,10 +98,10 @@ def check_witness(
         instruction.constrain_equal(a64s_hi_lt_p_hi, FQ(1))
 
     # Merge contraints
-    shf_div64_eq0 = instruction.is_zero(shf_div64)
-    shf_div64_eq1 = instruction.is_zero(shf_div64 - 1)
-    shf_div64_eq2 = instruction.is_zero(shf_div64 - 2)
-    shf_div64_eq3 = instruction.is_zero(shf_div64 - 3)
+    shf_div64_eq0 = shf_hi_is_zero * instruction.is_zero(shf_div64)
+    shf_div64_eq1 = shf_hi_is_zero * instruction.is_zero(shf_div64 - 1)
+    shf_div64_eq2 = shf_hi_is_zero * instruction.is_zero(shf_div64 - 2)
+    shf_div64_eq3 = shf_hi_is_zero * instruction.is_zero(shf_div64 - 3)
     instruction.constrain_equal(
         b64s[0],
         (a64s_hi[0] + a64s_lo[1] * p_hi) * shf_div64_eq0
@@ -167,7 +167,7 @@ def gen_witness(instruction: Instruction, shift: RLC, a: RLC):
         a64s_hi[idx] = FQ(a64s[idx].n // p_lo)
 
     b64s = [FQ(MAX_U64 if is_neg else 0)] * 4
-    if shf_div64 < 4:
+    if shf_hi == 0 and shf_div64 < 4:
         b64s[3 - shf_div64] = a64s_hi[3] + p_top
         for k in range(3 - shf_div64):
             b64s[k] = a64s_hi[k + shf_div64] + a64s_lo[k + shf_div64 + 1] * p_hi
