@@ -63,17 +63,10 @@ b64s[3] = a64s_hi[3] + p_top
 
 #### Common case
 
-For common case, we should add more variables as:
-```
-shf_div64_eq0 = is_zero(shf_div64)
-shf_div64_eq1 = is_zero(shf_div64 - 1)
-shf_div64_eq2 = is_zero(shf_div64 - 2)
-shf_div64_eq3 = is_zero(shf_div64 - 3)
-```
-
 Then `b64s` could be calculated as:
 
 * Initialization: It should be `[MAX_U64] * 4` if `a` is negative, `[0] * 4` otherwise.
+* Do below `b64s` calculation when `shift < 256` (`shf_hi == 0` and `shf_div64 < 4`). Otherwise keep the initialized values.
 * `b64s[k]`: It could be calculated by `a64s_hi[k + shf_div64] + a64s_lo[k + shf_div64 + 1] * p_hi` where `k < 3 - shf_div64`.
 * `b64s[3 - shf_div64]`: It could be calculated by `a64s_hi[3] + p_top`.
 
@@ -84,7 +77,7 @@ Now putting things together, the constraints can be constructed as follows:
 1. `a64s` and `b64s` constraints:
 
 * `a64s[idx]`: It should be equal to `from_bytes(a[8 * idx : 8 * (idx + 1)])` where idx in `(0, 1, 2, 3)`.
-* `select(shf_hi_is_zero, b64s[idx], is_neg * MAX_U64)`: It should be equal to `from_bytes(b[8 * idx : 8 * (idx + 1)])` where idx in `(0, 1, 2, 3)`.
+* `b64s[idx]`: It should be equal to `from_bytes(b[8 * idx : 8 * (idx + 1)])` where idx in `(0, 1, 2, 3)`.
 
 2. `a64s_lo` and `a64s_hi` constraints:
 
@@ -96,10 +89,10 @@ Now putting things together, the constraints can be constructed as follows:
 
 * First create four `IsZero` gadgets:
 ```
-shf_div64_eq0 = is_zero(shf_div64)
-shf_div64_eq1 = is_zero(shf_div64 - 1)
-shf_div64_eq2 = is_zero(shf_div64 - 2)
-shf_div64_eq3 = is_zero(shf_div64 - 3)
+shf_div64_eq0 = shf_hi_is_zero * is_zero(shf_div64)
+shf_div64_eq1 = shf_hi_is_zero * is_zero(shf_div64 - 1)
+shf_div64_eq2 = shf_hi_is_zero * is_zero(shf_div64 - 2)
+shf_div64_eq3 = shf_hi_is_zero * is_zero(shf_div64 - 3)
 ```
 
 * `b64s[0]` should be equal to:
