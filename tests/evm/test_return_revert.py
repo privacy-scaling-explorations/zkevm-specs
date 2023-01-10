@@ -271,7 +271,7 @@ def test_not_root_not_create(
                 reversible_write_counter=callee_reversible_write_counter,
             ),
             StepState(
-                execution_state=ExecutionState.STOPd,
+                execution_state=ExecutionState.STOP,
                 rw_counter=69 + 3 + 2 + 2 * copy_length + 12,
                 call_id=1,
                 is_root=caller_ctx.is_root,
