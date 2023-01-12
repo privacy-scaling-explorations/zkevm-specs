@@ -8,8 +8,8 @@ The `EXTCODESIZE` opcode gets code size of the given account.
 
 The `EXTCODESIZE` opcode pops `address` (20 bytes of data) off the stack and
 pushes the code size of the corresponding account onto the stack. If the given
-account doesn't exist (by checking non existing flag), then it will push 0 onto
-the stack instead.
+account doesn't exist (by checking that `code_hash == 0`), then it will push 0
+onto the stack instead.
 
 ## Circuit behaviour
 
@@ -35,8 +35,8 @@ the stack instead.
    - 3 from call context for `tx_id`, `rw_counter_end_of_reversion`, and
      `is_persistent`.
    - `address` is added to the transaction access list if not already present.
-   - If witness value `exists == 1`, lookup account `code_hash`, then get
-     `code_size`. Otherwise only lookup the account non-existing proof.
+   - Lookup account `code_hash`, then get `code_size` if `code_hash != 0`, 
+     otherwise skip the `code_size` lookup.
    - The EXTCODESIZE result is at the new top of the stack.
 4. Additional Constraints
    - value `is_warm` matches the gas cost for this opcode.

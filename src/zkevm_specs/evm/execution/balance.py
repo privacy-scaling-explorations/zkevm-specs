@@ -13,11 +13,10 @@ def balance(instruction: Instruction):
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
     is_warm = instruction.add_account_to_access_list(tx_id, address, instruction.reversion_info())
 
-    # Load account `exists` value from auxilary witness data.
-    exists = instruction.curr.aux_data
-
-    if exists == 0:
-        instruction.account_read(address, AccountFieldTag.NonExisting)
+    # Check account existence with code_hash != 0
+    exists = FQ(1) - instruction.is_zero(
+        instruction.account_read(address, AccountFieldTag.CodeHash)
+    )
 
     balance = instruction.account_read(address, AccountFieldTag.Balance) if exists == 1 else RLC(0)
 
@@ -28,7 +27,7 @@ def balance(instruction: Instruction):
 
     instruction.step_state_transition_in_same_context(
         opcode,
-        rw_counter=Transition.delta(7),
+        rw_counter=Transition.delta(7 + exists.n),
         program_counter=Transition.delta(1),
         stack_pointer=Transition.same(),
         dynamic_gas_cost=instruction.select(is_warm, FQ(0), FQ(EXTRA_GAS_COST_ACCOUNT_COLD_ACCESS)),

@@ -44,6 +44,7 @@ from .extcodehash import *
 from .extcodesize import *
 from .log import *
 from .not_ import not_opcode
+from .sar import sar
 from .sdiv_smod import sdiv_smod
 from .sha3 import sha3
 from .shl_shr import shl_shr
@@ -99,6 +100,7 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.LOG: log,
     ExecutionState.CALL_OP: callop,
     ExecutionState.ISZERO: iszero,
+    ExecutionState.SAR: sar,
     ExecutionState.SDIV_SMOD: sdiv_smod,
     ExecutionState.SHL_SHR: shl_shr,
     ExecutionState.STOP: stop,

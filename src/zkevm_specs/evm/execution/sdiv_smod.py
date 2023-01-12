@@ -1,6 +1,6 @@
 from ..instruction import Instruction, Transition
 from ..opcode import Opcode
-from ...util import FQ, RLC
+from ...util import FQ, RLC, get_int_abs, get_int_neg, int_is_neg
 
 
 def sdiv_smod(instruction: Instruction):
@@ -84,11 +84,11 @@ def gen_witness(opcode: FQ, pop1: RLC, pop2: RLC, push: RLC):
     # inversion of 2.
     is_sdiv = (Opcode.SMOD - opcode) * FQ(2).inv()
 
-    pop1_abs = get_abs(pop1.int_value)
-    pop2_abs = get_abs(pop2.int_value)
-    push_abs = get_abs(push.int_value)
-    pop1_is_neg = is_neg(pop1.int_value)
-    pop2_is_neg = is_neg(pop2.int_value)
+    pop1_abs = get_int_abs(pop1.int_value)
+    pop2_abs = get_int_abs(pop2.int_value)
+    push_abs = get_int_abs(push.int_value)
+    pop1_is_neg = int_is_neg(pop1.int_value)
+    pop2_is_neg = int_is_neg(pop2.int_value)
 
     if is_sdiv == 1:
         quotient = push
@@ -96,7 +96,7 @@ def gen_witness(opcode: FQ, pop1: RLC, pop2: RLC, push: RLC):
         if pop1_is_neg == 0:
             remainder = RLC(pop1_abs - push_abs * pop2_abs)
         else:
-            remainder = RLC(get_neg(pop1_abs - push_abs * pop2_abs))
+            remainder = RLC(get_int_neg(pop1_abs - push_abs * pop2_abs))
         dividend = pop1
     else:
         if pop2.int_value == 0:
@@ -104,7 +104,7 @@ def gen_witness(opcode: FQ, pop1: RLC, pop2: RLC, push: RLC):
         elif pop1_is_neg == pop2_is_neg:
             quotient = RLC(pop1_abs // pop2_abs)
         else:
-            quotient = RLC(get_neg(pop1_abs // pop2_abs))
+            quotient = RLC(get_int_neg(pop1_abs // pop2_abs))
         divisor = pop2
         remainder = pop1 if pop2.int_value == 0 else push
         dividend = pop1
@@ -115,15 +115,3 @@ def gen_witness(opcode: FQ, pop1: RLC, pop2: RLC, push: RLC):
         remainder,
         dividend,
     )
-
-
-def get_abs(x: int) -> int:
-    return get_neg(x) if is_neg(x) else x
-
-
-def get_neg(x: int) -> int:
-    return 0 if x == 0 else (1 << 256) - x
-
-
-def is_neg(x: int) -> int:
-    return x >> 255

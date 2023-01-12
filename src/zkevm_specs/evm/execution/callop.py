@@ -128,17 +128,15 @@ def callop(instruction: Instruction):
         )
         instruction.constrain_zero(1 - value_lt_caller_balance - value_eq_caller_balance)
 
-    # Load callee account `exists` value from auxilary witness data.
-    callee_exists = instruction.curr.aux_data
+    callee_code_hash = instruction.account_read(code_address, AccountFieldTag.CodeHash)
+    # Check calle account existence with code_hash != 0
+    callee_exists = FQ(1) - instruction.is_zero(callee_code_hash)
 
     if callee_exists == 1:
-        # Get callee code hash.
-        callee_code_hash = instruction.account_read(code_address, AccountFieldTag.CodeHash)
         is_empty_code_hash = instruction.is_equal(
             callee_code_hash, instruction.rlc_encode(EMPTY_CODE_HASH, 32)
         )
     else:  # callee_exists == 0
-        instruction.account_read(code_address, AccountFieldTag.NonExisting)
         is_empty_code_hash = FQ(1)
 
     # Verify gas cost.

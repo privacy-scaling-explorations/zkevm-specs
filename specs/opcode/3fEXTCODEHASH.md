@@ -4,8 +4,9 @@
 
 The `EXTCODEHASH` opcode pops `address` off the stack and pushes the code hash
 of the corresponding account onto the stack. If the corresponding account
-doesn't exist (by checking non existing flag), then it will push 0 onto the
-stack instead.
+doesn't exist then it will push 0 onto the stack instead.  Since we use
+`code_hash = 0` to encode non-existing accounts, we can use the lookup result
+directly.
 
 ## Constraints
 
@@ -23,8 +24,7 @@ stack instead.
    - 3 from call context for `tx_id`, `rw_counter_end_of_reversion`, and
      `is_persistent`.
    - `address` is added to the transaction access list if not already present.
-   - If witness value `exists == 1`, lookup account `code_hash`. Otherwise
-     lookup account non-existing proof.
+   - lookup account `code_hash`.
    - The EXTCODEHASH result is at the new top of the stack.
 4. Additional Constraints
    - value `is_warm` matches the gas cost for this opcode.

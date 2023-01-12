@@ -19,14 +19,12 @@ def extcodecopy(instruction: Instruction):
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
     is_warm = instruction.add_account_to_access_list(tx_id, address, instruction.reversion_info())
 
-    # Load account `exists` value from auxilary witness data.
-    exists = instruction.curr.aux_data
+    code_hash = instruction.account_read(address, AccountFieldTag.CodeHash)
+    # Check account existence with code_hash != 0
+    exists = FQ(1) - instruction.is_zero(code_hash)
     if exists == 1:
-        code_hash = instruction.account_read(address, AccountFieldTag.CodeHash)
         code_size = instruction.bytecode_length(code_hash.expr())
     else:
-        instruction.account_read(address, AccountFieldTag.NonExisting)
-        code_hash = RLC(0)
         code_size = RLC(0)
 
     next_memory_size, memory_expansion_gas_cost = instruction.memory_expansion_dynamic_length(
