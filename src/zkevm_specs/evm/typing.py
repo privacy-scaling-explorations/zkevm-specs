@@ -286,6 +286,7 @@ class Bytecode:
 
     def __getattr__(self, name: str):
         def method(*args) -> Bytecode:
+            opcode: Opcode
             try:
                 opcode = Opcode[name.removesuffix("_").upper()]
             except KeyError:

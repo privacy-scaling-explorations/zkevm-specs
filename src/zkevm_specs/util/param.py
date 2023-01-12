@@ -110,3 +110,33 @@ MAX_COPY_BYTES = 32
 PUBLIC_INPUTS_BLOCK_LEN = 7 + 256  # Length of block public data
 PUBLIC_INPUTS_EXTRA_LEN = 3  # Length of fields that don't belong to any table
 PUBLIC_INPUTS_TX_LEN = 10  # Length of tx public data (without calldata)
+
+
+# Precompiled contract gas prices
+
+# Elliptic curve sender recovery gas price
+EcrecoverGas = 3000
+# Base price for a SHA256 operation
+Sha256BaseGas = 60
+# Per-word price for a SHA256 operation
+Sha256PerWordGas = 12
+# Base price for a RIPEMD160 operation
+Ripemd160BaseGas = 600
+# Per-word price for a RIPEMD160 operation
+Ripemd160PerWordGas = 120
+# Base price for a data copy operation
+IdentityBaseGas = 15
+# Per-work price for a data copy operation
+IdentityPerWordGas = 3
+
+# Gas needed for an elliptic curve addition
+Bn256AddGas = 150
+# Gas needed for an elliptic curve scalar multiplication
+Bn256ScalarMulGas = 6000
+# Base price for an elliptic curve pairing check
+Bn256PairingBaseGas = 45000
+# Per-point price for an elliptic curve pairing check
+Bn256PairingPerPointGas = 34000
+
+BigModExpBaseGas = 0
+Blake2fBaseGas = 0

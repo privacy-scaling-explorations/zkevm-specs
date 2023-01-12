@@ -19,6 +19,7 @@ from ..util import (
 )
 from .execution_state import ExecutionState
 from .opcode import Opcode
+from .precompile import Precompile
 from .step import StepState
 from .table import (
     AccountFieldTag,
@@ -244,9 +245,12 @@ class Instruction:
         return_data_offset: Expression,
         return_data_length: Expression,
         gas_left: Expression,
+        caller_id: Optional[Expression] = None,
     ):
+        rw_counter_delta += 11 + int(caller_id is None)
         # Read caller's context for restore
-        caller_id = self.call_context_lookup(CallContextFieldTag.CallerId)
+        if caller_id is None:
+            caller_id = self.call_context_lookup(CallContextFieldTag.CallerId)
         [
             caller_is_root,
             caller_is_create,
@@ -295,7 +299,7 @@ class Instruction:
             reversible_write_counter = self.curr.reversible_write_counter
 
         self.constrain_step_state_transition(
-            rw_counter=Transition.delta(rw_counter_delta + 12),
+            rw_counter=Transition.delta(rw_counter_delta),
             call_id=Transition.to(caller_id),
             is_root=Transition.to(caller_is_root),
             is_create=Transition.to(caller_is_create),
@@ -393,6 +397,13 @@ class Instruction:
         hi_lt, hi_eq = self.compare(lhs_hi, rhs_hi, 16)
         lo_lt, lo_eq = self.compare(lhs_lo, rhs_lo, 16)
         return FQ(hi_lt + hi_eq * lo_lt), FQ(hi_eq * lo_eq)
+
+    def precompile(self, address: Expression) -> FQ:
+        try:
+            Precompile(address.expr().n)
+            return FQ(1)
+        except ValueError:
+            return FQ(0)
 
     def min(self, lhs: Expression, rhs: Expression, n_bytes: int) -> FQ:
         lt, _ = self.compare(lhs, rhs, n_bytes)

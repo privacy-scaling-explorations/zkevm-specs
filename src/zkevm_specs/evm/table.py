@@ -5,6 +5,7 @@ from itertools import chain, product
 from dataclasses import dataclass, field, fields
 
 from .opcode import constant_gas_cost_pairs
+from .precompile import precompile_info_pairs
 
 from ..util import Expression, FQ, RLC, word_to_lo_hi, word_to_64s
 from .execution_state import ExecutionState
@@ -32,6 +33,7 @@ class FixedTableTag(IntEnum):
     Pow2 = auto()  # value, value_pow
     OpcodeConstantGas = auto()  # opcode constant gas
     OpcodeStack = auto()  # opcode stack info for stack error purpose
+    PrecompileInfo = auto()  # precompile constant gas
 
     def table_assignments(self) -> List[FixedTableRow]:
         if self == FixedTableTag.Range5:
@@ -85,7 +87,6 @@ class FixedTableTag(IntEnum):
                 FixedTableRow(FQ(self), FQ(pair[0]), FQ(pair[1] if pair[1] > 0 else 0), FQ(pair[2]))
                 for pair in stack_bounds()
             ]
-
         elif self == FixedTableTag.Pow2:
             return [
                 FixedTableRow(
@@ -95,6 +96,13 @@ class FixedTableTag(IntEnum):
                     FQ(0) if value < 128 else FQ(1 << (value - 128)),
                 )
                 for value in range(256)
+            ]
+        elif self == FixedTableTag.PrecompileInfo:
+            return [
+                FixedTableRow(
+                    FQ(self), FQ(execution_state), FQ(precompile_address), FQ(base_gas_cost)
+                )
+                for (execution_state, precompile_address, base_gas_cost) in precompile_info_pairs()
             ]
         else:
             raise ValueError("Unreacheable")

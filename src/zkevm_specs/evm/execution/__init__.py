@@ -23,6 +23,7 @@ from .calldatacopy import *
 from .calldataload import *
 from .codecopy import *
 from .codesize import *
+from .dataCopy import *
 from .comparator import *
 from .exp import *
 from .gas import *
@@ -107,4 +108,13 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.ErrorInvalidJump: invalid_jump,
     ExecutionState.ErrorOutOfGasCALL: oog_call,
     ExecutionState.ErrorStack: stack_error,
+    # ExecutionState.ECRECOVER: ,
+    # ExecutionState.SHA256: ,
+    # ExecutionState.RIPEMD160: ,
+    ExecutionState.DATACOPY: dataCopy,
+    # ExecutionState.BIGMODEXP: ,
+    # ExecutionState.BN254_ADD: ,
+    # ExecutionState.BN254_SCALAR_MUL: ,
+    # ExecutionState.BN254_PAIRING: ,
+    # ExecutionState.BLAKE2F: ,
 }

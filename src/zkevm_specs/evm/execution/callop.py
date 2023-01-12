@@ -13,7 +13,7 @@ from ...util import (
 from ..instruction import Instruction, Transition
 from ..opcode import Opcode
 from ..table import RW, CallContextFieldTag, AccountFieldTag
-from ..precompiled import PrecompiledAddress
+from ..execution_state import precompile_execution_states
 
 
 def callop(instruction: Instruction):
@@ -164,10 +164,14 @@ def callop(instruction: Instruction):
         all_but_one_64th_gas,
     )
 
-    if callee_address in list(PrecompiledAddress):
-        # TODO: Handle precompile
-        raise NotImplementedError
-    elif is_empty_code_hash == FQ(1):
+    # Make sure the state transition to ExecutionState for precompile if and
+    # only if the callee address is one of precompile
+    is_precompile = instruction.precompile(callee_address)
+    instruction.constrain_equal(
+        is_precompile, FQ(instruction.next.execution_state in precompile_execution_states())
+    )
+
+    if is_empty_code_hash == FQ(1) and is_precompile == FQ(0):
         # Make sure call is successful
         instruction.constrain_equal(is_success, FQ(1))
 

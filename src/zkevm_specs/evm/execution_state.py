@@ -78,7 +78,7 @@ class ExecutionState(IntEnum):
     REVERT = auto()
     SELFDESTRUCT = auto()
 
-    # Error cases
+    # Opcode's error cases
     ErrorInvalidOpcode = auto()
     # For opcodes which triggers stackoverflow by doing push more than pop,
     # or stackunderflow by doing pop and DUP, SWAP which peek deeper element directly
@@ -125,7 +125,16 @@ class ExecutionState(IntEnum):
     ErrorOutOfGasSTATICCALL = auto()
     ErrorOutOfGasSELFDESTRUCT = auto()
 
-    # TODO: Precompile success and error cases
+    # Precompile's successful cases
+    ECRECOVER = auto()
+    SHA256 = auto()
+    RIPEMD160 = auto()
+    DATACOPY = auto()
+    BIGMODEXP = auto()
+    BN256_ADD = auto()
+    BN256_SCALAR_MUL = auto()
+    BN256_PAIRING = auto()
+    BLAKE2F = auto()
 
     def expr(self) -> FQ:
         return FQ(self)
@@ -391,3 +400,17 @@ class ExecutionState(IntEnum):
             ExecutionState.ErrorOutOfGasSTATICCALL,
             ExecutionState.ErrorOutOfGasSELFDESTRUCT,
         ]
+
+
+def precompile_execution_states() -> Sequence[ExecutionState]:
+    return [
+        ExecutionState.ECRECOVER,
+        ExecutionState.SHA256,
+        ExecutionState.RIPEMD160,
+        ExecutionState.DATACOPY,
+        ExecutionState.BIGMODEXP,
+        ExecutionState.BN256_ADD,
+        ExecutionState.BN256_SCALAR_MUL,
+        ExecutionState.BN256_PAIRING,
+        ExecutionState.BLAKE2F,
+    ]
