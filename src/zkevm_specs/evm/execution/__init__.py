@@ -14,6 +14,7 @@ from .mulmod import *
 from .balance import *
 from .block_ctx import *
 from .blockhash import *
+from .bitwise import *
 from .byte import *
 from .callop import *
 from .calldatasize import *
@@ -43,7 +44,7 @@ from .selfbalance import *
 from .extcodehash import *
 from .extcodesize import *
 from .log import *
-from .bitwise import not_opcode
+from .not_ import not_opcode
 from .sar import sar
 from .sdiv_smod import sdiv_smod
 from .sha3 import sha3
@@ -69,6 +70,7 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.NOT: not_opcode,
     ExecutionState.ORIGIN: origin,
     ExecutionState.BALANCE: balance,
+    ExecutionState.BITWISE: bitwise,
     ExecutionState.CALLER: caller,
     ExecutionState.CALLVALUE: callvalue,
     ExecutionState.CALLDATACOPY: calldatacopy,

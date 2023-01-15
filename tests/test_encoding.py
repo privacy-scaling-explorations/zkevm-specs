@@ -1,7 +1,13 @@
 import pytest
 
-from zkevm_specs.encoding import u256_to_u8s, u8s_to_u256, check_commitment, RangeTable, commit
-from zkevm_specs.opcode import SignTable
+from zkevm_specs.encoding import (
+    u256_to_u8s,
+    u8s_to_u256,
+    check_commitment,
+    RangeTable,
+    SignTable,
+    commit,
+)
 
 
 @pytest.mark.parametrize(
