@@ -192,7 +192,7 @@ def test_callop(
     is_delegatecall = 1 if opcode == Opcode.DELEGATECALL else 0
     is_staticcall = 1 if opcode == Opcode.STATICCALL else 0
 
-    callee_exists = not callee.is_empty()
+    callee_exists = 0 if callee.is_empty() else 1
 
     # Set `is_static == 1` for both DELEGATECALL and STATICCALL opcodes, or when
     # `stack.value == 0` for both CALL and CALLCODE opcodes.
@@ -258,11 +258,8 @@ def test_callop(
 
     callee_bytecode = callee.code
     callee_bytecode_hash = callee_bytecode.hash()
-    if not callee.is_empty():
-        is_empty_code_hash = callee_bytecode_hash == EMPTY_CODE_HASH
-    else:
-        is_empty_code_hash = True
-    callee_bytecode_hash = RLC(callee_bytecode_hash if not callee.is_empty() else 0, randomness)
+    is_empty_code_hash = callee_bytecode_hash == EMPTY_CODE_HASH
+    callee_bytecode_hash = RLC(callee_bytecode_hash, randomness)
 
     is_success = False if callee is CALLEE_WITH_REVERT_BYTECODE else True
     is_reverted_by_caller = not caller_ctx.is_persistent and is_success
@@ -352,7 +349,12 @@ def test_callop(
         rw_dictionary \
             .account_read(caller.address, AccountFieldTag.Balance, RLC(caller.balance, randomness))
 
-    rw_dictionary.account_read(code_address, AccountFieldTag.CodeHash, callee_bytecode_hash)
+    if callee_exists == 1:
+        rw_dictionary \
+            .account_read(code_address, AccountFieldTag.CodeHash, callee_bytecode_hash)
+    else:
+        rw_dictionary \
+            .account_read(code_address, AccountFieldTag.NonExisting, RLC(1, randomness))
 
     if is_empty_code_hash:
         rw_dictionary \
@@ -414,6 +416,7 @@ def test_callop(
                 gas_left=caller_ctx.gas_left,
                 memory_size=caller_ctx.memory_size,
                 reversible_write_counter=caller_ctx.reversible_write_counter,
+                aux_data=callee_exists,
             ),
             (
                 StepState(

@@ -87,6 +87,7 @@ def test_root_call(
     is_warm_access: bool,
 ):
     randomness = rand_fq()
+    callee_exists = 0 if callee.is_empty() else 1
 
     callee_balance = RLC(callee.balance + stack.value, randomness)
     caller_bytecode = (
@@ -122,7 +123,6 @@ def test_root_call(
         .stack_write(1, 1023, RLC(is_success, randomness))
         .tx_access_list_account_read(1, callee.address, is_warm_access)
         .account_read(callee.address, AccountFieldTag.Balance, callee_balance)
-        .account_read(callee.address, AccountFieldTag.Nonce, RLC(callee.nonce, randomness))
         .account_read(callee.address, AccountFieldTag.CodeHash, callee_bytecode_hash)
         .call_context_read(1, CallContextFieldTag.IsSuccess, 0)
     )
@@ -156,6 +156,7 @@ def test_root_call(
                 gas_left=caller_ctx.gas_left,
                 memory_size=caller_ctx.memory_size,
                 reversible_write_counter=caller_ctx.reversible_write_counter,
+                aux_data=callee_exists,
             ),
             StepState(
                 execution_state=ExecutionState.EndTx,
@@ -197,6 +198,7 @@ def test_oog_call_not_root(caller_ctx: CallerContext, callee: Account):
 
     is_warm_access = False
     caller_rw_counter_end_of_reversion = 2
+    callee_exists = 0 if callee.is_empty() else 1
 
     callee_balance = 200
     callee_balance = RLC(callee_balance + stack.value, randomness)
@@ -225,7 +227,6 @@ def test_oog_call_not_root(caller_ctx: CallerContext, callee: Account):
             .stack_write(2, 1023, RLC(False, randomness))
             .tx_access_list_account_read(1, callee.address, is_warm_access)
             .account_read(callee.address, AccountFieldTag.Balance, callee_balance)
-            .account_read(callee.address, AccountFieldTag.Nonce, RLC(callee.nonce, randomness))
             .account_read(callee.address, AccountFieldTag.CodeHash, callee_bytecode_hash)
             # restore context operations
             .call_context_read(2, CallContextFieldTag.IsSuccess, 0)
@@ -261,6 +262,7 @@ def test_oog_call_not_root(caller_ctx: CallerContext, callee: Account):
                 stack_pointer=1017,
                 gas_left=0,
                 reversible_write_counter=callee_reversible_write_counter,
+                aux_data=callee_exists,
             ),
             StepState(
                 execution_state=ExecutionState.STOP,
