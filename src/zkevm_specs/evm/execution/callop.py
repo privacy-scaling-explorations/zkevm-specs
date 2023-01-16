@@ -97,14 +97,10 @@ def callop(instruction: Instruction):
         )
         instruction.constrain_zero(1 - value_lt_caller_balance - value_eq_caller_balance)
 
-    # Load callee account `exists` value from auxilary witness data.
-    callee_exists = instruction.curr.aux_data
-
     # Verify gas cost.
     gas_cost = call.gas_cost(
         instruction,
         is_warm_access,
-        callee_exists,
         is_call,  # Only CALL opcode could invoke transfer to make empty account into non-empty.
     )
     # Apply EIP 150.

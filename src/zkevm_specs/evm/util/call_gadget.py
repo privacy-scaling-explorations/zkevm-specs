@@ -96,20 +96,20 @@ class CallGadget:
         self,
         instruction: Instruction,
         is_warm_access: FQ,
-        callee_exists: FQ,
         is_call: FQ = FQ(1),
     ) -> FQ:
 
+        # Check callee account existence with code_hash != 0
+        self.callee_code_hash = instruction.account_read(
+            self.callee_address, AccountFieldTag.CodeHash
+        ).expr()
+        callee_exists = FQ(1) - instruction.is_zero(self.callee_code_hash)
+
         if callee_exists == 1:
-            # Check callee account existence with code_hash != 0
-            self.callee_code_hash = instruction.account_read(
-                self.callee_address, AccountFieldTag.CodeHash
-            ).expr()
             self.is_empty_code_hash = instruction.is_equal(
                 self.callee_code_hash, instruction.rlc_encode(EMPTY_CODE_HASH, 32)
             )
         else:  # callee_exists == 0
-            instruction.account_read(self.callee_address, AccountFieldTag.NonExisting)
             self.is_empty_code_hash = FQ(1)
 
         return (
