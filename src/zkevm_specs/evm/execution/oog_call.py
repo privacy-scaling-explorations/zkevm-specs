@@ -1,7 +1,7 @@
 from zkevm_specs.evm.util.call_gadget import CallGadget
 from ...util import FQ
 from ..instruction import Instruction, Transition
-from ..table import CallContextFieldTag
+from ..table import AccountFieldTag, CallContextFieldTag
 from ..execution_state import ExecutionState
 from ...util import N_BYTES_GAS
 from ..opcode import Opcode
@@ -22,6 +22,8 @@ def oog_call(instruction: Instruction):
 
     # Add callee to access list``
     is_warm_access = instruction.read_account_to_access_list(tx_id, call.callee_address)
+
+    instruction.account_read(call.callee_address, AccountFieldTag.Balance)
 
     # Load callee account `exists` value from auxilary witness data.
     callee_exists = instruction.curr.aux_data
@@ -51,7 +53,7 @@ def oog_call(instruction: Instruction):
         # when it is internal call, need to restore caller's state as finishing this call.
         # Restore caller state to next StepState
         instruction.step_state_transition_to_restored_context(
-            rw_counter_delta=14,
+            rw_counter_delta=15,
             return_data_offset=FQ(0),
             return_data_length=FQ(0),
             gas_left=instruction.curr.gas_left,
