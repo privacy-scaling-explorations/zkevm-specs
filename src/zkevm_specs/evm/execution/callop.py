@@ -65,11 +65,9 @@ def callop(instruction: Instruction):
     callee_reversion_info = instruction.reversion_info(call_id=callee_call_id)
     instruction.constrain_equal(
         callee_reversion_info.is_persistent,
-        reversion_info.is_persistent * call.is_success.expr(),
+        reversion_info.is_persistent * call.is_success,
     )
-    is_reverted_by_caller = call.is_success.expr() == FQ(1) and reversion_info.is_persistent == FQ(
-        0
-    )
+    is_reverted_by_caller = call.is_success == FQ(1) and reversion_info.is_persistent == FQ(0)
     if is_reverted_by_caller:
         # Propagate rw_counter_end_of_reversion when callee succeeds but one of callers revert at some point.
         # Note that we subtract it with current caller's reversible_write_counter as callee's endpoint, where caller's
@@ -202,14 +200,14 @@ def callop(instruction: Instruction):
                 CallContextFieldTag.Value,
                 instruction.select(is_delegatecall, parent_call_value.expr(), call.value.expr()),
             ),
-            (CallContextFieldTag.IsSuccess, call.is_success.expr()),
+            (CallContextFieldTag.IsSuccess, call.is_success),
             (CallContextFieldTag.IsStatic, is_static.expr()),
             (CallContextFieldTag.LastCalleeId, FQ(0)),
             (CallContextFieldTag.LastCalleeReturnDataOffset, FQ(0)),
             (CallContextFieldTag.LastCalleeReturnDataLength, FQ(0)),
             (CallContextFieldTag.IsRoot, FQ(False)),
             (CallContextFieldTag.IsCreate, FQ(False)),
-            (CallContextFieldTag.CodeHash, call.callee_code_hash.expr()),
+            (CallContextFieldTag.CodeHash, call.callee_code_hash),
         ]:
             instruction.constrain_equal(
                 instruction.call_context_lookup(field_tag, call_id=callee_call_id),

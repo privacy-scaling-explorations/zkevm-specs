@@ -26,7 +26,7 @@ class CallGadget:
     cd_length: FQ
     rd_offset: FQ
     rd_length: FQ
-    is_success: RLC
+    is_success: FQ
 
     is_u64_gas: FQ
     next_memory_size: FQ
@@ -58,7 +58,7 @@ class CallGadget:
         cd_length_rlc = self.instruction.stack_pop()
         rd_offset_rlc = self.instruction.stack_pop()
         rd_length_rlc = self.instruction.stack_pop()
-        self.is_success = self.instruction.stack_push()
+        self.is_success = self.instruction.stack_push().expr()
 
         if self.IS_SUCCESS_CALL == FQ(1):
             # Verify is_success is a bool
@@ -104,7 +104,7 @@ class CallGadget:
             # Check callee account existence with code_hash != 0
             self.callee_code_hash = instruction.account_read(
                 self.callee_address, AccountFieldTag.CodeHash
-            )
+            ).expr()
             self.is_empty_code_hash = instruction.is_equal(
                 self.callee_code_hash, instruction.rlc_encode(EMPTY_CODE_HASH, 32)
             )
