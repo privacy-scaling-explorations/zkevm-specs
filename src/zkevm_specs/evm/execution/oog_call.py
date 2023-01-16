@@ -20,7 +20,7 @@ def oog_call(instruction: Instruction):
 
     # TODO: handle PrecompiledContract oog cases
 
-    # Add callee to access list``
+    # Add callee to access list
     is_warm_access = instruction.read_account_to_access_list(tx_id, call.callee_address)
 
     # verify gas cost

@@ -44,34 +44,30 @@ class CallGadget:
         is_callcode: FQ,
         is_delegatecall: FQ,
     ):
-        self.instruction = instruction
         self.IS_SUCCESS_CALL = is_success_call
 
         # Lookup values from stack
-        self.gas_rlc = self.instruction.stack_pop()
-        callee_address_rlc = self.instruction.stack_pop()
+        self.gas_rlc = instruction.stack_pop()
+        callee_address_rlc = instruction.stack_pop()
         # For non-OOG case,
         # the third stack pop `value` is not present for both DELEGATECALL and
         # STATICCALL opcodes.
-        self.value = self.instruction.stack_pop() if is_call + is_callcode == FQ(1) else RLC(0)
-        cd_offset_rlc = self.instruction.stack_pop()
-        cd_length_rlc = self.instruction.stack_pop()
-        rd_offset_rlc = self.instruction.stack_pop()
-        rd_length_rlc = self.instruction.stack_pop()
-        self.is_success = self.instruction.stack_push().expr()
+        self.value = instruction.stack_pop() if is_call + is_callcode == FQ(1) else RLC(0)
+        cd_offset_rlc = instruction.stack_pop()
+        cd_length_rlc = instruction.stack_pop()
+        rd_offset_rlc = instruction.stack_pop()
+        rd_length_rlc = instruction.stack_pop()
+        self.is_success = instruction.stack_push().expr()
 
         if self.IS_SUCCESS_CALL == FQ(1):
             # Verify is_success is a bool
-            self.instruction.constrain_bool(self.is_success)
+            instruction.constrain_bool(self.is_success)
             self.gas = instruction.rlc_to_fq(self.gas_rlc, N_BYTES_GAS)
             self.is_u64_gas = instruction.is_zero(
                 instruction.sum(self.gas_rlc.le_bytes[N_BYTES_GAS:])
             )
         else:
-            self.instruction.constrain_zero(self.is_success)
-            self.gas = FQ(0)
-            self.is_u64_gas = FQ(0)
-
+            instruction.constrain_zero(self.is_success)
         self.has_value = FQ(0) if is_delegatecall == FQ(1) else 1 - instruction.is_zero(self.value)
 
         self.callee_address = instruction.rlc_to_fq(callee_address_rlc, N_BYTES_ACCOUNT_ADDRESS)
