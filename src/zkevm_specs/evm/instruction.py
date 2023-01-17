@@ -1033,9 +1033,7 @@ class Instruction:
         linear_cost = memory_size.expr() * MEMORY_EXPANSION_LINEAR_COEFF
         return quadratic_cost + linear_cost
 
-    def memory_expansion_constant_length(
-        self, offset: Expression, length: Expression
-    ) -> Tuple[FQ, FQ]:
+    def memory_expansion(self, offset: Expression, length: Expression) -> Tuple[FQ, FQ]:
         memory_size, _ = self.constant_divmod(
             length.expr() + offset.expr() + 31, FQ(32), N_BYTES_MEMORY_SIZE
         )

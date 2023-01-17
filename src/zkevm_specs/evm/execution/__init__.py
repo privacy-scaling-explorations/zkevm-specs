@@ -44,6 +44,7 @@ from .selfbalance import *
 from .extcodehash import *
 from .extcodesize import *
 from .log import *
+from .memory import *
 from .not_ import not_opcode
 from .sar import sar
 from .sdiv_smod import sdiv_smod
@@ -99,6 +100,7 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.EXTCODESIZE: extcodesize,
     ExecutionState.EXP: exp,
     ExecutionState.LOG: log,
+    ExecutionState.MEMORY: memory,
     ExecutionState.CALL_OP: callop,
     ExecutionState.ISZERO: iszero,
     ExecutionState.SAR: sar,
