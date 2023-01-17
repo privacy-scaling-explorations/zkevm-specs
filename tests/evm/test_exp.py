@@ -62,7 +62,11 @@ def test_exp(base_int: int, exponent_int: int):
         .stack_write(CALL_ID, 1023, exponentiation)
     )
 
-    exp_circuit = ExpCircuit().add_event(base.int_value(), exponent.int_value(), rw_dict.rw_counter)
+    exp_circuit = (
+        ExpCircuit()
+        .add_event(base.int_value(), exponent.int_value(), rw_dict.rw_counter)
+        .fill_dummy_events()
+    )
 
     tables = Tables(
         block_table=set(Block().table_assignments()),
