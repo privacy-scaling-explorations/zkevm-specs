@@ -35,6 +35,7 @@ class CallGadget:
     has_value: FQ
     callee_code_hash: FQ
     is_empty_code_hash: FQ
+    callee_not_exists: FQ
 
     def __init__(
         self,
@@ -99,20 +100,16 @@ class CallGadget:
         self.callee_code_hash = instruction.account_read(
             self.callee_address, AccountFieldTag.CodeHash
         ).expr()
-        callee_exists = FQ(1) - instruction.is_zero(self.callee_code_hash)
-
-        if callee_exists == 1:
-            self.is_empty_code_hash = instruction.is_equal(
-                self.callee_code_hash, instruction.rlc_encode(EMPTY_CODE_HASH, 32)
-            )
-        else:  # callee_exists == 0
-            self.is_empty_code_hash = FQ(1)
+        self.is_empty_code_hash = instruction.is_equal(
+            self.callee_code_hash, instruction.rlc_encode(EMPTY_CODE_HASH, 32)
+        )
+        self.callee_not_exists = instruction.is_zero(self.callee_code_hash)
 
         return (
             instruction.select(
                 is_warm_access, FQ(GAS_COST_WARM_ACCESS), FQ(GAS_COST_ACCOUNT_COLD_ACCESS)
             )
             + self.has_value
-            * (GAS_COST_CALL_WITH_VALUE + is_call * (1 - callee_exists) * GAS_COST_NEW_ACCOUNT)
+            * (GAS_COST_CALL_WITH_VALUE + is_call * self.callee_not_exists * GAS_COST_NEW_ACCOUNT)
             + self.memory_expansion_gas_cost
         )

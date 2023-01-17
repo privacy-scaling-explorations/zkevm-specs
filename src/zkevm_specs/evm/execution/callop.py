@@ -121,7 +121,8 @@ def callop(instruction: Instruction):
         is_precompile, FQ(instruction.next.execution_state in precompile_execution_states())
     )
 
-    if call.is_empty_code_hash == FQ(1) and is_precompile == FQ(0):
+    no_callee_code = call.is_empty_code_hash + call.callee_not_exists
+    if no_callee_code == FQ(1) and is_precompile == FQ(0):
         # Make sure call is successful
         instruction.constrain_equal(call.is_success, FQ(1))
 
