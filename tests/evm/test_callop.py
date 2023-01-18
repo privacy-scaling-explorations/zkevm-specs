@@ -308,12 +308,14 @@ def test_callop(
         rw_dictionary \
         .stack_read(1, 1018, RLC(stack.gas, randomness)) \
         .stack_read(1, 1019, RLC(callee.address, randomness))
+
     rw_dictionary \
         .stack_read(1, 1020, RLC(stack.cd_offset, randomness)) \
         .stack_read(1, 1021, RLC(stack.cd_length, randomness)) \
         .stack_read(1, 1022, RLC(stack.rd_offset, randomness)) \
         .stack_read(1, 1023, RLC(stack.rd_length, randomness)) \
         .stack_write(1, 1023, RLC(is_success, randomness)) \
+        .account_read(callee.address, AccountFieldTag.CodeHash, callee_bytecode_hash) \
         .tx_access_list_account_write(1, callee.address, True, is_warm_access, rw_counter_of_reversion=None if caller_ctx.is_persistent else caller_ctx.rw_counter_end_of_reversion - caller_ctx.reversible_write_counter) \
         .call_context_read(call_id, CallContextFieldTag.RwCounterEndOfReversion, callee_rw_counter_end_of_reversion) \
         .call_context_read(call_id, CallContextFieldTag.IsPersistent, callee_is_persistent)
@@ -325,9 +327,6 @@ def test_callop(
     # For opcode DELEGATECALL:
     # - callee = caller
     # - caller = parent_caller
-    #
-    # Variable `code_address` will be used for further code hash read.
-    code_address = callee.address
     if is_callcode == 1:
         callee = caller
     elif is_delegatecall == 1:
@@ -350,9 +349,6 @@ def test_callop(
         rw_dictionary \
             .account_read(caller.address, AccountFieldTag.Balance, RLC(caller.balance, randomness))
 
-
-    rw_dictionary.account_read(code_address, AccountFieldTag.CodeHash, callee_bytecode_hash)
-    
     if is_empty_code_hash:
         rw_dictionary \
         .call_context_write(1, CallContextFieldTag.LastCalleeId, 0) \

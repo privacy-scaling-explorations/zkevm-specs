@@ -89,13 +89,6 @@ class CallGadget:
             self.rd_length,
         )
 
-    def gas_cost(
-        self,
-        instruction: Instruction,
-        is_warm_access: FQ,
-        is_call: FQ = FQ(1),
-    ) -> FQ:
-
         # Check callee account existence with code_hash != 0
         self.callee_code_hash = instruction.account_read(
             self.callee_address, AccountFieldTag.CodeHash
@@ -105,6 +98,12 @@ class CallGadget:
         )
         self.callee_not_exists = instruction.is_zero(self.callee_code_hash)
 
+    def gas_cost(
+        self,
+        instruction: Instruction,
+        is_warm_access: FQ,
+        is_call: FQ = FQ(1),
+    ) -> FQ:
         return (
             instruction.select(
                 is_warm_access, FQ(GAS_COST_WARM_ACCESS), FQ(GAS_COST_ACCOUNT_COLD_ACCESS)

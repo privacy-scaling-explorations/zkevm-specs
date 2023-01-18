@@ -117,8 +117,8 @@ def test_root_call(
         .stack_read(1, 1022, RLC(stack.rd_offset, randomness))
         .stack_read(1, 1023, RLC(stack.rd_length, randomness))
         .stack_write(1, 1023, RLC(is_success, randomness))
-        .tx_access_list_account_read(1, callee.address, is_warm_access)
         .account_read(callee.address, AccountFieldTag.CodeHash, callee_bytecode_hash)
+        .tx_access_list_account_read(1, callee.address, is_warm_access)
         .call_context_read(1, CallContextFieldTag.IsSuccess, 0)
     )
     # fmt: on
@@ -202,8 +202,8 @@ def test_oog_call_not_root(caller_ctx: CallerContext, callee: Account):
         .stack_read(2, 1022, RLC(stack.rd_offset, randomness))
         .stack_read(2, 1023, RLC(stack.rd_length, randomness))
         .stack_write(2, 1023, RLC(False, randomness))
-        .tx_access_list_account_read(1, callee.address, is_warm_access)
         .account_read(callee.address, AccountFieldTag.CodeHash, callee_bytecode_hash)
+        .tx_access_list_account_read(1, callee.address, is_warm_access)
         .call_context_read(2, CallContextFieldTag.IsSuccess, 0)
         # restore context operations
         .call_context_read(2, CallContextFieldTag.CallerId, 1)
