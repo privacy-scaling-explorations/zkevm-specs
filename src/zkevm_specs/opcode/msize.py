@@ -2,6 +2,7 @@ from ..encoding import U64, is_circuit_code
 
 # Simulate EVM memory
 
+
 class Memory:
     def __init__(self):
         self.data = {}
@@ -31,6 +32,7 @@ class Memory:
 
     def memory_size(self):
         return (self.size + 31) // 32
+
 
 @is_circuit_code
 def check_msize(
