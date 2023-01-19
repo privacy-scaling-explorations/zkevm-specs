@@ -80,6 +80,7 @@ class ExecutionState(IntEnum):
 
     # Opcode's error cases
     ErrorInvalidOpcode = auto()
+    ErrorGasUintOverflow = auto()
     # For opcodes which triggers stackoverflow by doing push more than pop,
     # or stackunderflow by doing pop and DUP, SWAP which peek deeper element directly
     ErrorStack = auto()

@@ -72,9 +72,10 @@ def oog_call(instruction: Instruction):
         + memory_expansion_gas_cost
     )
 
-    # verify gas is insufficient
+    # verify gas is insufficient or gas cost is overflow
     gas_not_enough, _ = instruction.compare(instruction.curr.gas_left, gas_cost, N_BYTES_GAS)
-    instruction.constrain_equal(gas_not_enough, FQ(1))
+    gas_cost_overflow = instruction.is_u64_overflow(gas_cost)
+    instruction.constrain_equal(gas_not_enough + gas_cost_overflow, FQ(1))
 
     # current call must be failed.
     instruction.constrain_equal(

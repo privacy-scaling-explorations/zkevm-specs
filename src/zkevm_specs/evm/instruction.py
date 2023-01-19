@@ -9,6 +9,7 @@ from ..util import (
     Expression,
     ExpressionImpl,
     cast_expr,
+    MAX_U64,
     MAX_N_BYTES,
     N_BYTES_MEMORY_ADDRESS,
     N_BYTES_MEMORY_SIZE,
@@ -354,6 +355,9 @@ class Instruction:
 
     def is_equal(self, lhs: Expression, rhs: Expression) -> FQ:
         return self.is_zero(lhs.expr() - rhs.expr())
+
+    def is_u64_overflow(self, lhs: Expression) -> FQ:
+        return FQ(lhs.expr().n > MAX_U64)
 
     def continuous_selectors(self, value: Expression, n: int) -> Sequence[FQ]:
         return [FQ(i < value.expr().n) for i in range(n)]
