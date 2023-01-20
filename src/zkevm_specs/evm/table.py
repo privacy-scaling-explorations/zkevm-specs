@@ -480,6 +480,8 @@ class KeccakTableRow(TableRow):
 @dataclass
 class ExpCircuitRow(TableRow):
     q_usable: FQ
+    padding: FQ
+    is_final: FQ
     # columns from the exponentiation table
     is_step: FQ
     identifier: FQ  # rw_counter

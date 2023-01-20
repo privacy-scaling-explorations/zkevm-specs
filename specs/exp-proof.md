@@ -27,6 +27,7 @@ The exponentiation circuit consists of the following columns:
 3. `mul_gadget`: The columns from a multiplication gadget, responsible for validating that each step within the exponentiation trace was multiplied correctly. For instance, in the above example we would want to verify that `729 * 729 == 531441 (mod 2^256)`.
 4. `parity_check`: The columns from a multiplication gadget, responsible for checking the parity (odd/even) of the `exponent` at the specific step of exponentiation trace. Depending on whether the `exponent` is odd or even, we calculate the `exponent` at the next step.
 5. `padding`: An advice column to indicate whether or not the current row is a padding row.
+6. `is_final`: An advice column to indicate whether or not the current row is the last row in the circuit.
 
 ## Circuit Constraints
 
@@ -72,7 +73,7 @@ The exponentiation circuit consists of the following columns:
     - Both multiplicand's of the `mul_gadget`, i.e. `a` and `b` MUST equal `base` of the exponentiation operation, that is:
         - `mul_gadget.a == base`
         - `mul_gadget.b == base` (for both these cases we equate each 64-bit limb)
-- For every row where `padding == true`, validate that:
+- For every row where `padding == true` and `is_final == false`, validate that:
     - next row is also `padding == true`
     - all other columns are set to 0
 

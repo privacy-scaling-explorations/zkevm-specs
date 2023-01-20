@@ -13,8 +13,8 @@ from .util import (
 
 
 def verify_step(cs: ConstraintSystem, rows: List[ExpCircuitRow]):
-    # for every step except the last
-    with cs.condition(rows[0].is_step * (1 - rows[0].is_last)) as cs:
+    # for every non-padded step except the last
+    with cs.condition(rows[0].is_step * (1 - rows[0].is_last) * (1 - rows[0].padding)) as cs:
         # base is the same across rows.
         cs.constrain_equal(rows[0].base, rows[1].base)
         # multiplication result from the "next" row `d` must be used as
@@ -23,15 +23,12 @@ def verify_step(cs: ConstraintSystem, rows: List[ExpCircuitRow]):
         # identifier does not change over the steps of an exponentiation trace.
         cs.constrain_equal(rows[0].identifier, rows[1].identifier)
 
-    # for every step
-    with cs.condition(rows[0].is_step) as cs:
+    # for every non-padded step
+    with cs.condition(rows[0].is_step * (1 - rows[0].padding)) as cs:
         # is_last is boolean.
         cs.constrain_bool(rows[0].is_last)
         # remainder (r), i.e. odd/even parity of exponent is boolean.
         cs.constrain_bool(rows[0].r)
-        # is_last == 1 is followed by unusable row.
-        # is_last == 0 is following by usable row.
-        cs.constrain_equal(rows[0].is_last, (1 - rows[1].q_usable))
         # multiplication is assigned correctly
         _overflow, carry_lo_hi, additional_constraints = mul_add_words(
             rows[0].a, rows[0].b, rows[0].c, rows[0].d
@@ -53,8 +50,8 @@ def verify_step(cs: ConstraintSystem, rows: List[ExpCircuitRow]):
         cs.constrain_equal(additional_constraints[0][0], additional_constraints[0][1])
         cs.constrain_equal(additional_constraints[1][0], additional_constraints[1][1])
 
-    # for all steps (except the last), where exponent is odd
-    with cs.condition(rows[0].is_step * (1 - rows[0].is_last) * rows[0].r.expr()) as cs:
+    # for all non-padded steps (except the last), where exponent is odd
+    with cs.condition(rows[0].is_step * (1 - rows[0].is_last) * rows[0].r.expr() * (1 - rows[0].padding)) as cs:
         # exponent::next == exponent::cur - 1
         cur_lo, cur_hi = word_to_lo_hi(rows[0].exponent)
         next_lo, next_hi = word_to_lo_hi(rows[1].exponent)
@@ -65,8 +62,8 @@ def verify_step(cs: ConstraintSystem, rows: List[ExpCircuitRow]):
         # b == base
         cs.constrain_equal(rows[0].base, rows[0].b)
 
-    # for all steps (except the last), where exponent is even
-    with cs.condition(rows[0].is_step * (1 - rows[0].is_last) * (1 - rows[0].r.expr())) as cs:
+    # for all non-padded steps (except the last), where exponent is even
+    with cs.condition(rows[0].is_step * (1 - rows[0].is_last) * (1 - rows[0].r.expr()) * (1 - rows[0].padding)) as cs:
         # exponent::next == exponent::cur / 2
         cur_lo, cur_hi = word_to_lo_hi(rows[0].exponent)
         next_lo, next_hi = word_to_lo_hi(rows[1].exponent)
@@ -77,8 +74,8 @@ def verify_step(cs: ConstraintSystem, rows: List[ExpCircuitRow]):
         # a == b
         cs.constrain_equal(rows[0].a, rows[0].b)
 
-    # for the last step
-    with cs.condition(rows[0].is_last) as cs:
+    # for the last non-padded step
+    with cs.condition(rows[0].is_last * (1 - rows[0].padding)) as cs:
         # exponent == 2
         exponent_lo, exponent_hi = word_to_lo_hi(rows[0].exponent)
         cs.constrain_equal(exponent_lo, FQ(2))
@@ -87,6 +84,36 @@ def verify_step(cs: ConstraintSystem, rows: List[ExpCircuitRow]):
         cs.constrain_equal(rows[0].base, rows[0].a)
         # b == base
         cs.constrain_equal(rows[0].base, rows[0].b)
+        # followed by padding
+        cs.constrain_equal(rows[1].padding, FQ(1))
+
+    # for padding
+    with cs.condition(rows[0].padding * (1 - rows[0].is_final)) as cs:
+        # padding::next == padding::cur
+        cs.constrain_equal(rows[1].padding, rows[0].padding)
+        # is_step == 0
+        cs.constrain_zero(rows[0].is_step)
+        # is_last == 0
+        cs.constrain_zero(rows[0].is_last)
+        # base == 0
+        cs.constrain_zero(rows[0].base)
+        # exponent == 0
+        cs.constrain_zero(rows[0].exponent)
+        # exponentiation == 0
+        cs.constrain_zero(rows[0].exponentiation)
+        # a == 0
+        cs.constrain_zero(rows[0].a)
+        # b == 0
+        cs.constrain_zero(rows[0].b)
+        # c == 0
+        cs.constrain_zero(rows[0].c)
+        # d == 0
+        cs.constrain_zero(rows[0].d)
+        # q == 0
+        cs.constrain_zero(rows[0].q)
+        # r == 0
+        cs.constrain_zero(rows[0].r)
+
 
 
 def verify_exp_circuit(exp_circuit: ExpCircuit):
