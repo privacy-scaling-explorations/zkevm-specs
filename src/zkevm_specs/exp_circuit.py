@@ -51,7 +51,9 @@ def verify_step(cs: ConstraintSystem, rows: List[ExpCircuitRow]):
         cs.constrain_equal(additional_constraints[1][0], additional_constraints[1][1])
 
     # for all non-padded steps (except the last), where exponent is odd
-    with cs.condition(rows[0].is_step * (1 - rows[0].is_last) * rows[0].r.expr() * (1 - rows[0].padding)) as cs:
+    with cs.condition(
+        rows[0].is_step * (1 - rows[0].is_last) * rows[0].r.expr() * (1 - rows[0].padding)
+    ) as cs:
         # exponent::next == exponent::cur - 1
         cur_lo, cur_hi = word_to_lo_hi(rows[0].exponent)
         next_lo, next_hi = word_to_lo_hi(rows[1].exponent)
@@ -63,7 +65,9 @@ def verify_step(cs: ConstraintSystem, rows: List[ExpCircuitRow]):
         cs.constrain_equal(rows[0].base, rows[0].b)
 
     # for all non-padded steps (except the last), where exponent is even
-    with cs.condition(rows[0].is_step * (1 - rows[0].is_last) * (1 - rows[0].r.expr()) * (1 - rows[0].padding)) as cs:
+    with cs.condition(
+        rows[0].is_step * (1 - rows[0].is_last) * (1 - rows[0].r.expr()) * (1 - rows[0].padding)
+    ) as cs:
         # exponent::next == exponent::cur / 2
         cur_lo, cur_hi = word_to_lo_hi(rows[0].exponent)
         next_lo, next_hi = word_to_lo_hi(rows[1].exponent)
@@ -113,7 +117,6 @@ def verify_step(cs: ConstraintSystem, rows: List[ExpCircuitRow]):
         cs.constrain_zero(rows[0].q)
         # r == 0
         cs.constrain_zero(rows[0].r)
-
 
 
 def verify_exp_circuit(exp_circuit: ExpCircuit):

@@ -819,9 +819,9 @@ class ExpCircuit:
     def _append_padding_row(self, identifier: IntOrFQ):
         self.rows.append(
             ExpCircuitRow(
-                q_usable = FQ.one(),
-                padding = FQ.one(),
-                is_final = FQ.one(),
+                q_usable=FQ.one(),
+                padding=FQ.one(),
+                is_final=FQ.one(),
                 is_step=FQ.zero(),
                 identifier=FQ(identifier),
                 is_last=FQ.zero(),
@@ -854,8 +854,8 @@ class ExpCircuit:
         self.rows.append(
             ExpCircuitRow(
                 q_usable=FQ.one(),
-                padding = FQ.zero(),
-                is_final = FQ.zero(),
+                padding=FQ.zero(),
+                is_final=FQ.zero(),
                 is_step=FQ.one(),
                 identifier=FQ(identifier),
                 is_last=FQ(is_last),
