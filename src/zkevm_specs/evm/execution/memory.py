@@ -5,6 +5,7 @@ from ...util import FQ
 
 
 def memory(instruction: Instruction):
+    print("Called")
     opcode = instruction.opcode_lookup(True)
 
     address = instruction.stack_pop()
@@ -19,6 +20,7 @@ def memory(instruction: Instruction):
         instruction.curr.memory_size, address + FQ(1) + (is_not_mstore8 * FQ(31))
     )
 
+    print("in code", instruction.curr.stack_pointer - is_mload)
     instruction.stack_lookup(
         RW.Read if is_mload else RW.Write, instruction.curr.stack_pointer - is_mload
     )
