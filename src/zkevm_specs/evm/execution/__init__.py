@@ -52,10 +52,10 @@ from .shl_shr import shl_shr
 from .stop import stop
 from .return_revert import *
 from .extcodecopy import *
-from .oog_constant import *
-from .oog_call import *
+from .error_oog_constant import *
+from .error_oog_call import *
 from .error_stack import *
-from .error_Invalid_jump import *
+from .error_invalid_jump import *
 
 
 EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
@@ -108,6 +108,7 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.RETURN: return_revert,
     ExecutionState.ErrorOutOfGasConstant: oog_constant,
     ExecutionState.ErrorInvalidJump: invalid_jump,
+    ExecutionState.ErrorGasUintOverflow: gas_uint_overflow,
     ExecutionState.ErrorOutOfGasCALL: oog_call,
     ExecutionState.ErrorStack: stack_error,
     # ExecutionState.ECRECOVER: ,
