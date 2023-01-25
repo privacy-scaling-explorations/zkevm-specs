@@ -744,6 +744,8 @@ class ExpCircuit:
     rows: List[ExpCircuitRow]
     pad_rows: List[ExpCircuitRow]
 
+    MAX_EXP_STEPS = 100
+
     def __init__(self, pad_rows: Optional[List[ExpCircuitRow]] = None) -> None:
         self.rows = []
         self.pad_rows = []
@@ -817,25 +819,25 @@ class ExpCircuit:
                 exponent = exponent - 1
 
     def _append_padding_row(self, identifier: IntOrFQ):
-        self.rows.append(
-            ExpCircuitRow(
-                q_usable=FQ.one(),
-                padding=FQ.one(),
-                is_final=FQ.one(),
-                is_step=FQ.zero(),
-                identifier=FQ(identifier),
-                is_last=FQ.zero(),
-                base=RLC(0),
-                exponent=RLC(0),
-                exponentiation=RLC(0),
-                a=RLC(0),
-                b=RLC(0),
-                c=RLC(0),
-                d=RLC(0),
-                q=RLC(0),
-                r=RLC(0),
+        rows_left = self.MAX_EXP_STEPS - len(self.rows)
+        for i in range(rows_left):
+            self.rows.append(
+                ExpCircuitRow(
+                    q_usable=FQ.one(),
+                    is_step=FQ.zero(),
+                    identifier=FQ(identifier),
+                    is_last=FQ.zero(),
+                    base=RLC(1),
+                    exponent=RLC(1),
+                    exponentiation=RLC(1),
+                    a=RLC(1),
+                    b=RLC(1),
+                    c=RLC(0),
+                    d=RLC(1),
+                    q=RLC(0),
+                    r=RLC(1),
+                )
             )
-        )
 
     def _append_step(
         self,
@@ -854,8 +856,6 @@ class ExpCircuit:
         self.rows.append(
             ExpCircuitRow(
                 q_usable=FQ.one(),
-                padding=FQ.zero(),
-                is_final=FQ.zero(),
                 is_step=FQ.one(),
                 identifier=FQ(identifier),
                 is_last=FQ(is_last),

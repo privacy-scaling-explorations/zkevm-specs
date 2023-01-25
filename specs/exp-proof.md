@@ -26,12 +26,10 @@ The exponentiation circuit consists of the following columns:
 2. `exp_table`: The columns from [exponentiation table](./tables.md#exponentiation-table)
 3. `mul_gadget`: The columns from a multiplication gadget, responsible for validating that each step within the exponentiation trace was multiplied correctly. For instance, in the above example we would want to verify that `729 * 729 == 531441 (mod 2^256)`.
 4. `parity_check`: The columns from a multiplication gadget, responsible for checking the parity (odd/even) of the `exponent` at the specific step of exponentiation trace. Depending on whether the `exponent` is odd or even, we calculate the `exponent` at the next step.
-5. `padding`: An advice column to indicate whether or not the current row is a padding row.
-6. `is_final`: An advice column to indicate whether or not the current row is the last row in the circuit.
 
 ## Circuit Constraints
 
-- For every row where `is_step == true` and `padding == false`, except the last step, validate that:
+- For every row where `is_step == true`, except the last step, validate that:
     - `base` MUST be the same across subsequent steps.
     - Multiplication result `d` from the next row MUST be equal to the first multiplicand `a` in the current row. For instance, if we consider `row_0` (`531441 * 3 = 1594323`) and `row_1` (`729 * 729 = 531441`) from the above example, `d_1` is `531441` and `a_0` is also `531441`.
     - `identifier` MUST be the same across subsequent steps, i.e. `identifier::cur_step == identifier::next_step`.
@@ -40,7 +38,7 @@ The exponentiation circuit consists of the following columns:
     - `exp_table.is_step` MUST be boolean.
     - `exp_table.is_last` MUST be boolean.
 
-- For every row where `is_step == true` and `padding == false`, validate that:
+- For every row where `is_step == true`, validate that:
     - `exponentiation_lo` MUST equal `mul_gadget`'s multiplication result `d_lo`.
     - `exponentiation_hi` MUST equal `mul_gadget`'s multiplication result `d_hi`.
     - Since we are only performing multiplication with the equation `a * b + c == d`, `c` in the `mul_gadget` MUST equal `0`.
@@ -73,9 +71,6 @@ The exponentiation circuit consists of the following columns:
     - Both multiplicand's of the `mul_gadget`, i.e. `a` and `b` MUST equal `base` of the exponentiation operation, that is:
         - `mul_gadget.a == base`
         - `mul_gadget.b == base` (for both these cases we equate each 64-bit limb)
-- For every row where `padding == true` and `is_final == false`, validate that:
-    - next row is also `padding == true`
-    - all other columns are set to 0
 
 
 
