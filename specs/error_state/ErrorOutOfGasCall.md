@@ -1,15 +1,19 @@
 # ErrorOutOfGasCall state
 
 ## Procedure
+
+Handle the corresponding out of gas errors for `CALL`, `CALLCODE`, `DELEGATECALL` and `STATICCALL` opcodes.
+
 ### EVM behavior
+
 For this gadget, the core is to calculate gas required, there are multiple kinds of gas
-consumes in call: 
+consumes in above call related opcodes:
 1. memory expansion gas cost
 2. gas cost if new account creates
 3. transfer fee if has value
-4. account access list cost（warm/cold）
+4. account access list cost (warm/cold)
 
-below is the total gas cost calculation which from [`Call` Spec](../opcode/F1CALL_F4DELEGATECALL_FASTATICCALL.md).
+below is the total gas cost calculation which from [Spec of call related opcodes](../opcode/F1CALL_F4DELEGATECALL_FASTATICCALL.md).
 ```
 GAS_COST_WARM_ACCESS := 100
 GAS_COST_ACCOUNT_COLD_ACCESS := 2600
@@ -23,6 +27,7 @@ gas_cost = (
 ```
 
 ### Constraints
+
 1. `gas_left < gas_cost`.
 2. Current call must be failed.
 3. If it's a root call, it transits to `EndTx`.

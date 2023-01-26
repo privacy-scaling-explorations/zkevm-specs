@@ -7,16 +7,22 @@ from ...util import N_BYTES_GAS
 from ..opcode import Opcode
 
 
+# Handle the corresponding out of gas errors for CALL, CALLCODE, DELEGATECALL
+# and STATICCALL opcodes.
 def oog_call(instruction: Instruction):
     # retrieve op code associated to oog call error
     opcode = instruction.opcode_lookup(True)
-    # TODO: add CallCode etc.when handle ErrorOutOfGasCALLCODE in future implementation
-    instruction.constrain_equal(opcode, Opcode.CALL)
+    is_call, is_callcode, is_delegatecall, is_staticcall = instruction.multiple_select(
+        opcode, (Opcode.CALL, Opcode.CALLCODE, Opcode.DELEGATECALL, Opcode.STATICCALL)
+    )
+
+    # Constrain opcode must be CALL, CALLCODE, DELEGATECALL or STATICCALL.
+    instruction.constrain_equal(is_call + is_callcode + is_delegatecall + is_staticcall, FQ(1))
 
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
 
     # init CallGadget to handle stack vars.
-    call = CallGadget(instruction, FQ(0), FQ(1), FQ(0), FQ(0))
+    call = CallGadget(instruction, FQ(0), is_call, is_callcode, is_delegatecall)
 
     # TODO: handle PrecompiledContract oog cases
 
@@ -39,18 +45,22 @@ def oog_call(instruction: Instruction):
     is_to_end_tx = instruction.is_equal(instruction.next.execution_state, ExecutionState.EndTx)
     instruction.constrain_equal(FQ(instruction.curr.is_root), is_to_end_tx)
 
+    # Both CALL and CALLCODE opcodes have an extra stack pop `value` relative to
+    # DELEGATECALL and STATICCALL.
+    rw_counter_delta = 11 + is_call + is_callcode
+
     # state transition.
     if instruction.curr.is_root:
         # Do step state transition
         instruction.constrain_step_state_transition(
-            rw_counter=Transition.delta(12),
+            rw_counter=Transition.delta(rw_counter_delta),
             call_id=Transition.same(),
         )
     else:
         # when it is internal call, need to restore caller's state as finishing this call.
         # Restore caller state to next StepState
         instruction.step_state_transition_to_restored_context(
-            rw_counter_delta=12,
+            rw_counter_delta=rw_counter_delta.n,
             return_data_offset=FQ(0),
             return_data_length=FQ(0),
             gas_left=instruction.curr.gas_left,
