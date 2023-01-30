@@ -228,7 +228,7 @@ Column names in circuit:
 - IsEnabled: `is_final`
 - InputRLC: `data_rlc`
 - InputLen: `length`
-- Output: `hash_rlc`
+- OutputHi/Lo: `hash_hi/lo`
 
 
 ## `copy_table`
@@ -265,22 +265,24 @@ The table below lists all of copy pairs supported in the copy table:
 - Copy from memory to TxLog in the `rw_table` (`LOGX`)
 - Copy from memory to RlcAcc (`SHA3`)
 
-| q_step | q_first | q_last | ID        | Type       | Address        | AddressEnd     | BytesLeft  | Value  | RlcAcc  | IsCode  | Pad | RwCounter | RwcIncreaseLeft |
-|--------|---------|--------|-----------|------------|----------------|----------------|------------|--------|---------|---------|-----|-----------|-----------------|
-| 1      | 0/1     | 0      | $txID     | TxCalldata | $byteIndex     | $cdLength      | $bytesLeft | $value | $rlcAcc | -       | 0/1 | -         | $rwcIncLeft     |
-| 0      | 0       | 0/1    | $callID   | Memory     | $memoryAddress | -              | -          | $value | $rlcAcc | -       | 0   | $counter  | $rwcIncLeft     |
-|        |         |        |           |            |                |                |            |        | $rlcAcc |         |     |           |                 |
-| 1      | 0/1     | 0      | $callID   | Memory     | $memoryAddress | $memoryAddress | $bytesLeft | $value | $rlcAcc | -       | 0/1 | $counter  | $rwcIncLeft     |
-| 0      | 0       | 0/1    | $callID   | Memory     | $memoryAddress | -              | -          | $value | $rlcAcc | -       | 0   | $counter  | $rwcIncLeft     |
-|        |         |        |           |            |                |                |            |        | $rlcAcc |         |     |           |                 |
-| 1      | 0/1     | 0      | $callID   | Memory     | $memoryAddress | $memoryAddress | $bytesLeft | $value | $rlcAcc | $isCode | 0/1 | $counter  | $rwcIncLeft     |
-| 0      | 0       | 0/1    | $codeHash | Bytecode   | $byteIndex     | -              | -          | $value | $rlcAcc | $isCode | 0   | -         | $rwcIncLeft     |
-|        |         |        |           |            |                |                |            |        | $rlcAcc |         |     |           |                 |
-| 1      | 0/1     | 0      | $codeHash | Bytecode   | $byteIndex     | $codeLength    | $bytesLeft | $value | $rlcAcc | $isCode | 0/1 | -         | $rwcIncLeft     |
-| 0      | 0       | 0/1    | $callID   | Memory     | $memoryAddress | -              | -          | $value | $rlcAcc | $isCode | 0   | $counter  | $rwcIncLeft     |
-|        |         |        |           |            |                |                |            |        | $rlcAcc |         |     |           |                 |
-| 1      | 0/1     | 0      | $callID   | Memory     | $memoryAddress | $memoryAddress | $bytesLeft | $value | $rlcAcc | -       | 0/1 | $counter  | $rwcIncLeft     |
-| 0      | 0       | 0/1    | $txID     | TxLog      | $byteIndex \|\| TxLogData \|\| $logID | - | - | $value | $rlcAcc | -       | 0   | $counter  | $rwcIncLeft     |
+| q_step   | q_first   | q_last   | IDLo        | IDHi        | Type         | Address          | AddressEnd       | BytesLeft    | Value    | RlcAcc    | IsCode    | Pad   | RwCounter   | RwcIncreaseLeft   |
+| -------- | --------- | -------- | ------      | ----------- | ------------ | ---------------- | ---------------- | ------------ | -------- | --------- | --------- | ----- | ----------- | ----------------- |
+| 1        | 0/1       | 0        | $txID       | 0           | TxCalldata   | $byteIndex       | $cdLength        | $bytesLeft   | $value   | $rlcAcc   | -         | 0/1   | -           | $rwcIncLeft       |
+| 0        | 0         | 0/1      | $callID     | 0           | Memory       | $memoryAddress   | -                | -            | $value   | $rlcAcc   | -         | 0     | $counter    | $rwcIncLeft       |
+|          |           |          |             |             |              |                  |                  |              |          | $rlcAcc   |           |       |             |                   |
+| 1        | 0/1       | 0        | $callID     | 0           | Memory       | $memoryAddress   | $memoryAddress   | $bytesLeft   | $value   | $rlcAcc   | -         | 0/1   | $counter    | $rwcIncLeft       |
+| 0        | 0         | 0/1      | $callID     | 0           | Memory       | $memoryAddress   | -                | -            | $value   | $rlcAcc   | -         | 0     | $counter    | $rwcIncLeft       |
+|          |           |          |             |             |              |                  |                  |              |          | $rlcAcc   |           |       |             |                   |
+| 1        | 0/1       | 0        | $callID     | 0           | Memory       | $memoryAddress   | $memoryAddress   | $bytesLeft   | $value   | $rlcAcc   | $isCode   | 0/1   | $counter    | $rwcIncLeft       |
+| 0        | 0         | 0/1      | $codeHashLo | $codeHashHi | Bytecode     | $byteIndex       | -                | -            | $value   | $rlcAcc   | $isCode   | 0     | -           | $rwcIncLeft       |
+|          |           |          |             |             |              |                  |                  |              |          | $rlcAcc   |           |       |             |                   |
+| 1        | 0/1       | 0        | $codeHashLo | $codeHashHi | Bytecode     | $byteIndex       | $codeLength      | $bytesLeft   | $value   | $rlcAcc   | $isCode   | 0/1   | -           | $rwcIncLeft       |
+| 0        | 0         | 0/1      | $callID     | 0           | Memory       | $memoryAddress   | -                | -            | $value   | $rlcAcc   | $isCode   | 0     | $counter    | $rwcIncLeft       |
+|          |           |          |             |             |              |                  |                  |              |          | $rlcAcc   |           |       |             |                   |
+| 1        | 0/1       | 0        | $callID     | 0           | Memory       | $memoryAddress   | $memoryAddress   | $bytesLeft   | $value   | $rlcAcc   | -         | 0/1   | $counter    | $rwcIncLeft       |
+| 0        | 0         | 0/1      | $txID       | 0           | TxLog        | $logAddress      | -                | -            | $value   | $rlcAcc   | -         | 0     | $counter    | $rwcIncLeft       |
+
+- $logAddress = $byteIndex || TxLogData || $logID
 
 ## Exponentiation Table
 
