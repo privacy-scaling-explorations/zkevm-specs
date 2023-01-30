@@ -72,8 +72,6 @@ The exponentiation circuit consists of the following columns:
         - `mul_gadget.a == base`
         - `mul_gadget.b == base` (for both these cases we equate each 64-bit limb)
 
-
-
 ## Code
 
 Please refer to [Exponentiation Circuit Verification](`src/zkevm-specs/exp_circuit.py`).

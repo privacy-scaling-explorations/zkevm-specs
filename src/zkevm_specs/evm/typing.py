@@ -743,14 +743,14 @@ class KeccakCircuit:
 class ExpCircuit:
     rows: List[ExpCircuitRow]
     pad_rows: List[ExpCircuitRow]
+    max_exp_steps: int
 
-    MAX_EXP_STEPS = 100
-
-    def __init__(self, pad_rows: Optional[List[ExpCircuitRow]] = None) -> None:
+    def __init__(self, pad_rows: Optional[List[ExpCircuitRow]] = None, max_exp_steps: Optional[int] = 100) -> None:
         self.rows = []
         self.pad_rows = []
         if pad_rows is not None:
             self.pad_rows = pad_rows
+        self.max_exp_steps = max_exp_steps
 
     def table(self) -> Sequence[ExpCircuitRow]:
         return self.rows + self.pad_rows
@@ -760,7 +760,6 @@ class ExpCircuit:
         exponentiation = self._exp_by_squaring(base, exponent, steps)
         steps.reverse()
         self._append_steps(base, exponent, exponentiation, steps, randomness, identifier)
-        self._append_padding_row(identifier)
         return self
 
     def _exp_by_squaring(self, base: int, exponent: int, steps: List[Tuple[int, int, int]]):
@@ -818,14 +817,14 @@ class ExpCircuit:
                 # exponent is odd
                 exponent = exponent - 1
 
-    def _append_padding_row(self, identifier: IntOrFQ):
-        rows_left = self.MAX_EXP_STEPS - len(self.rows)
+    def fill_dummy_events(self):
+        rows_left = self.max_exp_steps - len(self.rows)
         for i in range(rows_left):
             self.rows.append(
                 ExpCircuitRow(
                     q_usable=FQ.one(),
                     is_step=FQ.zero(),
-                    identifier=FQ(identifier),
+                    identifier=FQ.zero(),
                     is_last=FQ.zero(),
                     base=RLC(1),
                     exponent=RLC(1),
@@ -838,6 +837,7 @@ class ExpCircuit:
                     r=RLC(1),
                 )
             )
+        return self
 
     def _append_step(
         self,
