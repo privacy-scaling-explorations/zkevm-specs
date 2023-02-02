@@ -9,6 +9,8 @@ Row = namedtuple(
     "Row",
     "q_first q_last hash tag index value is_code push_data_left value_rlc length push_data_size",
 )
+
+
 # Unrolled bytecode
 class UnrolledBytecode(NamedTuple):
     bytes: bytes

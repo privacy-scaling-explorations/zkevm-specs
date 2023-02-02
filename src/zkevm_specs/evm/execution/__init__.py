@@ -56,6 +56,7 @@ from .error_oog_constant import *
 from .error_oog_call import *
 from .error_stack import *
 from .error_invalid_jump import *
+from .error_gas_uint_overflow import *
 
 
 EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
