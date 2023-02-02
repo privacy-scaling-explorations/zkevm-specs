@@ -29,7 +29,6 @@ def mod(instruction: Instruction, a: RLC, n: RLC, r: RLC):
 
 
 def mulmod(instruction: Instruction):
-
     MOD = 2**256
     opcode = instruction.opcode_lookup(True)
     instruction.constrain_equal(opcode, Opcode.MULMOD)

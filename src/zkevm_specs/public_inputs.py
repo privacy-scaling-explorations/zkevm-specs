@@ -95,7 +95,6 @@ def check_row(
     table: Set[TxCallDataGasCostAccRow],
     fixed_u16_table: Set[FixedU16Row],
 ):
-
     q_not_end = row.q_not_end
     q_end = row.q_end
 
