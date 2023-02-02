@@ -48,9 +48,8 @@ class Tag(IntEnum):
     TxRefund = 7
     TxAccessListAccount = 8
     TxAccessListAccountStorage = 9
-    AccountDestructed = 10
-    TxLog = 11
-    TxReceipt = 12
+    TxLog = 10
+    TxReceipt = 11
 
 
 class Row(NamedTuple):
@@ -388,21 +387,6 @@ def check_tx_access_list_account_storage(row: Row, row_prev: Row):
 
 
 @is_circuit_code
-def check_account_destructed(row: Row, row_prev: Row):
-    get_addr = lambda row: row.address()
-
-    # 10.0. Unused keys are 0
-    assert row.id() == 0
-    assert row.field_tag() == 0
-    assert row.storage_key() == 0
-
-    # TODO: Missing constraints
-    # - When keys change, value must be 0
-
-    # TODO: add MPT lookup
-
-
-@is_circuit_code
 def check_tx_log(row: Row, row_prev: Row):
     # tx_id | log_id | field_tag | index | value
     tx_id = row.id()
@@ -560,8 +544,6 @@ def check_state_row(row: Row, row_prev: Row, row_next: Row, tables: Tables, rand
         check_tx_access_list_account_storage(row, row_prev)
     elif row.tag() == Tag.TxAccessListAccount:
         check_tx_access_list_account(row, row_prev)
-    elif row.tag() == Tag.AccountDestructed:
-        check_account_destructed(row, row_prev)
     elif row.tag() == Tag.TxReceipt:
         check_tx_receipt(row, row_prev)
     elif row.tag() == Tag.TxLog:
@@ -734,20 +716,6 @@ class TxAccessListAccountStorageOp(Operation):
         return super().__new__(self, rw_counter, rw,
                 U256(Tag.TxAccessListAccountStorage),
                 U256(tx_id), U256(addr), U256(0), U256(key), # keys
-                value, FQ(0), # values
-                FQ(1)) # lexicographic_ordering_selector
-        # fmt: on
-
-
-class AccountDestructedOp(Operation):
-    """
-    AccountDestructed Operation
-    """
-
-    def __new__(self, rw_counter: int, rw: RW, addr: U160, value: FQ):
-        # fmt: off
-        return super().__new__(self, rw_counter, rw,
-                U256(Tag.AccountDestructed), U256(0), U256(addr), U256(0), U256(0), # keys
                 value, FQ(0), # values
                 FQ(1)) # lexicographic_ordering_selector
         # fmt: on

@@ -190,7 +190,6 @@ class RWTableTag(IntEnum):
 
     Account = auto()
     AccountStorage = auto()
-    AccountDestructed = auto()
 
     CallContext = auto()
     Stack = auto()
@@ -206,7 +205,6 @@ class RWTableTag(IntEnum):
             RWTableTag.TxAccessListAccountStorage,
             RWTableTag.Account,
             RWTableTag.AccountStorage,
-            RWTableTag.AccountDestructed,
             RWTableTag.TxRefund,
         ]
 
