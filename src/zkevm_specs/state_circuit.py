@@ -79,6 +79,7 @@ class Row(NamedTuple):
                       FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ]
     value: FQ
     committed_value: FQ
+    initial_value: FQ
 
     root: FQ
 
@@ -344,7 +345,10 @@ def check_tx_refund(row: Row, row_prev: Row):
     # 7.1 state root does not change
     assert row.root == row_prev.root
 
-    # 7.2 First access for a set of all keys
+    # 7.2 initial value is 0
+    assert row.initial_value == 0
+
+    # 7.3 First access for a set of all keys
     # - If READ, value must be 0
     if not all_keys_eq(row, row_prev) and row.is_write == 0:
         assert row.value == 0
@@ -567,6 +571,7 @@ class Operation(NamedTuple):
     storage_key: U256
     value: FQ
     committed_value: FQ
+    initial_value: FQ
     lexicographic_ordering_selector: FQ
 
 
@@ -579,7 +584,7 @@ class StartOp(Operation):
         # fmt: off
         return super().__new__(self, rw_counter, rw,
                 U256(Tag.Start), U256(0), U256(0), U256(0), U256(0), # keys
-                FQ(0), FQ(0), # values
+                FQ(0), FQ(0), FQ(0), # values
                 FQ(lexicographic_ordering_selector)) # lexicographic_ordering_selector
         # fmt: on
 
@@ -598,7 +603,7 @@ class MemoryOp(Operation):
         # fmt: off
         return super().__new__(self, rw_counter, rw,
                 U256(Tag.Memory), U256(call_id), U256(mem_addr), U256(0), U256(0), # keys
-                FQ(value), FQ(0), # values
+                FQ(value), FQ(0), FQ(0), # values
                 FQ(1)) # lexicographic_ordering_selector
         # fmt: on
 
@@ -612,7 +617,7 @@ class StackOp(Operation):
         # fmt: off
         return super().__new__(self, rw_counter, rw,
                 U256(Tag.Stack), U256(call_id), U256(stack_ptr), U256(0), U256(0), # keys
-                FQ(value), FQ(0), # values
+                FQ(value), FQ(0), FQ(0), # values
                 FQ(1)) # lexicographic_ordering_selector
         # fmt: on
 
@@ -635,7 +640,7 @@ class StorageOp(Operation):
         # fmt: off
         return super().__new__(self, rw_counter, rw,
                 U256(Tag.Storage), U256(tx_id), U256(addr), U256(0), U256(key), # keys
-                value, committed_value, # values
+                value, committed_value, FQ(0), # values
                 FQ(1)) # lexicographic_ordering_selector
         # fmt: on
 
@@ -651,7 +656,7 @@ class CallContextOp(Operation):
         # fmt: off
         return super().__new__(self, rw_counter, rw,
                 U256(Tag.CallContext), U256(call_id), U256(0), U256(field_tag), U256(0), # keys
-                value, FQ(0), # values
+                value, FQ(0), FQ(0), # values
                 FQ(1)) # lexicographic_ordering_selector
         # fmt: on
 
@@ -673,7 +678,7 @@ class AccountOp(Operation):
         # fmt: off
         return super().__new__(self, rw_counter, rw,
                 U256(Tag.Account), U256(0), U256(addr), U256(field_tag), U256(0), # keys
-                value, committed_value, # values
+                value, committed_value, FQ(0), # values
                 FQ(1)) # lexicographic_ordering_selector
         # fmt: on
 
@@ -687,7 +692,7 @@ class TxRefundOp(Operation):
         # fmt: off
         return super().__new__(self, rw_counter, rw,
                 U256(Tag.TxRefund), U256(tx_id), U256(0), U256(0), U256(0), # keys
-                value, FQ(0), # values
+                value, FQ(0), FQ(0), # values
                 FQ(1)) # lexicographic_ordering_selector
         # fmt: on
 
@@ -701,7 +706,7 @@ class TxAccessListAccountOp(Operation):
         # fmt: off
         return super().__new__(self, rw_counter, rw,
                 U256(Tag.TxAccessListAccount), U256(tx_id), U256(addr), U256(0), U256(0), # keys
-                value, FQ(0), # values
+                value, FQ(0), FQ(0), # values
                 FQ(1)) # lexicographic_ordering_selector
         # fmt: on
 
@@ -716,7 +721,7 @@ class TxAccessListAccountStorageOp(Operation):
         return super().__new__(self, rw_counter, rw,
                 U256(Tag.TxAccessListAccountStorage),
                 U256(tx_id), U256(addr), U256(0), U256(key), # keys
-                value, FQ(0), # values
+                value, FQ(0), FQ(0), # values
                 FQ(1)) # lexicographic_ordering_selector
         # fmt: on
 
@@ -739,7 +744,7 @@ class TxLogOp(Operation):
         # fmt: off
         return super().__new__(self, rw_counter, rw,
                 U256(Tag.TxLog),U256(tx_id), U256(log_id), U256(field_tag), U256(index), # keys
-                value, FQ(0), # values
+                value, FQ(0), FQ(0), # values
                 FQ(1)) # lexicographic_ordering_selector
         # fmt: on
 
@@ -753,7 +758,7 @@ class TxReceiptOp(Operation):
         # fmt: off
         return super().__new__(self, rw_counter, rw,
                 U256(Tag.TxReceipt), U256(tx_id),  U256(0), U256(field_tag), U256(0), # keys
-                value, FQ(0), # values
+                value, FQ(0), FQ(0), # values
                 FQ(1)) # lexicographic_ordering_selector
         # fmt: on
 
@@ -777,6 +782,7 @@ def op2row(op: Operation, randomness: FQ, root: FQ) -> Row:
 
     value = FQ(op.value)
     committed_value = FQ(op.committed_value)
+    initial_value = FQ(op.initial_value)
     lexicographic_ordering_selector = FQ(op.lexicographic_ordering_selector)
 
     return Row(
@@ -787,6 +793,7 @@ def op2row(op: Operation, randomness: FQ, root: FQ) -> Row:
         storage_key_bytes,  # type: ignore
         value,
         committed_value,
+        initial_value,
         root,
         lexicographic_ordering_selector,
     )
