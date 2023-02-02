@@ -23,7 +23,7 @@ def verify(
     if isinstance(ops_or_rows[0], Operation):
         rows = assign_state_circuit(ops_or_rows, randomness)
     ok = True
-    for (idx, row) in enumerate(rows):
+    for idx, row in enumerate(rows):
         row_prev = rows[(idx - 1) % len(rows)]
         row_next = rows[(idx + 1) % len(rows)]
         try:
