@@ -10,6 +10,7 @@ from zkevm_specs.evm import (
     Bytecode,
     RWDictionary,
     RWTableTag,
+    CallContextFieldTag,
 )
 from zkevm_specs.util import rand_fq, RLC, U64, GAS_COST_COPY, memory_expansion, memory_word_size
 
@@ -41,8 +42,14 @@ def test_memory(opcode: Opcode, offset: int, value: bytes):
     is_not_mstore8 = 1 - is_mstore8
 
     rw_dictionary = (
-        RWDictionary(1).stack_read(call_id, 1022, offset_rlc).stack_write(call_id, 1022, value_rlc)
+        RWDictionary(1)
+        .stack_read(call_id, 1022, offset_rlc)
+        .stack_write(call_id, 1022, value_rlc)
+        .call_context_read(call_id, CallContextFieldTag.TxId, call_id)
     )
+
+    for idx in range(32):
+        rw_dictionary.memory_read(call_id, memory_offset + idx, value[idx])
 
     tables = Tables(
         block_table=set(Block().table_assignments(randomness)),
@@ -52,7 +59,6 @@ def test_memory(opcode: Opcode, offset: int, value: bytes):
     )
 
     next_mem_size, memory_gas_cost = memory_expansion(memory_offset, length + 1)
-
     gas = Opcode.MLOAD.constant_gas_cost() + memory_gas_cost + length * GAS_COST_COPY
 
     verify_steps(
