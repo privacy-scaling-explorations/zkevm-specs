@@ -23,13 +23,12 @@ def memory(instruction: Instruction):
     if is_mstore8 == FQ(1):
         instruction.memory_lookup(RW.Write if is_store == FQ(1) else RW.Read, address.expr())
 
-    if is_not_mstore8 == FQ(1):
-        for idx in range(32):
-            instruction.memory_lookup(RW.Write if is_store == FQ(1) else RW.Read, FQ(0))
+    # if is_not_mstore8 == FQ(1):
+    #     for idx in range(32):
+    #         instruction.memory_lookup(RW.Write if is_store == FQ(1) else RW.Read, FQ(0))
 
     rw_counter_delta = 34
     stack_pointer_delta = 0 + is_store * -2
-    print("memory_expansion_gas_cost", memory_expansion_gas_cost)
 
     instruction.step_state_transition_in_same_context(
         opcode,

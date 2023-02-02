@@ -53,9 +53,7 @@ def test_memory(opcode: Opcode, offset: int, value: bytes):
 
     next_mem_size, memory_gas_cost = memory_expansion(memory_offset, length + 1)
 
-    print("next_mem_size, memory_gas_cost, length", next_mem_size, memory_gas_cost, length)
     gas = Opcode.MLOAD.constant_gas_cost() + memory_gas_cost + length * GAS_COST_COPY
-    print("gas", gas)
 
     verify_steps(
         randomness=randomness,
