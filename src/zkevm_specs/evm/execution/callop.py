@@ -176,7 +176,7 @@ def callop(instruction: Instruction):
         instruction.constrain_equal(is_success, FQ(1))
 
         # Empty return_data
-        for (field_tag, expected_value) in [
+        for field_tag, expected_value in [
             (CallContextFieldTag.LastCalleeId, FQ(0)),
             (CallContextFieldTag.LastCalleeReturnDataOffset, FQ(0)),
             (CallContextFieldTag.LastCalleeReturnDataLength, FQ(0)),
@@ -212,7 +212,7 @@ def callop(instruction: Instruction):
         stack_pointer_delta = 5 + is_call + is_callcode
 
         # Save caller's call state
-        for (field_tag, expected_value) in [
+        for field_tag, expected_value in [
             (CallContextFieldTag.ProgramCounter, instruction.curr.program_counter + 1),
             (
                 CallContextFieldTag.StackPointer,
@@ -232,7 +232,7 @@ def callop(instruction: Instruction):
 
         # Setup next call's context. Note that RwCounterEndOfReversion, IsPersistent
         # have been checked above.
-        for (field_tag, expected_value) in [
+        for field_tag, expected_value in [
             (CallContextFieldTag.CallerId, instruction.curr.call_id),
             (CallContextFieldTag.TxId, tx_id.expr()),
             (CallContextFieldTag.Depth, depth.expr() + 1),

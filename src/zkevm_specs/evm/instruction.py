@@ -275,7 +275,7 @@ class Instruction:
         ]
 
         # Update caller's last callee information
-        for (field_tag, expected_value) in [
+        for field_tag, expected_value in [
             (CallContextFieldTag.LastCalleeId, self.curr.call_id),
             (CallContextFieldTag.LastCalleeReturnDataOffset, return_data_offset),
             (CallContextFieldTag.LastCalleeReturnDataLength, return_data_length),

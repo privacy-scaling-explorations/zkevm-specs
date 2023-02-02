@@ -305,7 +305,6 @@ class Bytecode:
                     self.push(arg)
                 self.code.append(opcode)
                 self.is_code.append(True)
-            print(name, self.code)
 
             return self
 

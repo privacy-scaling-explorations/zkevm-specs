@@ -7,8 +7,8 @@ It then copies `length` bytes from call data buffer at the offset `data_offset` 
 address `memory_offset`. EVM also pads 0 to the end of call data buffer in the case of out-of-bound
 access to the call data buffer.
 
-The gas cost of `CALLDATACOPY` opcode consists of two parts: constant cost 3 and dynamic cost.
-The dynamic cost includes the memory expansion cost and copier cost in terms of the number of
+1. A const gas cost `3 gas`
+2. A dynamic cost: the memory expansion cost and copier cost in terms of the number of
 words copied. Note that when `length = 0`, the memory expansion cost is 0 regardless of
 `memory_offset` value.
 

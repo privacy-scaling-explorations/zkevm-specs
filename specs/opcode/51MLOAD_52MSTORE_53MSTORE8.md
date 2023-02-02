@@ -4,13 +4,19 @@
 
 ### EVM behavior
 
-The `MLOAD` opcode loads a word (32 bytes of data) from memory. This is done by popping the `address` from the stack. The data at `[address, address + 31]` is then loaded from memory and pushed to the stack.
+`MLOAD` loads a word (32 bytes of data) from memory. This is done by popping the `address` from the stack. The data at `[address, address + 31]` is then loaded from memory and pushed to the stack
+`MSTORE` writes a word (32 bytes of data) to memory. This is done by popping two value, the `address` and then the `value`, from the stack. `value` is then written to memory at `[address, address + 31]`
+`MSTORE8` works similarly to `MSTORE` except that only the LSB of `value` is written to `address`
 
-The `MSTORE` opcode writes a word (32 bytes of data) to memory. This is done by popping two value, the `address` and then the `value`, from the stack. `value` is then written to memory at `[address, address + 31]`.
+1. A const gas cost: `3 gas`
+2. A dynamic gas cost: an additional gas cost is charged according to the highest memory location accessed.
 
-The `MSTORE8` opcode works similarly to `MSTORE` except that only the LSB of `value` is written to `address`.
+The highest memory location is calculated as follows:
 
-The required memory size per call is tracked. If an operation requires expanding the memory size an additional gas cost is charged. The calculations are done on the highest memory location accessed. For `MLOAD` and `MSTORE` this is `address + 32` (because 32 bytes are read/written) and for `MSTORE8` this is `address + 1` (only a single byte is written).
+```
+MLOAD, MSTORE: address + 32 (because 32 bytes are read/written)
+MSTORE8: address + 1 (only a single byte is written)
+```
 
 The memory size is calculated as follows:
 
@@ -18,7 +24,7 @@ The memory size is calculated as follows:
 memory_size(address) := ceil(address/32)
 ```
 
-The memory cost is calculated like this:
+The memory cost is calculated as follows:
 
 ```
 Gmem := 3

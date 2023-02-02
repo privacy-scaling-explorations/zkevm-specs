@@ -106,14 +106,13 @@ def begin_tx(instruction: Instruction):
                 rw_counter=Transition.delta(10), call_id=Transition.to(call_id)
             )
         else:
-
             # Setup next call's context
             # Note that:
             # - CallerId, ReturnDataOffset, ReturnDataLength
             #   should never be used in root call, so unnecessary to be checked
             # - TxId is checked from previous step or constraint to 1 if is_first_step
             # - IsSuccess, IsPersistent will be verified in the end of tx
-            for (tag, value) in [
+            for tag, value in [
                 (CallContextFieldTag.Depth, FQ(1)),
                 (CallContextFieldTag.CallerAddress, tx_caller_address),
                 (CallContextFieldTag.CalleeAddress, tx_callee_address),
