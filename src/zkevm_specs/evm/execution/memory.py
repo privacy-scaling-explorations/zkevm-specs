@@ -1,7 +1,6 @@
 from ..instruction import Instruction, Transition
 from ..opcode import Opcode
-
-# from ..table import RW
+from ..table import RW
 from ...util import FQ
 
 
@@ -21,14 +20,12 @@ def memory(instruction: Instruction):
         instruction.curr.memory_size, address.expr() + FQ(1) + (is_not_mstore8.expr() * FQ(31))
     )
 
-    # if is_mstore8 == FQ(1):
-    #     instruction.memory_lookup(RW.Write if is_store == FQ(1) else RW.Read, address.expr())
+    if is_mstore8 == FQ(1):
+        instruction.memory_lookup(RW.Write if is_store == FQ(1) else RW.Read, address.expr())
 
-    # if is_not_mstore8 == FQ(1):
-    #     for idx in range(32):
-    #         instruction.memory_lookup(
-    #             RW.Write if is_store == FQ(1) else RW.Read, FQ(0)
-    #         )
+    if is_not_mstore8 == FQ(1):
+        for idx in range(32):
+            instruction.memory_lookup(RW.Write if is_store == FQ(1) else RW.Read, FQ(0))
 
     rw_counter_delta = 34
     stack_pointer_delta = 0 + is_store * -2
