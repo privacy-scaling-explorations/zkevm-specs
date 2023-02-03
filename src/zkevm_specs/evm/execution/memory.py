@@ -19,7 +19,7 @@ def memory(instruction: Instruction):
     src_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
     memory_offset = instruction.curr.memory_size
     next_memory_size, memory_expansion_gas_cost = instruction.memory_expansion(
-        memory_offset, address.expr() + FQ(1) + (is_not_mstore8.expr() * FQ(31))
+        memory_offset, address.expr() + FQ(32)
     )
 
     if is_mstore8 == FQ(1):

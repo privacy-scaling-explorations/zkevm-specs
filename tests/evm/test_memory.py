@@ -18,19 +18,26 @@ TESTING_DATA = (
     (
         Opcode.MLOAD,
         0,
-        bytes.fromhex("0000000000000000000000000000000000000000000000000000000000000000"),
+        0xFF,
+        bytes.fromhex("00000000000000000000000000000000000000000000000000000000000000FF"),
+    ),
+    (
+        Opcode.MLOAD,
+        1,
+        0xFF00,
+        bytes.fromhex("00000000000000000000000000000000000000000000000000000000000000FF"),
     ),
 )
 
 
-@pytest.mark.parametrize("opcode, offset, value", TESTING_DATA)
-def test_memory(opcode: Opcode, offset: int, value: bytes):
+@pytest.mark.parametrize("opcode, offset, value, memory", TESTING_DATA)
+def test_memory(opcode: Opcode, offset: int, value: int, memory: bytes):
     randomness = rand_fq()
 
     offset_rlc = RLC(offset, randomness)
     value_rlc = RLC(value, randomness)
     call_id = 1
-    memory_offset = 0
+    curr_memory_size = 0
     length = offset
 
     bytecode = Bytecode().mload(offset_rlc).stop()
@@ -49,7 +56,7 @@ def test_memory(opcode: Opcode, offset: int, value: bytes):
     )
 
     for idx in range(32):
-        rw_dictionary.memory_read(call_id, memory_offset + idx, value[idx])
+        rw_dictionary.memory_read(call_id, curr_memory_size + idx, memory[idx])
 
     tables = Tables(
         block_table=set(Block().table_assignments(randomness)),
@@ -58,8 +65,8 @@ def test_memory(opcode: Opcode, offset: int, value: bytes):
         rw_table=rw_dictionary.rws,
     )
 
-    next_mem_size, memory_gas_cost = memory_expansion(memory_offset, length + 1)
-    gas = Opcode.MLOAD.constant_gas_cost() + memory_gas_cost + length * GAS_COST_COPY
+    next_mem_size, memory_gas_cost = memory_expansion(curr_memory_size, offset + 32)
+    gas = Opcode.MLOAD.constant_gas_cost() + memory_gas_cost
 
     verify_steps(
         randomness=randomness,
@@ -85,7 +92,7 @@ def test_memory(opcode: Opcode, offset: int, value: bytes):
                 code_hash=bytecode_hash,
                 program_counter=34,
                 stack_pointer=1022,
-                memory_size=1,
+                memory_size=next_mem_size,
                 gas_left=0,
             ),
         ],

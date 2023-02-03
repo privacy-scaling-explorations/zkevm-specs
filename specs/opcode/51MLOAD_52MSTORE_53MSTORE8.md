@@ -9,13 +9,13 @@
 `MSTORE8` works similarly to `MSTORE` except that only the LSB of `value` is written to `address`
 
 1. A const gas cost: `3 gas`
-2. A dynamic gas cost: an additional gas cost is charged according to the highest memory location accessed.
+2. A dynamic gas cost: a dynamic gas depends on the highest memory location accessed
 
 The highest memory location is calculated as follows:
 
 ```
-MLOAD, MSTORE: address + 32 (because 32 bytes are read/written)
-MSTORE8: address + 1 (only a single byte is written)
+MLOAD, MSTORE: address + 32 (32 bytes are read/written)
+MSTORE8: address + 1 (a byte is written)
 ```
 
 The memory size is calculated as follows:
