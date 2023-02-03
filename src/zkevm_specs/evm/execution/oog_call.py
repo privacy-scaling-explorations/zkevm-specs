@@ -1,8 +1,7 @@
 from zkevm_specs.evm.util.call_gadget import CallGadget
 from ...util import FQ
-from ..instruction import Instruction, Transition
+from ..instruction import Instruction
 from ..table import CallContextFieldTag
-from ..execution_state import ExecutionState
 from ...util import N_BYTES_GAS
 from ..opcode import Opcode
 
@@ -30,28 +29,4 @@ def oog_call(instruction: Instruction):
     gas_not_enough, _ = instruction.compare(instruction.curr.gas_left, gas_cost, N_BYTES_GAS)
     instruction.constrain_equal(gas_not_enough, FQ(1))
 
-    # current call must be failed.
-    instruction.constrain_equal(
-        instruction.call_context_lookup(CallContextFieldTag.IsSuccess), FQ(0)
-    )
-
-    # Go to EndTx only when is_root
-    is_to_end_tx = instruction.is_equal(instruction.next.execution_state, ExecutionState.EndTx)
-    instruction.constrain_equal(FQ(instruction.curr.is_root), is_to_end_tx)
-
-    # state transition.
-    if instruction.curr.is_root:
-        # Do step state transition
-        instruction.constrain_step_state_transition(
-            rw_counter=Transition.delta(12),
-            call_id=Transition.same(),
-        )
-    else:
-        # when it is internal call, need to restore caller's state as finishing this call.
-        # Restore caller state to next StepState
-        instruction.step_state_transition_to_restored_context(
-            rw_counter_delta=12,
-            return_data_offset=FQ(0),
-            return_data_length=FQ(0),
-            gas_left=instruction.curr.gas_left,
-        )
+    instruction.constrain_error_state(12)

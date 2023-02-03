@@ -1129,3 +1129,29 @@ class Instruction:
     ) -> Tuple[FQ, FQ]:
         exp_table_row = self.tables.exp_lookup(identifier, is_last, base_limbs, exponent_lo_hi)
         return exp_table_row.exponentiation_lo, exp_table_row.exponentiation_hi
+
+    def constrain_error_state(self, rw_counter_delta: int):
+        # Current call must fail.
+        is_success = self.call_context_lookup(CallContextFieldTag.IsSuccess)
+        self.constrain_equal(is_success, FQ(0))
+
+        # Go to EndTx only when is_root.
+        is_to_end_tx = self.is_equal(self.next.execution_state, ExecutionState.EndTx)
+        self.constrain_equal(FQ(self.curr.is_root), is_to_end_tx)
+
+        # When it's a root call.
+        if self.curr.is_root:
+            # Do step state transition.
+            self.constrain_step_state_transition(
+                rw_counter=Transition.delta(rw_counter_delta),
+                call_id=Transition.same(),
+            )
+        else:
+            # When it is internal call, need to restore caller's state as finishing this call.
+            # Restore caller state to next StepState.
+            self.step_state_transition_to_restored_context(
+                rw_counter_delta=rw_counter_delta,
+                return_data_offset=FQ(0),
+                return_data_length=FQ(0),
+                gas_left=self.curr.gas_left,
+            )
