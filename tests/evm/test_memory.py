@@ -27,6 +27,18 @@ TESTING_DATA = (
         0xFF00,
         bytes.fromhex("00000000000000000000000000000000000000000000000000000000000000FF"),
     ),
+    (
+        Opcode.MSTORE,
+        0,
+        0xFF,
+        bytes.fromhex("00000000000000000000000000000000000000000000000000000000000000FF"),
+    ),
+    (
+        Opcode.MSTORE,
+        1,
+        0xFF,
+        bytes.fromhex("0000000000000000000000000000000000000000000000000000000000000000FF"),
+    ),
 )
 
 
@@ -40,23 +52,32 @@ def test_memory(opcode: Opcode, offset: int, value: int, memory: bytes):
     curr_memory_size = 0
     length = offset
 
-    bytecode = Bytecode().mload(offset_rlc).stop()
-    bytecode_hash = RLC(bytecode.hash(), randomness)
-
     is_mload = opcode == Opcode.MLOAD
     is_mstore8 = opcode == Opcode.MSTORE8
     is_store = 1 - is_mload
     is_not_mstore8 = 1 - is_mstore8
 
-    rw_dictionary = (
-        RWDictionary(1)
-        .stack_read(call_id, 1022, offset_rlc)
-        .stack_write(call_id, 1022, value_rlc)
-        .call_context_read(call_id, CallContextFieldTag.TxId, call_id)
+    bytecode = Bytecode()
+    rw_dictionary = RWDictionary(1).stack_read(call_id, 1022, offset_rlc)
+    (bytecode, rw_dictionary) = (
+        (bytecode.mload(offset_rlc), rw_dictionary.stack_write(call_id, 1022, value_rlc))
+        if is_mload
+        else (
+            bytecode.mstore(offset_rlc, value_rlc),
+            rw_dictionary.stack_read(call_id, 1023, value_rlc),
+        )
     )
 
-    for idx in range(32):
-        rw_dictionary.memory_read(call_id, curr_memory_size + idx, memory[idx])
+    bytecode = bytecode.stop()
+    bytecode_hash = RLC(bytecode.hash(), randomness)
+    rw_dictionary = rw_dictionary.call_context_read(call_id, CallContextFieldTag.TxId, call_id)
+
+    if is_not_mstore8:
+        for idx in range(32):
+            if is_mload:
+                rw_dictionary.memory_read(call_id, curr_memory_size + idx, memory[idx])
+            else:
+                rw_dictionary.memory_write(call_id, curr_memory_size + idx, memory[idx])
 
     tables = Tables(
         block_table=set(Block().table_assignments(randomness)),
@@ -64,6 +85,8 @@ def test_memory(opcode: Opcode, offset: int, value: int, memory: bytes):
         bytecode_table=set(bytecode.table_assignments(randomness)),
         rw_table=rw_dictionary.rws,
     )
+
+    # print(sorted(tables.rw_table, key=lambda x: x.rw_counter.n))
 
     next_mem_size, memory_gas_cost = memory_expansion(curr_memory_size, offset + 32)
     gas = Opcode.MLOAD.constant_gas_cost() + memory_gas_cost
@@ -91,7 +114,7 @@ def test_memory(opcode: Opcode, offset: int, value: int, memory: bytes):
                 is_create=False,
                 code_hash=bytecode_hash,
                 program_counter=34,
-                stack_pointer=1022,
+                stack_pointer=1022 if is_mload else 1023,
                 memory_size=next_mem_size,
                 gas_left=0,
             ),
