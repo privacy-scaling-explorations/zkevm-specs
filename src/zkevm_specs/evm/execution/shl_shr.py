@@ -68,6 +68,7 @@ def check_witness(
     instruction.constrain_equal(
         push.expr(), (is_shl * dividend.expr() + is_shr * quotient.expr()) * (1 - divisor_is_zero)
     )
+    instruction.constrain_zero(shf0 - FQ(shift.le_bytes[0]))
 
     # Constrain shift == shift.cells[0] when divisor != 0.
     instruction.constrain_zero(
