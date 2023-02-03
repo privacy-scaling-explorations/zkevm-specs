@@ -52,6 +52,7 @@ from typing import Set
 # We prove (E) by quering the block table for the gas limit and the rw table for
 # the cumulative gas and ensuring CumulativeGasCost <= GasLimit.
 
+
 # Count the max number of txs that the TxTable can hold by counting rows of
 # type CallerAddress.
 def get_tx_table_max_txs(table: Set[TxTableRow]) -> int:

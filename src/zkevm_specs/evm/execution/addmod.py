@@ -20,7 +20,6 @@ def lt_u256(instruction: Instruction, a: RLC, b: RLC) -> FQ:
 
 
 def addmod(instruction: Instruction):
-
     opcode = instruction.opcode_lookup(True)
     instruction.constrain_equal(opcode, Opcode.ADDMOD)
 

@@ -3,7 +3,6 @@ from zkevm_specs.opcode import check_memory_ops, Memory, OP_MLOAD, OP_MSTORE, OP
 
 
 def test_check_memory_ops():
-
     memory = Memory()
     # Store a value at address 0
     check_memory_ops(OP_MSTORE, memory, u256_to_u8s(0), range(1, 33), 0, 1, G_MEM)

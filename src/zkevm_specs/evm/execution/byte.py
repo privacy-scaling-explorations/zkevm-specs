@@ -23,7 +23,7 @@ def byte(instruction: Instruction):
     is_byte_selected = [instruction.is_equal(FQ(index[0]), FQ(31 - idx)) for idx in range(32)]
 
     selected_byte = FQ(0)
-    for (cell, is_selected) in zip(value, is_byte_selected):
+    for cell, is_selected in zip(value, is_byte_selected):
         selected_byte += is_selected * is_msb_sum_zero * FQ(cell)
 
     instruction.constrain_equal(

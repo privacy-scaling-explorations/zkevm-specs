@@ -5,6 +5,7 @@ from zkevm_specs.bytecode import *
 from zkevm_specs.evm import Opcode, Bytecode, BytecodeFieldTag, BytecodeTableRow, is_push
 from zkevm_specs.util import RLC, rand_fq, U256
 
+
 # Unroll the bytecode
 def unroll(bytecode, randomness):
     return UnrolledBytecode(bytecode, list(Bytecode(bytecode).table_assignments(randomness)))
@@ -20,7 +21,7 @@ def verify_rows(bytecodes, rows, success):
     push_table = assign_push_table()
     keccak_table = assign_keccak_table(map(lambda v: v.bytes, bytecodes), randomness)
     try:
-        for (idx, row) in enumerate(rows):
+        for idx, row in enumerate(rows):
             next_row = rows[(idx + 1) % len(rows)]
             check_bytecode_row(row, next_row, push_table, keccak_table, randomness)
             ok = True
