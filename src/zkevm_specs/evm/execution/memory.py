@@ -23,22 +23,19 @@ def memory(instruction: Instruction):
     )
 
     if is_mstore8 == FQ(1):
-        instruction.memory_lookup(RW.Write if is_store == FQ(1) else RW.Read, address.expr())
+        instruction.memory_lookup(RW.Write, address.expr())
 
     if is_not_mstore8 == FQ(1):
         for idx in range(32):
             instruction.memory_lookup(
-                RW.Write if is_store == FQ(1) else RW.Read, memory_offset + idx, src_id
+                RW.Write if is_store == FQ(1) else RW.Read, address.expr() + idx, src_id
             )
-
-    rw_counter_delta = 3 + (is_not_mstore8 * 31)
-    stack_pointer_delta = 0 + is_store * -2
 
     instruction.step_state_transition_in_same_context(
         opcode,
-        rw_counter=Transition.delta(rw_counter_delta),
+        rw_counter=Transition.delta(34 - (is_mstore8 * 31)),
         program_counter=Transition.delta(1),
-        stack_pointer=Transition.delta(stack_pointer_delta),
+        stack_pointer=Transition.delta(is_store * -2),
         memory_size=Transition.to(next_memory_size),
         dynamic_gas_cost=memory_expansion_gas_cost,
     )

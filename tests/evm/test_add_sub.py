@@ -17,12 +17,12 @@ from common import generate_nasty_tests
 
 TESTING_DATA = [
     (Opcode.ADD, 0x030201, 0x060504),
-    # (Opcode.SUB, 0x090705, 0x060504),
-    # (Opcode.ADD, rand_word(), rand_word()),
-    # (Opcode.SUB, rand_word(), rand_word()),
+    (Opcode.SUB, 0x090705, 0x060504),
+    (Opcode.ADD, rand_word(), rand_word()),
+    (Opcode.SUB, rand_word(), rand_word()),
 ]
 
-# generate_nasty_tests(TESTING_DATA, (Opcode.ADD, Opcode.SUB))
+generate_nasty_tests(TESTING_DATA, (Opcode.ADD, Opcode.SUB))
 
 
 @pytest.mark.parametrize("opcode, a, b", TESTING_DATA)
@@ -77,4 +77,3 @@ def test_add_sub(opcode: Opcode, a: int, b: int):
             ),
         ],
     )
-    # assert(False)

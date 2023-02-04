@@ -42,13 +42,13 @@ TESTING_DATA = (
     (
         Opcode.MSTORE8,
         0,
-        0xFFFF,
+        bytes.fromhex("FFFF"),
         bytes.fromhex("FF"),
     ),
     (
         Opcode.MSTORE8,
         1,
-        0xFF,
+        bytes.fromhex("FF"),
         bytes.fromhex("FFFF"),
     ),
 )
@@ -89,12 +89,15 @@ def test_memory(opcode: Opcode, offset: int, value: int, memory: bytes):
     )
 
     bytecode_hash = RLC(bytecode.hash(), randomness)
+    if is_mstore8:
+        rw_dictionary.memory_write(call_id, length, value[0])
+
     if is_not_mstore8:
         for idx in range(32):
             if is_mload:
-                rw_dictionary.memory_read(call_id, curr_memory_size + idx, memory[idx])
+                rw_dictionary.memory_read(call_id, offset + idx, memory[idx])
             else:
-                rw_dictionary.memory_write(call_id, curr_memory_size + idx, memory[idx])
+                rw_dictionary.memory_write(call_id, offset + idx, memory[idx])
 
     tables = Tables(
         block_table=set(Block().table_assignments(randomness)),
@@ -103,8 +106,13 @@ def test_memory(opcode: Opcode, offset: int, value: int, memory: bytes):
         rw_table=rw_dictionary.rws,
     )
 
-    next_mem_size, memory_gas_cost = memory_expansion(curr_memory_size, offset + 32)
+    address = offset + 1 + (is_not_mstore8 * 31)
+    next_mem_size, memory_gas_cost = memory_expansion(curr_memory_size, address)
     gas = Opcode.MLOAD.constant_gas_cost() + memory_gas_cost
+
+    rw_counter = 35 - (is_mstore8 * 31)
+    program_counter = 66 - (is_mload * 33)
+    stack_pointer = 1020 + (is_mload * 2)
 
     verify_steps(
         randomness=randomness,
@@ -117,19 +125,19 @@ def test_memory(opcode: Opcode, offset: int, value: int, memory: bytes):
                 is_root=True,
                 is_create=False,
                 code_hash=bytecode_hash,
-                program_counter=33 if is_mload else 66,
+                program_counter=program_counter,
                 stack_pointer=1022,
                 gas_left=gas,
             ),
             StepState(
                 execution_state=ExecutionState.STOP,
-                rw_counter=35,
+                rw_counter=rw_counter,
                 call_id=call_id,
                 is_root=True,
                 is_create=False,
                 code_hash=bytecode_hash,
-                program_counter=34 if is_mload else 67,
-                stack_pointer=1022 if is_mload else 1020,
+                program_counter=program_counter + 1,
+                stack_pointer=stack_pointer,
                 memory_size=next_mem_size,
                 gas_left=0,
             ),
