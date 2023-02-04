@@ -285,10 +285,6 @@ class Instruction:
                 expected_value,
             )
 
-        # Consume all gas_left if call halts in exception
-        if self.curr.execution_state.halts_in_exception():
-            gas_left = FQ(0)
-
         # Accumulate reversible_write_counter in case this call stack reverts
         # in the future even it itself succeeds.
         # Note that when sub-call halts in failure, we don't need to
@@ -1153,5 +1149,6 @@ class Instruction:
                 rw_counter_delta=rw_counter_delta,
                 return_data_offset=FQ(0),
                 return_data_length=FQ(0),
-                gas_left=self.curr.gas_left,
+                # Consume all gas_left if it's an exception step.
+                gas_left=FQ(0),
             )
