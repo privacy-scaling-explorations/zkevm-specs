@@ -17,6 +17,8 @@ The operations recorded in the state proof are:
 7. `TxRefund`: Value to refund to the tx sender
 8. `TxAccessListAccount`: State of the account access list
 9. `TxAccessListAccountStorage`: State of the account storage access list
+10. `TxLog`: State of the transaction log
+11. `TxReceipt`: State of the transaction receipt
 
 Each operation uses different parameters for indexing.  See [RW Table](./tables.md#rw_table) for the complete details.
 

@@ -359,14 +359,14 @@ def check_tx_access_list_account(row: Row, row_prev: Row):
     get_tx_id = lambda row: row.id()
     get_addr = lambda row: row.address()
 
-    # 9.0. Unused keys are 0
+    # 8.0. Unused keys are 0
     assert row.field_tag() == 0
     assert row.storage_key() == 0
 
-    # 9.1 state root does not change
+    # 8.1 state root does not change
     assert row.root == row_prev.root
 
-    # 9.2 First access for a set of all keys
+    # 8.2 First access for a set of all keys
     # - If READ, value must be 0
     if not all_keys_eq(row, row_prev) and row.is_write == 0:
         assert row.value == 0
@@ -378,13 +378,13 @@ def check_tx_access_list_account_storage(row: Row, row_prev: Row):
     get_addr = lambda row: row.address()
     get_storage_key = lambda row: row.storage_key()
 
-    # 8.0. Unused keys are 0
+    # 9.0. Unused keys are 0
     assert row.field_tag() == 0
 
-    # 8.1 State root cannot change
+    # 9.1 State root cannot change
     assert row.root == row_prev.root
 
-    # 8.2 First access for a set of all keys
+    # 9.2 First access for a set of all keys
     # - If READ, value must be 0
     if not all_keys_eq(row, row_prev) and row.is_write == 0:
         assert row.value == 0
@@ -396,10 +396,10 @@ def check_tx_log(row: Row, row_prev: Row):
     tx_id = row.id()
     prev_tx_id = row_prev.id()
 
-    # 12.0 is_write is always true
+    # 10.0 is_write is always true
     assert row.is_write == 1
 
-    # 12.1 state root does not change
+    # 10.1 state root does not change
     assert row.root == row_prev.root
 
     # removed field_tag-specific constraints as issue
