@@ -2,7 +2,7 @@
 
 ## Procedure
 
-`ErrorInvalidOpcode` may occur when invoked via `CALL`, `CALLCODE`, `DELEGATECALL`, `STATICCALL`, `CREATE` and `CREATE2`.
+`ErrorInvalidOpcode` may occur when an invalid opcode is encountered in any step during the execution.
 
 ### EVM behavior
 
