@@ -39,6 +39,18 @@ TESTING_DATA = (
         0xFF,
         bytes.fromhex("0000000000000000000000000000000000000000000000000000000000000000FF"),
     ),
+    (
+        Opcode.MSTORE8,
+        0,
+        0xFFFF,
+        bytes.fromhex("FF"),
+    ),
+    (
+        Opcode.MSTORE8,
+        1,
+        0xFF,
+        bytes.fromhex("FFFF"),
+    ),
 )
 
 
@@ -57,21 +69,26 @@ def test_memory(opcode: Opcode, offset: int, value: int, memory: bytes):
     is_store = 1 - is_mload
     is_not_mstore8 = 1 - is_mstore8
 
-    bytecode = Bytecode()
-    rw_dictionary = RWDictionary(1).stack_read(call_id, 1022, offset_rlc)
-    (bytecode, rw_dictionary) = (
-        (bytecode.mload(offset_rlc), rw_dictionary.stack_write(call_id, 1022, value_rlc))
+    bytecode = (
+        Bytecode().mload(offset_rlc).stop()
         if is_mload
-        else (
-            bytecode.mstore(offset_rlc, value_rlc),
-            rw_dictionary.stack_read(call_id, 1023, value_rlc),
-        )
+        else Bytecode().mstore8(offset_rlc, value_rlc).stop()
+        if is_mstore8
+        else Bytecode().mstore(offset_rlc, value_rlc).stop()
+    )
+    rw_dictionary = (
+        RWDictionary(1)
+        .stack_read(call_id, 1022, offset_rlc)
+        .stack_write(call_id, 1022, value_rlc)
+        .call_context_read(call_id, CallContextFieldTag.TxId, call_id)
+        if is_mload
+        else RWDictionary(1)
+        .stack_read(call_id, 1022, offset_rlc)
+        .stack_read(call_id, 1023, value_rlc)
+        .call_context_read(call_id, CallContextFieldTag.TxId, call_id)
     )
 
-    bytecode = bytecode.stop()
     bytecode_hash = RLC(bytecode.hash(), randomness)
-    rw_dictionary = rw_dictionary.call_context_read(call_id, CallContextFieldTag.TxId, call_id)
-
     if is_not_mstore8:
         for idx in range(32):
             if is_mload:
@@ -85,8 +102,6 @@ def test_memory(opcode: Opcode, offset: int, value: int, memory: bytes):
         bytecode_table=set(bytecode.table_assignments(randomness)),
         rw_table=rw_dictionary.rws,
     )
-
-    # print(sorted(tables.rw_table, key=lambda x: x.rw_counter.n))
 
     next_mem_size, memory_gas_cost = memory_expansion(curr_memory_size, offset + 32)
     gas = Opcode.MLOAD.constant_gas_cost() + memory_gas_cost
@@ -102,7 +117,7 @@ def test_memory(opcode: Opcode, offset: int, value: int, memory: bytes):
                 is_root=True,
                 is_create=False,
                 code_hash=bytecode_hash,
-                program_counter=33,
+                program_counter=33 if is_mload else 66,
                 stack_pointer=1022,
                 gas_left=gas,
             ),
@@ -113,8 +128,8 @@ def test_memory(opcode: Opcode, offset: int, value: int, memory: bytes):
                 is_root=True,
                 is_create=False,
                 code_hash=bytecode_hash,
-                program_counter=34,
-                stack_pointer=1022 if is_mload else 1023,
+                program_counter=34 if is_mload else 67,
+                stack_pointer=1022 if is_mload else 1020,
                 memory_size=next_mem_size,
                 gas_left=0,
             ),

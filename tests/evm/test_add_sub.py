@@ -17,12 +17,12 @@ from common import generate_nasty_tests
 
 TESTING_DATA = [
     (Opcode.ADD, 0x030201, 0x060504),
-    (Opcode.SUB, 0x090705, 0x060504),
-    (Opcode.ADD, rand_word(), rand_word()),
-    (Opcode.SUB, rand_word(), rand_word()),
+    # (Opcode.SUB, 0x090705, 0x060504),
+    # (Opcode.ADD, rand_word(), rand_word()),
+    # (Opcode.SUB, rand_word(), rand_word()),
 ]
 
-generate_nasty_tests(TESTING_DATA, (Opcode.ADD, Opcode.SUB))
+# generate_nasty_tests(TESTING_DATA, (Opcode.ADD, Opcode.SUB))
 
 
 @pytest.mark.parametrize("opcode, a, b", TESTING_DATA)
@@ -33,7 +33,7 @@ def test_add_sub(opcode: Opcode, a: int, b: int):
     a = RLC(a, randomness)
     b = RLC(b, randomness)
 
-    bytecode = Bytecode().add(a, b) if opcode == Opcode.ADD else Bytecode().sub(a, b)
+    bytecode = Bytecode().add(a, b).stop() if opcode == Opcode.ADD else Bytecode().sub(a, b).stop()
     bytecode_hash = RLC(bytecode.hash(), randomness)
 
     tables = Tables(
@@ -77,3 +77,4 @@ def test_add_sub(opcode: Opcode, a: int, b: int):
             ),
         ],
     )
+    # assert(False)

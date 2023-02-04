@@ -19,7 +19,7 @@ def memory(instruction: Instruction):
     src_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
     memory_offset = instruction.curr.memory_size
     next_memory_size, memory_expansion_gas_cost = instruction.memory_expansion(
-        memory_offset, address.expr() + FQ(32)
+        memory_offset, address.expr() + FQ(1) + (is_not_mstore8 * FQ(31))
     )
 
     if is_mstore8 == FQ(1):
@@ -31,7 +31,7 @@ def memory(instruction: Instruction):
                 RW.Write if is_store == FQ(1) else RW.Read, memory_offset + idx, src_id
             )
 
-    rw_counter_delta = 34
+    rw_counter_delta = 3 + (is_not_mstore8 * 31)
     stack_pointer_delta = 0 + is_store * -2
 
     instruction.step_state_transition_in_same_context(
