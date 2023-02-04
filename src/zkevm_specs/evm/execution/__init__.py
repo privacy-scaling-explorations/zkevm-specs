@@ -1,6 +1,7 @@
 from typing import Callable, Dict
 
 from ..execution_state import ExecutionState
+from ..contract import *
 
 from .begin_tx import *
 from .end_tx import *
@@ -24,7 +25,6 @@ from .calldatacopy import *
 from .calldataload import *
 from .codecopy import *
 from .codesize import *
-from .dataCopy import *
 from .comparator import *
 from .exp import *
 from .gas import *

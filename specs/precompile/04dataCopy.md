@@ -31,4 +31,4 @@ The gas cost of `dataCopy` precompile consists of two parts:
 
 ## Code
 
-Please refer to `src/zkevm_specs/native/execution/dataCopy.py`.
+Please refer to `src/zkevm_specs/contract/dataCopy.py`.
