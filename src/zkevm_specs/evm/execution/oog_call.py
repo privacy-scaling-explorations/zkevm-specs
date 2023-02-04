@@ -29,4 +29,4 @@ def oog_call(instruction: Instruction):
     gas_not_enough, _ = instruction.compare(instruction.curr.gas_left, gas_cost, N_BYTES_GAS)
     instruction.constrain_equal(gas_not_enough, FQ(1))
 
-    instruction.constrain_error_state(12)
+    instruction.constrain_error_state(12 + instruction.curr.reversible_write_counter.n)

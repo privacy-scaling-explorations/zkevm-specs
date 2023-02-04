@@ -34,7 +34,7 @@ CallContext = namedtuple(
         "memory_size",
         "reversible_write_counter",
     ],
-    defaults=[0, False, 0, 0, 2],
+    defaults=[0, False, 0, 0, 0],
 )
 Stack = namedtuple(
     "Stack",
@@ -173,7 +173,7 @@ CallerContext = namedtuple(
         "memory_size",
         "reversible_write_counter",
     ],
-    defaults=[False, False, 232, 1023, 10, 0, 0],
+    defaults=[False, False, 232, 1023, 10, 0, 2],
 )
 
 TESTING_DATA_NOT_ROOT = ((CallerContext(), CALLEE_WITH_STOP_BYTECODE_AND_BALANCE),)
