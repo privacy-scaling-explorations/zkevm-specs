@@ -1,3 +1,7 @@
+from collections import namedtuple
+from py_ecc.bn128 import G1, multiply, add
+from zkevm_specs.util import random_bn128_point
+
 NASTY_AB_VALUES = (
     (0, 0),
     (1, 0),
@@ -21,6 +25,27 @@ NASTY_AB_VALUES = (
     ((1 << 256) - 1, 0),
     (0, (1 << 256) - 1),
 )
+
+PrecompileCallContext = namedtuple(
+    "PrecompileCallContext",
+    [
+        "is_root",
+        "is_create",
+        "program_counter",
+        "stack_pointer",
+        "gas_left",
+        "memory_size",
+        "reversible_write_counter",
+    ],
+    defaults=[True, False, 232, 1023, 0, 0, 0],
+)
+
+
+def generate_sassy_tests():
+    arb_point_a = random_bn128_point()
+    arb_point_b = random_bn128_point()
+    add_point_c = add(arb_point_a, arb_point_b)
+    return (arb_point_a, arb_point_b, add_point_c)
 
 
 def generate_nasty_tests(tests, opcodes):

@@ -1,6 +1,10 @@
-from ..encoding import U64, U128, U256
+import random
+
 from typing import Tuple
+from py_ecc.bn128 import multiply, G1
 from .param import MEMORY_EXPANSION_LINEAR_COEFF
+from .curve import BN128Point, BN128_MODULUS
+from ..encoding import U64, U128, U256
 
 
 def memory_word_size(
@@ -40,3 +44,8 @@ def memory_expansion(
 
     # Return the new memory size and the memory expansion gas cost
     return (next_memory_size, U128(memory_gas_cost))
+
+
+def random_bn128_point() -> BN128Point:
+    arb_field_a = random.randint(0, BN128_MODULUS)
+    return multiply(G1, arb_field_a)

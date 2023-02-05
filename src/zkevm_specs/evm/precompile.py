@@ -47,11 +47,9 @@ PRECOMPILE_INFO_MAP: Final[Dict[Precompile, PrecompileInfo]] = dict(
         Precompile.RIPEMD160: PrecompileInfo(Ripemd160BaseGas, ExecutionState.RIPEMD160),
         Precompile.DATACOPY: PrecompileInfo(IdentityBaseGas, ExecutionState.DATACOPY),
         Precompile.BIGMODEXP: PrecompileInfo(BigModExpBaseGas, ExecutionState.BIGMODEXP),
-        Precompile.BN256ADD: PrecompileInfo(Bn256AddGas, ExecutionState.BN256_ADD),
-        Precompile.BN256SCALARMUL: PrecompileInfo(
-            Bn256ScalarMulGas, ExecutionState.BN256_SCALAR_MUL
-        ),
-        Precompile.BN256PAIRING: PrecompileInfo(Bn256PairingBaseGas, ExecutionState.BN256_PAIRING),
+        Precompile.BN256ADD: PrecompileInfo(Bn256AddGas, ExecutionState.BN256ADD),
+        Precompile.BN256SCALARMUL: PrecompileInfo(Bn256ScalarMulGas, ExecutionState.BN256SCALARMUL),
+        Precompile.BN256PAIRING: PrecompileInfo(Bn256PairingBaseGas, ExecutionState.BN256PAIRING),
         Precompile.BLAKE2F: PrecompileInfo(Blake2fBaseGas, ExecutionState.BLAKE2F),
     }
 )

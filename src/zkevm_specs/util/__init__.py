@@ -4,10 +4,11 @@ from Crypto.Random.random import randrange
 
 from .arithmetic import *
 from .constraint_system import *
+from .curve import BN128Point
 from .hash import *
 from .param import *
 from .typing import *
-from .testing import memory_expansion, memory_word_size
+from .testing import memory_expansion, memory_word_size, random_bn128_point
 
 
 def rand_range(stop: Union[int, float] = 2**256) -> int:
