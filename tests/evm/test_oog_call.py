@@ -199,7 +199,7 @@ def test_oog_call_root(
             ),
             StepState(
                 execution_state=ExecutionState.EndTx,
-                rw_counter=rw_dictionary.rw_counter,
+                rw_counter=rw_dictionary.rw_counter + caller_context.reversible_write_counter,
                 call_id=1,
                 gas_left=0,
             ),
@@ -222,7 +222,7 @@ def test_oog_call_not_root(
 
     caller_bytecode_hash = RLC(caller_bytecode.hash(), randomness)
     callee_bytecode_hash = RLC(callee.code_hash(), randomness)
-    callee_reversible_write_counter = 0
+    callee_reversible_write_counter = 2
 
     is_success = False
     program_counter = 231 if has_value else 198
@@ -289,7 +289,7 @@ def test_oog_call_not_root(
             ),
             StepState(
                 execution_state=ExecutionState.STOP,
-                rw_counter=rw_dictionary.rw_counter,
+                rw_counter=rw_dictionary.rw_counter + callee_reversible_write_counter,
                 call_id=1,
                 is_root=False,
                 is_create=False,
@@ -298,8 +298,7 @@ def test_oog_call_not_root(
                 stack_pointer=1023,
                 gas_left=caller_context.gas_left,
                 memory_size=caller_context.memory_size,
-                reversible_write_counter=caller_context.reversible_write_counter
-                + callee_reversible_write_counter,
+                reversible_write_counter=caller_context.reversible_write_counter,
             ),
         ],
     )

@@ -47,7 +47,7 @@ def oog_call(instruction: Instruction):
 
     # Both CALL and CALLCODE opcodes have an extra stack pop `value` relative to
     # DELEGATECALL and STATICCALL.
-    rw_counter_delta = 11 + is_call + is_callcode
+    rw_counter_delta = 11 + is_call + is_callcode + instruction.curr.reversible_write_counter.n
 
     # state transition.
     if instruction.curr.is_root:
