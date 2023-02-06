@@ -68,11 +68,11 @@ For `MLOAD`/`MSTORE` 32 memory busmapping lookups are used (1 lookup needed for 
    3. opId === OpcodeId(0x53) for `MSTORE8`
 2. state transition:
    - gc
-     - `MLOAD`/`MSTORE`:  +34 (2 stack operations + 32 memory reads/writes)
-     - `MSTORE8`: +3 (2 stack operations + 1 memory write)
+     - `MLOAD`/`MSTORE`:  + 34 (2 stack operations + 32 memory reads/writes)
+     - `MSTORE8`: + 3 (2 stack operations + 1 memory write)
    - stack_pointer
      - `MLOAD`: remains the same
-     - `MSTORE`: -2
+     - `MSTORE`: + 2
    - pc + 1
    - gas + 3 + `memory_gas_cost`
    - memory_size is set to `next_memory_size`

@@ -112,7 +112,7 @@ def test_memory(opcode: Opcode, offset: int, value: int, memory: bytes):
 
     rw_counter = 35 - (is_mstore8 * 31)
     program_counter = 66 - (is_mload * 33)
-    stack_pointer = 1020 + (is_mload * 2)
+    stack_pointer = 1022 + (is_store * 2)
 
     verify_steps(
         randomness=randomness,

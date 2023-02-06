@@ -35,7 +35,7 @@ def memory(instruction: Instruction):
         opcode,
         rw_counter=Transition.delta(34 - (is_mstore8 * 31)),
         program_counter=Transition.delta(1),
-        stack_pointer=Transition.delta(is_store * -2),
+        stack_pointer=Transition.delta(is_store * 2),
         memory_size=Transition.to(next_memory_size),
         dynamic_gas_cost=memory_expansion_gas_cost,
     )
