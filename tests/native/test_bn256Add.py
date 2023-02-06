@@ -16,14 +16,11 @@ CALLER_ID = 1
 CALLEE_ID = 2
 BN256ADD_PRECOMPILE_ADDRESS = 0x06
 
-TESTING_DATA = (
-    # simple cases
-    (PrecompileCallContext(), 0, 128, 0, 64),
-)
+TESTING_DATA = generate_sassy_tests()
 
 
 @pytest.mark.parametrize(
-    "caller_ctx, call_data_offset, call_data_length, return_data_offset, return_data_length",
+    "caller_ctx, call_data_offset, call_data_length, return_data_offset, return_data_length, input, result",
     TESTING_DATA,
 )
 def test_bn256Add(
@@ -32,6 +29,8 @@ def test_bn256Add(
     call_data_length: int,
     return_data_offset: int,
     return_data_length: int,
+    input: bytes,
+    result: bytes,
 ):
     randomness = rand_fq()
 
