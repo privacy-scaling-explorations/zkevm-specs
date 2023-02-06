@@ -38,5 +38,5 @@ def oog_call(instruction: Instruction):
     # Both CALL and CALLCODE opcodes have an extra stack pop `value` relative to
     # DELEGATECALL and STATICCALL.
     instruction.constrain_error_state(
-        11 + is_call + is_callcode + instruction.curr.reversible_write_counter.n
+        11 + is_call.n + is_callcode.n + instruction.curr.reversible_write_counter.n
     )
