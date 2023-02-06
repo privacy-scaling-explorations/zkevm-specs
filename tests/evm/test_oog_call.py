@@ -34,7 +34,7 @@ CallContext = namedtuple(
         "memory_size",
         "reversible_write_counter",
     ],
-    defaults=[0, False, 0, 0, 2],
+    defaults=[0, False, 0, 0, 0],
 )
 Stack = namedtuple(
     "Stack",
@@ -154,7 +154,7 @@ def test_root_call(
             ),
             StepState(
                 execution_state=ExecutionState.EndTx,
-                rw_counter=rw_dictionary.rw_counter,
+                rw_counter=rw_dictionary.rw_counter + caller_ctx.reversible_write_counter,
                 call_id=1,
                 gas_left=0,
             ),
@@ -173,7 +173,7 @@ CallerContext = namedtuple(
         "memory_size",
         "reversible_write_counter",
     ],
-    defaults=[False, False, 232, 1023, 10, 0, 0],
+    defaults=[False, False, 232, 1023, 10, 0, 2],
 )
 
 TESTING_DATA_NOT_ROOT = ((CallerContext(), CALLEE_WITH_STOP_BYTECODE_AND_BALANCE),)
@@ -186,7 +186,7 @@ def test_oog_call_not_root(caller_ctx: CallerContext, callee: Account):
     caller_bytecode = Bytecode().call(0, 0xFF, 0, 0, 0, 0, 0).stop()
     caller_bytecode_hash = RLC(caller_bytecode.hash(), randomness)
     callee_bytecode_hash = RLC(callee.code_hash(), randomness)
-    callee_reversible_write_counter = 0
+    callee_reversible_write_counter = 2
 
     stack = Stack(gas=100, cd_offset=64, cd_length=320, rd_offset=0, rd_length=32)
 
@@ -252,7 +252,7 @@ def test_oog_call_not_root(caller_ctx: CallerContext, callee: Account):
             ),
             StepState(
                 execution_state=ExecutionState.STOP,
-                rw_counter=rw_dictionary.rw_counter,
+                rw_counter=rw_dictionary.rw_counter + callee_reversible_write_counter,
                 call_id=1,
                 is_root=caller_ctx.is_root,
                 is_create=caller_ctx.is_create,
@@ -261,8 +261,7 @@ def test_oog_call_not_root(caller_ctx: CallerContext, callee: Account):
                 stack_pointer=caller_ctx.stack_pointer,
                 gas_left=caller_ctx.gas_left,
                 memory_size=caller_ctx.memory_size,
-                reversible_write_counter=caller_ctx.reversible_write_counter
-                + callee_reversible_write_counter,
+                reversible_write_counter=caller_ctx.reversible_write_counter,
             ),
         ],
     )

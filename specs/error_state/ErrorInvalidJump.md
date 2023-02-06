@@ -1,4 +1,4 @@
-# ErrorOutOfGasConstant state
+# ErrorInvalidJump state
 
 ## Procedure
 this type of error only occurs when executing op code is `JUMP` or `JUMPI`.
