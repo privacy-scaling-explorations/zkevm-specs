@@ -6,16 +6,22 @@ from ...util import N_BYTES_GAS
 from ..opcode import Opcode
 
 
+# Handle the corresponding out of gas errors for CALL, CALLCODE, DELEGATECALL
+# and STATICCALL opcodes.
 def oog_call(instruction: Instruction):
     # retrieve op code associated to oog call error
     opcode = instruction.opcode_lookup(True)
-    # TODO: add CallCode etc.when handle ErrorOutOfGasCALLCODE in future implementation
-    instruction.constrain_equal(opcode, Opcode.CALL)
+    is_call, is_callcode, is_delegatecall, is_staticcall = instruction.multiple_select(
+        opcode, (Opcode.CALL, Opcode.CALLCODE, Opcode.DELEGATECALL, Opcode.STATICCALL)
+    )
+
+    # Constrain opcode must be CALL, CALLCODE, DELEGATECALL or STATICCALL.
+    instruction.constrain_equal(is_call + is_callcode + is_delegatecall + is_staticcall, FQ(1))
 
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
 
     # init CallGadget to handle stack vars.
-    call = CallGadget(instruction, FQ(0), FQ(1), FQ(0), FQ(0))
+    call = CallGadget(instruction, FQ(0), is_call, is_callcode, is_delegatecall)
 
     # TODO: handle PrecompiledContract oog cases
 
@@ -29,4 +35,8 @@ def oog_call(instruction: Instruction):
     gas_not_enough, _ = instruction.compare(instruction.curr.gas_left, gas_cost, N_BYTES_GAS)
     instruction.constrain_equal(gas_not_enough, FQ(1))
 
-    instruction.constrain_error_state(12 + instruction.curr.reversible_write_counter.n)
+    # Both CALL and CALLCODE opcodes have an extra stack pop `value` relative to
+    # DELEGATECALL and STATICCALL.
+    instruction.constrain_error_state(
+        11 + is_call.n + is_callcode.n + instruction.curr.reversible_write_counter.n
+    )

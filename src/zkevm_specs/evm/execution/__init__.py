@@ -109,7 +109,7 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.RETURN: return_revert,
     ExecutionState.ErrorInvalidJump: invalid_jump,
     ExecutionState.ErrorInvalidOpcode: invalid_opcode,
-    ExecutionState.ErrorOutOfGasCALL: oog_call,
+    ExecutionState.ErrorOutOfGasCall: oog_call,
     ExecutionState.ErrorOutOfGasConstant: oog_constant,
     ExecutionState.ErrorStack: stack_error,
     # ExecutionState.ECRECOVER: ,
