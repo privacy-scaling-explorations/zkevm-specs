@@ -71,11 +71,11 @@ def test_invalid_opcode_root(invalid_code):
                 program_counter=0,
                 stack_pointer=1023,
                 gas_left=2,
-                reversible_write_counter=2,
+                reversible_write_counter=0,
             ),
             StepState(
                 execution_state=ExecutionState.EndTx,
-                rw_counter=27,
+                rw_counter=25,
                 call_id=1,
                 gas_left=0,
             ),
@@ -110,7 +110,7 @@ def test_invalid_opcode_internal(invalid_callee_code: list[int]):
     caller_bytecode_hash = RLC(caller_bytecode.hash(), randomness)
     callee_bytecode_hash = RLC(callee_bytecode.hash(), randomness)
 
-    callee_reversible_write_counter = 0
+    callee_reversible_write_counter = 2
 
     tables = Tables(
         block_table=set(Block().table_assignments(randomness)),
@@ -160,7 +160,7 @@ def test_invalid_opcode_internal(invalid_callee_code: list[int]):
             ),
             StepState(
                 execution_state=ExecutionState.STOP,
-                rw_counter=82,
+                rw_counter=82 + callee_reversible_write_counter,
                 call_id=1,
                 is_root=caller_ctx.is_root,
                 is_create=caller_ctx.is_create,
@@ -169,8 +169,7 @@ def test_invalid_opcode_internal(invalid_callee_code: list[int]):
                 stack_pointer=caller_ctx.stack_pointer,
                 gas_left=caller_ctx.gas_left,
                 memory_size=caller_ctx.memory_size,
-                reversible_write_counter=caller_ctx.reversible_write_counter
-                + callee_reversible_write_counter,
+                reversible_write_counter=caller_ctx.reversible_write_counter,
             ),
         ],
     )
