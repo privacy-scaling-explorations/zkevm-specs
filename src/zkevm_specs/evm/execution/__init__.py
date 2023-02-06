@@ -55,7 +55,7 @@ from .extcodecopy import *
 from .oog_constant import *
 from .oog_call import *
 from .error_stack import *
-from .error_Invalid_jump import *
+from .error_invalid_jump import *
 from .error_invalid_opcode import *
 
 
