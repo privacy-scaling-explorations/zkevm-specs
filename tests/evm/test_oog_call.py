@@ -166,7 +166,7 @@ def test_oog_call_root(
         .account_read(callee.address, AccountFieldTag.CodeHash, callee_bytecode_hash) \
         .tx_access_list_account_read(1, callee.address, is_warm_access) \
         .call_context_read(1, CallContextFieldTag.IsSuccess, 0)
-    # fmt on
+    # fmt: on
 
     tables = Tables(
         block_table=set(Block().table_assignments(randomness)),
@@ -256,8 +256,8 @@ def test_oog_call_not_root(
         .call_context_read(1, CallContextFieldTag.ReversibleWriteCounter, caller_context.reversible_write_counter) \
         .call_context_write(1, CallContextFieldTag.LastCalleeId, 2) \
         .call_context_write(1, CallContextFieldTag.LastCalleeReturnDataOffset, 0) \
-        .call_context_write(1, CallContextFieldTag.LastCalleeReturnDataLength, 0) \
-    # fmt on
+        .call_context_write(1, CallContextFieldTag.LastCalleeReturnDataLength, 0)
+    # fmt: on
 
     tables = Tables(
         block_table=set(Block().table_assignments(randomness)),
