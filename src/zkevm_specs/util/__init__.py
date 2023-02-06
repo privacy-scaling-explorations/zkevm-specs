@@ -4,7 +4,7 @@ from Crypto.Random.random import randrange
 
 from .arithmetic import *
 from .constraint_system import *
-from .curve import BN128Point
+from .curve import BN128Point, BN128_B, marshal, unmarshal, unmarshal_field
 from .hash import *
 from .param import *
 from .typing import *
