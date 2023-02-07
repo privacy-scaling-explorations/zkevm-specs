@@ -10,11 +10,6 @@ def keccak256(data: Union[str, bytes, bytearray]) -> bytes:
     return keccak.new(digest_bits=256).update(data).digest()
 
 
-def create_address(b: bytes, nonce: int) -> bytes:
-    data = [b, nonce]
-    return keccak.new(digest_bits=256).update(data).digest()
-
-
 EMPTY_HASH: U256 = U256(int.from_bytes(keccak256(""), "big"))
 EMPTY_CODE_HASH: U256 = EMPTY_HASH
 EMPTY_TRIE_HASH: U256 = U256(int.from_bytes(keccak256("80"), "big"))
