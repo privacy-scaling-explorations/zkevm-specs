@@ -106,6 +106,9 @@ SSTORE_CLEARS_SCHEDULE = 4800
 # of cells in a step
 MAX_COPY_BYTES = 32
 
+# Maximum depth of call/create stack
+CALL_CREATE_DEPTH = 1024
+
 # PublicInputs circuit parameters
 PUBLIC_INPUTS_BLOCK_LEN = 7 + 256  # Length of block public data
 PUBLIC_INPUTS_EXTRA_LEN = 3  # Length of fields that don't belong to any table

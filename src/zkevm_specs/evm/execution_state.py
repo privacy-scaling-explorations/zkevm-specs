@@ -85,13 +85,14 @@ class ExecutionState(IntEnum):
     ErrorStack = auto()
     # For SSTORE, LOG0, LOG1, LOG2, LOG3, LOG4, CREATE, CALL, CREATE2, SELFDESTRUCT
     ErrorWriteProtection = auto()
-    # For CALL, CALLCODE, DELEGATECALL, STATICCALL
+    # For CALL, CALLCODE, DELEGATECALL, STATICCALL, CREATE
     ErrorDepth = auto()
-    # For CALL, CALLCODE
+    # For CALL, CALLCODE, CREATE
     ErrorInsufficientBalance = auto()
     # For CREATE, CREATE2
     ErrorContractAddressCollision = auto()
     ErrorInvalidCreationCode = auto()
+    ErrorNonceUintOverflow = auto()
     # For opcode RETURN which needs to store code when it's is creation
     ErrorMaxCodeSizeExceeded = auto()
     # For JUMP, JUMPI
