@@ -19,7 +19,7 @@ from eth_utils import (
     keccak,
     to_canonical_address,
 )
-import rlp
+import rlp  # type: ignore
 
 from ..util import (
     U64,
