@@ -1,20 +1,15 @@
 from ...util import (
-    EMPTY_CODE_HASH,
     FQ,
     GAS_COST_ACCOUNT_COLD_ACCESS,
     GAS_COST_CALL_WITH_VALUE,
     GAS_COST_NEW_ACCOUNT,
     GAS_COST_WARM_ACCESS,
-    GAS_STIPEND_CALL_WITH_VALUE,
-    N_BYTES_ACCOUNT_ADDRESS,
     N_BYTES_GAS,
     CALL_CREATE_DEPTH,
-    RLC,
 )
-from ..instruction import Instruction, Transition
+from ..instruction import Instruction
 from ..opcode import Opcode
-from ..table import RW, CallContextFieldTag, AccountFieldTag
-from ..precompiled import PrecompiledAddress
+from ..table import CallContextFieldTag, AccountFieldTag
 
 
 def create(instruction: Instruction):
