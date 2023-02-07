@@ -15,6 +15,11 @@ from typing import (
 )
 from functools import reduce
 from itertools import chain
+from eth_utils import (
+    keccak,
+    to_canonical_address,
+)
+import rlp
 
 from ..util import (
     U64,
@@ -51,6 +56,7 @@ from .table import (
     ExpCircuitRow,
 )
 from .opcode import get_push_size, Opcode
+
 
 POW2 = 2**256
 
@@ -1057,16 +1063,5 @@ class CopyCircuit:
 
 
 def generate_contract_address(account: Account) -> bytes:
-    prefix = [LIST_PREFIX + 0x16]
-    sender_rlp = [HEX_PREFIX + ADDRESS_LENGTH]
-    sender_rlp += [x for x in account.address.to_bytes(20, "big")]
-    prefix += sender_rlp
-    prefix.append(HEX_PREFIX if account.nonce == 0 else account.nonce)
-    raw_hash = keccak256(bytearray(prefix))[12:]
-
-    return raw_hash[(len(raw_hash) - ADDRESS_LENGTH) :]
-
-
-ADDRESS_LENGTH = 0x14
-HEX_PREFIX = 0x80
-LIST_PREFIX = 0xC0
+    contract_addr = keccak(rlp.encode([account.address, account.nonce]))
+    return to_canonical_address(contract_addr[-20:])
