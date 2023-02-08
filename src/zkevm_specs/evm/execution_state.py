@@ -119,11 +119,9 @@ class ExecutionState(IntEnum):
     ErrorOutOfGasEXTCODECOPY = auto()
     ErrorOutOfGasSLOAD = auto()
     ErrorOutOfGasSSTORE = auto()
-    ErrorOutOfGasCALL = auto()
-    ErrorOutOfGasCALLCODE = auto()
-    ErrorOutOfGasDELEGATECALL = auto()
+    # For CALL, CALLCODE, DELEGATECALL and STATICCALL opcodes which may run out of gas.
+    ErrorOutOfGasCall = auto()
     ErrorOutOfGasCREATE2 = auto()
-    ErrorOutOfGasSTATICCALL = auto()
     ErrorOutOfGasSELFDESTRUCT = auto()
 
     # Precompile's successful cases
@@ -394,11 +392,8 @@ class ExecutionState(IntEnum):
             ExecutionState.ErrorOutOfGasEXTCODECOPY,
             ExecutionState.ErrorOutOfGasSLOAD,
             ExecutionState.ErrorOutOfGasSSTORE,
-            ExecutionState.ErrorOutOfGasCALL,
-            ExecutionState.ErrorOutOfGasCALLCODE,
-            ExecutionState.ErrorOutOfGasDELEGATECALL,
+            ExecutionState.ErrorOutOfGasCall,
             ExecutionState.ErrorOutOfGasCREATE2,
-            ExecutionState.ErrorOutOfGasSTATICCALL,
             ExecutionState.ErrorOutOfGasSELFDESTRUCT,
         ]
 
