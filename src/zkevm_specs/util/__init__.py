@@ -8,7 +8,7 @@ from .curve import BN128Point, BN128_B, new_gfp, marshal, unmarshal, unmarshal_f
 from .hash import *
 from .param import *
 from .typing import *
-from .testing import memory_expansion, memory_word_size, random_bn128_point
+from .testing import memory_expansion, memory_word_size
 
 
 def rand_range(stop: Union[int, float] = 2**256) -> int:

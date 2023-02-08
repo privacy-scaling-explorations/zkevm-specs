@@ -1,5 +1,4 @@
 from typing import Optional, Tuple
-from py_ecc.bn128 import FQ
 
 UINT64_MAX = 2**64
 UINT128_MAX = 2**128
@@ -44,7 +43,7 @@ def gfp_neg(a: gfP) -> gfP:
         return gfp_sub(p2, a)
 
 
-BN128Point = Optional[Tuple[FQ, FQ]]
+BN128Point = Optional[Tuple[gfP, gfP]]
 
 
 def marshal(e: BN128Point) -> bytes:
@@ -53,8 +52,9 @@ def marshal(e: BN128Point) -> bytes:
     if e is None:
         return ret
     (x, y) = e
-    ret[:num_bytes] = x.n.to_bytes(num_bytes, "big")
-    ret[num_bytes:] = y.n.to_bytes(num_bytes, "big")
+    (x, y) = (mont_decode(x), mont_decode(y))
+    ret[:num_bytes] = marshal_field(x)
+    ret[num_bytes:] = marshal_field(y)
 
     return ret
 
@@ -66,18 +66,23 @@ def unmarshal(m: bytes) -> BN128Point:
     x = unmarshal_field(m)
     y = unmarshal_field(m[num_bytes:])
 
-    return (x, y)
+    return (mont_encode(x), mont_encode(y))
 
 
-def unmarshal_field(m: bytes) -> FQ:
-    n = 0
-    for i in range(32):
-        n += m[i] << (248 - 8 * i)
+def marshal_field(e: gfP) -> bytes:
+    b = bytearray()
+    for w in range(0, 4):
+        b += e[3 - w].to_bytes(8, "big")
+    return b
 
-    if n >= BN128_MODULUS:
-        raise Exception("bn256: coordinate exceeds or equals modulus")
 
-    return FQ(n)
+def unmarshal_field(m: bytes) -> gfP:
+    e = [0, 0, 0, 0]
+    for w in range(0, 4):
+        for b in range(0, 8):
+            e[3 - w] += m[8 * w + b] << (56 - 8 * b)
+
+    return (e[0], e[1], e[2], e[3])
 
 
 def gfp_mul(a: gfP, b: gfP) -> gfP:
