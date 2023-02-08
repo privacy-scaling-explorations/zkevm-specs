@@ -11,7 +11,7 @@ fmt: ## Format the code
 
 lint: ## Check whether the code is formatted correctly
 	black . --check
-	flake8 src
+	flake8 .
 
 type: ## Check the typing of the Python code
 	mypy src

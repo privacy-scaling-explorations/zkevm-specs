@@ -1,10 +1,8 @@
 import pytest
 
-from typing import Optional
 from zkevm_specs.evm import (
     ExecutionState,
     StepState,
-    Opcode,
     verify_steps,
     Tables,
     Block,

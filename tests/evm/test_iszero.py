@@ -1,17 +1,15 @@
 import pytest
 
-from typing import Optional
 from zkevm_specs.evm import (
     ExecutionState,
     StepState,
-    Opcode,
     verify_steps,
     Tables,
     Block,
     Bytecode,
     RWDictionary,
 )
-from zkevm_specs.util import rand_fq, rand_word, RLC
+from zkevm_specs.util import rand_fq, RLC
 
 
 TESTING_DATA = (
