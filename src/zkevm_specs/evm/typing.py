@@ -15,11 +15,6 @@ from typing import (
 )
 from functools import reduce
 from itertools import chain
-from eth_utils import (
-    keccak,
-    to_canonical_address,
-)
-import rlp  # type: ignore
 
 from ..util import (
     U64,
@@ -1060,8 +1055,3 @@ class CopyCircuit:
                 is_rlc_acc=FQ(is_rlc_acc),
             )
         )
-
-
-def generate_contract_address(account: Account) -> bytes:
-    contract_addr = keccak(rlp.encode([account.address, account.nonce]))
-    return to_canonical_address(contract_addr[-20:])
