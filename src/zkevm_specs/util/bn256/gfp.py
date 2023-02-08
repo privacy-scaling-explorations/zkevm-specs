@@ -1,28 +1,13 @@
-from typing import Optional, Tuple
+from typing import Tuple
 
 UINT64_MAX = 2**64
 UINT128_MAX = 2**128
-BN128_MODULUS = 21888242871839275222246405745257275088696311157297823662689037894645226208583
-BN128_R2 = 0x06D89F71CAB8351F47AB1EFF0A417FF6B5E71911D44501FBF32CFC5B538AFA89
-BN128_B = 3
-
-r = (0xD35D438DC58F0D9D, 0x0A78EB28F5C70B3D, 0x666EA36F7879462C, 0x0E0A77C19A07DF2F)
-r2 = (0xF32CFC5B538AFA89, 0xB5E71911D44501FB, 0x47AB1EFF0A417FF6, 0x06D89F71CAB8351F)
-p2 = (0x3C208C16D87CFD47, 0x97816A916871CA8D, 0xB85045B68181585D, 0x30644E72E131A029)
-inv = 0x87D20782E4866389
 
 gfP = Tuple[int, int, int, int]
 
-
-class CurvePoint:
-    x: gfP
-    y: gfP
-    z: gfP
-    t: gfP
-
-    def __init__(self, x: int, y: int):
-        self.x
-        self.y
+r2 = (0xF32CFC5B538AFA89, 0xB5E71911D44501FB, 0x47AB1EFF0A417FF6, 0x06D89F71CAB8351F)
+p2 = (0x3C208C16D87CFD47, 0x97816A916871CA8D, 0xB85045B68181585D, 0x30644E72E131A029)
+inv = 0x87D20782E4866389
 
 
 def new_gfp(x: int) -> gfP:
@@ -41,32 +26,6 @@ def gfp_neg(a: gfP) -> gfP:
         return a
     else:
         return gfp_sub(p2, a)
-
-
-BN128Point = Optional[Tuple[gfP, gfP]]
-
-
-def marshal(e: BN128Point) -> bytes:
-    num_bytes = 256 // 8
-    ret = bytearray(num_bytes * 2)
-    if e is None:
-        return ret
-    (x, y) = e
-    (x, y) = (mont_decode(x), mont_decode(y))
-    ret[:num_bytes] = marshal_field(x)
-    ret[num_bytes:] = marshal_field(y)
-
-    return ret
-
-
-def unmarshal(m: bytes) -> BN128Point:
-    num_bytes = 256 // 8
-    if len(m) > 2 * num_bytes:
-        raise Exception("bn256: not enough data")
-    x = unmarshal_field(m)
-    y = unmarshal_field(m[num_bytes:])
-
-    return (mont_encode(x), mont_encode(y))
 
 
 def marshal_field(e: gfP) -> bytes:

@@ -1,6 +1,5 @@
 from collections import namedtuple
 from py_ecc.bn128 import G1, multiply, add
-from zkevm_specs.util import marshal, unmarshal
 
 SASSY_AB_VALUES = (
     # (G1, random_bn128_point()),
