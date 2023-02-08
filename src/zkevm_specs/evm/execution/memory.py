@@ -1,6 +1,6 @@
 from ..instruction import Instruction, Transition
 from ..opcode import Opcode
-from ..table import RW, CallContextFieldTag
+from ..table import RW
 from ...util import FQ
 
 
@@ -16,19 +16,23 @@ def memory(instruction: Instruction):
 
     value = instruction.stack_push() if is_mload == FQ(1) else instruction.stack_pop()
 
-    src_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
     memory_offset = instruction.curr.memory_size
     next_memory_size, memory_expansion_gas_cost = instruction.memory_expansion(
         memory_offset, address.expr() + FQ(1) + (is_not_mstore8 * FQ(31))
     )
 
     if is_mstore8 == FQ(1):
-        instruction.memory_lookup(RW.Write, address.expr())
+        instruction.is_equal(
+            instruction.memory_lookup(RW.Write, address.expr()), FQ(value.le_bytes[0])
+        )
 
     if is_not_mstore8 == FQ(1):
         for idx in range(32):
-            instruction.memory_lookup(
-                RW.Write if is_store == FQ(1) else RW.Read, address.expr() + idx, src_id
+            instruction.is_equal(
+                instruction.memory_lookup(
+                    RW.Write if is_store == FQ(1) else RW.Read, address.expr() + idx
+                ),
+                FQ(value.le_bytes[31 - idx]),
             )
 
     instruction.step_state_transition_in_same_context(

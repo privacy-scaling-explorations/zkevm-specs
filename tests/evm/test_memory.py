@@ -77,15 +77,11 @@ def test_memory(opcode: Opcode, offset: int, value: int, memory: bytes):
         else Bytecode().mstore(offset_rlc, value_rlc).stop()
     )
     rw_dictionary = (
-        RWDictionary(1)
-        .stack_read(call_id, 1022, offset_rlc)
-        .stack_write(call_id, 1022, value_rlc)
-        .call_context_read(call_id, CallContextFieldTag.TxId, call_id)
+        RWDictionary(1).stack_read(call_id, 1022, offset_rlc).stack_write(call_id, 1022, value_rlc)
         if is_mload
         else RWDictionary(1)
         .stack_read(call_id, 1022, offset_rlc)
         .stack_read(call_id, 1023, value_rlc)
-        .call_context_read(call_id, CallContextFieldTag.TxId, call_id)
     )
 
     bytecode_hash = RLC(bytecode.hash(), randomness)
