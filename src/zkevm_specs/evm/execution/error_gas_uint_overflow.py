@@ -8,23 +8,23 @@ from ..opcode import Opcode
 def gas_uint_overflow(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
 
-    instruction.constrain_equal(opcode, Opcode.CALL)
+    is_call = instruction.is_equal(opcode, Opcode.CALL)
 
+    # memory size overflow flag.
+    memory_size = instruction.call_context_lookup(CallContextFieldTag.MemorySize)
+    is_memory_size_overflow = instruction.is_memory_overflow(memory_size)
+
+    # call gas_cost overflow flag.
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
-
-    # init CallGadget to handle stack vars.
     call = CallGadget(instruction, FQ(0), FQ(1), FQ(0), FQ(0))
-
-    # Add callee to access list
     is_warm_access = instruction.read_account_to_access_list(tx_id, call.callee_address)
-
-    # verify gas cost
     gas_cost = call.gas_cost(instruction, is_warm_access)
+    is_call_gas_cost_overflow = is_call * instruction.is_u64_overflow(gas_cost)
 
-    # check gas cost is u64 overflow
-    instruction.is_u64_overflow(gas_cost)
+    # verify gas uint overflow.
+    instruction.constrain_equal(is_memory_size_overflow * is_call_gas_cost_overflow, FQ(1))
 
-    # current call must be failed.
+    # verify call failure.
     instruction.constrain_equal(
         instruction.call_context_lookup(CallContextFieldTag.IsSuccess), FQ(0)
     )

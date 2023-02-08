@@ -11,6 +11,7 @@ from ..util import (
     cast_expr,
     MAX_U64,
     MAX_N_BYTES,
+    MAX_MEMORY_SIZE,
     N_BYTES_MEMORY_ADDRESS,
     N_BYTES_MEMORY_SIZE,
     N_BYTES_GAS,
@@ -354,6 +355,9 @@ class Instruction:
 
     def is_u64_overflow(self, lhs: Expression) -> FQ:
         return FQ(lhs.expr().n > MAX_U64)
+
+    def is_memory_overflow(self, lhs: Expression) -> FQ:
+        return FQ(lhs.expr().n > MAX_MEMORY_SIZE)
 
     def continuous_selectors(self, value: Expression, n: int) -> Sequence[FQ]:
         return [FQ(i < value.expr().n) for i in range(n)]

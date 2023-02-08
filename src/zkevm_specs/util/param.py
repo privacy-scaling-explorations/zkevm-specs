@@ -1,8 +1,9 @@
 # Maximum integer value of u64
 MAX_U64 = 2**64 - 1
-
 # Maximun number of bytes with composition value that doesn't wrap around the field
 MAX_N_BYTES = 31
+# Maximum number of memory size
+MAX_MEMORY_SIZE = 0x1FFFFFFFE0
 # Number of bytes of account address
 N_BYTES_ACCOUNT_ADDRESS = 20
 # Number of bytes of memory address
