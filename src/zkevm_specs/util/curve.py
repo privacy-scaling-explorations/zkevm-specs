@@ -2,13 +2,15 @@ from typing import Optional, Tuple
 from py_ecc.bn128 import FQ
 
 UINT64_MAX = 2**64
+UINT128_MAX = 2**128
 BN128_MODULUS = 21888242871839275222246405745257275088696311157297823662689037894645226208583
 BN128_R2 = 0x06D89F71CAB8351F47AB1EFF0A417FF6B5E71911D44501FBF32CFC5B538AFA89
 BN128_B = 3
 
+r = (0xD35D438DC58F0D9D, 0x0A78EB28F5C70B3D, 0x666EA36F7879462C, 0x0E0A77C19A07DF2F)
 r2 = (0xF32CFC5B538AFA89, 0xB5E71911D44501FB, 0x47AB1EFF0A417FF6, 0x06D89F71CAB8351F)
 p2 = (0x3C208C16D87CFD47, 0x97816A916871CA8D, 0xB85045B68181585D, 0x30644E72E131A029)
-np = (0x87D20782E4866389, 0x9EDE7D651ECA6AC9, 0xD8AFCBD01833DA80, 0xF57A22B791888C6B)
+inv = 0x87D20782E4866389
 
 gfP = Tuple[int, int, int, int]
 
@@ -108,10 +110,10 @@ def gfp_sub(a: gfP, b: gfP) -> gfP:
     (d2, borrow) = sbb(a[2], b[2], borrow)
     (d3, borrow) = sbb(a[3], b[3], borrow)
 
-    (d0, carry) = adc(d0, p2[0] & borrow, 0)
-    (d1, carry) = adc(d1, p2[1] & borrow, carry)
-    (d2, carry) = adc(d2, p2[2] & borrow, carry)
-    (d3, _) = adc(d3, p2[3] & borrow, carry)
+    (d0, carry) = adc(d0, b[0] & borrow, 0)
+    (d1, carry) = adc(d1, b[1] & borrow, carry)
+    (d2, carry) = adc(d2, b[2] & borrow, carry)
+    (d3, _) = adc(d3, b[3] & borrow, carry)
 
     return (d0, d1, d2, d3)
 
@@ -128,28 +130,32 @@ def gfp_add(a: gfP, b: gfP) -> gfP:
 def montgomery_reduce(
     r0: int, r1: int, r2: int, r3: int, r4: int, r5: int, r6: int, r7: int
 ) -> gfP:
-    (_, carry) = mac(r0, r0, np[0], 0)
-    (r1, carry) = mac(r1, r1, np[1], carry)
-    (r2, carry) = mac(r2, r2, np[2], carry)
-    (r3, carry) = mac(r3, r3, np[3], carry)
+    k = (r0 * inv) % UINT64_MAX
+    (_, carry) = mac(r0, k, p2[0], 0)
+    (r1, carry) = mac(r1, k, p2[1], carry)
+    (r2, carry) = mac(r2, k, p2[2], carry)
+    (r3, carry) = mac(r3, k, p2[3], carry)
     (r4, carry2) = adc(r4, 0, carry)
 
-    (_, carry) = mac(r1, r1, np[0], 0)
-    (r2, carry) = mac(r2, r2, np[1], carry)
-    (r3, carry) = mac(r3, r3, np[2], carry)
-    (r4, carry) = mac(r4, r4, np[3], carry)
+    k = (r1 * inv) % UINT64_MAX
+    (_, carry) = mac(r1, k, p2[0], 0)
+    (r2, carry) = mac(r2, k, p2[1], carry)
+    (r3, carry) = mac(r3, k, p2[2], carry)
+    (r4, carry) = mac(r4, k, p2[3], carry)
     (r5, carry2) = adc(r5, carry2, carry)
 
-    (_, carry) = mac(r2, r2, np[0], 0)
-    (r3, carry) = mac(r3, r3, np[1], carry)
-    (r4, carry) = mac(r4, r4, np[2], carry)
-    (r5, carry) = mac(r5, r5, np[3], carry)
+    k = (r2 * inv) % UINT64_MAX
+    (_, carry) = mac(r2, k, p2[0], 0)
+    (r3, carry) = mac(r3, k, p2[1], carry)
+    (r4, carry) = mac(r4, k, p2[2], carry)
+    (r5, carry) = mac(r5, k, p2[3], carry)
     (r6, carry2) = adc(r6, carry2, carry)
 
-    (_, carry) = mac(r3, r3, np[0], 0)
-    (r4, carry) = mac(r4, r4, np[1], carry)
-    (r5, carry) = mac(r5, r5, np[2], carry)
-    (r6, carry) = mac(r6, r6, np[3], carry)
+    k = (r3 * inv) % UINT64_MAX
+    (_, carry) = mac(r3, k, p2[0], 0)
+    (r4, carry) = mac(r4, k, p2[1], carry)
+    (r5, carry) = mac(r5, k, p2[2], carry)
+    (r6, carry) = mac(r6, k, p2[3], carry)
     (r7, _) = adc(r7, carry2, carry)
 
     return gfp_sub((r4, r5, r6, r7), p2)
@@ -168,9 +174,9 @@ def adc(a: int, b: int, carry: int) -> Tuple[int, int]:
     return (t % UINT64_MAX, t >> 64)
 
 
-def sbb(a: int, b: int, carry: int) -> Tuple[int, int]:
-    t = a - b + carry
-    return ((-t) % UINT64_MAX, (-t) >> 64) if t < 0 else (t % UINT64_MAX, t >> 64)
+def sbb(a: int, b: int, borrow: int) -> Tuple[int, int]:
+    t = (a - (b + (borrow >> 63))) % UINT128_MAX
+    return (t % UINT64_MAX, t >> 64)
 
 
 def mac(a: int, b: int, c: int, d: int) -> Tuple[int, int]:
