@@ -34,7 +34,7 @@ class StepState:
 
     # The following fields could be further moved into rw_table if we find them
     # not often used.
-    memory_size: FQ
+    memory_word_size: FQ
     reversible_write_counter: FQ
 
     # log index of current tx/receipt, this field maybe moved if we find them
