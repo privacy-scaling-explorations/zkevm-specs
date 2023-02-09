@@ -1,4 +1,4 @@
-from ..instruction import Instruction
+from ..instruction import Instruction, Transition
 from ...util import N_BYTES_WORD
 
 
