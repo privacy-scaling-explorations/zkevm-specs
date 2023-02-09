@@ -33,7 +33,7 @@ def test_add_sub(opcode: Opcode, a: int, b: int):
     a = RLC(a, randomness)
     b = RLC(b, randomness)
 
-    bytecode = Bytecode().add(a, b) if opcode == Opcode.ADD else Bytecode().sub(a, b)
+    bytecode = Bytecode().add(a, b).stop() if opcode == Opcode.ADD else Bytecode().sub(a, b).stop()
     bytecode_hash = RLC(bytecode.hash(), randomness)
 
     tables = Tables(

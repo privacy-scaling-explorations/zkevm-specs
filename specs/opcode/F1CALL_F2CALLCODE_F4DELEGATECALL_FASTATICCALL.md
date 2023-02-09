@@ -4,10 +4,10 @@
 
 ### EVM behavior
 
-- for opcode `CALL`, transfer specified amount of ether to callee and creates a new call context and switch to it
-- for opcode `CALLCODE`, create a new sub context as setting both caller and callee addresses to caller's, but with the code of the given account (callee)
-- for opcode `DELEGATECALL`, create a new sub context as setting caller address to parent caller's and callee address to current caller's, but with the code of the given account (callee). In particular the current `sender` (parent caller) and `value` remain the same.
-- for opcode `STATICCALL`, do not allow any state modifying instructions (is_static == 1) or sending ether to callee in the sub context.
+- `CALL` transfers specified amount of ether to callee and creates a new call context and switch to it
+- `CALLCODE` creates a new sub context as setting both caller and callee addresses to caller's, but with the code of the given account (callee)
+- `DELEGATECALL` creates a new sub context as setting caller address to parent caller's and callee address to current caller's, but with the code of the given account (callee). In particular the current `sender` (parent caller) and `value` remain the same.
+- `STATICCALL` does not allow any state modifying instructions (is_static == 1) or sending ether to callee in the sub context.
 
 These are done by popping serveral words from stack:
 
