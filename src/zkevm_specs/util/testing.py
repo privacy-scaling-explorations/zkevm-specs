@@ -1,6 +1,15 @@
-from typing import Tuple
+import random
+import py_ecc
+
+from typing import Tuple, Optional
+from py_ecc.bn128 import FQ, multiply
 from .param import MEMORY_EXPANSION_LINEAR_COEFF
+from .bn256 import unmarshal_field, CurvePoint, G1
 from ..encoding import U64, U128, U256
+
+
+BN128Point = Optional[Tuple[FQ, FQ]]
+BN128_MODULUS = 21888242871839275222246405745257275088696311157297823662689037894645226208583
 
 
 def memory_word_size(
@@ -40,3 +49,21 @@ def memory_expansion(
 
     # Return the new memory size and the memory expansion gas cost
     return (next_memory_size, U128(memory_gas_cost))
+
+
+def random_bn128_point() -> BN128Point:
+    arb_field_a = random.randint(0, BN128_MODULUS)
+    return multiply(py_ecc.bn128.G1, arb_field_a)
+
+
+def to_cf_form(e: BN128Point) -> G1:
+    if e is None:
+        return G1(None)
+    point = CurvePoint()
+    (x, y) = e
+    gfp_x = unmarshal_field(x.n.to_bytes(32, "big"))
+    gfp_y = unmarshal_field(y.n.to_bytes(32, "big"))
+    point.Set(gfp_x, gfp_y)
+    cf_point = G1(point)
+
+    return cf_point

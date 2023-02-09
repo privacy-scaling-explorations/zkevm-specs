@@ -1,11 +1,12 @@
 from collections import namedtuple
 from py_ecc.bn128 import G1, multiply, add
+from zkevm_specs.util import random_bn128_point, to_cf_form
 
 SASSY_AB_VALUES = (
-    # (G1, random_bn128_point()),
-    # (None, random_bn128_point()),
-    # (random_bn128_point(), None),
-    # (random_bn128_point(), random_bn128_point()),
+    (G1, random_bn128_point()),
+    (None, random_bn128_point()),
+    (random_bn128_point(), None),
+    (random_bn128_point(), random_bn128_point()),
 )
 
 NASTY_AB_VALUES = (
@@ -52,19 +53,20 @@ def generate_sassy_tests():
     point_length = 64
 
     tests = []
-    # for point_a, point_b in SASSY_AB_VALUES:
-    #     input = bytearray(input_length)
+    for point_a, point_b in SASSY_AB_VALUES:
+        point_c = add(point_a, point_b)
 
-    #     point_c = add(point_a, point_b)
+        a = to_cf_form(point_a)
+        b = to_cf_form(point_b)
+        c = to_cf_form(point_c)
+        ma = a.marshal()
+        mb = b.marshal()
+        mc = c.marshal()
 
-    #     xy1 = marshal(point_a)
-    #     xy2 = marshal(point_b)
-    #     input[:point_length] = xy1
-    #     input[point_length:] = xy2
+        input = ma + mb
+        result = mc
 
-    #     xy = marshal(point_c)
-    #     result = xy
-    #     tests.append((PrecompileCallContext(), 0, input_length, 0, point_length, input, result))
+        tests.append((PrecompileCallContext(), 0, input_length, 0, point_length, input, result))
 
     return tests
 

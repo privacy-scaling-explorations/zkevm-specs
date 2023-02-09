@@ -16,11 +16,19 @@ class CurvePoint:
     z: gfP
     t: gfP
 
-    def __init__(self, x: int, y: int):
+    def __init__(self, x: int = 0, y: int = 0):
         self.x = new_gfp(x)
         self.y = new_gfp(y)
         self.z = new_gfp(1)
         self.t = new_gfp(1)
+
+    def Set(
+        self, x: gfP = new_gfp(0), y: gfP = new_gfp(0), z: gfP = new_gfp(1), t: gfP = new_gfp(1)
+    ):
+        self.x = x
+        self.y = y
+        self.z = z
+        self.t = t
 
 
 curve_gen = CurvePoint(1, 2)
