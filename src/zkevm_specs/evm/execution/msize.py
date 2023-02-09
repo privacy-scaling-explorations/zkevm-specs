@@ -11,7 +11,7 @@ def msize(instruction: Instruction):
 
     instruction.step_state_transition_in_same_context(
         opcode,
-        rw_counter=Transition.delta(2),
+        rw_counter=Transition.delta(1),
         program_counter=Transition.delta(1),
         stack_pointer=Transition.delta(-1),
     )

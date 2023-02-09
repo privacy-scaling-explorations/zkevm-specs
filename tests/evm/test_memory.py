@@ -61,7 +61,7 @@ def test_memory(opcode: Opcode, offset: int, value: int, memory: bytes):
     offset_rlc = RLC(offset, randomness)
     value_rlc = RLC(value, randomness)
     call_id = 1
-    curr_memory_size = 0
+    curr_memory_word_size = 0
     length = offset
 
     is_mload = opcode == Opcode.MLOAD
@@ -103,7 +103,7 @@ def test_memory(opcode: Opcode, offset: int, value: int, memory: bytes):
     )
 
     address = offset + 1 + (is_not_mstore8 * 31)
-    next_mem_size, memory_gas_cost = memory_expansion(curr_memory_size, address)
+    next_mem_size, memory_gas_cost = memory_expansion(curr_memory_word_size, address)
     gas = Opcode.MLOAD.constant_gas_cost() + memory_gas_cost
 
     rw_counter = 35 - (is_mstore8 * 31)
@@ -134,7 +134,7 @@ def test_memory(opcode: Opcode, offset: int, value: int, memory: bytes):
                 code_hash=bytecode_hash,
                 program_counter=program_counter + 1,
                 stack_pointer=stack_pointer,
-                memory_size=next_mem_size,
+                memory_word_size=next_mem_size,
                 gas_left=0,
             ),
         ],

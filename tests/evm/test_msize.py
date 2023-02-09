@@ -28,7 +28,7 @@ def test_msize(value: int):
         block_table=set(Block().table_assignments(randomness)),
         tx_table=set(),
         bytecode_table=set(bytecode.table_assignments(randomness)),
-        rw_table=set(RWDictionary(9).stack_write(1, 1023, value).rws),
+        rw_table=set(RWDictionary(9).stack_write(1, 1022, value).rws),
     )
 
     verify_steps(
@@ -42,8 +42,9 @@ def test_msize(value: int):
                 is_root=True,
                 is_create=False,
                 code_hash=bytecode_hash,
-                program_counter=33,
+                program_counter=0,
                 stack_pointer=1023,
+                memory_word_size=0,
                 gas_left=2,
             ),
             StepState(
@@ -53,7 +54,7 @@ def test_msize(value: int):
                 is_root=True,
                 is_create=False,
                 code_hash=bytecode_hash,
-                program_counter=34,
+                program_counter=1,
                 stack_pointer=1022,
                 gas_left=0,
             ),

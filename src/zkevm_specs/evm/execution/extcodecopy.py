@@ -56,6 +56,6 @@ def extcodecopy(instruction: Instruction):
         rw_counter=Transition.delta(instruction.rw_counter_offset + copy_rwc_inc),
         program_counter=Transition.delta(1),
         stack_pointer=Transition.delta(4),
-        memory_size=Transition.to(next_memory_size),
+        memory_word_size=Transition.to(next_memory_size),
         dynamic_gas_cost=gas_cost,
     )

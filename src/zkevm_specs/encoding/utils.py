@@ -1,5 +1,5 @@
 from typing import Sequence, Tuple
-from .typing import U8, U256, U64
+from .typing import U8, U256
 
 
 def is_circuit_code(func):

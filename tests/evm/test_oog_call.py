@@ -29,7 +29,7 @@ CallContext = namedtuple(
     "CallContext",
     [
         "gas_left",
-        "memory_size",
+        "memory_word_size",
         "reversible_write_counter",
     ],
     defaults=[0, 0, 2],
@@ -194,7 +194,7 @@ def test_oog_call_root(
                 program_counter=program_counter,
                 stack_pointer=1018 - has_value,
                 gas_left=caller_context.gas_left,
-                memory_size=caller_context.memory_size,
+                memory_word_size=caller_context.memory_word_size,
                 reversible_write_counter=caller_context.reversible_write_counter,
             ),
             StepState(
@@ -252,7 +252,7 @@ def test_oog_call_not_root(
         .call_context_read(1, CallContextFieldTag.ProgramCounter, program_counter + 1) \
         .call_context_read(1, CallContextFieldTag.StackPointer, 1023) \
         .call_context_read(1, CallContextFieldTag.GasLeft, caller_context.gas_left) \
-        .call_context_read(1, CallContextFieldTag.MemorySize, caller_context.memory_size) \
+        .call_context_read(1, CallContextFieldTag.MemorySize, caller_context.memory_word_size) \
         .call_context_read(1, CallContextFieldTag.ReversibleWriteCounter, caller_context.reversible_write_counter) \
         .call_context_write(1, CallContextFieldTag.LastCalleeId, 2) \
         .call_context_write(1, CallContextFieldTag.LastCalleeReturnDataOffset, 0) \
@@ -297,7 +297,7 @@ def test_oog_call_not_root(
                 program_counter=program_counter + 1,
                 stack_pointer=1023,
                 gas_left=caller_context.gas_left,
-                memory_size=caller_context.memory_size,
+                memory_word_size=caller_context.memory_word_size,
                 reversible_write_counter=caller_context.reversible_write_counter,
             ),
         ],

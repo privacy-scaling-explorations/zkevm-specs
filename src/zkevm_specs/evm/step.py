@@ -55,7 +55,7 @@ class StepState:
         program_counter: int = 0,
         stack_pointer: int = 1024,
         gas_left: int = 0,
-        memory_size: int = 0,
+        memory_word_size: int = 0,
         reversible_write_counter: int = 0,
         log_id: int = 0,
         aux_data: Optional[Any] = None,
@@ -69,7 +69,7 @@ class StepState:
         self.program_counter = FQ(program_counter)
         self.stack_pointer = FQ(stack_pointer)
         self.gas_left = FQ(gas_left)
-        self.memory_size = FQ(memory_size)
+        self.memory_word_size = FQ(memory_word_size)
         self.reversible_write_counter = FQ(reversible_write_counter)
         self.log_id = FQ(log_id)
         self.aux_data = aux_data

@@ -121,7 +121,7 @@ def test_sha3(offset: U64, length: U64):
                 code_hash=bytecode_hash,
                 program_counter=pc,
                 stack_pointer=1022,
-                memory_size=next_memory_size,
+                memory_word_size=next_memory_size,
                 gas_left=gas,
             ),
             StepState(
@@ -133,7 +133,7 @@ def test_sha3(offset: U64, length: U64):
                 code_hash=bytecode_hash,
                 program_counter=pc + 1,
                 stack_pointer=1023,
-                memory_size=next_memory_size,
+                memory_word_size=next_memory_size,
                 gas_left=0,
             ),
         ],

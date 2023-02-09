@@ -16,7 +16,7 @@ def memory(instruction: Instruction):
 
     value = instruction.stack_push() if is_mload == FQ(1) else instruction.stack_pop()
 
-    memory_offset = instruction.curr.memory_size
+    memory_offset = instruction.curr.memory_word_size
     next_memory_size, memory_expansion_gas_cost = instruction.memory_expansion(
         memory_offset, address.expr() + FQ(1) + (is_not_mstore8 * FQ(31))
     )
@@ -40,6 +40,6 @@ def memory(instruction: Instruction):
         rw_counter=Transition.delta(34 - (is_mstore8 * 31)),
         program_counter=Transition.delta(1),
         stack_pointer=Transition.delta(is_store * 2),
-        memory_size=Transition.to(next_memory_size),
+        memory_word_size=Transition.to(next_memory_size),
         dynamic_gas_cost=memory_expansion_gas_cost,
     )
