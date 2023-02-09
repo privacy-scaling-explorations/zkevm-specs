@@ -455,7 +455,7 @@ def check_state_row(row: Row, row_prev: Row, row_next: Row, tables: Tables, rand
         row.address_limbs(), FQ(2**16), range_check=False
     )
 
-    # 0.2. address is RLC encoded
+    # 0.2. storage key is RLC encoded
     assert row.storage_key() == linear_combine_bytes(row.storage_key_bytes(), randomness)
 
     # 0.3. is_write is boolean
@@ -469,10 +469,10 @@ def check_state_row(row: Row, row_prev: Row, row_next: Row, tables: Tables, rand
     # When in two consecutive rows the keys are equal in a column:
     # - The corresponding keys in the following column must be increasing.
     #
-    # address is RLC encoded, so it doesn't keep the order.  We use the address
-    # bytes decomposition instead.  Since we will use a chain of comparison
-    # gadgets, we try to merge multiple keys together to reduce the number of
-    # required gadgets.
+    # storage key is RLC encoded, so it doesn't keep the order.  We use the
+    # storage key bytes decomposition instead.  Since we will use a chain of
+    # comparison gadgets, we try to merge multiple keys together to reduce the
+    # number of required gadgets.
 
     # NOTE: the current implementation uses the following order: tag,
     # field_tag, id, address, storage_key, rw_counter.  Some constraints of
