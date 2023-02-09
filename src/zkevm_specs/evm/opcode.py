@@ -377,13 +377,6 @@ def stack_underflow_pairs() -> List[Tuple[Opcode, int]]:
     return pairs
 
 
-def stack_bounds() -> List[Tuple[Opcode, int, int]]:
-    pairs = []
-    for opcode in valid_opcodes():
-        pairs.append((opcode, opcode.min_stack_pointer(), opcode.max_stack_pointer()))
-    return pairs
-
-
 def constant_gas_cost_pairs() -> List[Tuple[Opcode, int]]:
     pairs = []
     for opcode in valid_opcodes():
