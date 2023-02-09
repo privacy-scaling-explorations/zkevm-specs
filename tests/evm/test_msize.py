@@ -10,15 +10,16 @@ from zkevm_specs.evm import (
     Bytecode,
     RWDictionary,
 )
-from zkevm_specs.util import rand_fq, rand_word, RLC
+from zkevm_specs.util import rand_fq, rand_word, RLC, N_BYTES_WORD
 
-TESTING_DATA = [0]
+TESTING_DATA = [i for i in range(0, 7)]
 
 
-@pytest.mark.parametrize("value", TESTING_DATA)
-def test_msize(value: int):
+@pytest.mark.parametrize("memory_word_size", TESTING_DATA)
+def test_msize(memory_word_size: int):
     randomness = rand_fq()
 
+    value = memory_word_size * N_BYTES_WORD
     value = RLC(value, randomness)
 
     bytecode = Bytecode().msize().stop()
@@ -44,7 +45,7 @@ def test_msize(value: int):
                 code_hash=bytecode_hash,
                 program_counter=0,
                 stack_pointer=1023,
-                memory_word_size=0,
+                memory_word_size=memory_word_size,
                 gas_left=2,
             ),
             StepState(
@@ -56,6 +57,7 @@ def test_msize(value: int):
                 code_hash=bytecode_hash,
                 program_counter=1,
                 stack_pointer=1022,
+                memory_word_size=memory_word_size,
                 gas_left=0,
             ),
         ],
