@@ -2,7 +2,7 @@ from typing import Union, List
 from eth_keys import keys
 from eth_utils import keccak
 import rlp
-from zkevm_specs.tx import *
+from zkevm_specs.tx_circuit import *
 from zkevm_specs.util import rand_fq, FQ, U64
 
 randomness = rand_fq()
