@@ -3,14 +3,13 @@ import pytest
 from zkevm_specs.evm import (
     ExecutionState,
     StepState,
-    Opcode,
     verify_steps,
     Tables,
     Block,
     Bytecode,
     RWDictionary,
 )
-from zkevm_specs.util import rand_fq, rand_word, RLC, N_BYTES_WORD
+from zkevm_specs.util import rand_fq, RLC, N_BYTES_WORD
 
 TESTING_DATA = [i for i in range(0, 7)]
 
