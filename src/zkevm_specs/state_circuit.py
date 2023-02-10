@@ -212,7 +212,10 @@ def check_memory(row: Row, row_prev: Row):
     # 2.3. value is a byte
     assert_in_range(row.value, 0, 2**8 - 1)
 
-    # 2.4 state root does not change
+    # 2.4. Start initial value is 0
+    assert row.initial_value == 0
+
+    # 2.5. state root does not change
     assert row.root == row_prev.root
 
 
@@ -244,7 +247,10 @@ def check_stack(row: Row, row_prev: Row):
         stack_ptr_diff = get_stack_ptr(row) - get_stack_ptr(row_prev)
         assert_in_range(stack_ptr_diff, 0, 1)
 
-    # 3.4 state root does not change
+    # 3.4. Stack initial value is 0
+    assert row.initial_value == 0
+
+    # 3.5 state root does not change
     assert row.root == row_prev.root
 
 
@@ -253,11 +259,11 @@ def check_storage(row: Row, row_prev: Row, row_next: Row, tables: Tables):
     # 4.0. Unused keys are 0
     assert row.field_tag() == 0
 
-    # value = 0 means the leaf doesn't exist. 0->0 transition requires a
-    # non-existing proof.
+    # 4.1. value = 0 means the leaf doesn't exist. 0->0
+    # transition requires a non-existing proof.
     is_non_exist = FQ(row.value.expr() == FQ(0)) * FQ(row.initial_value.expr() == FQ(0))
 
-    # 4.1. MPT lookup for last access to (address, storage_key)
+    # 4.2. MPT lookup for last access to (address, storage_key)
     if not all_keys_eq(row, row_next):
         tables.mpt_lookup(
             row.address(),
