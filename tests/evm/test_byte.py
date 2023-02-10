@@ -26,7 +26,7 @@ def test_byte(a: int, b: int, c: int):
     b = RLC(b, randomness)
     c = RLC(c, randomness)
 
-    bytecode = Bytecode().byte(a, b)
+    bytecode = Bytecode().byte(a, b).stop()
     bytecode_hash = RLC(bytecode.hash(), randomness)
 
     tables = Tables(
