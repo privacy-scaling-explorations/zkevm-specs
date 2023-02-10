@@ -1,7 +1,7 @@
 import traceback
 from typing import Union, List
 
-from zkevm_specs.state import *
+from zkevm_specs.state_circuit import *
 from zkevm_specs.util import rand_fq, FQ, RLC
 
 randomness = rand_fq()
