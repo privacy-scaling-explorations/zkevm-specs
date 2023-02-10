@@ -115,8 +115,8 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     # ExecutionState.RIPEMD160: ,
     ExecutionState.DATACOPY: dataCopy,
     # ExecutionState.BIGMODEXP: ,
-    # ExecutionState.BN254_ADD: ,
-    # ExecutionState.BN254_SCALAR_MUL: ,
-    # ExecutionState.BN254_PAIRING: ,
+    ExecutionState.BN256ADD: bn256Add,
+    # ExecutionState.BN256SCALARMUL: ,
+    # ExecutionState.BN256PAIRING: ,
     # ExecutionState.BLAKE2F: ,
 }

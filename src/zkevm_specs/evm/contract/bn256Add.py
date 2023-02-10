@@ -1,5 +1,5 @@
 from ..instruction import Instruction
-from ...util import FQ, Bn256AddGas
+from ...util import FQ, Bn256AddGas, G1
 from ..table import (
     CallContextFieldTag,
     FixedTableTag,
@@ -25,12 +25,27 @@ def bn256Add(instruction: Instruction):
         CallContextFieldTag.ReturnDataLength, RW.Read
     )
 
+    a = bytearray(
+        [instruction.memory_lookup(RW.Read, call_data_offset.expr() + idx).n for idx in range(64)]
+    )
+    b = bytearray(
+        [
+            instruction.memory_lookup(RW.Read, call_data_offset.expr() + idx).n
+            for idx in range(64, 128)
+        ]
+    )
+
+    # convert input to points
+    point_a = point_b = G1()
+    point_a.unmarshal(a)
+    point_b.unmarshal(b)
+
     gas_cost = FQ(Bn256AddGas)
 
-    instruction.step_state_transition_to_restored_context(
-        rw_counter_delta=instruction.rw_counter_offset,
-        return_data_offset=FQ(0),
-        return_data_length=return_data_length,
-        gas_left=instruction.curr.gas_left - gas_cost,
-        caller_id=caller_id,
-    )
+    # instruction.step_state_transition_to_restored_context(
+    #     rw_counter_delta=instruction.rw_counter_offset,
+    #     return_data_offset=return_data_offset,
+    #     return_data_length=0,
+    #     gas_left=instruction.curr.gas_left - gas_cost,
+    #     caller_id=caller_id,
+    # )

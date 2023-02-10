@@ -838,14 +838,6 @@ class Instruction:
             self.rw_lookup(rw, RWTableTag.Stack, self.curr.call_id, stack_pointer).value, RLC
         )
 
-    def memory_write(self, memory_address: Expression, call_id: Optional[Expression] = None) -> FQ:
-        return self.memory_lookup(RW.Write, memory_address, call_id)
-
-    def memory_read(
-        self, memory_address: Expression, call_id: Optional[Expression] = None
-    ) -> Expression:
-        return self.memory_lookup(RW.Read, memory_address, call_id)
-
     def memory_lookup(
         self, rw: RW, memory_address: Expression, call_id: Optional[Expression] = None
     ) -> FQ:
