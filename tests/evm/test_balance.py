@@ -14,7 +14,6 @@ from zkevm_specs.evm import (
 from zkevm_specs.util import (
     EXTRA_GAS_COST_ACCOUNT_COLD_ACCESS,
     GAS_COST_WARM_ACCESS,
-    FQ,
     EMPTY_CODE_HASH,
     RLC,
     U160,

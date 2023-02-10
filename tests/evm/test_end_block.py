@@ -1,5 +1,4 @@
 import pytest
-from itertools import chain
 
 from zkevm_specs.evm import (
     ExecutionState,
@@ -10,9 +9,7 @@ from zkevm_specs.evm import (
     RWTableRow,
     RW,
     CallContextFieldTag,
-    TxContextFieldTag,
     TxReceiptFieldTag,
-    TxTableRow,
     Block,
     Transaction,
 )
