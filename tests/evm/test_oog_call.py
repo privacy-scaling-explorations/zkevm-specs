@@ -15,12 +15,6 @@ from zkevm_specs.evm import (
     verify_steps,
 )
 from zkevm_specs.util import (
-    EMPTY_CODE_HASH,
-    GAS_COST_ACCOUNT_COLD_ACCESS,
-    GAS_COST_CALL_WITH_VALUE,
-    GAS_COST_NEW_ACCOUNT,
-    GAS_COST_WARM_ACCESS,
-    GAS_STIPEND_CALL_WITH_VALUE,
     RLC,
     rand_fq,
 )

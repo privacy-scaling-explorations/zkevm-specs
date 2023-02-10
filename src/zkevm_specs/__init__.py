@@ -4,7 +4,7 @@ from . import encoding
 from . import evm
 from . import exp_circuit
 from . import opcode
-from . import state
+from . import state_circuit
 from . import tx
 from . import util
 from . import tx

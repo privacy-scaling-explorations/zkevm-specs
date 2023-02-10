@@ -1,16 +1,11 @@
-from itertools import chain
 import pytest
-from typing import Mapping, Sequence, Tuple
 
 from zkevm_specs.evm import (
-    AccountFieldTag,
     Bytecode,
     CallContextFieldTag,
     ExecutionState,
     Opcode,
-    RW,
     RWDictionary,
-    RWTableTag,
     StepState,
     Tables,
     verify_steps,
@@ -20,13 +15,9 @@ from zkevm_specs.evm import (
 from zkevm_specs.copy_circuit import verify_copy_table
 from zkevm_specs.util import (
     rand_fq,
-    rand_bytes,
     memory_word_size,
     memory_expansion,
     GAS_COST_COPY,
-    MAX_N_BYTES_COPY_TO_MEMORY,
-    MEMORY_EXPANSION_QUAD_DENOMINATOR,
-    MEMORY_EXPANSION_LINEAR_COEFF,
     RLC,
 )
 

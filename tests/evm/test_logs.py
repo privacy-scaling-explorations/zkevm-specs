@@ -1,15 +1,12 @@
 import pytest
-from typing import Sequence, Tuple, Mapping, Optional
+
 from zkevm_specs.evm import (
-    Opcode,
     ExecutionState,
     StepState,
     verify_steps,
     Tables,
-    RWTableTag,
     CallContextFieldTag,
     TxLogFieldTag,
-    RW,
     RLC,
     Block,
     Transaction,
@@ -25,7 +22,6 @@ from zkevm_specs.util import (
     rand_fq,
     rand_bytes,
     U64,
-    U256,
     rand_address,
     memory_expansion,
     FQ,

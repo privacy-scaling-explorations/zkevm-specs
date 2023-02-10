@@ -9,10 +9,8 @@ from zkevm_specs.evm import (
     Block,
     Bytecode,
     RWDictionary,
-    RWTableTag,
-    CallContextFieldTag,
 )
-from zkevm_specs.util import rand_fq, RLC, U64, GAS_COST_COPY, memory_expansion, memory_word_size
+from zkevm_specs.util import rand_fq, RLC, memory_expansion
 
 TESTING_DATA = (
     (

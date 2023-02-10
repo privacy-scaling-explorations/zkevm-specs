@@ -701,8 +701,10 @@ class Instruction:
     def tx_gas_price(self, tx_id: Expression) -> RLC:
         return cast_expr(self.tx_context_lookup(tx_id, TxContextFieldTag.GasPrice), RLC)
 
-    def responsible_opcode_lookup(self, opcode: Expression):
-        self.fixed_lookup(FixedTableTag.ResponsibleOpcode, FQ(self.curr.execution_state), opcode)
+    def responsible_opcode_lookup(self, opcode: Expression, aux: Expression = FQ(0)):
+        self.fixed_lookup(
+            FixedTableTag.ResponsibleOpcode, FQ(self.curr.execution_state), opcode, aux
+        )
 
     def opcode_lookup(self, is_code: bool) -> FQ:
         index = self.curr.program_counter + self.program_counter_offset

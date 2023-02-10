@@ -48,9 +48,8 @@ class Tag(IntEnum):
     TxRefund = 7
     TxAccessListAccount = 8
     TxAccessListAccountStorage = 9
-    AccountDestructed = 10
-    TxLog = 11
-    TxReceipt = 12
+    TxLog = 10
+    TxReceipt = 11
 
 
 class Row(NamedTuple):
@@ -79,7 +78,7 @@ class Row(NamedTuple):
                       FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,
                       FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ]
     value: FQ
-    committed_value: FQ
+    initial_value: FQ
 
     root: FQ
 
@@ -259,7 +258,7 @@ def check_storage(row: Row, row_prev: Row, row_next: Row, tables: Tables):
 
     # value = 0 means the leaf doesn't exist. 0->0 transition requires a
     # non-existing proof.
-    is_non_exist = FQ(row.value.expr() == FQ(0)) * FQ(row.committed_value.expr() == FQ(0))
+    is_non_exist = FQ(row.value.expr() == FQ(0)) * FQ(row.initial_value.expr() == FQ(0))
 
     # 4.1. MPT lookup for last access to (address, storage_key)
     if not all_keys_eq(row, row_next):
@@ -269,7 +268,7 @@ def check_storage(row: Row, row_prev: Row, row_next: Row, tables: Tables):
             + (1 - is_non_exist) * FQ(MPTProofType.StorageMod),
             row.storage_key(),
             row.value,
-            row.committed_value,
+            row.initial_value,
             row.root,
             row_prev.root,
         )
@@ -310,7 +309,7 @@ def check_account(row: Row, row_prev: Row, row_next: Row, tables: Tables):
     # transition requires a non-existing proof.
     is_non_exist = (
         FQ(row.value.expr() == FQ(0))
-        * FQ(row.committed_value.expr() == FQ(0))
+        * FQ(row.initial_value.expr() == FQ(0))
         * FQ(field_tag == FQ(AccountFieldTag.CodeHash))
     )
 
@@ -322,7 +321,7 @@ def check_account(row: Row, row_prev: Row, row_next: Row, tables: Tables):
             + (1 - is_non_exist) * FQ(proof_type),
             row.storage_key(),
             row.value,
-            row.committed_value,
+            row.initial_value,
             row.root,
             row_prev.root,
         )
@@ -345,7 +344,10 @@ def check_tx_refund(row: Row, row_prev: Row):
     # 7.1 state root does not change
     assert row.root == row_prev.root
 
-    # 7.2 First access for a set of all keys
+    # 7.2 initial value is 0
+    assert row.initial_value == 0
+
+    # 7.3 First access for a set of all keys
     # - If READ, value must be 0
     if not all_keys_eq(row, row_prev) and row.is_write == 0:
         assert row.value == 0
@@ -356,14 +358,14 @@ def check_tx_access_list_account(row: Row, row_prev: Row):
     get_tx_id = lambda row: row.id()
     get_addr = lambda row: row.address()
 
-    # 9.0. Unused keys are 0
+    # 8.0. Unused keys are 0
     assert row.field_tag() == 0
     assert row.storage_key() == 0
 
-    # 9.1 state root does not change
+    # 8.1 state root does not change
     assert row.root == row_prev.root
 
-    # 9.2 First access for a set of all keys
+    # 8.2 First access for a set of all keys
     # - If READ, value must be 0
     if not all_keys_eq(row, row_prev) and row.is_write == 0:
         assert row.value == 0
@@ -375,31 +377,16 @@ def check_tx_access_list_account_storage(row: Row, row_prev: Row):
     get_addr = lambda row: row.address()
     get_storage_key = lambda row: row.storage_key()
 
-    # 8.0. Unused keys are 0
+    # 9.0. Unused keys are 0
     assert row.field_tag() == 0
 
-    # 8.1 State root cannot change
+    # 9.1 State root cannot change
     assert row.root == row_prev.root
 
-    # 8.2 First access for a set of all keys
+    # 9.2 First access for a set of all keys
     # - If READ, value must be 0
     if not all_keys_eq(row, row_prev) and row.is_write == 0:
         assert row.value == 0
-
-
-@is_circuit_code
-def check_account_destructed(row: Row, row_prev: Row):
-    get_addr = lambda row: row.address()
-
-    # 10.0. Unused keys are 0
-    assert row.id() == 0
-    assert row.field_tag() == 0
-    assert row.storage_key() == 0
-
-    # TODO: Missing constraints
-    # - When keys change, value must be 0
-
-    # TODO: add MPT lookup
 
 
 @is_circuit_code
@@ -408,10 +395,10 @@ def check_tx_log(row: Row, row_prev: Row):
     tx_id = row.id()
     prev_tx_id = row_prev.id()
 
-    # 12.0 is_write is always true
+    # 10.0 is_write is always true
     assert row.is_write == 1
 
-    # 12.1 state root does not change
+    # 10.1 state root does not change
     assert row.root == row_prev.root
 
     # removed field_tag-specific constraints as issue
@@ -533,7 +520,7 @@ def check_state_row(row: Row, row_prev: Row, row_next: Row, tables: Tables, rand
         assert row.value == row_prev.value
 
     if all_keys_eq(row, row_prev):
-        assert row.committed_value == row_prev.committed_value
+        assert row.initial_value == row_prev.initial_value
 
     # 8. RWC !=0 except for Tag.Start
     if row.tag() != Tag.Start:
@@ -560,8 +547,6 @@ def check_state_row(row: Row, row_prev: Row, row_next: Row, tables: Tables, rand
         check_tx_access_list_account_storage(row, row_prev)
     elif row.tag() == Tag.TxAccessListAccount:
         check_tx_access_list_account(row, row_prev)
-    elif row.tag() == Tag.AccountDestructed:
-        check_account_destructed(row, row_prev)
     elif row.tag() == Tag.TxReceipt:
         check_tx_receipt(row, row_prev)
     elif row.tag() == Tag.TxLog:
@@ -584,7 +569,7 @@ class Operation(NamedTuple):
     field_tag: U256
     storage_key: U256
     value: FQ
-    committed_value: FQ
+    initial_value: FQ
     lexicographic_ordering_selector: FQ
 
 
@@ -739,20 +724,6 @@ class TxAccessListAccountStorageOp(Operation):
         # fmt: on
 
 
-class AccountDestructedOp(Operation):
-    """
-    AccountDestructed Operation
-    """
-
-    def __new__(self, rw_counter: int, rw: RW, addr: U160, value: FQ):
-        # fmt: off
-        return super().__new__(self, rw_counter, rw,
-                U256(Tag.AccountDestructed), U256(0), U256(addr), U256(0), U256(0), # keys
-                value, FQ(0), # values
-                FQ(1)) # lexicographic_ordering_selector
-        # fmt: on
-
-
 class TxLogOp(Operation):
     """
     TxLog Operation
@@ -808,7 +779,7 @@ def op2row(op: Operation, randomness: FQ, root: FQ) -> Row:
     keys = (tag, id, address, field_tag, storage_key)
 
     value = FQ(op.value)
-    committed_value = FQ(op.committed_value)
+    initial_value = FQ(op.initial_value)
     lexicographic_ordering_selector = FQ(op.lexicographic_ordering_selector)
 
     return Row(
@@ -818,7 +789,7 @@ def op2row(op: Operation, randomness: FQ, root: FQ) -> Row:
         address_limbs,  # type: ignore
         storage_key_bytes,  # type: ignore
         value,
-        committed_value,
+        initial_value,
         root,
         lexicographic_ordering_selector,
     )
@@ -892,7 +863,7 @@ def _mock_mpt_updates(ops: List[Operation], randomness: FQ) -> Dict[Tuple[FQ, FQ
             FQ(new_root),
             FQ(root),
             op.value,
-            op.committed_value,
+            op.initial_value,
         )
         root = new_root
 
