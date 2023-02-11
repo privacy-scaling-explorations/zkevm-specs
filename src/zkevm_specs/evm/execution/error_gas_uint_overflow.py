@@ -22,7 +22,8 @@ def gas_uint_overflow(instruction: Instruction):
     is_call_gas_cost_overflow = is_call * instruction.is_u64_overflow(gas_cost)
 
     # verify gas uint overflow.
-    instruction.constrain_equal(is_memory_size_overflow * is_call_gas_cost_overflow, FQ(1))
+    is_overflow = (is_memory_size_overflow + is_call_gas_cost_overflow).n >= 1
+    instruction.constrain_equal(FQ(is_overflow), FQ(1))
 
     # verify call failure.
     instruction.constrain_equal(

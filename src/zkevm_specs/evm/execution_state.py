@@ -371,6 +371,7 @@ class ExecutionState(IntEnum):
     def halts_in_exception(self) -> bool:
         return self in [
             ExecutionState.ErrorInvalidOpcode,
+            ExecutionState.ErrorGasUintOverflow,
             ExecutionState.ErrorStack,
             ExecutionState.ErrorWriteProtection,
             ExecutionState.ErrorDepth,
