@@ -2,9 +2,9 @@ import random
 import py_ecc
 
 from typing import Tuple, Optional
-from py_ecc.bn128 import FQ, multiply
+from py_ecc.bn128 import FQ, multiply, add
 from .param import MEMORY_EXPANSION_LINEAR_COEFF
-from .bn256 import unmarshal_field, CurvePoint, G1
+from .bn256 import unmarshal_field, CurvePoint, G1, gfp_to_fq
 from ..encoding import U64, U128, U256
 
 
@@ -67,3 +67,13 @@ def to_cf_form(e: BN128Point) -> G1:
     cf_point = G1(point)
 
     return cf_point
+
+
+def point_add(a: G1, b: G1) -> G1:
+    a_x = gfp_to_fq(a.p.x) if a.p is not None else FQ(0)
+    a_y = gfp_to_fq(a.p.y) if a.p is not None else FQ(0)
+    b_x = gfp_to_fq(b.p.x) if b.p is not None else FQ(0)
+    b_y = gfp_to_fq(b.p.y) if b.p is not None else FQ(0)
+    c = add((a_x, a_y), (b_x, b_y))
+
+    return to_cf_form(c)

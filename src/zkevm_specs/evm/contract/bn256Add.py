@@ -1,5 +1,5 @@
 from ..instruction import Instruction
-from ...util import FQ, Bn256AddGas, G1
+from ...util import FQ, Bn256AddGas, G1, point_add
 from ..table import (
     CallContextFieldTag,
     FixedTableTag,
@@ -39,6 +39,10 @@ def bn256Add(instruction: Instruction):
     point_a = point_b = G1()
     point_a.unmarshal(a)
     point_b.unmarshal(b)
+
+    # add two points and get result
+    point_c = point_add(point_a, point_b)
+    result = point_c.marshal()
 
     gas_cost = FQ(Bn256AddGas)
 

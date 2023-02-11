@@ -1,5 +1,4 @@
 import pytest
-from collections import namedtuple
 
 from zkevm_specs.evm import (
     Bytecode,

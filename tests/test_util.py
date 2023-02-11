@@ -1,4 +1,3 @@
-from py_ecc.bn128 import is_on_curve, FQ
 from zkevm_specs.util import r, curve_gen, G1, new_gfp
 
 

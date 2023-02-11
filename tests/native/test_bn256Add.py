@@ -1,5 +1,4 @@
 import pytest
-from collections import namedtuple
 from common import generate_sassy_tests
 from zkevm_specs.evm import (
     Bytecode,
@@ -10,13 +9,9 @@ from zkevm_specs.evm import (
     StepState,
     Tables,
     verify_steps,
-    CopyCircuit,
-    CopyDataTypeTag,
 )
-from zkevm_specs.copy_circuit import verify_copy_table
 from zkevm_specs.util import (
     rand_fq,
-    IdentityPerWordGas,
     RLC,
     FQ,
 )

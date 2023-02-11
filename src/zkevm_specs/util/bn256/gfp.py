@@ -1,4 +1,5 @@
 from typing import Tuple
+from ..arithmetic import FQ
 
 UINT64_MAX = 2**64
 UINT128_MAX = 2**128
@@ -19,6 +20,13 @@ def new_gfp(x: int) -> gfP:
         out = gfp_neg(out)
 
     return mont_encode(out)
+
+
+def gfp_to_fq(a: gfP) -> FQ:
+    n = 0
+    for i, limb in enumerate(a):
+        n += limb >> (i * 64)
+    return FQ(n)
 
 
 def gfp_neg(a: gfP) -> gfP:

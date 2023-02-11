@@ -1,5 +1,5 @@
 from collections import namedtuple
-from py_ecc.bn128 import G1, multiply, add
+from py_ecc.bn128 import G1, add
 from zkevm_specs.util import random_bn128_point, to_cf_form
 
 SASSY_AB_VALUES = (
