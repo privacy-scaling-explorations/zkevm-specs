@@ -44,12 +44,17 @@ def bn256Add(instruction: Instruction):
     point_c = point_add(point_a, point_b)
     result = point_c.marshal()
 
+    for idx in range(64):
+        instruction.is_equal(
+            instruction.memory_lookup(RW.Write, return_data_offset.expr() + idx), FQ(result[idx])
+        )
+
     gas_cost = FQ(Bn256AddGas)
 
-    # instruction.step_state_transition_to_restored_context(
-    #     rw_counter_delta=instruction.rw_counter_offset,
-    #     return_data_offset=return_data_offset,
-    #     return_data_length=0,
-    #     gas_left=instruction.curr.gas_left - gas_cost,
-    #     caller_id=caller_id,
-    # )
+    instruction.step_state_transition_to_restored_context(
+        rw_counter_delta=instruction.rw_counter_offset,
+        return_data_offset=return_data_offset,
+        return_data_length=return_data_length,
+        gas_left=instruction.curr.gas_left - gas_cost,
+        caller_id=caller_id,
+    )

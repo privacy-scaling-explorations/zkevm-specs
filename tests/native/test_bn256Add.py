@@ -77,6 +77,10 @@ def test_bn256Add(
     for i in range(128):
         rw_dictionary.memory_read(precompile_id, call_data_offset + i, input[i])
 
+    # store result point to memory
+    for i in range(64):
+        rw_dictionary.memory_write(precompile_id, return_data_offset + i, result[i])
+
     # rw counter before memory writes
     rw_counter_interim = rw_dictionary.rw_counter
     steps = [
@@ -99,8 +103,6 @@ def test_bn256Add(
     #         for i in range(call_data_offset, call_data_offset + call_data_length)
     #     ]
     # )
-
-    # print(input_src_data)
 
     # copy_circuit = (
     #     CopyCircuit()
