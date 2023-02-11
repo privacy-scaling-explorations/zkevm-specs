@@ -1,6 +1,5 @@
 import pytest
 
-from zkevm_specs.encoding import u256_to_u8s, u8s_to_u256
 from zkevm_specs.opcode.stack import Stack
 
 WORD_TWO_VALUES = ((20, 30),)

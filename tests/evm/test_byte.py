@@ -1,11 +1,9 @@
 import pytest
 from random import randrange
-from zkevm_specs.util import rand_fq, rand_word, RLC
-from zkevm_specs.encoding import u256_to_u8s
+from zkevm_specs.util import rand_fq, RLC
 from zkevm_specs.evm import (
     ExecutionState,
     StepState,
-    Opcode,
     verify_steps,
     Tables,
     Block,
@@ -28,7 +26,7 @@ def test_byte(a: int, b: int, c: int):
     b = RLC(b, randomness)
     c = RLC(c, randomness)
 
-    bytecode = Bytecode().byte(a, b)
+    bytecode = Bytecode().byte(a, b).stop()
     bytecode_hash = RLC(bytecode.hash(), randomness)
 
     tables = Tables(

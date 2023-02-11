@@ -302,7 +302,7 @@ class Bytecode:
             else:
                 assert len(args) <= 1024 - opcode.max_stack_pointer()
                 for arg in reversed(args):
-                    self.push(arg, 32)
+                    self.push(arg)
                 self.code.append(opcode)
                 self.is_code.append(True)
 

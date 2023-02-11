@@ -44,6 +44,7 @@ from .selfbalance import *
 from .extcodehash import *
 from .extcodesize import *
 from .log import *
+from .memory import *
 from .not_ import not_opcode
 from .sar import sar
 from .sdiv_smod import sdiv_smod
@@ -55,7 +56,8 @@ from .extcodecopy import *
 from .oog_constant import *
 from .oog_call import *
 from .error_stack import *
-from .error_Invalid_jump import *
+from .error_invalid_jump import *
+from .error_invalid_opcode import *
 
 
 EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
@@ -99,6 +101,7 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.EXTCODESIZE: extcodesize,
     ExecutionState.EXP: exp,
     ExecutionState.LOG: log,
+    ExecutionState.MEMORY: memory,
     ExecutionState.CALL_OP: callop,
     ExecutionState.ISZERO: iszero,
     ExecutionState.SAR: sar,
@@ -106,9 +109,10 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.SHL_SHR: shl_shr,
     ExecutionState.STOP: stop,
     ExecutionState.RETURN: return_revert,
-    ExecutionState.ErrorOutOfGasConstant: oog_constant,
     ExecutionState.ErrorInvalidJump: invalid_jump,
-    ExecutionState.ErrorOutOfGasCALL: oog_call,
+    ExecutionState.ErrorInvalidOpcode: invalid_opcode,
+    ExecutionState.ErrorOutOfGasCall: oog_call,
+    ExecutionState.ErrorOutOfGasConstant: oog_constant,
     ExecutionState.ErrorStack: stack_error,
     # ExecutionState.ECRECOVER: ,
     # ExecutionState.SHA256: ,

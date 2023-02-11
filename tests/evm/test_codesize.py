@@ -1,5 +1,3 @@
-import pytest
-
 from zkevm_specs.evm import (
     Bytecode,
     ExecutionState,

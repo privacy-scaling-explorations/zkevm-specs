@@ -10,7 +10,7 @@ from zkevm_specs.evm import (
     Bytecode,
     RWDictionary,
 )
-from zkevm_specs.util import rand_fq, rand_word, RLC
+from zkevm_specs.util import rand_fq, RLC
 
 TESTING_DATA = (
     # a < b
@@ -82,11 +82,11 @@ def test_lt_gt_eq(opcode: Opcode, a: int, b: int, res: int):
     res = RLC(res, randomness)
 
     bytecode = (
-        Bytecode().lt(a, b)
+        Bytecode().lt(a, b).stop()
         if opcode == Opcode.LT
-        else Bytecode().gt(a, b)
+        else Bytecode().gt(a, b).stop()
         if opcode == Opcode.GT
-        else Bytecode().eq(a, b)
+        else Bytecode().eq(a, b).stop()
     )
     bytecode_hash = RLC(bytecode.hash(), randomness)
 
