@@ -1,6 +1,6 @@
 import pytest
 from collections import namedtuple
-from itertools import chain, product
+from itertools import chain
 from zkevm_specs.evm import (
     Block,
     Bytecode,

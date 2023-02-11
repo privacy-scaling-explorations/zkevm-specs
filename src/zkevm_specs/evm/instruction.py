@@ -709,8 +709,10 @@ class Instruction:
     def tx_gas_price(self, tx_id: Expression) -> RLC:
         return cast_expr(self.tx_context_lookup(tx_id, TxContextFieldTag.GasPrice), RLC)
 
-    def responsible_opcode_lookup(self, opcode: Expression):
-        self.fixed_lookup(FixedTableTag.ResponsibleOpcode, FQ(self.curr.execution_state), opcode)
+    def responsible_opcode_lookup(self, opcode: Expression, aux: Expression = FQ(0)):
+        self.fixed_lookup(
+            FixedTableTag.ResponsibleOpcode, FQ(self.curr.execution_state), opcode, aux
+        )
 
     def opcode_lookup(self, is_code: bool) -> FQ:
         index = self.curr.program_counter + self.program_counter_offset
@@ -1037,9 +1039,7 @@ class Instruction:
         linear_cost = memory_size.expr() * MEMORY_EXPANSION_LINEAR_COEFF
         return quadratic_cost + linear_cost
 
-    def memory_expansion_constant_length(
-        self, offset: Expression, length: Expression
-    ) -> Tuple[FQ, FQ]:
+    def memory_expansion(self, offset: Expression, length: Expression) -> Tuple[FQ, FQ]:
         memory_size, _ = self.constant_divmod(
             length.expr() + offset.expr() + 31, FQ(32), N_BYTES_MEMORY_SIZE
         )

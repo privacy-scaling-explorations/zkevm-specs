@@ -8,15 +8,17 @@ State proof maintains the read-write part of [random accessible data](./evm-proo
 
 The operations recorded in the state proof are:
 
-- `Memory`: Call's memory as a byte array
-- `Stack`: Call's stack as RLC-encoded word array
-- `Storage`: Account's storage as key-value mapping
-- `CallContext`: Context of a Call
-- `Account`: Account's state (nonce, balance, code hash)
-- `TxRefund`: Value to refund to the tx sender
-- `TxAccessListAccount`: State of the account access list
-- `TxAccessListAccountStorage`: State of the account storage access list
-- `AccountDestructed`: State of destruction of an account
+1. `Start`: Start of transaction and padding row
+2. `Memory`: Call's memory as a byte array
+3. `Stack`: Call's stack as RLC-encoded word array
+4. `Storage`: Account's storage as key-value mapping
+5. `CallContext`: Context of a Call
+6. `Account`: Account's state (nonce, balance, code hash)
+7. `TxRefund`: Value to refund to the tx sender
+8. `TxAccessListAccount`: State of the account access list
+9. `TxAccessListAccountStorage`: State of the account storage access list
+10. `TxLog`: State of the transaction log
+11. `TxReceipt`: State of the transaction receipt
 
 Each operation uses different parameters for indexing.  See [RW Table](./tables.md#rw_table) for the complete details.
 

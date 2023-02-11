@@ -12,18 +12,15 @@ from zkevm_specs.evm import (
     verify_steps,
 )
 from zkevm_specs.util import (
-    EMPTY_CODE_HASH,
     EXTRA_GAS_COST_ACCOUNT_COLD_ACCESS,
     GAS_COST_WARM_ACCESS,
     RLC,
     U160,
-    U256,
     keccak256,
     rand_address,
     rand_bytes,
     rand_fq,
     rand_range,
-    rand_word,
 )
 
 TESTING_DATA = [
