@@ -141,3 +141,10 @@ Bn256PairingPerPointGas = 34000
 
 BigModExpBaseGas = 0
 Blake2fBaseGas = 0
+
+# Per transaction not creating a contract. NOTE: Not payable on data of calls between transactions.
+TxGas = 21000
+# Per transaction that creates a contract. NOTE: Not payable on data of calls between transactions.
+TxGasContractCreation = 53000
+# Per byte of non zero data attached to a transaction after EIP 2028 (part in Istanbul)
+TxDataNonZeroGasEIP2028 = 16

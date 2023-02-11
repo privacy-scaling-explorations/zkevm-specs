@@ -1,5 +1,5 @@
 from zkevm_specs.evm.util.call_gadget import CallGadget
-from ...util import FQ
+from ...util import FQ, TxDataNonZeroGasEIP2028, MAX_U64, TxGas, TxGasContractCreation
 from ..instruction import Instruction, Transition
 from ..table import CallContextFieldTag
 from ..opcode import Opcode
@@ -9,6 +9,9 @@ def gas_uint_overflow(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
 
     is_call = instruction.is_equal(opcode, Opcode.CALL)
+    is_create_flag = instruction.is_equal(opcode, Opcode.CREATE)
+    is_create2_flag = instruction.is_equal(opcode, Opcode.CREATE2)
+    is_create = is_create_flag + is_create2_flag
 
     # memory size overflow flag.
     memory_size = instruction.call_context_lookup(CallContextFieldTag.MemorySize)
@@ -20,6 +23,11 @@ def gas_uint_overflow(instruction: Instruction):
     is_warm_access = instruction.read_account_to_access_list(tx_id, call.callee_address)
     gas_cost = call.gas_cost(instruction, is_warm_access)
     is_call_gas_cost_overflow = is_call * instruction.is_u64_overflow(gas_cost)
+
+    # intrinsic gas flag.
+    gas = TxGasContractCreation if is_create == FQ(1) else TxGas
+    non_zero_gas = TxDataNonZeroGasEIP2028
+    (MAX_U64 - gas) / non_zero_gas
 
     # verify gas uint overflow.
     is_overflow = (is_memory_size_overflow + is_call_gas_cost_overflow).n >= 1
