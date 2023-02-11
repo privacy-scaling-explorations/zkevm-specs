@@ -71,7 +71,6 @@ def test_bn256Add(
         .call_context_read(precompile_id, CallContextFieldTag.CallerId, call_id)
         .call_context_read(precompile_id, CallContextFieldTag.CallDataOffset, call_data_offset)
         .call_context_read(precompile_id, CallContextFieldTag.ReturnDataOffset, return_data_offset)
-        .call_context_read(precompile_id, CallContextFieldTag.ReturnDataLength, return_data_length)
         # fmt: on
     )
 

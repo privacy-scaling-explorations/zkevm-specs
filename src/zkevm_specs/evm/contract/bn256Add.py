@@ -23,9 +23,6 @@ def bn256Add(instruction: Instruction):
     return_data_offset = instruction.call_context_lookup(
         CallContextFieldTag.ReturnDataOffset, RW.Read
     )
-    return_data_length = instruction.call_context_lookup(
-        CallContextFieldTag.ReturnDataLength, RW.Read
-    )
 
     # get two points from input
     a = bytearray(
@@ -69,8 +66,8 @@ def bn256Add(instruction: Instruction):
 
     instruction.step_state_transition_to_restored_context(
         rw_counter_delta=instruction.rw_counter_offset,
-        return_data_offset=return_data_offset,
-        return_data_length=return_data_length,
+        return_data_offset=FQ(0),
+        return_data_length=result_length,
         gas_left=instruction.curr.gas_left - gas_cost,
         caller_id=caller_id,
     )
