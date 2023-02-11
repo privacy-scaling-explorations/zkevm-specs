@@ -2,7 +2,7 @@ from typing import NamedTuple, Tuple, List, Set, Dict, Optional
 from enum import IntEnum
 from math import log, ceil
 
-from zkevm_specs.evm.table import MPTProofType
+from zkevm_specs.evm.table import ProofType
 
 from .util import FQ, RLC, U160, U256, Expression, linear_combine_bytes
 from .encoding import U8, is_circuit_code
@@ -261,14 +261,16 @@ def check_storage(row: Row, row_prev: Row, row_next: Row, tables: Tables):
 
     # 4.1. value = 0 means the leaf doesn't exist. 0->0
     # transition requires a non-existing proof.
+    mpt_proof_type = ProofType.StorageDoesNotExist
     is_non_exist = FQ(row.value.expr() == FQ(0)) * FQ(row.initial_value.expr() == FQ(0))
+    mpt_proof_type == is_non_exist * ProofType.StorageDoesNotExist
 
     # 4.2. MPT lookup for last access to (address, storage_key)
     if not all_keys_eq(row, row_next):
         tables.mpt_lookup(
             row.address(),
-            is_non_exist * FQ(MPTProofType.NonExistingStorageProof)
-            + (1 - is_non_exist) * FQ(MPTProofType.StorageMod),
+            is_non_exist * FQ(ProofType.AccountDoesNotExist)
+            + (1 - is_non_exist) * FQ(ProofType.StorageChanged),
             row.storage_key(),
             row.value,
             row.initial_value,
@@ -302,7 +304,7 @@ def check_account(row: Row, row_prev: Row, row_next: Row, tables: Tables):
     get_addr = lambda row: row.address()
 
     field_tag = row.field_tag()
-    proof_type = MPTProofType.from_account_field_tag(field_tag)
+    proof_type = ProofType.from_account_field_tag(field_tag)
 
     # 6.0. Unused keys are 0
     assert row.id() == 0
@@ -320,8 +322,7 @@ def check_account(row: Row, row_prev: Row, row_next: Row, tables: Tables):
     if not all_keys_eq(row, row_next):
         tables.mpt_lookup(
             get_addr(row),
-            is_non_exist * FQ(MPTProofType.NonExistingAccountProof)
-            + (1 - is_non_exist) * FQ(proof_type),
+            is_non_exist * FQ(ProofType.AccountDoesNotExist) + (1 - is_non_exist) * FQ(proof_type),
             row.storage_key(),
             row.value,
             row.initial_value,
@@ -852,9 +853,9 @@ def _mock_mpt_updates(ops: List[Operation], randomness: FQ) -> Dict[Tuple[FQ, FQ
             continue
 
         field_tag = op.field_tag
-        proof_type = MPTProofType.StorageMod  # type warning if None
+        proof_type = ProofType.StorageChanged  # type warning if None
         if isinstance(field_tag, AccountFieldTag):
-            proof_type = MPTProofType.from_account_field_tag(field_tag)
+            proof_type = ProofType.from_account_field_tag(field_tag)
 
         new_root = root + 5
         if isinstance(op, StartOp):
