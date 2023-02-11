@@ -46,7 +46,7 @@ def dataCopy(instruction: Instruction):
     )
 
     # Copy current call data to next call context memory
-    copy_rwc_inc, _ = instruction.copy_lookup(
+    instruction.copy_lookup(
         caller_id,
         CopyDataTypeTag.Memory,
         instruction.curr.call_id,

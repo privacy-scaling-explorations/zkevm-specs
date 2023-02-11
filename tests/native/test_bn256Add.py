@@ -8,6 +8,8 @@ from zkevm_specs.evm import (
     RWDictionary,
     StepState,
     Tables,
+    CopyCircuit,
+    CopyDataTypeTag,
     verify_steps,
 )
 from zkevm_specs.util import (
@@ -15,6 +17,7 @@ from zkevm_specs.util import (
     RLC,
     FQ,
 )
+from zkevm_specs.copy_circuit import verify_copy_table
 from common import PrecompileCallContext
 
 CALLER_ID = 1
@@ -67,7 +70,6 @@ def test_bn256Add(
         .call_context_read(precompile_id, CallContextFieldTag.CalleeAddress, BN256ADD_PRECOMPILE_ADDRESS)
         .call_context_read(precompile_id, CallContextFieldTag.CallerId, call_id)
         .call_context_read(precompile_id, CallContextFieldTag.CallDataOffset, call_data_offset)
-        .call_context_read(precompile_id, CallContextFieldTag.CallDataLength, call_data_length)
         .call_context_read(precompile_id, CallContextFieldTag.ReturnDataOffset, return_data_offset)
         .call_context_read(precompile_id, CallContextFieldTag.ReturnDataLength, return_data_length)
         # fmt: on
@@ -81,62 +83,26 @@ def test_bn256Add(
     for i in range(64):
         rw_dictionary.memory_write(precompile_id, return_data_offset + i, result[i])
 
-    # rw counter before memory writes
-    rw_counter_interim = rw_dictionary.rw_counter
-    steps = [
-        StepState(
-            execution_state=ExecutionState.BN256ADD,
-            rw_counter=1,
-            call_id=precompile_id,
-            is_root=True,
-            code_hash=code_hash,
-            program_counter=99,
-            stack_pointer=1021,
-            memory_size=caller_ctx.memory_size,
-            gas_left=gas,
-        ),
-    ]
+    result_src_data = dict(
+        [
+            (i, input[i] if i < len(input) else 0)
+            for i in range(return_data_offset, return_data_offset + result_size)
+        ]
+    )
 
-    # input_src_data = dict(
-    #     [
-    #         (i, input[i] if i < len(input) else 0)
-    #         for i in range(call_data_offset, call_data_offset + call_data_length)
-    #     ]
-    # )
-
-    # copy_circuit = (
-    #     CopyCircuit()
-    #     .copy(
-    #         randomness,
-    #         rw_dictionary,
-    #         call_id,
-    #         CopyDataTypeTag.Memory,
-    #         call_id,
-    #         CopyDataTypeTag.Memory,
-    #         call_data_offset,
-    #         call_data_offset + input_size,
-    #         return_data_offset,
-    #         input_size,
-    #         input_src_data,
-    #     )
-    # .copy(
-    #     randomness,
-    #     rw_dictionary,
-    #     call_id,
-    #     CopyDataTypeTag.Memory,
-    #     precompile_id,
-    #     CopyDataTypeTag.Memory,
-    #     call_data_offset,
-    #     call_data_offset + size,
-    #     FQ(0),
-    #     size,
-    #     src_data,
-    # )
-    # )
-
-    # rw counter after memory writes
-    # rw_counter_final = rw_dictionary.rw_counter
-    # assert rw_counter_final - rw_counter_interim == size * 4  # 1 copy == 1 read & 1 write
+    copy_circuit = CopyCircuit().copy(
+        randomness,
+        rw_dictionary,
+        call_id,
+        CopyDataTypeTag.Memory,
+        precompile_id,
+        CopyDataTypeTag.Memory,
+        return_data_offset,
+        return_data_offset + result_size,
+        FQ(0),
+        result_size,
+        result_src_data,
+    )
 
     rw_dictionary = (
         # fmt: off
@@ -155,7 +121,18 @@ def test_bn256Add(
         # fmt: on
     )
 
-    steps.append(
+    steps = [
+        StepState(
+            execution_state=ExecutionState.BN256ADD,
+            rw_counter=1,
+            call_id=precompile_id,
+            is_root=True,
+            code_hash=code_hash,
+            program_counter=99,
+            stack_pointer=1021,
+            memory_size=caller_ctx.memory_size,
+            gas_left=gas,
+        ),
         StepState(
             execution_state=ExecutionState.STOP,
             rw_counter=rw_dictionary.rw_counter,
@@ -166,16 +143,18 @@ def test_bn256Add(
             stack_pointer=caller_ctx.stack_pointer,
             memory_size=caller_ctx.memory_size,
             gas_left=0,
-        )
-    )
+        ),
+    ]
 
     tables = Tables(
         block_table=set(),
         tx_table=set(),
         bytecode_table=set(code.table_assignments(randomness)),
         rw_table=set(rw_dictionary.rws),
-        # copy_circuit=copy_circuit.rows,
+        copy_circuit=copy_circuit.rows,
     )
+
+    verify_copy_table(copy_circuit, tables, randomness)
 
     verify_steps(
         randomness,
