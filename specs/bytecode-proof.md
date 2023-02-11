@@ -169,4 +169,4 @@ As well as (mentioned above) `cur.tag == Header`.
 
 ## Code
 
-Please refer to `src/zkevm-specs/bytecode.py`.
+Please refer to `src/zkevm-specs/bytecode_circuit.py`.
