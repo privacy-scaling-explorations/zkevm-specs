@@ -3,12 +3,12 @@
 ## Procedure
 there are some op codes which modify state. there are `[SSTORE, CREATE, CREATE2, 
 CALL, SELFDESTRUCT, LOG0, LOG1, LOG2, LOG3, LOG4]`
-when execution call context is ready only (static call), these op codes running will encounter
+when execution call context is read only (static call), these op codes running will encounter
 write protection error.
 ### EVM behavior
 in above op codes which modify state, `CALL` is somewhat special. for non call op codes(SSTORE, CREATE, etc)
-first check if running in ready only call context, if yes, throw write protection error.
-for `CALL` op code, it will also check `value` is not zero. only both non zero value & ready only call context, then
+first check if running in read only call context, if yes, throw write protection error.
+for `CALL` op code, it will also check `value` is not zero. only both non zero value & read only call context, then
 throw write protection error.
 
 ### Constraints
