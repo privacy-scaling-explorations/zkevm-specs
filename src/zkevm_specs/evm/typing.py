@@ -742,18 +742,15 @@ class KeccakCircuit:
 
 class ExpCircuit:
     rows: List[ExpCircuitRow]
-    pad_rows: List[ExpCircuitRow]
     max_exp_steps: int
+    OFFSET_INCREMENT = 7
 
-    def __init__(self, pad_rows: Optional[List[ExpCircuitRow]] = None, max_exp_steps: Optional[int] = 100) -> None:
+    def __init__(self, max_exp_steps: Optional[int] = 100) -> None:
         self.rows = []
-        self.pad_rows = []
-        if pad_rows is not None:
-            self.pad_rows = pad_rows
         self.max_exp_steps = max_exp_steps
 
     def table(self) -> Sequence[ExpCircuitRow]:
-        return self.rows + self.pad_rows
+        return self.rows
 
     def add_event(self, base: int, exponent: int, randomness: FQ, identifier: IntOrFQ):
         steps: List[Tuple[int, int, int]] = []
@@ -818,7 +815,8 @@ class ExpCircuit:
                 exponent = exponent - 1
 
     def fill_dummy_events(self):
-        rows_left = self.max_exp_steps - len(self.rows)
+        max_exp_rows = self.max_exp_steps * self.OFFSET_INCREMENT
+        rows_left = max_exp_rows - len(self.rows)
         for i in range(rows_left):
             self.rows.append(
                 ExpCircuitRow(
