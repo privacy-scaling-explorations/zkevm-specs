@@ -1,7 +1,15 @@
 from zkevm_specs.evm.util.call_gadget import CallGadget
-from ...util import FQ, TxDataNonZeroGasEIP2028, MAX_U64, TxGas, TxGasContractCreation, TxDataZeroGas
+from ...util import (
+    FQ,
+    TxDataNonZeroGasEIP2028,
+    MAX_U64,
+    TxGas,
+    TxGasContractCreation,
+    TxDataZeroGas,
+    InitCodeWordGas,
+)
 from ..instruction import Instruction, Transition
-from ..table import CallContextFieldTag, TxContextFieldTag
+from ..table import CallContextFieldTag
 from ..opcode import Opcode
 
 
@@ -12,6 +20,11 @@ def gas_uint_overflow(instruction: Instruction):
     is_create_flag = instruction.is_equal(opcode, Opcode.CREATE)
     is_create2_flag = instruction.is_equal(opcode, Opcode.CREATE2)
     is_create = is_create_flag + is_create2_flag
+
+    # init overflow flag
+    is_memory_size_overflow = (
+        is_call_gas_cost_overflow
+    ) = is_eip2028_overflow = is_non_zero_gas_overflow = is_eip3860_overflow = FQ(0)
 
     # memory size overflow flag.
     memory_size = instruction.call_context_lookup(CallContextFieldTag.MemorySize)
@@ -25,23 +38,47 @@ def gas_uint_overflow(instruction: Instruction):
     is_call_gas_cost_overflow = is_call * instruction.is_u64_overflow(gas_cost)
 
     # intrinsic gas flag.
-    # eip 2028
-    tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
-    tx_data_length = instruction.tx_context_lookup(tx_id, TxContextFieldTag.CallDataLength)
-    gas = TxGasContractCreation if is_create == FQ(1) else TxGas
-    non_zero_gas = TxDataNonZeroGasEIP2028
-    is_eip2028_overflow, _ = instruction.compare(((MAX_U64 - gas) / non_zero_gas), nz)
+    calldata_offset = instruction.call_context_lookup(CallContextFieldTag.CallDataOffset)
+    calldata_length = instruction.call_context_lookup(CallContextFieldTag.CallDataLength)
+    data = [
+        instruction.tx_calldata_lookup(tx_id, calldata_offset + FQ(idx))
+        for idx in range(calldata_length.expr().n)
+    ]
+    dataLen = len(data)
 
-    # 
-    z = 
+    if dataLen > 0:
+        # eip 2028
+        nz = len([byte for byte in data if byte != 0])
+        gas = TxGasContractCreation if is_create == FQ(1) else TxGas
+        non_zero_gas = TxDataNonZeroGasEIP2028
+        is_eip2028_overflow, _ = instruction.compare(
+            FQ(((MAX_U64 - gas) // non_zero_gas)), FQ(nz), 8
+        )
+        gas += nz * non_zero_gas
 
-    # eip 3860
+        # tx data zero gas overflow
+        z = dataLen - nz
+        is_non_zero_gas_overflow, _ = instruction.compare(
+            FQ(((MAX_U64 - gas) // TxDataZeroGas)), FQ(z), 8
+        )
+        gas += z * TxDataZeroGas
 
-
+        # eip 3860
+        if is_create:
+            lenWords = dataLen // 32
+            is_eip3860_overflow, _ = instruction.compare(
+                FQ((MAX_U64 - gas) // InitCodeWordGas), FQ(lenWords), 8
+            )
 
     # verify gas uint overflow.
-    is_overflow = (is_memory_size_overflow + is_call_gas_cost_overflow).n >= 1
-    instruction.constrain_equal(FQ(is_overflow), FQ(1))
+    is_overflow = (
+        is_memory_size_overflow
+        + is_call_gas_cost_overflow
+        + is_eip2028_overflow
+        + is_non_zero_gas_overflow
+        + is_eip3860_overflow
+    )
+    instruction.constrain_not_zero(FQ(is_overflow))
 
     # verify call failure.
     instruction.constrain_equal(

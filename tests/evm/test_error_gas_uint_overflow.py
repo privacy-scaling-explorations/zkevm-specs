@@ -41,7 +41,11 @@ Stack = namedtuple(
 TEST_DATA = [
     (
         CallContext(memory_size=MAX_MEMORY_SIZE + 1),
-        Transaction(),
+        Transaction(
+            call_data=bytes.fromhex(
+                "00000000000000000000000000000000000000000000000000000000000000FF"
+            )
+        ),
         Stack(),
         Account(address=0xFF, code=Bytecode().stop(), balance=int(1e18)),
     )
@@ -74,12 +78,12 @@ def test_error_gas_uint_overflow(ctx: CallContext, tx: Transaction, stack: Stack
             .stack_write(1, 1023, RLC(False, randomness))
             .account_read(account.address, AccountFieldTag.CodeHash, callee_bytecode_hash)
             .tx_access_list_account_read(1, account.address, True)
+            .call_context_read(1, CallContextFieldTag.CallDataOffset, 0)
+            .call_context_read(1, CallContextFieldTag.CallDataLength, len(tx.call_data))
             .call_context_read(1, CallContextFieldTag.IsSuccess, 0)
             .rws
         ),
     )
-
-    print(tables.rw_table)
 
     verify_steps(
         randomness=randomness,

@@ -150,3 +150,5 @@ TxGasContractCreation = 53000
 TxDataNonZeroGasEIP2028 = 16
 # Per byte of data attached to a transaction that equals zero. NOTE: Not payable on data of calls between transactions.
 TxDataZeroGas = 4
+# Once per word of the init code when creating a contract.
+InitCodeWordGas = 2
