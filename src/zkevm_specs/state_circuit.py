@@ -259,13 +259,9 @@ def check_storage(row: Row, row_prev: Row, row_next: Row, tables: Tables):
     # 4.0. Unused keys are 0
     assert row.field_tag() == 0
 
-    # 4.1. value = 0 means the leaf doesn't exist. 0->0
-    # transition requires a non-existing proof.
-    mpt_proof_type = ProofType.StorageDoesNotExist
+    # 4.1. MPT lookup for last access to (address, storage_key)
+    # value = 0 means the leaf doesn't exist and this needs for non-existing proof
     is_non_exist = FQ(row.value.expr() == FQ(0)) * FQ(row.initial_value.expr() == FQ(0))
-    mpt_proof_type == is_non_exist * ProofType.StorageDoesNotExist
-
-    # 4.2. MPT lookup for last access to (address, storage_key)
     if not all_keys_eq(row, row_next):
         tables.mpt_lookup(
             row.address(),

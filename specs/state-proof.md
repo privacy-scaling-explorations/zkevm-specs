@@ -70,8 +70,7 @@ to not be in the table.
 ### Storage
 
 4.0. `storage_key` is 0
-4.1. non-existing proof if value is 0
-4.2. mpt_update exists in mpt circuit for AccountStorage last access
+4.1. mpt_update exists in mpt circuit for AccountStorage last access
 
 ### Tx Refund
 
