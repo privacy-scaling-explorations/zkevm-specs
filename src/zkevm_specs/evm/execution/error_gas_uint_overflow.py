@@ -31,6 +31,7 @@ def gas_uint_overflow(instruction: Instruction):
     is_memory_size_overflow = instruction.is_memory_overflow(memory_size)
 
     # call gas_cost overflow flag.
+    # seems never overflow because of checking range inside of CallGadget
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
     call = CallGadget(instruction, FQ(0), FQ(1), FQ(0), FQ(0))
     is_warm_access = instruction.read_account_to_access_list(tx_id, call.callee_address)
@@ -58,10 +59,11 @@ def gas_uint_overflow(instruction: Instruction):
 
         # tx data zero gas overflow
         z = dataLen - nz
+        zero_gas = TxDataZeroGas
         is_non_zero_gas_overflow, _ = instruction.compare(
-            FQ(((MAX_U64 - gas) // TxDataZeroGas)), FQ(z), 8
+            FQ(((MAX_U64 - gas) // zero_gas)), FQ(z), 8
         )
-        gas += z * TxDataZeroGas
+        gas += z * zero_gas
 
         # eip 3860
         if is_create:
