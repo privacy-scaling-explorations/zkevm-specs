@@ -178,7 +178,7 @@ class Instruction:
                 "program_counter",
                 "stack_pointer",
                 "gas_left",
-                "memory_size",
+                "memory_word_size",
                 "reversible_write_counter",
                 "log_id",
             ]
@@ -236,7 +236,7 @@ class Instruction:
             # Initailization unconditionally
             program_counter=Transition.to(0),
             stack_pointer=Transition.to(1024),
-            memory_size=Transition.to(0),
+            memory_word_size=Transition.to(0),
         )
 
     def step_state_transition_to_restored_context(
@@ -304,7 +304,7 @@ class Instruction:
             stack_pointer=Transition.to(caller_stack_pointer),
             # Pays back gas_left to caller
             gas_left=Transition.to(caller_gas_left.expr() + gas_left.expr()),
-            memory_size=Transition.to(caller_memory_size),
+            memory_word_size=Transition.to(caller_memory_size),
             # Accumulate reversible_write_counter to caller
             reversible_write_counter=Transition.to(
                 caller_reversible_write_counter.expr() + reversible_write_counter.expr()
@@ -317,7 +317,7 @@ class Instruction:
         rw_counter: Transition = Transition.same(),
         program_counter: Transition = Transition.same(),
         stack_pointer: Transition = Transition.same(),
-        memory_size: Transition = Transition.same(),
+        memory_word_size: Transition = Transition.same(),
         reversible_write_counter: Transition = Transition.same(),
         dynamic_gas_cost: IntOrFQ = 0,
         log_id: Transition = Transition.same(),
@@ -332,7 +332,7 @@ class Instruction:
             program_counter=program_counter,
             stack_pointer=stack_pointer,
             gas_left=Transition.delta(-gas_cost),
-            memory_size=memory_size,
+            memory_word_size=memory_word_size,
             reversible_write_counter=reversible_write_counter,
             log_id=log_id,
             # Always stay same
@@ -1036,9 +1036,9 @@ class Instruction:
             length.expr() + offset.expr() + 31, FQ(32), N_BYTES_MEMORY_SIZE
         )
 
-        next_memory_size = self.max(self.curr.memory_size, memory_size, N_BYTES_MEMORY_SIZE)
+        next_memory_size = self.max(self.curr.memory_word_size, memory_size, N_BYTES_MEMORY_SIZE)
 
-        memory_gas_cost = self.memory_gas_cost(self.curr.memory_size)
+        memory_gas_cost = self.memory_gas_cost(self.curr.memory_word_size)
         memory_gas_cost_next = self.memory_gas_cost(next_memory_size)
         memory_expansion_gas_cost = memory_gas_cost_next - memory_gas_cost
 
@@ -1054,7 +1054,7 @@ class Instruction:
         cd_memory_size, _ = self.constant_divmod(
             cd_offset.expr() + cd_length.expr() + FQ(31), FQ(32), N_BYTES_MEMORY_SIZE
         )
-        next_memory_size = self.max(self.curr.memory_size, cd_memory_size, N_BYTES_MEMORY_SIZE)
+        next_memory_size = self.max(self.curr.memory_word_size, cd_memory_size, N_BYTES_MEMORY_SIZE)
 
         if rd_offset is not None and rd_length is not None:
             rd_memory_size, _ = self.constant_divmod(
@@ -1062,7 +1062,7 @@ class Instruction:
             )
             next_memory_size = self.max(next_memory_size, rd_memory_size, N_BYTES_MEMORY_SIZE)
 
-        memory_gas_cost = self.memory_gas_cost(self.curr.memory_size)
+        memory_gas_cost = self.memory_gas_cost(self.curr.memory_word_size)
         memory_gas_cost_next = self.memory_gas_cost(next_memory_size)
         memory_expansion_gas_cost = memory_gas_cost_next - memory_gas_cost
 

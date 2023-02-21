@@ -22,4 +22,4 @@ The `MSIZE` opcode returns the memory size of the current execution and places i
 
 ## Code
 
-Please refer to `src/zkevm_specs/opcode/msize.py`.
+Please refer to `src/zkevm_specs/evm/execution/msize.py`.

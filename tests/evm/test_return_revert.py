@@ -120,7 +120,7 @@ CallContext = namedtuple(
         "program_counter",
         "stack_pointer",
         "gas_left",
-        "memory_size",
+        "memory_word_size",
         "reversible_write_counter",
     ],
     defaults=[True, False, 232, 1023, 0, 0, 0],
@@ -230,7 +230,7 @@ def test_not_root_not_create(
         .call_context_read(caller_id, CallContextFieldTag.ProgramCounter, caller_ctx.program_counter)
         .call_context_read(caller_id, CallContextFieldTag.StackPointer, caller_ctx.stack_pointer)
         .call_context_read(caller_id, CallContextFieldTag.GasLeft, caller_ctx.gas_left)
-        .call_context_read(caller_id, CallContextFieldTag.MemorySize, caller_ctx.memory_size)
+        .call_context_read(caller_id, CallContextFieldTag.MemorySize, caller_ctx.memory_word_size)
         .call_context_read(caller_id, CallContextFieldTag.ReversibleWriteCounter, caller_ctx.reversible_write_counter)
         .call_context_write(caller_id, CallContextFieldTag.LastCalleeId, 24)
         .call_context_write(caller_id, CallContextFieldTag.LastCalleeReturnDataOffset, return_offset)
@@ -267,7 +267,7 @@ def test_not_root_not_create(
                 program_counter=40,
                 stack_pointer=1022,
                 gas_left=gas_left,
-                memory_size=2,
+                memory_word_size=2,
                 reversible_write_counter=callee_reversible_write_counter,
             ),
             StepState(
@@ -280,7 +280,7 @@ def test_not_root_not_create(
                 program_counter=caller_ctx.program_counter,
                 stack_pointer=caller_ctx.stack_pointer,
                 gas_left=caller_ctx.gas_left + (gas_left - return_gas_cost),
-                memory_size=caller_ctx.memory_size,
+                memory_word_size=caller_ctx.memory_word_size,
                 reversible_write_counter=caller_ctx.reversible_write_counter
                 + callee_reversible_write_counter,
             ),

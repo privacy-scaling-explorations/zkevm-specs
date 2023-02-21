@@ -407,7 +407,7 @@ def test_callop(
                 program_counter=next_program_counter - 1,
                 stack_pointer=stack_pointer,
                 gas_left=caller_ctx.gas_left,
-                memory_size=caller_ctx.memory_size,
+                memory_word_size=caller_ctx.memory_size,
                 reversible_write_counter=caller_ctx.reversible_write_counter,
             ),
             (
@@ -421,7 +421,7 @@ def test_callop(
                     program_counter=next_program_counter,
                     stack_pointer=1023,
                     gas_left=expected.caller_gas_left,
-                    memory_size=expected.next_memory_size,
+                    memory_word_size=expected.next_memory_size,
                     reversible_write_counter=caller_ctx.reversible_write_counter + 3,
                 )
                 if is_empty_code_hash

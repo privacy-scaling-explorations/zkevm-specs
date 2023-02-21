@@ -75,7 +75,7 @@ CallContext = namedtuple(
         "program_counter",
         "stack_pointer",
         "gas_left",
-        "memory_size",
+        "memory_word_size",
         "reversible_write_counter",
     ],
     defaults=[True, False, 232, 1023, 10, 0, 0],
@@ -115,7 +115,7 @@ def test_oog_constant_not_root(caller_ctx: CallContext, callee_bytecode: Bytecod
             .call_context_read(1, CallContextFieldTag.ProgramCounter, caller_ctx.program_counter)
             .call_context_read(1, CallContextFieldTag.StackPointer, caller_ctx.stack_pointer)
             .call_context_read(1, CallContextFieldTag.GasLeft, caller_ctx.gas_left)
-            .call_context_read(1, CallContextFieldTag.MemorySize, caller_ctx.memory_size)
+            .call_context_read(1, CallContextFieldTag.MemorySize, caller_ctx.memory_word_size)
             .call_context_read(1, CallContextFieldTag.ReversibleWriteCounter, caller_ctx.reversible_write_counter)
             .call_context_write(1, CallContextFieldTag.LastCalleeId, 2)
             .call_context_write(1, CallContextFieldTag.LastCalleeReturnDataOffset, 0)
@@ -152,7 +152,7 @@ def test_oog_constant_not_root(caller_ctx: CallContext, callee_bytecode: Bytecod
                 program_counter=caller_ctx.program_counter,
                 stack_pointer=caller_ctx.stack_pointer,
                 gas_left=caller_ctx.gas_left,
-                memory_size=caller_ctx.memory_size,
+                memory_word_size=caller_ctx.memory_word_size,
                 reversible_write_counter=caller_ctx.reversible_write_counter,
             ),
         ],

@@ -91,7 +91,7 @@ def test_returndatacopy(
             code_hash=code_hash,
             program_counter=99,
             stack_pointer=1021,
-            memory_size=curr_mem_size,
+            memory_word_size=curr_mem_size,
             gas_left=gas,
         ),
     ]
@@ -129,7 +129,7 @@ def test_returndatacopy(
             code_hash=code_hash,
             program_counter=100,
             stack_pointer=1024,
-            memory_size=next_mem_size,
+            memory_word_size=next_mem_size,
             gas_left=0,
         )
     )

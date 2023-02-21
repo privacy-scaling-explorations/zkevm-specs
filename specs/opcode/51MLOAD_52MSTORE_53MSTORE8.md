@@ -99,4 +99,4 @@ For `MLOAD`/`MSTORE` 32 memory busmapping lookups are used (1 lookup needed for 
 
 ## Code
 
-Please refer to `src/zkevm-specs/opcode/mload_mstore.py`.
+Please refer to `src/zkevm-specs/evm/execution/memory.py`.
