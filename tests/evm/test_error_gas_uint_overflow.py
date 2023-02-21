@@ -48,7 +48,17 @@ TEST_DATA = [
         ),
         Stack(),
         Account(address=0xFF, code=Bytecode().stop(), balance=int(1e18)),
-    )
+    ),
+    (
+        CallContext(is_root=False, memory_size=MAX_MEMORY_SIZE + 1),
+        Transaction(
+            call_data=bytes.fromhex(
+                "00000000000000000000000000000000000000000000000000000000000000FF"
+            )
+        ),
+        Stack(),
+        Account(address=0xFF, code=Bytecode().stop(), balance=int(1e18)),
+    ),
 ]
 
 
