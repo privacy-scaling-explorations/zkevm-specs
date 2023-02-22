@@ -34,7 +34,7 @@ NOTE:
 ## `rw_table`
 
 There are 10 columns in `rw_table`.
- - col. 0 (*Rwc*) is a read-write counter. 32 bits, starts at 1.
+ - col. 0 (*Rwc*) is the read-write counter. 32 bits, starts at 1.
  - col. 1 (*IsWrite*) specify this row is for `read` or `write`.
  - col. 2 (*Tag*) is a tag for different contexts. The content for different *Tag*s are in col. 3 ~ col. 10.
  - col. 3 ~ 10 are the content for different *`Tag`* specified in col. 2 accordingly.
