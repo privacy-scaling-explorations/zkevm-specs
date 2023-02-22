@@ -20,10 +20,8 @@ from zkevm_specs.util import (
     rand_fq,
     rand_bytes,
     GAS_COST_COPY,
-    memory_word_size,
-    memory_expansion,
 )
-
+from common import memory_expansion, memory_word_size
 
 TX_ID = 13
 CALLER_ID = 0

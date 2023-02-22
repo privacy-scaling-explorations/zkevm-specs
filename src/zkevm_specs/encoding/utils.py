@@ -1,5 +1,7 @@
-from typing import Sequence, Tuple
-from .typing import U8, U256
+from typing import Sequence, Tuple, NewType
+from ..util import U256
+
+U8 = NewType("U8", int)
 
 
 def is_circuit_code(func):

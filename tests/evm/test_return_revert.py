@@ -16,7 +16,8 @@ from zkevm_specs.evm import (
     CopyDataTypeTag,
 )
 from zkevm_specs.copy_circuit import verify_copy_table
-from zkevm_specs.util import rand_fq, RLC, memory_expansion
+from zkevm_specs.util import rand_fq, RLC
+from common import memory_expansion
 
 CALLEE_MEMORY = [0x00] * 4 + [0x22] * 32
 

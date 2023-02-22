@@ -15,11 +15,10 @@ from zkevm_specs.evm import (
 from zkevm_specs.copy_circuit import verify_copy_table
 from zkevm_specs.util import (
     rand_fq,
-    memory_word_size,
-    memory_expansion,
     GAS_COST_COPY,
     RLC,
 )
+from common import memory_expansion, memory_word_size
 
 CALL_ID = 1
 CALLEE_ID = 2
