@@ -16,8 +16,6 @@ from zkevm_specs.evm import (
 from zkevm_specs.copy_circuit import verify_copy_table
 from zkevm_specs.util import (
     keccak256,
-    memory_expansion,
-    memory_word_size,
     rand_bytes,
     rand_fq,
     FQ,
@@ -25,6 +23,7 @@ from zkevm_specs.util import (
     RLC,
     U64,
 )
+from common import memory_expansion, memory_word_size
 
 
 CALL_ID = 1

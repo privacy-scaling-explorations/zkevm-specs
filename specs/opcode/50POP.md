@@ -24,4 +24,4 @@ Even the popped value will never be used, it still does lookup to ensure the sta
 
 ## Code
 
-Please refer to `src/zkevm-specs/opcode/stack.py`.
+Please refer to `src/zkevm-specs/evm/execution/pop.py`.

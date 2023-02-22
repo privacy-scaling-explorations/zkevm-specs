@@ -23,9 +23,9 @@ from zkevm_specs.util import (
     rand_bytes,
     U64,
     rand_address,
-    memory_expansion,
     FQ,
 )
+from common import memory_expansion
 
 CALL_ID = 1
 TX_ID = 2

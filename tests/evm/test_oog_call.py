@@ -18,16 +18,7 @@ from zkevm_specs.util import (
     RLC,
     rand_fq,
 )
-
-CallContext = namedtuple(
-    "CallContext",
-    [
-        "gas_left",
-        "memory_word_size",
-        "reversible_write_counter",
-    ],
-    defaults=[0, 0, 2],
-)
+from common import CallContext
 
 Stack = namedtuple(
     "Stack",
@@ -100,7 +91,10 @@ def call_bytecode(opcode: Opcode, stack: Stack, callee: Account) -> Bytecode:
 def gen_testing_data():
     callee = Account(address=0xFF, code=Bytecode().stop(), balance=int(1e18))
     call_opcodes = [Opcode.CALL, Opcode.CALLCODE, Opcode.DELEGATECALL, Opcode.STATICCALL]
-    call_contexts = [CallContext(gas_left=50), CallContext(gas_left=100)]
+    call_contexts = [
+        CallContext(gas_left=50, reversible_write_counter=2),
+        CallContext(gas_left=100, reversible_write_counter=2),
+    ]
     stacks = [
         Stack(gas=100, cd_offset=64, cd_length=320, rd_offset=0, rd_length=32),
     ]
