@@ -1,6 +1,7 @@
 import pytest
-from collections import namedtuple
+
 from itertools import chain
+from common import CallContext
 from zkevm_specs.evm import (
     Block,
     Bytecode,
@@ -83,26 +84,11 @@ def test_invalid_opcode_root(invalid_code):
     )
 
 
-CallContext = namedtuple(
-    "CallContext",
-    [
-        "is_root",
-        "is_create",
-        "program_counter",
-        "stack_pointer",
-        "gas_left",
-        "memory_word_size",
-        "reversible_write_counter",
-    ],
-    defaults=[True, False, 232, 1023, 10, 0, 0],
-)
-
-
 @pytest.mark.parametrize("invalid_callee_code", TESTING_INVALID_CODES)
 def test_invalid_opcode_internal(invalid_callee_code: list[int]):
     randomness = rand_fq()
 
-    caller_ctx = CallContext()
+    caller_ctx = CallContext(gas_left=10)
     caller_bytecode = Bytecode().call(0, 0xFF, 0, 0, 0, 0, 0).stop()
     callee_bytecode = Bytecode(
         bytearray(invalid_callee_code), [True] * len(invalid_callee_code)

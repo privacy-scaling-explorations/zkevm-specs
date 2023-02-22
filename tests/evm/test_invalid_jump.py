@@ -1,5 +1,7 @@
 import pytest
 
+from itertools import chain
+from common import CallContext
 from zkevm_specs.evm import (
     ExecutionState,
     StepState,
@@ -12,9 +14,6 @@ from zkevm_specs.evm import (
     CallContextFieldTag,
 )
 from zkevm_specs.util import rand_fq, RLC
-from itertools import chain
-from collections import namedtuple
-
 
 TESTING_DATA = (
     (Opcode.JUMP, bytes([5])),
@@ -71,23 +70,9 @@ def test_invalid_jump_root(opcode: Opcode, dest_bytes: bytes):
     )
 
 
-CallContext = namedtuple(
-    "CallContext",
-    [
-        "is_root",
-        "is_create",
-        "program_counter",
-        "stack_pointer",
-        "gas_left",
-        "memory_word_size",
-        "reversible_write_counter",
-    ],
-    defaults=[True, False, 232, 1023, 10, 0, 0],
-)
-
 TESTING_DATA_NOT_ROOT = (
-    (CallContext(), bytes([5])),
-    (CallContext(), bytes([20])),
+    (CallContext(gas_left=10), bytes([5])),
+    (CallContext(gas_left=10), bytes([20])),
 )
 
 

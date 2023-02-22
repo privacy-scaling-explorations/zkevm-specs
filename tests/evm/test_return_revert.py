@@ -1,7 +1,7 @@
 import pytest
-from collections import namedtuple
-from itertools import chain
 
+from itertools import chain
+from common import memory_expansion, CallContext
 from zkevm_specs.evm import (
     ExecutionState,
     StepState,
@@ -17,7 +17,6 @@ from zkevm_specs.evm import (
 )
 from zkevm_specs.copy_circuit import verify_copy_table
 from zkevm_specs.util import rand_fq, RLC
-from common import memory_expansion
 
 CALLEE_MEMORY = [0x00] * 4 + [0x22] * 32
 
@@ -112,20 +111,6 @@ def test_is_root_not_create(
 
 # TODO: test_return_is_root_is_create
 # TODO: test_return_not_root_is_create
-
-CallContext = namedtuple(
-    "CallContext",
-    [
-        "is_root",
-        "is_create",
-        "program_counter",
-        "stack_pointer",
-        "gas_left",
-        "memory_word_size",
-        "reversible_write_counter",
-    ],
-    defaults=[True, False, 232, 1023, 0, 0, 0],
-)
 
 TESTING_DATA_NOT_ROOT_NOT_CREATE = (
     (

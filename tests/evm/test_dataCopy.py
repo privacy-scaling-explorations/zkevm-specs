@@ -1,6 +1,6 @@
 import pytest
-from collections import namedtuple
 
+from common import CallContext
 from zkevm_specs.evm import (
     Bytecode,
     CallContextFieldTag,
@@ -25,19 +25,6 @@ CALLER_ID = 1
 CALLEE_ID = 2
 CALLEE_MEMORY = [0x00] * 32 + [0x11] * 32
 DATACOPY_PRECOMPILE_ADDRESS = 0x04
-CallContext = namedtuple(
-    "CallContext",
-    [
-        "is_root",
-        "is_create",
-        "program_counter",
-        "stack_pointer",
-        "gas_left",
-        "memory_word_size",
-        "reversible_write_counter",
-    ],
-    defaults=[True, False, 232, 1023, 0, 0, 0],
-)
 TESTING_DATA = (
     # simple cases
     (CallContext(), 0, 5, 0, 5),

@@ -1,6 +1,22 @@
 from typing import Tuple
+from collections import namedtuple
 from zkevm_specs.util import U64, U128, U256, MEMORY_EXPANSION_LINEAR_COEFF
 
+CallContext = namedtuple(
+    "CallContext",
+    [
+        "is_root",
+        "is_create",
+        "program_counter",
+        "stack_pointer",
+        "gas_left",
+        "memory_word_size",
+        "reversible_write_counter",
+        "rw_counter_end_of_reversion",
+        "is_persistent",
+    ],
+    defaults=[True, False, 232, 1023, 0, 0, 0, 0, True],
+)
 
 NASTY_AB_VALUES = (
     (0, 0),

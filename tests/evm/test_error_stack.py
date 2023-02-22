@@ -1,7 +1,7 @@
 import pytest
-from collections import namedtuple
-from itertools import chain
 
+from itertools import chain
+from common import CallContext
 from zkevm_specs.evm import (
     ExecutionState,
     StepState,
@@ -72,21 +72,7 @@ def test_stack_underflow_root(tx: Transaction, bytecode: Bytecode):
     )
 
 
-CallContext = namedtuple(
-    "CallContext",
-    [
-        "is_root",
-        "is_create",
-        "program_counter",
-        "stack_pointer",
-        "gas_left",
-        "memory_word_size",
-        "reversible_write_counter",
-    ],
-    defaults=[True, False, 232, 1023, 10, 0, 0],
-)
-
-TESTING_DATA_NOT_ROOT = ((CallContext(), BYTECODE_PUSH),)
+TESTING_DATA_NOT_ROOT = ((CallContext(gas_left=10), BYTECODE_PUSH),)
 
 
 @pytest.mark.parametrize("caller_ctx, callee_bytecode", TESTING_DATA_NOT_ROOT)
