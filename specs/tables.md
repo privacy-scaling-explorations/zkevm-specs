@@ -41,12 +41,12 @@ There are 10 columns in `rw_table`.
     - col. 3 *Id*
         - **txID**: 32 bits, starts at 1 (corresponds to `txIndex + 1`).
         - **callID**: 32 bits, starts at 1 (corresponds to `rw_counter` when the call begins).
-    - col. 4 *Address* is reserved for *Tag*, **Stack**, **Memory**, and account addresses.
-        - For account address is **address**: 160 bits
-        - For *Tag* **Stack** is **stackPointer**: 10 bits
-        - For *Tag* **Memory** is **memoryAddress**: 32 bits
-        - For *Tag* **TxLog**:  Packs 2 values:
-            - **logID**: 32 bits, starts at 1 (corresponds to `logIndex + 1`), it is unique per tx/receipt.
+    - col. 4 *Address* is the position to **Stack**, **Memory**, or account, where the read or write takes place, depending on the cell value of the *Tag* column.
+        - If the *Tag* value is "Account", the cell represents 160 bits **address**.
+        - If the *Tag* value is "Stack", the cell represents 10 bits  **stackPointer**.
+        - If the *Tag* value is "Memory", the cell represents 32 bits **memoryAddress**.
+        - If the *Tag* value is "TxLog", then the cell represents the packing of 2 values:
+            - **logID**: 32 bits, starts at 1 (corresponds to `logIndex + 1`), unique per tx/receipt.
             - **topicIndex, byteIndex**: 32 bits, indicates order in tx log topics or data.
     - col. 5 *FieldTag*
         - For *Tag* **TxReceipt**: 
