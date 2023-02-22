@@ -60,7 +60,7 @@ There are 10 columns in `rw_table`.
             - For *FieldTag* **Data**: 8 bits
     - col. 9 *root*: RLC encoded MPT state root.
 
-Proved by the state circuit.
+The correctness of the rw_table is validated in the state circuit.
 > - **CallContext constant**: read-only data in a call, usually checked with the
 >   caller before the beginning of a call.
 > - **CallContext state**: used by caller to save its own CallState when it's going
