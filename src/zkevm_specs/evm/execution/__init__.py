@@ -33,6 +33,7 @@ from .jump import *
 from .jumpi import *
 from .mul_div_mod import *
 from .origin import *
+from .pop import *
 from .push import *
 from .returndatasize import *
 from .returndatacopy import *
@@ -86,6 +87,7 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.BYTE: byte,
     ExecutionState.JUMP: jump,
     ExecutionState.JUMPI: jumpi,
+    ExecutionState.POP: pop,
     ExecutionState.PUSH: push,
     ExecutionState.RETURNDATASIZE: returndatasize,
     ExecutionState.RETURNDATACOPY: returndatacopy,
