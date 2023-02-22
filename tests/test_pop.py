@@ -2,20 +2,23 @@ import pytest
 
 from zkevm_specs.evm import (
     Bytecode,
-    CallContextFieldTag,
     ExecutionState,
     StepState,
     Tables,
     verify_steps,
     RWDictionary,
 )
-from zkevm_specs.util import rand_fq, RLC
+from zkevm_specs.util import rand_fq, rand_word, RLC, U256
 
-TESTING_DATA = ()
+TESTING_DATA = (
+    rand_word(),
+    rand_word(),
+    rand_word(),
+)
 
 
-@pytest.mark.parametrize("value", TESTING_DATA)
-def test_pop(value):
+@pytest.mark.parametrize("y", TESTING_DATA)
+def test_pop(y: U256):
     randomness = rand_fq()
 
     bytecode = Bytecode().pop().stop()
@@ -23,14 +26,9 @@ def test_pop(value):
 
     tables = Tables(
         block_table=set(),
-        tx_table=set(tx.table_assignments(randomness)),
+        tx_table=set(),
         bytecode_table=set(bytecode.table_assignments(randomness)),
-        rw_table=set(
-            RWDictionary(9)
-            .call_context_read(1, CallContextFieldTag.TxId, tx.id)
-            .stack_write(1, 1023, RLC(origin, randomness))
-            .rws
-        ),
+        rw_table=set(RWDictionary(1).stack_read(1, 1023, RLC(y, randomness)).rws),
     )
 
     verify_steps(
@@ -38,25 +36,25 @@ def test_pop(value):
         tables=tables,
         steps=[
             StepState(
-                execution_state=ExecutionState.ORIGIN,
-                rw_counter=9,
+                execution_state=ExecutionState.POP,
+                rw_counter=1,
                 call_id=1,
                 is_root=True,
                 is_create=False,
                 code_hash=bytecode_hash,
                 program_counter=0,
-                stack_pointer=1024,
+                stack_pointer=1023,
                 gas_left=2,
             ),
             StepState(
                 execution_state=ExecutionState.STOP,
-                rw_counter=11,
+                rw_counter=2,
                 call_id=1,
                 is_root=True,
                 is_create=False,
                 code_hash=bytecode_hash,
                 program_counter=1,
-                stack_pointer=1023,
+                stack_pointer=1024,
                 gas_left=0,
             ),
         ],
