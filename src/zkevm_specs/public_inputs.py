@@ -13,8 +13,8 @@ from .util import (
     GAS_COST_TX_CALL_DATA_PER_NON_ZERO_BYTE,
     GAS_COST_TX_CALL_DATA_PER_ZERO_BYTE,
     Expression,
+    is_circuit_code,
 )
-from .encoding import is_circuit_code
 from .tx import Tag as TxTag
 from .evm import (
     BlockContextFieldTag as BlockTag,

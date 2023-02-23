@@ -1,8 +1,7 @@
 from typing import Sequence, Tuple, Set, NamedTuple
 from collections import namedtuple
-from .util import keccak256, EMPTY_HASH, FQ, RLC
+from .util import keccak256, EMPTY_HASH, FQ, RLC, is_circuit_code
 from .evm import get_push_size, BytecodeFieldTag, BytecodeTableRow
-from .encoding import is_circuit_code
 
 # Row in the circuit
 Row = namedtuple(
