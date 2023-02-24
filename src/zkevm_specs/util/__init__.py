@@ -1,7 +1,6 @@
 from typing import Union
 from Crypto.Random import get_random_bytes
 from Crypto.Random.random import randrange
-
 from .arithmetic import *
 from .constraint_system import *
 from .bn256 import G1, r, curve_gen, new_gfp
