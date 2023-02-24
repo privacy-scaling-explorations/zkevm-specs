@@ -7,8 +7,7 @@ from .constraint_system import *
 from .bn256 import G1, r, curve_gen, new_gfp
 from .hash import *
 from .param import *
-from .typing import *
-from .testing import memory_expansion, memory_word_size, random_bn128_point, to_cf_form, point_add
+from .typing import U64, U128, U160, U256, random_bn128_point, to_cf_form, point_add
 
 
 def rand_range(stop: Union[int, float] = 2**256) -> int:

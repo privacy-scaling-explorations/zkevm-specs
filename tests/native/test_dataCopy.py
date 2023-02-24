@@ -1,5 +1,6 @@
 import pytest
 
+from common import CallContext
 from zkevm_specs.evm import (
     Bytecode,
     CallContextFieldTag,
@@ -19,7 +20,6 @@ from zkevm_specs.util import (
     RLC,
     FQ,
 )
-from common import PrecompileCallContext
 
 CALLER_ID = 1
 CALLEE_ID = 2
@@ -27,7 +27,7 @@ CALLEE_MEMORY = [0x00] * 32 + [0x11] * 32
 DATACOPY_PRECOMPILE_ADDRESS = 0x04
 TESTING_DATA = (
     # simple cases
-    (PrecompileCallContext(), 0, 5, 0, 5),
+    (CallContext(), 0, 5, 0, 5),
 )
 
 
@@ -36,7 +36,7 @@ TESTING_DATA = (
     TESTING_DATA,
 )
 def test_dataCopy(
-    caller_ctx: PrecompileCallContext,
+    caller_ctx: CallContext,
     call_data_offset: int,
     call_data_length: int,
     return_data_offset: int,
@@ -89,7 +89,7 @@ def test_dataCopy(
             code_hash=code_hash,
             program_counter=99,
             stack_pointer=1021,
-            memory_size=size,
+            memory_word_size=size,
             gas_left=gas,
         ),
     ]
@@ -144,7 +144,7 @@ def test_dataCopy(
         .call_context_read(call_id, CallContextFieldTag.ProgramCounter, caller_ctx.program_counter)
         .call_context_read(call_id, CallContextFieldTag.StackPointer, caller_ctx.stack_pointer)
         .call_context_read(call_id, CallContextFieldTag.GasLeft, caller_ctx.gas_left)
-        .call_context_read(call_id, CallContextFieldTag.MemorySize, caller_ctx.memory_size)
+        .call_context_read(call_id, CallContextFieldTag.MemorySize, caller_ctx.memory_word_size)
         .call_context_read(call_id, CallContextFieldTag.ReversibleWriteCounter, caller_ctx.reversible_write_counter)
         .call_context_write(call_id, CallContextFieldTag.LastCalleeId, precompile_id)
         .call_context_write(call_id, CallContextFieldTag.LastCalleeReturnDataOffset, FQ(0))
@@ -161,7 +161,7 @@ def test_dataCopy(
             code_hash=code_hash,
             program_counter=caller_ctx.program_counter,
             stack_pointer=caller_ctx.stack_pointer,
-            memory_size=caller_ctx.memory_size,
+            memory_word_size=caller_ctx.memory_word_size,
             gas_left=0,
         )
     )

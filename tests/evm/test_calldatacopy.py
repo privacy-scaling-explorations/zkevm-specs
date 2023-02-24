@@ -20,10 +20,8 @@ from zkevm_specs.util import (
     rand_fq,
     rand_bytes,
     GAS_COST_COPY,
-    memory_word_size,
-    memory_expansion,
 )
-
+from common import memory_expansion, memory_word_size
 
 TX_ID = 13
 CALLER_ID = 0
@@ -93,7 +91,7 @@ def test_calldatacopy(
             code_hash=bytecode_hash,
             program_counter=99,
             stack_pointer=1021,
-            memory_size=curr_mem_size,
+            memory_word_size=curr_mem_size,
             gas_left=gas,
         )
     ]
@@ -149,7 +147,7 @@ def test_calldatacopy(
             code_hash=bytecode_hash,
             program_counter=100,
             stack_pointer=1024,
-            memory_size=next_mem_size,
+            memory_word_size=next_mem_size,
             gas_left=0,
         )
     )

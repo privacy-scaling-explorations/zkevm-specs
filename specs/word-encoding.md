@@ -56,15 +56,11 @@ word8s = [
 ]
 ```
 
-See `src/encoding/utils.py::u256_to_u8s` and `src/encoding/utils.py::u8s_to_u256` for the functions to convert between a 256 bit word and its 8 bit chunks.
-
 ## Commitment
 
 The 256 bit word is represented as a random linear combination of its 8 bit words.
 
 The commitment check should gurantee the 32 chunks in 8 bit range.
-
-See `src/encoding/commitment.py::check_commitment`
 
 ## Addition
 
@@ -88,8 +84,6 @@ carry      1  1  1  1  1  1  1 |  1  1  1  1  1  1  1  1 |  1  1  1  1  1  1  1 
 sum8s   1  0  0  0  0  0  0  0 |  0  0  0  0  0  0  0  0 |  0  0  0  0  0  0  0  0 |  0  0  0  0  0  0  0  0
 ```
 
-See `src/encoding/addition.py::check_add`
-
 ## Comparator
 
 This checks the the relations of `a256 > b256`, `a256 < b256`, `a256 == b256`
@@ -105,5 +99,3 @@ a       1 0 0 0 | 0 0 0 0 | 0 0 0 0 | 0 1 0 0 |
 b       1 0 0 0 | 0 0 0 0 | 0 0 0 0 | 0 0 0 0 |
 result  1 1 1 1 | 1 1 1 1 | 1 1 1 1 | 1 1 0 0 |
 ```
-
-See `src/encoding/comparator.py::compare`

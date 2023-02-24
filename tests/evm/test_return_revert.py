@@ -1,7 +1,7 @@
 import pytest
-from collections import namedtuple
-from itertools import chain
 
+from itertools import chain
+from common import memory_expansion, CallContext
 from zkevm_specs.evm import (
     ExecutionState,
     StepState,
@@ -16,7 +16,7 @@ from zkevm_specs.evm import (
     CopyDataTypeTag,
 )
 from zkevm_specs.copy_circuit import verify_copy_table
-from zkevm_specs.util import rand_fq, RLC, memory_expansion
+from zkevm_specs.util import rand_fq, RLC
 
 CALLEE_MEMORY = [0x00] * 4 + [0x22] * 32
 
@@ -111,20 +111,6 @@ def test_is_root_not_create(
 
 # TODO: test_return_is_root_is_create
 # TODO: test_return_not_root_is_create
-
-CallContext = namedtuple(
-    "CallContext",
-    [
-        "is_root",
-        "is_create",
-        "program_counter",
-        "stack_pointer",
-        "gas_left",
-        "memory_size",
-        "reversible_write_counter",
-    ],
-    defaults=[True, False, 232, 1023, 0, 0, 0],
-)
 
 TESTING_DATA_NOT_ROOT_NOT_CREATE = (
     (
@@ -230,7 +216,7 @@ def test_not_root_not_create(
         .call_context_read(caller_id, CallContextFieldTag.ProgramCounter, caller_ctx.program_counter)
         .call_context_read(caller_id, CallContextFieldTag.StackPointer, caller_ctx.stack_pointer)
         .call_context_read(caller_id, CallContextFieldTag.GasLeft, caller_ctx.gas_left)
-        .call_context_read(caller_id, CallContextFieldTag.MemorySize, caller_ctx.memory_size)
+        .call_context_read(caller_id, CallContextFieldTag.MemorySize, caller_ctx.memory_word_size)
         .call_context_read(caller_id, CallContextFieldTag.ReversibleWriteCounter, caller_ctx.reversible_write_counter)
         .call_context_write(caller_id, CallContextFieldTag.LastCalleeId, 24)
         .call_context_write(caller_id, CallContextFieldTag.LastCalleeReturnDataOffset, return_offset)
@@ -267,7 +253,7 @@ def test_not_root_not_create(
                 program_counter=40,
                 stack_pointer=1022,
                 gas_left=gas_left,
-                memory_size=2,
+                memory_word_size=2,
                 reversible_write_counter=callee_reversible_write_counter,
             ),
             StepState(
@@ -280,7 +266,7 @@ def test_not_root_not_create(
                 program_counter=caller_ctx.program_counter,
                 stack_pointer=caller_ctx.stack_pointer,
                 gas_left=caller_ctx.gas_left + (gas_left - return_gas_cost),
-                memory_size=caller_ctx.memory_size,
+                memory_word_size=caller_ctx.memory_word_size,
                 reversible_write_counter=caller_ctx.reversible_write_counter
                 + callee_reversible_write_counter,
             ),

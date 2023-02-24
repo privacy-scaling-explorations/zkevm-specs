@@ -153,7 +153,7 @@ def test_codecopy(src_addr: U64, dst_addr: U64, length: U64):
             code_hash=code_hash,
             program_counter=100,
             stack_pointer=1024,
-            memory_size=next_memory_word_size,
+            memory_word_size=next_memory_word_size,
             gas_left=0,
         )
     )

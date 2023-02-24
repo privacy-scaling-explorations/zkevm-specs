@@ -1,6 +1,31 @@
+from typing import Tuple
 from collections import namedtuple
 from py_ecc.bn128 import G1, add
-from zkevm_specs.util import random_bn128_point, to_cf_form
+from zkevm_specs.util import (
+    random_bn128_point,
+    to_cf_form,
+    U64,
+    U128,
+    U256,
+    MEMORY_EXPANSION_LINEAR_COEFF,
+)
+
+
+CallContext = namedtuple(
+    "CallContext",
+    [
+        "is_root",
+        "is_create",
+        "program_counter",
+        "stack_pointer",
+        "gas_left",
+        "memory_word_size",
+        "reversible_write_counter",
+        "rw_counter_end_of_reversion",
+        "is_persistent",
+    ],
+    defaults=[True, False, 232, 1023, 0, 0, 0, 0, True],
+)
 
 SASSY_AB_VALUES = (
     (G1, random_bn128_point()),
@@ -33,20 +58,6 @@ NASTY_AB_VALUES = (
     (0, (1 << 256) - 1),
 )
 
-PrecompileCallContext = namedtuple(
-    "PrecompileCallContext",
-    [
-        "is_root",
-        "is_create",
-        "program_counter",
-        "stack_pointer",
-        "gas_left",
-        "memory_size",
-        "reversible_write_counter",
-    ],
-    defaults=[True, False, 232, 1023, 0, 0, 0],
-)
-
 
 def generate_sassy_tests():
     input_length = 128
@@ -66,7 +77,7 @@ def generate_sassy_tests():
         input = ma + mb
         result = mc
 
-        tests.append((PrecompileCallContext(), 0, input_length, 0, point_length, input, result))
+        tests.append((CallContext(), 0, input_length, 0, point_length, input, result))
 
     return tests
 
@@ -75,3 +86,42 @@ def generate_nasty_tests(tests, opcodes):
     for opcode in opcodes:
         for a, b in NASTY_AB_VALUES:
             tests.append((opcode, a, b))
+
+
+def memory_word_size(
+    address: U64,
+) -> U64:
+    return U64((address + 31) // 32)
+
+
+def div(
+    value: U256,
+    divisor: U64,
+) -> Tuple[U256, U256]:
+    quotient = U256(value // divisor)
+    remainder = U256(value % divisor)
+    return (quotient, remainder)
+
+
+def memory_expansion(
+    curr_memory_size: U64,
+    address: U64,
+) -> Tuple[U64, U128]:
+    # The memory size required for the used address
+    address_memory_size = memory_word_size(address)
+
+    # Expand the memory if needed
+    next_memory_size = max(address_memory_size, curr_memory_size)
+
+    # Calculate the quad memory cost
+    (curr_quad_memory_cost, _) = div(U256(curr_memory_size * curr_memory_size), U64(512))
+    (next_quad_memory_cost, _) = div(U256(next_memory_size * next_memory_size), U64(512))
+
+    # Calculate the gas cost for the memory expansion
+    # This gas cost is the difference between the next and current memory costs
+    memory_gas_cost = (next_memory_size - curr_memory_size) * MEMORY_EXPANSION_LINEAR_COEFF + (
+        next_quad_memory_cost - curr_quad_memory_cost
+    )
+
+    # Return the new memory size and the memory expansion gas cost
+    return (next_memory_size, U128(memory_gas_cost))

@@ -16,8 +16,6 @@ from zkevm_specs.evm import (
 from zkevm_specs.copy_circuit import verify_copy_table
 from zkevm_specs.util import (
     keccak256,
-    memory_expansion,
-    memory_word_size,
     rand_bytes,
     rand_fq,
     FQ,
@@ -25,6 +23,7 @@ from zkevm_specs.util import (
     RLC,
     U64,
 )
+from common import memory_expansion, memory_word_size
 
 
 CALL_ID = 1
@@ -121,7 +120,7 @@ def test_sha3(offset: U64, length: U64):
                 code_hash=bytecode_hash,
                 program_counter=pc,
                 stack_pointer=1022,
-                memory_size=next_memory_size,
+                memory_word_size=next_memory_size,
                 gas_left=gas,
             ),
             StepState(
@@ -133,7 +132,7 @@ def test_sha3(offset: U64, length: U64):
                 code_hash=bytecode_hash,
                 program_counter=pc + 1,
                 stack_pointer=1023,
-                memory_size=next_memory_size,
+                memory_word_size=next_memory_size,
                 gas_left=0,
             ),
         ],

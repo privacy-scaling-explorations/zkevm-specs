@@ -149,7 +149,7 @@ def callop(instruction: Instruction):
             program_counter=Transition.delta(1),
             stack_pointer=Transition.delta(stack_pointer_delta),
             gas_left=Transition.delta(has_value * GAS_STIPEND_CALL_WITH_VALUE - gas_cost),
-            memory_size=Transition.to(call.next_memory_size),
+            memory_word_size=Transition.to(call.next_memory_size),
             reversible_write_counter=Transition.delta(3),
             # Always stay same
             call_id=Transition.same(),

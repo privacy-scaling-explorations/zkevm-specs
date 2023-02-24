@@ -33,8 +33,34 @@ NOTE:
 
 ## `rw_table`
 
-Proved by the state circuit.
+There are 10 columns in `rw_table`.
+ - col. 0 (*Rwc*) is the read-write counter. 32 bits, starts at 1.
+ - col. 1 (*IsWrite*) specify this row is for `read` or `write`.
+ - col. 2 (*Tag*) is a tag for different contexts. The content for different *Tag*s are in col. 3 ~ col. 10.
+ - col. 3 ~ 10 are the content for different *`Tag`* specified in col. 2 accordingly.
+    - col. 3 *Id*
+        - **txID**: 32 bits, starts at 1 (corresponds to `txIndex + 1`).
+        - **callID**: 32 bits, starts at 1 (corresponds to `rw_counter` when the call begins).
+    - col. 4 *Address* is the position to **Stack**, **Memory**, or account, where the read or write takes place, depending on the cell value of the *Tag* column.
+        - If the *Tag* value is "Account", the cell represents 160 bits **address**.
+        - If the *Tag* value is "Stack", the cell represents 10 bits  **stackPointer**.
+        - If the *Tag* value is "Memory", the cell represents 32 bits **memoryAddress**.
+        - If the *Tag* value is "TxLog", then the cell represents the packing of 2 values:
+            - **logID**: 32 bits, starts at 1 (corresponds to `logIndex + 1`), unique per tx/receipt.
+            - **topicIndex, byteIndex**: 32 bits, indicates order in tx log topics or data.
+    - col. 5 *FieldTag*
+        - For *Tag* **TxReceipt**: 
+            - **PostStateOrStatus**: 8 bits
+            - **CumulativeGasUsed**: 64 bits
+    - col. 6 *StorageKey* is field size and reserved for RLC encoded (Random Linear Combination) values
+    - col. 7 *value* and col. 8 *initialValue*: variable size, depending on Tag (key0) and FieldTag (key3) where appropriate.
+        - (*value*) For *Tag* **Memory**: 8 bits
+        - (*value*) For *Tag* **TxLog**: 8 bits
+            - For *FieldTag* **Topic**: field size, RLC encoded (Random Linear Combination).
+            - For *FieldTag* **Data**: 8 bits
+    - col. 9 *root*: RLC encoded MPT state root.
 
+The correctness of the rw_table is validated in the state circuit.
 > - **CallContext constant**: read-only data in a call, usually checked with the
 >   caller before the beginning of a call.
 > - **CallContext state**: used by caller to save its own CallState when it's going
@@ -44,27 +70,6 @@ Proved by the state circuit.
 >   for opcode `RETURNDATASIZE` and `RETURNDATACOPY`, except they will be
 >   updated when end of callee execution.
 
-Details:
-
-- **Address (key2)** is reserved for stack, memory, and account addresses.
-- **StorageKey (key4)** is reserved for RLC encoded values
-- **value, intialValue**: variable size, depending on Tag (key0) and FieldTag (key3) where appropriate.
-- **root**: RLC encoded MPT state root.
-- **(rw) counter**: 32 bits, starts at 1.
-- **txID**: 32 bits, starts at 1 (corresponds to `txIndex + 1`).
-- **address**: 160 bits
-- **callID**: 32 bits, starts at 1 (corresponds to `rw_counter` when the call begins).
-- **Stack -> stackPointer**: 10 bits
-- **Memory -> memoryAddress**: 32 bits
-- **Memory -> value**: 1 byte
-- **storageKey**: field size, RLC encoded (Random Linear Combination).
-- **TxLog Address column**:  Packs 2 values:
-    - **TxLog -> logID**: 32 bits, starts at 1 (corresponds to `logIndex + 1`), it is unique per tx/receipt.
-    - **TxReceipt -> topicIndex, byteIndex**: 32 bits, indicates order in tx log topics or data.
-- **TxLog -> Topic -> value**: field size, RLC encoded (Random Linear Combination).
-- **TxLog -> Data -> value**: 1 byte
-- **TxReceipt -> PostStateOrStatus**: 1 byte
-- **TxReceipt -> CumulativeGasUsed**: 64 bits
 
 NOTE: `kN` means `keyN`
 

@@ -25,18 +25,8 @@ from zkevm_specs.util import (
     U256,
     rand_fq,
 )
+from common import CallContext
 
-CallContext = namedtuple(
-    "CallContext",
-    [
-        "rw_counter_end_of_reversion",
-        "is_persistent",
-        "gas_left",
-        "memory_size",
-        "reversible_write_counter",
-    ],
-    defaults=[0, True, 0, 0, 2],
-)
 Stack = namedtuple(
     "Stack",
     ["gas", "value", "cd_offset", "cd_length", "rd_offset", "rd_length"],
@@ -81,11 +71,12 @@ def expected(
     next_memory_size = max(
         memory_size(stack.cd_offset, stack.cd_length),
         memory_size(stack.rd_offset, stack.rd_length),
-        caller_ctx.memory_size,
+        caller_ctx.memory_word_size,
     )
     memory_expansion_gas_cost = (
-        next_memory_size * next_memory_size - caller_ctx.memory_size * caller_ctx.memory_size
-    ) // 512 + 3 * (next_memory_size - caller_ctx.memory_size)
+        next_memory_size * next_memory_size
+        - caller_ctx.memory_word_size * caller_ctx.memory_word_size
+    ) // 512 + 3 * (next_memory_size - caller_ctx.memory_word_size)
     gas_cost = (
         (GAS_COST_WARM_ACCESS if is_warm_access else GAS_COST_ACCOUNT_COLD_ACCESS)
         + has_value
@@ -126,9 +117,16 @@ def gen_testing_data():
         CALLEE_WITH_REVERT_BYTECODE,
     ]
     call_contexts = [
-        CallContext(gas_left=100000, is_persistent=True),
-        CallContext(gas_left=100000, is_persistent=True, memory_size=8, reversible_write_counter=5),
-        CallContext(gas_left=100000, is_persistent=False, rw_counter_end_of_reversion=88),
+        CallContext(gas_left=100000, is_persistent=True, reversible_write_counter=2),
+        CallContext(
+            gas_left=100000, is_persistent=True, memory_word_size=8, reversible_write_counter=5
+        ),
+        CallContext(
+            gas_left=100000,
+            is_persistent=False,
+            rw_counter_end_of_reversion=88,
+            reversible_write_counter=2,
+        ),
     ]
     stacks = [
         Stack(),
@@ -407,7 +405,7 @@ def test_callop(
                 program_counter=next_program_counter - 1,
                 stack_pointer=stack_pointer,
                 gas_left=caller_ctx.gas_left,
-                memory_size=caller_ctx.memory_size,
+                memory_word_size=caller_ctx.memory_word_size,
                 reversible_write_counter=caller_ctx.reversible_write_counter,
             ),
             (
@@ -421,7 +419,7 @@ def test_callop(
                     program_counter=next_program_counter,
                     stack_pointer=1023,
                     gas_left=expected.caller_gas_left,
-                    memory_size=expected.next_memory_size,
+                    memory_word_size=expected.next_memory_size,
                     reversible_write_counter=caller_ctx.reversible_write_counter + 3,
                 )
                 if is_empty_code_hash

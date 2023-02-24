@@ -36,4 +36,4 @@ apply the lookup to the 32 chunks of `a`, `b`, and `c` to see if
 
 ## Code
 
-See `src/zkevm_specs/opcode/bitwise.py`
+See `src/zkevm_specs/evm/execution/bitwise.py`
