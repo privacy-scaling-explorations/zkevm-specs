@@ -25,7 +25,7 @@ For this gadget, SSTORE gas cost is calculated with EIP-3529 as:
 if value == value_prev:
   gas_cost = SLOAD_GAS # 100
 else:
-  if value == original_value:
+  if value_prev == original_value:
     if original_value == 0:
       gas_cost = SSTORE_SET_GAS # 20000
     else:
