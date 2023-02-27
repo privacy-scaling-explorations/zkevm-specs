@@ -72,6 +72,75 @@ class RLC:
     def __repr__(self) -> str:
         return "RLC(%s)" % int.from_bytes(self.le_bytes, "little")
 
+class Word:
+    """Word stored as lo/hi: lowest 128 bits and highest 128 bits"""
+    # lowest 128 bits
+    lo: FQ
+    # highest 128 bits
+    hi: FQ
+
+    def __init__(self, value: Union[Tuple[FQ, FQ], int, bytes]) -> None:
+        if isinstance(value, tuple):
+            self.lo, self.hi = value
+            return
+        elif isinstance(value, int):
+            value = value.to_bytes(32, "little")
+        elif len(value) != 32:
+            raise ValueError(f"Word expects to receive 32 bytes, but got {len(value)} bytes")
+        self.lo = bytes_to_fq(value[0:16])
+        self.hi = bytes_to_fq(value[16:32])
+
+    def word(self) -> int:
+        """Return the word as an integer"""
+        return self.lo.n + (self.hi.n << 128)
+
+    def __hash__(self) -> int:
+        return hash((self.lo, self.hi))
+
+    def __repr__(self) -> str:
+        return f"Word({hex(self.word())})"
+
+    def __eq__(self, other) -> bool:
+        return self.lo == other.lo and self.hi == other.hi
+
+    def select(self, selector: FQ) -> Word:
+        """Return a new Word with lo and hi multiplied by selector"""
+        return Word((selector * self.lo, selector * self.hi))
+
+    def assert_eq(self, other: Word, assert_msg: str):
+        assert (
+            self.lo == other.lo
+        ), f"{assert_msg}: {hex(self.lo.n)} != {hex(other.lo.n)}"
+        assert (
+            self.hi == other.hi
+        ), f"{assert_msg}: {hex(self.hi.n)} != {hex(other.hi.n)}"
+
+
+class WordOrValue(Word):
+    """Type that holds a 256 bit word (as lo/hi) or a value that fits in the field"""
+    is_word: bool
+
+    def __init__(self, value: Union[Word, FQ]) -> None:
+        if isinstance(value, Word):
+            self.is_word = True
+            self.lo = value.lo
+            self.hi = value.hi
+        else:
+            self.is_word = False
+            self.lo = value
+            self.hi = FQ(0)
+
+    def value(self) -> FQ:
+        """When this type holds a value that fits in the field, return it"""
+        assert not self.is_word
+        return self.lo
+
+    def __repr__(self) -> str:
+        if self.is_word:
+            return super().__repr__()
+        else:
+            return f"Value({hex(self.lo.n)})"
+
 
 class Expression(Protocol):
     def expr(self) -> FQ:
