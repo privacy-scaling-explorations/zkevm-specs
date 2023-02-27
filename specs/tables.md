@@ -4,6 +4,12 @@ For the zkevm we use the following dynamic and fixed tables for lookups to the E
 
 Code spec at [table.py](../src/zkevm_specs/evm/table.py)
 
+Note: After the transition from encoding words as RLC to high and low parts,
+all the columns that used to contain word_rlc have been doubled to contain
+word_lo and word_hi.  To make this document more readable, we present words as
+a single markdown column (for example *Value{Lo,Hi}*), but they correspond
+to two circuit columns (for example *ValueLo* and *ValueHi*).
+
 ## `tx_table`
 
 Proved by the tx circuit.
@@ -148,7 +154,7 @@ Proved by the bytecode circuit.
 | $codeHash{Lo,Hi}      | Length  | 0                  | 0          | $value    |
 | $codeHash{Lo,Hi}      | Byte    | $index             | $isCode    | $value    |
 | ...                   | ...     | ...                | ...        | ...       |
-| $codeHash{Lo,Hi}    | Byte    | $index             | $isCode    | $value    |
+| $codeHash{Lo,Hi}      | Byte    | $index             | $isCode    | $value    |
 
 In the case of an account without code, it can still have a row in the bytecode circuit to represent the `BytecodeFieldTag::Length` tag, with a `value = 0` and `codeHash = EMPTY_CODE_HASH`.
 
@@ -265,22 +271,22 @@ The table below lists all of copy pairs supported in the copy table:
 - Copy from memory to TxLog in the `rw_table` (`LOGX`)
 - Copy from memory to RlcAcc (`SHA3`)
 
-| q_step   | q_first   | q_last   | IDLo        | IDHi        | Type         | Address          | AddressEnd       | BytesLeft    | Value    | RlcAcc    | IsCode    | Pad   | RwCounter   | RwcIncreaseLeft   |
-| -------- | --------- | -------- | ------      | ----------- | ------------ | ---------------- | ---------------- | ------------ | -------- | --------- | --------- | ----- | ----------- | ----------------- |
-| 1        | 0/1       | 0        | $txID       | 0           | TxCalldata   | $byteIndex       | $cdLength        | $bytesLeft   | $value   | $rlcAcc   | -         | 0/1   | -           | $rwcIncLeft       |
-| 0        | 0         | 0/1      | $callID     | 0           | Memory       | $memoryAddress   | -                | -            | $value   | $rlcAcc   | -         | 0     | $counter    | $rwcIncLeft       |
-|          |           |          |             |             |              |                  |                  |              |          | $rlcAcc   |           |       |             |                   |
-| 1        | 0/1       | 0        | $callID     | 0           | Memory       | $memoryAddress   | $memoryAddress   | $bytesLeft   | $value   | $rlcAcc   | -         | 0/1   | $counter    | $rwcIncLeft       |
-| 0        | 0         | 0/1      | $callID     | 0           | Memory       | $memoryAddress   | -                | -            | $value   | $rlcAcc   | -         | 0     | $counter    | $rwcIncLeft       |
-|          |           |          |             |             |              |                  |                  |              |          | $rlcAcc   |           |       |             |                   |
-| 1        | 0/1       | 0        | $callID     | 0           | Memory       | $memoryAddress   | $memoryAddress   | $bytesLeft   | $value   | $rlcAcc   | $isCode   | 0/1   | $counter    | $rwcIncLeft       |
-| 0        | 0         | 0/1      | $codeHashLo | $codeHashHi | Bytecode     | $byteIndex       | -                | -            | $value   | $rlcAcc   | $isCode   | 0     | -           | $rwcIncLeft       |
-|          |           |          |             |             |              |                  |                  |              |          | $rlcAcc   |           |       |             |                   |
-| 1        | 0/1       | 0        | $codeHashLo | $codeHashHi | Bytecode     | $byteIndex       | $codeLength      | $bytesLeft   | $value   | $rlcAcc   | $isCode   | 0/1   | -           | $rwcIncLeft       |
-| 0        | 0         | 0/1      | $callID     | 0           | Memory       | $memoryAddress   | -                | -            | $value   | $rlcAcc   | $isCode   | 0     | $counter    | $rwcIncLeft       |
-|          |           |          |             |             |              |                  |                  |              |          | $rlcAcc   |           |       |             |                   |
-| 1        | 0/1       | 0        | $callID     | 0           | Memory       | $memoryAddress   | $memoryAddress   | $bytesLeft   | $value   | $rlcAcc   | -         | 0/1   | $counter    | $rwcIncLeft       |
-| 0        | 0         | 0/1      | $txID       | 0           | TxLog        | $logAddress      | -                | -            | $value   | $rlcAcc   | -         | 0     | $counter    | $rwcIncLeft       |
+| q_step   | q_first   | q_last   | ID{Lo,Hi}        | Type         | Address          | AddressEnd       | BytesLeft    | Value    | RlcAcc    | IsCode    | Pad   | RwCounter   | RwcIncreaseLeft   |
+| -------- | --------- | -------- | ---------------- | ------------ | ---------------- | ---------------- | ------------ | -------- | --------- | --------- | ----- | ----------- | ----------------- |
+| 1        | 0/1       | 0        | $txID,0          | TxCalldata   | $byteIndex       | $cdLength        | $bytesLeft   | $value   | $rlcAcc   | -         | 0/1   | -           | $rwcIncLeft       |
+| 0        | 0         | 0/1      | $callID,0        | Memory       | $memoryAddress   | -                | -            | $value   | $rlcAcc   | -         | 0     | $counter    | $rwcIncLeft       |
+|          |           |          |                  |              |                  |                  |              |          | $rlcAcc   |           |       |             |                   |
+| 1        | 0/1       | 0        | $callID,0        | Memory       | $memoryAddress   | $memoryAddress   | $bytesLeft   | $value   | $rlcAcc   | -         | 0/1   | $counter    | $rwcIncLeft       |
+| 0        | 0         | 0/1      | $callID,0        | Memory       | $memoryAddress   | -                | -            | $value   | $rlcAcc   | -         | 0     | $counter    | $rwcIncLeft       |
+|          |           |          |                  |              |                  |                  |              |          | $rlcAcc   |           |       |             |                   |
+| 1        | 0/1       | 0        | $callID,0        | Memory       | $memoryAddress   | $memoryAddress   | $bytesLeft   | $value   | $rlcAcc   | $isCode   | 0/1   | $counter    | $rwcIncLeft       |
+| 0        | 0         | 0/1      | $codeHash{Lo,Hi} | Bytecode     | $byteIndex       | -                | -            | $value   | $rlcAcc   | $isCode   | 0     | -           | $rwcIncLeft       |
+|          |           |          |                  |              |                  |                  |              |          | $rlcAcc   |           |       |             |                   |
+| 1        | 0/1       | 0        | $codeHash{Lo,Hi} | Bytecode     | $byteIndex       | $codeLength      | $bytesLeft   | $value   | $rlcAcc   | $isCode   | 0/1   | -           | $rwcIncLeft       |
+| 0        | 0         | 0/1      | $callID,0        | Memory       | $memoryAddress   | -                | -            | $value   | $rlcAcc   | $isCode   | 0     | $counter    | $rwcIncLeft       |
+|          |           |          |                  |              |                  |                  |              |          | $rlcAcc   |           |       |             |                   |
+| 1        | 0/1       | 0        | $callID,0        | Memory       | $memoryAddress   | $memoryAddress   | $bytesLeft   | $value   | $rlcAcc   | -         | 0/1   | $counter    | $rwcIncLeft       |
+| 0        | 0         | 0/1      | $txID,0          | TxLog        | $logAddress      | -                | -            | $value   | $rlcAcc   | -         | 0     | $counter    | $rwcIncLeft       |
 
 - $logAddress = $byteIndex || TxLogData || $logID
 
@@ -336,13 +342,13 @@ Depending on the value of the `exponent` within the exponentiation operation, th
 
 Consider `3 ^ 13 == 1594323 (mod 2^256)`. The exponentiation table assignment looks as follows:
 
-| is_step | identifier | is_last | base_limb0 | base_limb1 | base_limb2 | base_limb3 | exponent_lo | exponent_hi | exponentiation_lo | exponentiation_hi |
-|---------|------------|---------|------------|------------|------------|------------|-------------|-------------|-------------------|-------------------|
-| 1       | $rwc       | 0       | 3          | 0          | 0          | 0          | 13          | 0           | 1594323           | 0                 |
-| 1       | $rwc       | 0       | 3          | 0          | 0          | 0          | 12          | 0           | 531441            | 0                 |
-| 1       | $rwc       | 0       | 3          | 0          | 0          | 0          | 6           | 0           | 729               | 0                 |
-| 1       | $rwc       | 0       | 3          | 0          | 0          | 0          | 3           | 0           | 27                | 0                 |
-| 1       | $rwc       | 1       | 3          | 0          | 0          | 0          | 2           | 0           | 9                 | 0                 |
+| IsStep    | Identifier   | IsLast    | BaseLimb0    | BaseLimb1    | BaseLimb2    | BaseLimb3    | Exponent{Lo,Hi} | Exponentiation{Lo,Hi} |
+| --------- | ------------ | --------- | ------------ | ------------ | ------------ | ------------ | --------------- | --------------------- |
+| 1         | $rwc         | 0         | 3            | 0            | 0            | 0            | 13,0            | 1594323,0             |
+| 1         | $rwc         | 0         | 3            | 0            | 0            | 0            | 12,0            | 531441,0              |
+| 1         | $rwc         | 0         | 3            | 0            | 0            | 0            | 6,0             | 729,0                 |
+| 1         | $rwc         | 0         | 3            | 0            | 0            | 0            | 3,0             | 27,0                  |
+| 1         | $rwc         | 1         | 3            | 0            | 0            | 0            | 2,0             | 9,0                   |
 
 For `exponent == 13`, i.e. Scenario #4 we do two lookups:
 1. Lookup to first row:
