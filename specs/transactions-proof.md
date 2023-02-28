@@ -243,4 +243,4 @@ The extended random linear combination gate requires one extra column in second 
 
 ## Code
 
-Please refer to `src/zkevm-specs/tx.py`.
+Please refer to `src/zkevm-specs/tx_circuit.py`.

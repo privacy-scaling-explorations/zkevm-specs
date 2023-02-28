@@ -41,9 +41,44 @@ found in the table, and a reverse ordering will make the difference to wrap
 around to a very high value (due to the field arithmetic), causing the result
 to not be in the table.
 
-The exact list of constraints is documented in detail as comments in the python
-code implementation.
+### Start
+
+1.0. `field_tag`, `address` and `id`, `storage_key` are 0
+1.1. `rw counter` is increased if it's not first row
+1.2. `value` is 0
+1.3. `initial value` is 0
+1.4. `state root` is not changed if it's not first row
+
+### Memory
+
+2.0. `field_tag` and `storage_key` are 0
+2.1. `value` is 0 if first access and READ
+2.2. Memory address is in 32 bits range
+2.3. `value` is byte
+2.4. `initial value` is 0
+2.5. `state root` is not changed
+
+### Stack
+
+3.0. `field_tag` and `storage_key` are 0
+3.1. First access is WRITE
+3.2. Stack address is in 10 bits range
+3.3. Stack address is increated only 0 or 1
+3.4. `initial value` is 0
+3.5. `state root` is not changed
+
+### Storage
+
+4.0. `storage_key` is 0
+4.1. mpt_update exists in mpt circuit for AccountStorage last access
+
+### Tx Refund
+
+7.0. `address`, `field_tag` and `storage_key` are 0
+7.1. `state root` is not changed
+7.2. `initial value` is 0
+7.3. First access for a set of all keys are 0 if READ
 
 ## Code
 
-Please refer to `src/zkevm-specs/state.py`
+Please refer to `src/zkevm-specs/state_circuit.py`
