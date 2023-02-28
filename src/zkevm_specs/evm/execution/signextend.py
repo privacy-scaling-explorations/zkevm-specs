@@ -8,18 +8,25 @@ def signextend(instruction: Instruction):
     index = instruction.stack_pop()
     value = instruction.stack_pop()
     result = instruction.stack_push()
-    sign_byte = FQ((value.le_bytes[0] >> 7) * 0xFF)
-    selectors = [FQ(index.expr() == FQ(i)) for i in range(31)]
 
     is_msb_sum_zero = instruction.is_zero(FQ(sum(index.le_bytes[1:32])))
-    is_byte_selected = [FQ(index.le_bytes[0] == i) for i in range(31)]
+    print('index.le_bytes', [i for i in index.le_bytes])
+    print('is_msb_sum_zero', is_msb_sum_zero)
+    sign_byte = FQ((value.le_bytes[index.le_bytes[0]] >> 7) * 0xFF) if index.le_bytes[0] < 32 else FQ(0)
+    print('value.le_bytes', [i for i in value.le_bytes])
+    print('index.le_bytes', [i for i in index.le_bytes])
+    print('value.le_bytes[31] >> 7', value.le_bytes[31] >> 7)
+    selectors = [FQ(index.expr() == FQ(i)) for i in range(32)]
+    is_byte_selected = [FQ(index.le_bytes[0] == i) for i in range(32)]
 
+    print('is_byte_selected', is_byte_selected)
     selected_byte = FQ(0)
     for i in range(31):
         is_selected = is_byte_selected[i] * is_msb_sum_zero
         selected_byte += value.le_bytes[i] * is_selected
         instruction.is_equal(is_selected + (selectors[i - 1] if i > 0 else FQ(0)), selectors[i])
 
+    print('selected_byte', selected_byte)
     instruction.sign_byte_lookup(selected_byte, sign_byte)
 
     for idx in range(32):
