@@ -209,15 +209,15 @@ From this table, the following columns contain values using the RLC encoding:
 
 The circuit can prove that updates to account nonces, balances, or storage slots are correct, or that an account's code hash is some particular value. Note that it is not possible to change the code hash for an account without deleting it and then recreating it.
 
-| Address | ProofType               | Key  | ValuePrev     | Value        | RootPrev  | Root  |
+| Address | MPTProofType               | Key  | ValuePrev     | Value        | RootPrev  | Root  |
 | ------- | ----------------------- | ---- | ------------- | ------------ | --------- | ----- |
-| $addr   | NonceChanged                | 0    | $noncePrev    | $nonceCur    | $rootPrev | $root |
-| $addr   | BalanceChanged              | 0    | $balancePrev  | $balanceCur  | $rootPrev | $root |
-| $addr   | CodeHashExists             | 0    | $codeHashPrev | $codeHashCur | $rootPrev | $root |
-| $addr   | AccountDoesNotExist | 0    | 0             | 0            | $root     | $root |
-| $addr   | AccountDestructed        | 0    | 0             | 0            | $rootPrev | $root |
-| $addr   | StorageChanged              | $key | $valuePrev    | $value       | $rootPrev | $root |
-| $addr   | StorageDoesNotExist | $key | 0             | 0            | $root     | $root |
+| $addr   | NonceMod                | 0    | $noncePrev    | $nonceCur    | $rootPrev | $root |
+| $addr   | BalanceMod              | 0    | $balancePrev  | $balanceCur  | $rootPrev | $root |
+| $addr   | CodeHashMod             | 0    | $codeHashPrev | $codeHashCur | $rootPrev | $root |
+| $addr   | NonExistingAccountProof | 0    | 0             | 0            | $root     | $root |
+| $addr   | AccountDeleteMod        | 0    | 0             | 0            | $rootPrev | $root |
+| $addr   | StorageMod              | $key | $valuePrev    | $value       | $rootPrev | $root |
+| $addr   | NonExistingStorageProof | $key | 0             | 0            | $root     | $root |
 
 ## `Keccak Table`
 

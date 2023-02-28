@@ -317,29 +317,29 @@ class CopyDataTypeTag(IntEnum):
     RlcAcc = auto()
 
 
-class ProofType(IntEnum):
+class MPTProofType(IntEnum):
     """
     Tag for MPT lookup.
     """
 
-    NonceChanged = 1
-    BalanceChanged = 2
-    CodeHashExists = 3
-    AccountDoesNotExist = 4
-    AccountDestructed = 5
-    StorageChanged = 6
-    StorageDoesNotExist = 7
+    NonceMod = 1
+    BalanceMod = 2
+    CodeHashMod = 3
+    NonExistingAccountProof = 4
+    AccountDeleteMod = 5
+    StorageMod = 6
+    NonExistingStorageProof = 7
 
     @staticmethod
-    def from_account_field_tag(field_tag: AccountFieldTag) -> ProofType:
+    def from_account_field_tag(field_tag: AccountFieldTag) -> MPTProofType:
         if field_tag == AccountFieldTag.Nonce:
-            return ProofType.NonceChanged
+            return MPTProofType.NonceMod
         if field_tag == AccountFieldTag.Balance:
-            return ProofType.BalanceChanged
+            return MPTProofType.BalanceMod
         elif field_tag == AccountFieldTag.CodeHash:
-            return ProofType.CodeHashExists
+            return MPTProofType.CodeHashMod
         elif field_tag == AccountFieldTag.NonExisting:
-            return ProofType.AccountDoesNotExist
+            return MPTProofType.NonExistingAccountProof
         raise Exception("Unexpected AccountFieldTag value")
 
 
