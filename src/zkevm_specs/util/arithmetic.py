@@ -3,6 +3,7 @@ from typing import List, Protocol, Sequence, Tuple, Type, TypeVar, Union
 from py_ecc import bn128
 from py_ecc.utils import prime_field_inv
 from .param import MAX_N_BYTES
+from .typing import U256
 
 
 def linear_combine_bytes(seq: Sequence[Union[int, FQ]], base: FQ, range_check: bool = True) -> FQ:
@@ -38,6 +39,9 @@ class FQ(bn128.FQ):
 
     def inv(self) -> FQ:
         return FQ(prime_field_inv(self.n, self.field_modulus))
+
+    def __repr__(self) -> str:
+        return f"{hex(self.n)}"
 
 
 IntOrFQ = Union[int, FQ]
@@ -75,11 +79,11 @@ class RLC:
 class Word:
     """Word stored as lo/hi: lowest 128 bits and highest 128 bits"""
     # lowest 128 bits
-    lo: FQ
+    lo: Expression
     # highest 128 bits
-    hi: FQ
+    hi: Expression
 
-    def __init__(self, value: Union[Tuple[FQ, FQ], int, bytes]) -> None:
+    def __init__(self, value: Union[Tuple[Expression, Expression], int, U256, bytes]) -> None:
         if isinstance(value, tuple):
             self.lo, self.hi = value
             return
@@ -100,27 +104,27 @@ class Word:
     def __repr__(self) -> str:
         return f"Word({hex(self.word())})"
 
-    def __eq__(self, other) -> bool:
-        return self.lo == other.lo and self.hi == other.hi
+    def __eq__(self, other: Word) -> bool:
+        return self.lo.expr() == other.lo.expr() and self.hi.expr() == other.hi.expr()
 
     def select(self, selector: FQ) -> Word:
         """Return a new Word with lo and hi multiplied by selector"""
         return Word((selector * self.lo, selector * self.hi))
 
-    def assert_eq(self, other: Word, assert_msg: str):
-        assert (
-            self.lo == other.lo
-        ), f"{assert_msg}: {hex(self.lo.n)} != {hex(other.lo.n)}"
-        assert (
-            self.hi == other.hi
-        ), f"{assert_msg}: {hex(self.hi.n)} != {hex(other.hi.n)}"
+    # def assert_eq(self, other: Word, assert_msg: str):
+    #     assert (
+    #         self.lo.expr() == other.lo.expr()
+    #     ), f"{assert_msg}: {hex(self.lo.expr().n)} != {hex(other.lo.expr().n)}"
+    #     assert (
+    #         self.hi.expr() == other.hi.expr()
+    #     ), f"{assert_msg}: {hex(self.hi.expr().n)} != {hex(other.hi.expr().n)}"
 
 
 class WordOrValue(Word):
     """Type that holds a 256 bit word (as lo/hi) or a value that fits in the field"""
     is_word: bool
 
-    def __init__(self, value: Union[Word, FQ]) -> None:
+    def __init__(self, value: Union[Word, Expression]) -> None:
         if isinstance(value, Word):
             self.is_word = True
             self.lo = value.lo
@@ -130,7 +134,7 @@ class WordOrValue(Word):
             self.lo = value
             self.hi = FQ(0)
 
-    def value(self) -> FQ:
+    def value(self) -> Expression:
         """When this type holds a value that fits in the field, return it"""
         assert not self.is_word
         return self.lo
@@ -139,12 +143,15 @@ class WordOrValue(Word):
         if self.is_word:
             return super().__repr__()
         else:
-            return f"Value({hex(self.lo.n)})"
+            return f"Value({hex(self.lo.expr().n)})"
 
 
 class Expression(Protocol):
     def expr(self) -> FQ:
         ...
+
+    def __eq__(self, other: Expression) -> bool:
+        return self.expr() == other.expr()
 
 
 ExpressionImpl = TypeVar("ExpressionImpl", bound=Expression)

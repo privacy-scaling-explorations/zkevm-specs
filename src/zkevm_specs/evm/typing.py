@@ -23,6 +23,7 @@ from ..util import (
     FQ,
     IntOrFQ,
     RLC,
+    Word,
     Expression,
     keccak256,
     GAS_COST_ACCESS_LIST_ADDRESS,
@@ -338,11 +339,11 @@ class Bytecode:
     def table_assignments(self, randomness: FQ) -> Iterator[BytecodeTableRow]:
         class BytecodeIterator:
             idx: int
-            hash: FQ
+            hash: Word
             code: bytes
             is_code: Sequence[bool]
 
-            def __init__(self, hash: FQ, code: bytes, is_code: Sequence[bool]):
+            def __init__(self, hash: Word, code: bytes, is_code: Sequence[bool]):
                 self.idx = 0
                 self.hash = hash
                 self.code = code
@@ -372,7 +373,7 @@ class Bytecode:
                     self.hash, FQ(BytecodeFieldTag.Byte), FQ(idx), FQ(is_code), FQ(byte)
                 )
 
-        return BytecodeIterator(RLC(self.hash(), randomness).expr(), self.code, self.is_code)
+        return BytecodeIterator(Word(self.hash()), self.code, self.is_code)
 
 
 Storage = NewType("Storage", Dict[U256, U256])
@@ -763,14 +764,14 @@ class KeccakCircuit:
         self.rows = []
 
     def add(self, data: bytes, r: FQ) -> KeccakCircuit:
-        output = RLC(keccak256(data), r, n_bytes=32)
+        output = Word(bytes(reversed(keccak256(data))))
         acc_input = RLC(bytes(reversed(data)), r, n_bytes=len(data))
         self.rows.append(
             KeccakTableRow(
                 state_tag=FQ(2),  # Finalize
+                input_rlc=acc_input.expr(),
                 input_len=FQ(len(data)),
-                acc_input=acc_input.expr(),
-                output=output.expr(),
+                output=output,
             )
         )
         return self

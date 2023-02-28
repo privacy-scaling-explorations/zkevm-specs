@@ -46,25 +46,22 @@ def verify(
         witness = txs2witness(txs_or_witness, chain_id, MAX_TXS, MAX_CALLDATA_BYTES, keccak_randomness)
     assert len(witness.rows) == MAX_TXS * Tag.TxSignHash + MAX_CALLDATA_BYTES
     assert len(witness.sign_verifications) == MAX_TXS
-    ok = True
-    if success:
+    exception = None
+    try:
         verify_circuit(
             witness,
             MAX_TXS,
             MAX_CALLDATA_BYTES,
             keccak_randomness,
         )
+    except AssertionError as e:
+        exception = e
+    if success:
+        if exception:
+            raise exception
+        assert exception is None
     else:
-        try:
-            verify_circuit(
-                witness,
-                MAX_TXS,
-                MAX_CALLDATA_BYTES,
-                keccak_randomness,
-            )
-        except AssertionError as e:
-            ok = False
-    assert ok == success
+        assert exception is not None
 
 
 def test_ecdsa_verify_chip():

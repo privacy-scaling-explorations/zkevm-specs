@@ -37,6 +37,7 @@ def verify_steps(
             )
         except AssertionError as e:
             exception = e
+            break
     if success:
         if exception:
             raise exception

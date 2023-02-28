@@ -7,32 +7,38 @@ from zkevm_specs.util import RLC, rand_fq, U256
 
 
 # Unroll the bytecode
-def unroll(bytecode, randomness):
-    return UnrolledBytecode(bytecode, list(Bytecode(bytecode).table_assignments(randomness)))
+def unroll(bytecode: bytes, randomness: FQ) -> UnrolledBytecode:
+    return UnrolledBytecode(bytecode, list(Bytecode(bytearray(bytecode)).table_assignments(randomness)))
 
 
 # Verify the bytecode circuit with the given data
-def verify(k, bytecodes, randomness, success):
+def verify(k: int, bytecodes: Sequence[UnrolledBytecode], randomness: FQ, success: bool):
     rows = assign_bytecode_circuit(k, bytecodes, randomness)
     verify_rows(bytecodes, rows, success)
 
 
-def verify_rows(bytecodes, rows, success):
+def verify_rows(bytecodes: Sequence[UnrolledBytecode], rows: Sequence[Row], success: bool):
     push_table = assign_push_table()
-    keccak_table = assign_keccak_table(map(lambda v: v.bytes, bytecodes), randomness)
-    try:
-        for idx, row in enumerate(rows):
+    keccak_table = assign_keccak_table(list(map(lambda v: v.bytes, bytecodes)), randomness)
+    exception = None
+    for idx, row in enumerate(rows):
+        try:
             next_row = rows[(idx + 1) % len(rows)]
             check_bytecode_row(row, next_row, push_table, keccak_table, randomness)
             ok = True
-    except AssertionError as e:
-        if success:
-            traceback.print_exc()
-            print(idx)
-            print(row)
-            print(next_row)
-        ok = False
-    assert ok == success
+        except AssertionError as e:
+            if success:
+                print(idx)
+                print(row)
+                print(next_row)
+            exception = e
+            break
+    if success:
+        if exception:
+            raise exception
+        assert exception is None
+    else:
+        assert exception is not None
 
 
 k = 10
@@ -56,11 +62,11 @@ def test_bytecode_unrolling():
         for _ in range(n):
             rows.append((0, BytecodeFieldTag.Byte, len(rows), False, data_byte))
     # Set the hash of the complete bytecode in the rows
-    hash = RLC(bytes(reversed(keccak256(bytes(bytecode)))), randomness)
+    hash = Word(bytes(reversed(keccak256(bytes(bytecode)))))
     for i in range(len(rows)):
-        rows[i] = BytecodeTableRow(hash.expr(), rows[i][1], rows[i][2], rows[i][3], rows[i][4])
+        rows[i] = BytecodeTableRow(hash, rows[i][1], rows[i][2], rows[i][3], rows[i][4])
     # Prepend the length of bytecode to rows
-    rows.insert(0, BytecodeTableRow(hash.expr(), BytecodeFieldTag.Header, 0, 0, len(bytecode)))
+    rows.insert(0, BytecodeTableRow(hash, BytecodeFieldTag.Header, 0, 0, len(bytecode)))
     # Unroll the bytecode
     unrolled = unroll(bytes(bytecode), randomness)
     # Check if the bytecode was unrolled correctly
@@ -106,7 +112,7 @@ def test_bytecode_invalid_hash_data():
     invalid = deepcopy(unrolled)
     row = unrolled.rows[0]
     invalid.rows[0] = BytecodeTableRow(
-        row.bytecode_hash + 1, row.field_tag, row.index, row.is_code, row.value
+        Word(row.bytecode_hash.word() + 1), row.field_tag, row.index, row.is_code, row.value
     )
     verify(k, [invalid], randomness, False)
 
@@ -114,7 +120,7 @@ def test_bytecode_invalid_hash_data():
     invalid = deepcopy(unrolled)
     row = unrolled.rows[1]
     invalid.rows[1] = BytecodeTableRow(
-        row.bytecode_hash + 1, row.field_tag, row.index, row.is_code, row.value
+        Word(row.bytecode_hash.word() + 1), row.field_tag, row.index, row.is_code, row.value
     )
     verify(k, [invalid], randomness, False)
 
@@ -122,14 +128,14 @@ def test_bytecode_invalid_hash_data():
     invalid = deepcopy(unrolled)
     row = unrolled.rows[4]
     invalid.rows[1] = BytecodeTableRow(
-        row.bytecode_hash + 1, row.field_tag, row.index, row.is_code, row.value
+        Word(row.bytecode_hash.word() + 1), row.field_tag, row.index, row.is_code, row.value
     )
     verify(k, [invalid], randomness, False)
 
     # Change all the hashes so it doesn't match the keccak lookup hash
     invalid = deepcopy(unrolled)
     for idx, row in enumerate(unrolled.rows):
-        invalid.rows[idx] = BytecodeTableRow(1, row.field_tag, row.index, row.is_code, row.value)
+        invalid.rows[idx] = BytecodeTableRow(Word(1), row.field_tag, row.index, row.is_code, row.value)
     verify(k, [invalid], randomness, False)
 
 
@@ -141,14 +147,14 @@ def test_bytecode_invalid_index():
     invalid = deepcopy(unrolled)
     for idx, row in enumerate(unrolled.rows):
         invalid.rows[idx] = BytecodeTableRow(
-            row.bytecode_hash + 1, row.field_tag, row.index, row.is_code, row.value
+            Word(row.bytecode_hash.word() + 1), row.field_tag, row.index, row.is_code, row.value
         )
     verify(k, [invalid], randomness, False)
 
     # Don't increment an index once
     invalid = deepcopy(unrolled)
     invalid.rows[-1] = BytecodeTableRow(
-        invalid.rows[-1].bytecode_hash - 1, row.field_tag, row.index, row.is_code, row.value
+        Word(invalid.rows[-1].bytecode_hash.word() - 1), row.field_tag, row.index, row.is_code, row.value
     )
     verify(k, [invalid], randomness, False)
 
@@ -160,20 +166,20 @@ def test_bytecode_invalid_byte_data():
     # Change the first byte in the bytecode
     invalid = deepcopy(unrolled)
     row = unrolled.rows[1]
-    invalid.rows[1] = BytecodeTableRow(row.bytecode_hash, row.field_tag, row.index, row.is_code, 9)
+    invalid.rows[1] = BytecodeTableRow(row.bytecode_hash, row.field_tag, row.index, row.is_code, FQ(9))
     verify(k, [invalid], randomness, False)
 
     # Change a byte on another position
     invalid = deepcopy(unrolled)
     row = unrolled.rows[5]
-    invalid.rows[5] = BytecodeTableRow(row.bytecode_hash, row.field_tag, row.index, row.is_code, 6)
+    invalid.rows[5] = BytecodeTableRow(row.bytecode_hash, row.field_tag, row.index, row.is_code, FQ(6))
     verify(k, [invalid], randomness, False)
 
     # Set a byte value out of range
     invalid = deepcopy(unrolled)
     row = unrolled.rows[3]
     invalid.rows[3] = BytecodeTableRow(
-        row.bytecode_hash, row.field_tag, row.index, row.is_code, 256
+        row.bytecode_hash, row.field_tag, row.index, row.is_code, FQ(256)
     )
     verify(k, [invalid], randomness, False)
 
@@ -199,19 +205,19 @@ def test_bytecode_invalid_is_code():
     # Mark the 3rd byte as code (is push data from the first PUSH1)
     invalid = deepcopy(unrolled)
     row = unrolled.rows[3]
-    invalid.rows[3] = BytecodeTableRow(row.bytecode_hash, row.field_tag, row.index, 1, row.value)
+    invalid.rows[3] = BytecodeTableRow(row.bytecode_hash, row.field_tag, row.index, FQ(1), row.value)
     verify(k, [invalid], randomness, False)
 
     # Mark the 4rd byte as data (is code)
     invalid = deepcopy(unrolled)
     row = unrolled.rows[4]
-    invalid.rows[4] = BytecodeTableRow(row.bytecode_hash, row.field_tag, row.index, 0, row.value)
+    invalid.rows[4] = BytecodeTableRow(row.bytecode_hash, row.field_tag, row.index, FQ(0), row.value)
     verify(k, [invalid], randomness, False)
 
     # Mark the 7th byte as code (is data for the PUSH7)
     invalid = deepcopy(unrolled)
     row = unrolled.rows[7]
-    invalid.rows[7] = BytecodeTableRow(row.bytecode_hash, row.field_tag, row.index, 1, row.value)
+    invalid.rows[7] = BytecodeTableRow(row.bytecode_hash, row.field_tag, row.index, FQ(1), row.value)
     verify(k, [invalid], randomness, False)
 
 
@@ -222,17 +228,17 @@ def test_last_row():
     # last row has length != 0
     rows = assign_bytecode_circuit(k, [unrolled], randomness)
     rows[-1] = Row(
-        q_first=0,
-        q_last=1,
-        hash=RLC(EMPTY_HASH, FQ(randomness)).expr(),
-        tag=BytecodeFieldTag.Header,
-        index=0,
-        value=0,
-        is_code=False,
-        push_data_left=0,
-        value_rlc=0,
+        q_first=FQ(0),
+        q_last=FQ(1),
+        hash=Word(EMPTY_HASH),
+        tag=FQ(BytecodeFieldTag.Header),
+        index=FQ(0),
+        value=FQ(0),
+        is_code=FQ(False),
+        push_data_left=FQ(0),
+        value_rlc=FQ(0),
         length=1000,
-        push_data_size=0,
+        push_data_size=FQ(0),
     )
     verify_rows([unrolled], rows, False)
 
@@ -244,17 +250,17 @@ def test_last_row():
     )
     rows = assign_bytecode_circuit(k, [unrolled], randomness)
     rows[-1] = Row(
-        q_first=0,
-        q_last=1,
-        hash=RLC(NOT_EMPTY_HASH, FQ(randomness)).expr(),
-        tag=BytecodeFieldTag.Header,
-        index=0,
-        value=0,
-        is_code=False,
-        push_data_left=0,
-        value_rlc=0,
-        length=0,
-        push_data_size=0,
+        q_first=FQ(0),
+        q_last=FQ(1),
+        hash=Word(NOT_EMPTY_HASH),
+        tag=FQ(BytecodeFieldTag.Header),
+        index=FQ(0),
+        value=FQ(0),
+        is_code=FQ(False),
+        push_data_left=FQ(0),
+        value_rlc=FQ(0),
+        length=FQ(0),
+        push_data_size=FQ(0),
     )
     verify_rows([unrolled], rows, False)
 
@@ -266,16 +272,16 @@ def test_last_row():
     )
     rows = assign_bytecode_circuit(k, [unrolled], randomness)
     rows[-1] = Row(
-        q_first=0,
-        q_last=1,
+        q_first=FQ(0),
+        q_last=FQ(1),
         hash=RLC(NOT_EMPTY_HASH, FQ(randomness)).expr(),
-        tag=BytecodeFieldTag.Byte,
-        index=0,
-        value=0,
-        is_code=False,
-        push_data_left=0,
-        value_rlc=0,
-        length=0,
-        push_data_size=0,
+        tag=FQ(BytecodeFieldTag.Byte),
+        index=FQ(0),
+        value=FQ(0),
+        is_code=FQ(False),
+        push_data_left=FQ(0),
+        value_rlc=FQ(0),
+        length=FQ(0),
+        push_data_size=FQ(0),
     )
     verify_rows([unrolled], rows, False)

@@ -399,7 +399,7 @@ class TxTableRow(TableRow):
 
 @dataclass(frozen=True)
 class BytecodeTableRow(TableRow):
-    bytecode_hash: Expression
+    bytecode_hash: Word
     field_tag: Expression
     index: Expression
     is_code: Expression
@@ -472,9 +472,9 @@ class CopyTableRow(TableRow):
 @dataclass(frozen=True)
 class KeccakTableRow(TableRow):
     state_tag: FQ
+    input_rlc: FQ
     input_len: FQ
-    acc_input: FQ
-    output: FQ
+    output: Word
 
 
 @dataclass
@@ -708,7 +708,7 @@ class Tables:
         query = {
             "state_tag": FQ(2),  # Finalize
             "input_len": length,
-            "acc_input": value_rlc,
+            "input_rlc": value_rlc,
         }
         return lookup(KeccakTableRow, self.keccak_table, query)
 

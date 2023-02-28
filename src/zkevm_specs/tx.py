@@ -232,8 +232,9 @@ class SignVerifyChip:
         # 3. Verify that the signed message in the ecdsa_chip with RLC encoding
         # corresponds to msg_hash_rlc
         msg_hash = Word(self.msg_hash_bytes)
-        msg_hash.select(is_not_padding).assert_eq(self.msg_hash,
-            f"{assert_msg}: {hex(msg_hash.word())} != {hex(self.msg_hash.word())}")
+        assert (
+            msg_hash.select(is_not_padding) == self.msg_hash
+        ), f"{assert_msg}: {hex(msg_hash.word())} != {hex(self.msg_hash.word())}"
 
         # 4. Verify the ECDSA signature
         self.ecdsa_chip.verify(assert_msg)
@@ -272,17 +273,16 @@ def verify_circuit(
 
         # 0. Copy constraints using fixed offsets between the tx rows and the SignVerifyChip
         assert rows[caller_addr_index].value.value() == sign_verifications[tx_index].address, (
-            f"{assert_msg}: {hex(rows[caller_addr_index].value.value().n)} != "
-            + f"{hex(sign_verifications[tx_index].address.n)}"
+            f"{assert_msg}: {rows[caller_addr_index].value.value()} != "
+            + f"{sign_verifications[tx_index].address}"
         )
-        print(rows[tx_sign_hash_index].value)
         assert rows[tx_sign_hash_index].value.lo == sign_verifications[tx_index].msg_hash.lo, (
-            f"{assert_msg}: {hex(rows[tx_sign_hash_index].value.lo.n)} != "
-            + f"{hex(sign_verifications[tx_index].msg_hash.lo.n)}"
+            f"{assert_msg}: {rows[tx_sign_hash_index].value.lo} != "
+            + f"{sign_verifications[tx_index].msg_hash.lo}"
         )
         assert rows[tx_sign_hash_index].value.hi == sign_verifications[tx_index].msg_hash.hi, (
-            f"{assert_msg}: {hex(rows[tx_sign_hash_index].value.hi.n)} != "
-            + f"{hex(sign_verifications[tx_index].msg_hash.hi.n)}"
+            f"{assert_msg}: {rows[tx_sign_hash_index].value.hi} != "
+            + f"{sign_verifications[tx_index].msg_hash.hi}"
         )
 
     # Remaining rows contain CallData.  Those rows don't have any circuit constraint.
