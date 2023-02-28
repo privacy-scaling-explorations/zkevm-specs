@@ -318,7 +318,8 @@ def check_account(row: Row, row_prev: Row, row_next: Row, tables: Tables):
     if not all_keys_eq(row, row_next):
         tables.mpt_lookup(
             get_addr(row),
-            is_non_exist * FQ(MPTProofType.NonExistingAccountProof) + (1 - is_non_exist) * FQ(proof_type),
+            is_non_exist * FQ(MPTProofType.NonExistingAccountProof)
+            + (1 - is_non_exist) * FQ(proof_type),
             row.storage_key(),
             row.value,
             row.initial_value,
