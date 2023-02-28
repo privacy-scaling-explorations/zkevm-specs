@@ -4,7 +4,7 @@ from ..opcode import Opcode
 from ...util import N_BYTES_PROGRAM_COUNTER
 
 
-def invalid_jump(instruction: Instruction):
+def error_invalid_jump(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
     # current executing op code must be JUMP or JUMPI
     instruction.constrain_in(opcode, [FQ(Opcode.JUMP), FQ(Opcode.JUMPI)])

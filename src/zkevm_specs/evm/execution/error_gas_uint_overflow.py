@@ -3,6 +3,7 @@ from ...util import (
     FQ,
     TxDataNonZeroGasEIP2028,
     MAX_U64,
+    N_BYTES_U64,
     TxGas,
     TxGasContractCreation,
     TxDataZeroGas,
@@ -13,7 +14,7 @@ from ..table import CallContextFieldTag
 from ..opcode import Opcode
 
 
-def gas_uint_overflow(instruction: Instruction):
+def error_gas_uint_overflow(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
 
     is_call = instruction.is_equal(opcode, Opcode.CALL)
@@ -53,7 +54,7 @@ def gas_uint_overflow(instruction: Instruction):
         gas = TxGasContractCreation if is_create == FQ(1) else TxGas
         non_zero_gas = TxDataNonZeroGasEIP2028
         is_eip2028_overflow, _ = instruction.compare(
-            FQ(((MAX_U64 - gas) // non_zero_gas)), FQ(nz), 8
+            FQ(((MAX_U64 - gas) // non_zero_gas)), FQ(nz), N_BYTES_U64
         )
         gas += nz * non_zero_gas
 
@@ -61,7 +62,7 @@ def gas_uint_overflow(instruction: Instruction):
         z = dataLen - nz
         zero_gas = TxDataZeroGas
         is_non_zero_gas_overflow, _ = instruction.compare(
-            FQ(((MAX_U64 - gas) // zero_gas)), FQ(z), 8
+            FQ(((MAX_U64 - gas) // zero_gas)), FQ(z), N_BYTES_U64
         )
         gas += z * zero_gas
 
@@ -69,7 +70,7 @@ def gas_uint_overflow(instruction: Instruction):
         if is_create:
             lenWords = dataLen // 32
             is_eip3860_overflow, _ = instruction.compare(
-                FQ((MAX_U64 - gas) // InitCodeWordGas), FQ(lenWords), 8
+                FQ((MAX_U64 - gas) // InitCodeWordGas), FQ(lenWords), N_BYTES_U64
             )
 
     # verify gas uint overflow.

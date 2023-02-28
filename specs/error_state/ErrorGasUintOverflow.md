@@ -9,7 +9,7 @@ this type of error occurs when mathematical operation detects overflow during ca
 - new memory size exceeds `0x1FFFFFFFE0`
 - poped stack data exceeds uint64
 - copy gas cost exceeds uint64
-- sum of memory expanding gas cist and copy gas cost exceeds uint64
+- sum of memory expanding gas cost and copy gas cost exceeds uint64
 - call gas cost exceeds uint64
 
 ### Constraints

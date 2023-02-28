@@ -2,7 +2,7 @@ from ..instruction import Instruction
 
 
 # Gadget for invalid opcodes. It verifies by a fixed lookup for ResponsibleOpcode.
-def invalid_opcode(instruction: Instruction):
+def error_invalid_opcode(instruction: Instruction):
     # Fixed lookup for invalid opcode.
     opcode = instruction.opcode_lookup(True)
     instruction.responsible_opcode_lookup(opcode)

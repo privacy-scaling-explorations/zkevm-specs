@@ -4,7 +4,7 @@ from ..opcode import Opcode
 from ...util import N_BYTES_GAS
 
 
-def oog_constant(instruction: Instruction):
+def error_oog_constant(instruction: Instruction):
     # retrieve op code associated to oog constant error
     opcode = instruction.opcode_lookup(True)
     const_gas_entry = instruction.fixed_lookup(
