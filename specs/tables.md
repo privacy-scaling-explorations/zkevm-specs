@@ -49,7 +49,7 @@ There are 10 columns in `rw_table`.
             - **logID**: 32 bits, starts at 1 (corresponds to `logIndex + 1`), unique per tx/receipt.
             - **topicIndex, byteIndex**: 32 bits, indicates order in tx log topics or data.
     - col. 5 *FieldTag*
-        - For *Tag* **TxReceipt**: 
+        - For *Tag* **TxReceipt**:
             - **PostStateOrStatus**: 8 bits
             - **CumulativeGasUsed**: 64 bits
     - col. 6 *StorageKey* is field size and reserved for RLC encoded (Random Linear Combination) values
@@ -245,21 +245,18 @@ Proved by the copy circuit.
 
 The copy table consists of 13 columns, described as follows:
 
-- **q_step**: a fixed column for boolean value to indicate a copy step, always alternating between 1 and 0, where 1 indicates a read op and 0 indicates a write op.
 - **is_first**: a boolean value to indicate the first row in a copy event.
+- **id**: could be `$txID`, `$callID`, `$codeHash` (RLC encoded).
+- **addr**: indicates the address in the source data, could be memory address, byte index in the bytecode, tx call data, and tx log data. When the data type is `TxLog`, the address is the combination of byte index, `TxLogFieldTag.Data` tag, and `LogID`.
+- **src_addr_end**: indicates the address boundary of the source data. Any data read from address greater than or equal to `AddressEnd` should be 0. Note `AddressEnd` is only valid for read operations or `q_step` is 1.
+- **bytes_left**: indicates the number of bytes left to be copied.
+- **rlc_acc**: indicates the RLC representation of an accumulator value over all write values.
+- **rw_counter**: indicates the current RW counter at this row. This value will be used in the lookup to the `rw_table` when `Type` is  `Memory` or `TxLog`.
+- **rwc_inc_left**: indicates how much the RW counter will increase in a copy event.
 - **is_last**: a boolean value to indicate the last row in a copy event.
-- **ID**: could be `$txID`, `$callID`, `$codeHash` (RLC encoded).
-- **Type**: indicates the type of data source, including `Memory`, `Bytecode`, `TxCalldata`, `TxLog` and `RlcAcc`.
-- **Address**: indicates the address in the source data, could be memory address, byte index in the bytecode, tx call data, and tx log data. When the data type is `TxLog`, the address is the combination of byte index, `TxLogFieldTag.Data` tag, and `LogID`.
-- **AddressEnd**: indicates the address boundary of the source data. Any data read from address greater than or equal to `AddressEnd` should be 0. Note `AddressEnd` is only valid for read operations or `q_step` is 1.
-- **BytesLeft**: indicates the number of bytes left to be copied.
-- **Value**: indicates the value read or write from source or to the destination.
-- **RlcAcc**: indicates the RLC representation of an accumulator value over all write values.
-- **Pad**: indicates if the value read from the source is padded. Only valid for read operations or `q_step` is 1.
-- **IsCode**: a boolean value to indicate if the `Value` is an executable opcode or the data portion of `PUSH*` operations. Only valid when `Type` is `Bytecode`.
-- **RwCounter**: indicates the current RW counter at this row. This value will be used in the lookup to the `rw_table` when `Type` is  `Memory` or `TxLog`.
-- **RwcIncreaseLeft**: indicates how much the RW counter will increase in a copy event.
-
+- **value**: indicates the value read or write from source or to the destination.
+- **is_pad**: indicates if the value read from the source is padded. Only valid for read operations or `q_step` is 1.
+- **is_code**: a boolean value to indicate if the `Value` is an executable opcode or the data portion of `PUSH*` operations. Only valid when `Type` is `Bytecode`.
 
 Unlike other lookup tables, the copy table is a virtual table. The lookup entry is not a single row in the table, and not every row corresponds to a lookup entry.
 Instead, a lookup entry is constructed from the first two rows in each copy event as

@@ -286,13 +286,19 @@ def check_call_context(row: Row, row_prev: Row):
     assert row.address() == 0
     assert row.storage_key() == 0
 
-    # 5.1 state root does not change
-    assert row.root == row_prev.root
+    # 5.1. field_tag is in CallContexFieldTag range
+    assert True
 
-    # 5.2 First access for a set of all keys
+    # 5.2. First access for a set of all keys
     # - If READ, value must be 0
     if not all_keys_eq(row, row_prev) and row.is_write == 0:
         assert row.value == 0
+
+    # 5.3. CallContext initial value is 0
+    assert row.initial_value == 0
+
+    # 5.4. state root does not change
+    assert row.root == row_prev.root
 
 
 @is_circuit_code

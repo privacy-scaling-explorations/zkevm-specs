@@ -72,6 +72,15 @@ to not be in the table.
 4.0. `storage_key` is 0
 4.1. mpt_update exists in mpt circuit for AccountStorage last access
 
+### CallContext
+
+5.0. `address` and `storage_key` are 0
+5.1. `field_tag` is in CallContextFieldTag range
+5.2. `value` is 0 if first access and READ
+5.3. `initial value` is 0
+5.4. `state root` is not changed
+5.5. `value_prev` column is 0
+
 ### Tx Refund
 
 7.0. `address`, `field_tag` and `storage_key` are 0
