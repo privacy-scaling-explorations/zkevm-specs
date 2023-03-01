@@ -79,6 +79,8 @@ The correctness of the rw_table is validated in the state circuit.
 
 NOTE: `kN` means `keyN`
 
+DELETEME: Review note: Removed aux1 and aux2 and instead added InitialValue which corresponds to the current usage and has a more meaningful name.
+
 | 0 *Rwc*  | 1 *IsWrite* | 2 *Tag* k0                 | 3 *Id* k1 | 4 *Address* k2     | 5 *FieldTag* k3            | 6,7 *StoKey{Lo,Hi}* k4,k5 | 7,8 *Val{Lo,Hi}* | 9,10 *ValPrev{Lo,Hi}* | 11,12 *InitVal{Lo,Hi}* |
 | -------- | ----------- | -------------------------- | --------  | --------           | -------------------------- | ------------------------- | ---------------- | --------------------- | ---------------------- |
 |          |             | *RwTableTag*               |           |                    |                            |                           |                  |                       |                        |
@@ -212,7 +214,7 @@ Provided by the MPT (Merkle Patricia Trie) circuit.
 
 The circuit can prove that updates to account nonces, balances, or storage slots are correct, or that an account's code hash is some particular value. Note that it is not possible to change the code hash for an account without deleting it and then recreating it.
 
-| *Address* | *ProofType*             | *Key{Lo,Hi}* | *ValuePrev{Lo,Hi}*   | *Value{Lo,Hi}*      | *RootPrev{Lo,Hi}* | *Root{Lo,Hi}* |
+| *Address* | *MPTProofType*          | *Key{Lo,Hi}* | *ValuePrev{Lo,Hi}*   | *Value{Lo,Hi}*      | *RootPrev{Lo,Hi}* | *Root{Lo,Hi}* |
 | -------   | ----------------------- | ----         | -------------        | ------------        | ---------         | -----         |
 | $addr     | NonceMod                | 0,0          | $noncePrev,0         | $nonceCur,0         | $rootPrev{Lo,Hi}  | $root{Lo,Hi}  |
 | $addr     | BalanceMod              | 0,0          | $balancePrev{Lo,Hi}  | $balanceCur{Lo,Hi}  | $rootPrev{Lo,Hi}  | $root{Lo,Hi}  |
