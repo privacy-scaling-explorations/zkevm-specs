@@ -69,43 +69,43 @@ class Row(NamedTuple):
     # - keys[1]: id
     # - keys[2]: address
     # - keys[3]: field_tag
-    # - keys[4]: storage_key
-    keys: Tuple[FQ, FQ, FQ, FQ, FQ]
+    # - keys[4,5]: storage_key
+    keys: Tuple[FQ, FQ, FQ, FQ, Word]
     key2_limbs: Tuple[FQ, FQ, FQ, FQ, FQ, # key2 in Little-Endian (limbs in base 2**16)
                       FQ, FQ, FQ, FQ, FQ]
-    key4_bytes: Tuple[FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ, # key4 in Little-Endian (limbs in base 2**8)
-                      FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,
-                      FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,
-                      FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ]
-    value: FQ
-    initial_value: FQ
+    key45_bytes: Tuple[FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ, # key{4,5} in Little-Endian (limbs in base 2**8)
+                       FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,
+                       FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,
+                       FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ]
+    value: WordOrValue
+    initial_value: WordOrValue
 
-    root: FQ
+    root: Word
 
     # lexicographic_ordering_selector is the selector for transition checks and is set 0 for the first Row and 1 otherwise.
     lexicographic_ordering_selector: FQ
 
     # fmt: on
 
-    def tag(self):
+    def tag(self) -> FQ:
         return self.keys[0]
 
-    def id(self):
+    def id(self) -> FQ:
         return self.keys[1]
 
-    def address(self):
+    def address(self) -> FQ:
         return self.keys[2]
 
-    def address_limbs(self):
+    def address_limbs(self) -> Tuple[FQ, FQ, FQ, FQ, FQ, FQ, FQ, FQ, FQ, FQ]:
         return self.key2_limbs
 
-    def field_tag(self):
+    def field_tag(self) -> FQ:
         return self.keys[3]
 
-    def storage_key(self):
+    def storage_key(self) -> Word:
         return self.keys[4]
 
-    def storage_key_bytes(self):
+    def storage_key_bytes(self) -> Tuple[FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ]:
         return self.key4_bytes
 
 
@@ -123,11 +123,11 @@ class Tables:
         self,
         address: Expression,
         proof_type: Expression,
-        storage_key: Expression,
-        value: Expression,
-        value_prev: Expression,
-        root: Expression,
-        root_prev: Expression,
+        storage_key: Word,
+        value: Word,
+        value_prev: Word,
+        root: Word,
+        root_prev: Word,
     ) -> MPTTableRow:
         query = {
             "address": address,
@@ -181,13 +181,13 @@ def check_start(row: Row, row_prev: Row):
     assert row.id() == 0
 
     # 1.3. storage_key is 0 for Start
-    assert row.storage_key() == 0
+    assert row.storage_key() == Word(0)
 
     # 1.4. rw_counter increases by 1 for every non-first row
     assert row.lexicographic_ordering_selector * (row.rw_counter - row_prev.rw_counter - 1) == 0
 
     # 1.5. Start value is 0
-    assert row.value == 0
+    assert row.value.value() == 0
 
     # 1.6. state_root is unchanged for Start
     assert row.lexicographic_ordering_selector * (row.root - row_prev.root) == 0
@@ -200,7 +200,7 @@ def check_memory(row: Row, row_prev: Row):
 
     # 2.0. Unused keys are 0
     assert row.field_tag() == 0
-    assert row.storage_key() == 0
+    assert row.storage_key() == Word(0)
 
     # 2.1. First access for a set of all keys
     #
