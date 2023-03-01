@@ -31,13 +31,9 @@ def generate_tests_data():
     return test_data
 
 
-
 @pytest.mark.parametrize("b, x, y", generate_tests_data())
 def test_pop(b: U256, x: U256, y: U256):
     randomness = rand_fq()
-
-    print(b, x, y)
-    print(hex(b), hex(x), hex(y))
 
     bytecode = Bytecode().signextend(b, x).stop()
     bytecode_hash = RLC(bytecode.hash(), randomness)
