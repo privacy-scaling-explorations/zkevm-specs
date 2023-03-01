@@ -15,7 +15,7 @@ from .util import (
     Expression,
     is_circuit_code,
 )
-from .tx import Tag as TxTag
+from .tx_circuit import Tag as TxTag
 from .evm import (
     BlockContextFieldTag as BlockTag,
 )
