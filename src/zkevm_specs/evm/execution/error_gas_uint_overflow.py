@@ -7,7 +7,7 @@ from ...util import (
     TxGas,
     TxGasContractCreation,
     TxDataZeroGas,
-    InitCodeWordGas,
+    # InitCodeWordGas,
 )
 from ..instruction import Instruction, Transition
 from ..table import CallContextFieldTag
@@ -67,11 +67,11 @@ def error_gas_uint_overflow(instruction: Instruction):
         gas += z * zero_gas
 
         # eip 3860
-        if is_create:
-            lenWords = dataLen // 32
-            is_eip3860_overflow, _ = instruction.compare(
-                FQ((MAX_U64 - gas) // InitCodeWordGas), FQ(lenWords), N_BYTES_U64
-            )
+        # if is_create:
+        #     lenWords = dataLen // 32
+        #     is_eip3860_overflow, _ = instruction.compare(
+        #         FQ((MAX_U64 - gas) // InitCodeWordGas), FQ(lenWords), N_BYTES_U64
+        #     )
 
     # verify gas uint overflow.
     is_overflow = (
