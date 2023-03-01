@@ -7,7 +7,7 @@ from dataclasses import dataclass, field, fields
 from .opcode import constant_gas_cost_pairs
 from .precompile import precompile_info_pairs
 
-from ..util import Expression, FQ, RLC, word_to_lo_hi, word_to_64s
+from ..util import Expression, FQ, RLC, Word, WordOrValue, word_to_lo_hi, word_to_64s
 from .execution_state import ExecutionState
 
 
@@ -369,7 +369,14 @@ class TableRow:
             raise WrongQueryKey(table_name, queried - names)
 
     def match(self, query: Mapping[str, Expression]) -> bool:
-        return all([value.expr() == getattr(self, key).expr() for key, value in query.items()])
+        match = True
+        for key, value in query.items():
+            rhs = getattr(self, key)
+            if isinstance(value, Word):
+                match = match and (value.lo.expr() == rhs.lo.expr() and value.hi.expr() == rhs.hi.expr())
+            else:
+                match = match and (value.expr() == rhs.expr())
+        return match
 
 
 @dataclass(frozen=True)
@@ -582,8 +589,6 @@ class Tables:
         rows: List[ExpTableRow] = []
         for i, row in enumerate(exp_circuit):
             base_limbs = word_to_64s(row.base)
-            exponent_lo_hi = word_to_lo_hi(row.exponent)
-            exponentiation_lo_hi = word_to_lo_hi(row.exponentiation)
             rows.append(
                 ExpTableRow(
                     is_step=FQ.one(),
@@ -593,10 +598,8 @@ class Tables:
                     base_limb1=base_limbs[1],
                     base_limb2=base_limbs[2],
                     base_limb3=base_limbs[3],
-                    exponent_lo=exponent_lo_hi[0],
-                    exponent_hi=exponent_lo_hi[1],
-                    exponentiation_lo=exponentiation_lo_hi[0],
-                    exponentiation_hi=exponentiation_lo_hi[1],
+                    exponent=row.exponent,
+                    exponentiation=row.exponentiation,
                 )
             )
         return set(rows)
@@ -679,9 +682,9 @@ class Tables:
 
     def copy_lookup(
         self,
-        src_id: Expression,
+        src_id: Union[Expression, Word],
         src_type: Expression,
-        dst_id: Expression,
+        dst_id: Union[Expression, Word],
         dst_type: Expression,
         src_addr: Expression,
         src_addr_end: Expression,
@@ -694,9 +697,9 @@ class Tables:
             assert log_id is not None
             dst_addr = dst_addr + FQ(int(TxLogFieldTag.Data) << 32) + FQ(log_id.expr().n << 48)
         query = {
-            "src_id": src_id,
+            "src_id": WordOrValue(src_id),
             "src_type": src_type,
-            "dst_id": dst_id,
+            "dst_id": WordOrValue(dst_id),
             "dst_type": dst_type,
             "src_addr": src_addr,
             "src_addr_end": src_addr_end,
@@ -719,7 +722,7 @@ class Tables:
         identifier: Expression,
         is_last: Expression,
         base_limbs: Tuple[Expression, ...],
-        exponent: Tuple[Expression, Expression],
+        exponent: Word,
     ):
         query = {
             "is_step": FQ.one().expr(),
@@ -741,7 +744,7 @@ T = TypeVar("T", bound=TableRow)
 def lookup(
     table_cls: Type[T],
     table: Set[T],
-    query: Mapping[str, Optional[Expression]],
+    query: Mapping[str, Optional[Union[FQ, Expression, Word]]],
 ) -> T:
     table_name = table_cls.__name__
     table_cls.validate_query(table_name, query)
