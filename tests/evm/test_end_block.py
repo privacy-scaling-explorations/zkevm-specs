@@ -62,10 +62,10 @@ def test_end_block(
                     FQ(23),
                     FQ(RW.Read),
                     key0=FQ(RWTableTag.TxReceipt),
-                    key1=FQ(tx.id),
-                    key2=FQ(0),
-                    key3=FQ(TxReceiptFieldTag.CumulativeGasUsed),
-                    key4=FQ(0),
+                    id=FQ(tx.id),
+                    address=FQ(0),
+                    field_tag=FQ(TxReceiptFieldTag.CumulativeGasUsed),
+                    storage_key=FQ(0),
                     value=FQ(cumulative_gas),
                 )
             )

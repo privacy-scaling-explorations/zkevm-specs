@@ -420,24 +420,24 @@ class RWDictionary:
 
     def stack_read(self, call_id: IntOrFQ, stack_pointer: IntOrFQ, value: RLC) -> RWDictionary:
         return self._append(
-            RW.Read, RWTableTag.Stack, key1=FQ(call_id), key2=FQ(stack_pointer), value=value
+            RW.Read, RWTableTag.Stack, id=FQ(call_id), address=FQ(stack_pointer), value=value
         )
 
     def stack_write(self, call_id: IntOrFQ, stack_pointer: IntOrFQ, value: RLC) -> RWDictionary:
         return self._append(
-            RW.Write, RWTableTag.Stack, key1=FQ(call_id), key2=FQ(stack_pointer), value=value
+            RW.Write, RWTableTag.Stack, id=FQ(call_id), address=FQ(stack_pointer), value=value
         )
 
     def memory_read(self, call_id: IntOrFQ, memory_address: IntOrFQ, byte: IntOrFQ) -> RWDictionary:
         return self._append(
-            RW.Read, RWTableTag.Memory, key1=FQ(call_id), key2=FQ(memory_address), value=FQ(byte)
+            RW.Read, RWTableTag.Memory, id=FQ(call_id), address=FQ(memory_address), value=FQ(byte)
         )
 
     def memory_write(
         self, call_id: IntOrFQ, memory_address: IntOrFQ, byte: IntOrFQ
     ) -> RWDictionary:
         return self._append(
-            RW.Write, RWTableTag.Memory, key1=FQ(call_id), key2=FQ(memory_address), value=FQ(byte)
+            RW.Write, RWTableTag.Memory, id=FQ(call_id), address=FQ(memory_address), value=FQ(byte)
         )
 
     def call_context_read(
@@ -446,7 +446,7 @@ class RWDictionary:
         if isinstance(value, int):
             value = FQ(value)
         return self._append(
-            RW.Read, RWTableTag.CallContext, key1=FQ(call_id), key2=FQ(field_tag), value=value
+            RW.Read, RWTableTag.CallContext, id=FQ(call_id), address=FQ(field_tag), value=value
         )
 
     def call_context_write(
@@ -455,7 +455,7 @@ class RWDictionary:
         if isinstance(value, int):
             value = FQ(value)
         return self._append(
-            RW.Write, RWTableTag.CallContext, key1=FQ(call_id), key2=FQ(field_tag), value=value
+            RW.Write, RWTableTag.CallContext, id=FQ(call_id), address=FQ(field_tag), value=value
         )
 
     def tx_log_write(
@@ -471,10 +471,10 @@ class RWDictionary:
         return self._append(
             RW.Write,
             RWTableTag.TxLog,
-            key1=FQ(tx_id),
-            key2=FQ(index + (int(field_tag) << 32) + (log_id << 48)),
-            key3=FQ(0),
-            key4=FQ(0),
+            id=FQ(tx_id),
+            address=FQ(index + (int(field_tag) << 32) + (log_id << 48)),
+            field_tag=FQ(0),
+            storage_key=FQ(0),
             value=value,
         )
 
@@ -489,8 +489,8 @@ class RWDictionary:
         return self._append(
             RW.Read,
             RWTableTag.TxReceipt,
-            key1=FQ(tx_id),
-            key3=FQ(field_tag),
+            id=FQ(tx_id),
+            field_tag=FQ(field_tag),
             value=value,
         )
 
@@ -505,14 +505,14 @@ class RWDictionary:
         return self._append(
             RW.Write,
             RWTableTag.TxReceipt,
-            key1=FQ(tx_id),
-            key3=FQ(field_tag),
+            id=FQ(tx_id),
+            field_tag=FQ(field_tag),
             value=value,
         )
 
     def tx_refund_read(self, tx_id: IntOrFQ, refund: IntOrFQ) -> RWDictionary:
         return self._append(
-            RW.Read, RWTableTag.TxRefund, key1=FQ(tx_id), value=FQ(refund), value_prev=FQ(refund)
+            RW.Read, RWTableTag.TxRefund, id=FQ(tx_id), value=FQ(refund), value_prev=FQ(refund)
         )
 
     def tx_refund_write(
@@ -524,7 +524,7 @@ class RWDictionary:
     ) -> RWDictionary:
         return self._state_write(
             RWTableTag.TxRefund,
-            key1=FQ(tx_id),
+            id=FQ(tx_id),
             value=FQ(refund),
             value_prev=FQ(refund_prev),
             rw_counter_of_reversion=rw_counter_of_reversion,
@@ -540,8 +540,8 @@ class RWDictionary:
     ) -> RWDictionary:
         return self._state_write(
             RWTableTag.TxAccessListAccount,
-            key1=FQ(tx_id),
-            key2=FQ(account_address),
+            id=FQ(tx_id),
+            address=FQ(account_address),
             value=FQ(value),
             value_prev=FQ(value_prev),
             rw_counter_of_reversion=rw_counter_of_reversion,
@@ -555,8 +555,8 @@ class RWDictionary:
     ) -> RWDictionary:
         return self._state_read(
             RWTableTag.TxAccessListAccount,
-            key1=FQ(tx_id),
-            key2=FQ(account_address),
+            id=FQ(tx_id),
+            address=FQ(account_address),
             value=FQ(value),
             value_prev=FQ(value),
         )
@@ -572,9 +572,9 @@ class RWDictionary:
     ) -> RWDictionary:
         return self._state_write(
             RWTableTag.TxAccessListAccountStorage,
-            key1=FQ(tx_id),
-            key2=FQ(account_address),
-            key3=storage_key,
+            id=FQ(tx_id),
+            address=FQ(account_address),
+            field_tag=storage_key,
             value=FQ(value),
             value_prev=FQ(value_prev),
             rw_counter_of_reversion=rw_counter_of_reversion,
@@ -588,8 +588,8 @@ class RWDictionary:
         return self._append(
             RW.Read,
             RWTableTag.Account,
-            key2=FQ(account_address),
-            key3=FQ(field_tag),
+            address=FQ(account_address),
+            field_tag=FQ(field_tag),
             value=value,
             value_prev=value,
         )
@@ -608,8 +608,8 @@ class RWDictionary:
             value_prev = FQ(value_prev)
         return self._state_write(
             RWTableTag.Account,
-            key2=FQ(account_address),
-            key3=FQ(field_tag),
+            address=FQ(account_address),
+            field_tag=FQ(field_tag),
             value=value,
             value_prev=value_prev,
             rw_counter_of_reversion=rw_counter_of_reversion,
@@ -628,9 +628,9 @@ class RWDictionary:
         return self._append(
             RW.Read,
             RWTableTag.AccountStorage,
-            key1=tx_id,
-            key2=FQ(account_address),
-            key4=storage_key,
+            id=tx_id,
+            address=FQ(account_address),
+            storage_key=storage_key,
             value=value,
             value_prev=value,
             aux0=value_committed,
@@ -650,9 +650,9 @@ class RWDictionary:
             tx_id = FQ(tx_id)
         return self._state_write(
             RWTableTag.AccountStorage,
-            key1=tx_id,
-            key2=FQ(account_address),
-            key4=storage_key,
+            id=tx_id,
+            address=FQ(account_address),
+            storage_key=storage_key,
             value=value,
             value_prev=value_prev,
             aux0=value_committed,
@@ -662,10 +662,10 @@ class RWDictionary:
     def _state_write(
         self,
         tag: RWTableTag,
-        key1: Expression = FQ(0),
-        key2: Expression = FQ(0),
-        key3: Expression = FQ(0),
-        key4: Expression = FQ(0),
+        id: Expression = FQ(0),
+        address: Expression = FQ(0),
+        field_tag: Expression = FQ(0),
+        storage_key: Expression = FQ(0),
         value: Expression = FQ(0),
         value_prev: Expression = FQ(0),
         aux0: Expression = FQ(0),
@@ -674,10 +674,10 @@ class RWDictionary:
         self._append(
             RW.Write,
             tag=tag,
-            key1=key1,
-            key2=key2,
-            key3=key3,
-            key4=key4,
+            id=id,
+            address=address,
+            field_tag=field_tag,
+            storage_key=storage_key,
             value=value,
             value_prev=value_prev,
             aux0=aux0,
@@ -689,10 +689,10 @@ class RWDictionary:
             return self._append(
                 RW.Write,
                 tag=tag,
-                key1=key1,
-                key2=key2,
-                key3=key3,
-                key4=key4,
+                id=id,
+                address=address,
+                field_tag=field_tag,
+                storage_key=storage_key,
                 value=value_prev,
                 value_prev=value,
                 aux0=aux0,
@@ -702,10 +702,10 @@ class RWDictionary:
     def _state_read(
         self,
         tag: RWTableTag,
-        key1: Expression = FQ(0),
-        key2: Expression = FQ(0),
-        key3: Expression = FQ(0),
-        key4: Expression = FQ(0),
+        id: Expression = FQ(0),
+        address: Expression = FQ(0),
+        field_tag: Expression = FQ(0),
+        storage_key: Expression = FQ(0),
         value: Expression = FQ(0),
         value_prev: Expression = FQ(0),
         aux0: Expression = FQ(0),
@@ -713,10 +713,10 @@ class RWDictionary:
         return self._append(
             RW.Read,
             tag=tag,
-            key1=key1,
-            key2=key2,
-            key3=key3,
-            key4=key4,
+            id=id,
+            address=address,
+            field_tag=field_tag,
+            storage_key=storage_key,
             value=value,
             value_prev=value_prev,
             aux0=aux0,
@@ -726,10 +726,10 @@ class RWDictionary:
         self,
         rw: RW,
         tag: RWTableTag,
-        key1: Expression = FQ(0),
-        key2: Expression = FQ(0),
-        key3: Expression = FQ(0),
-        key4: Expression = FQ(0),
+        id: Expression = FQ(0),
+        address: Expression = FQ(0),
+        field_tag: Expression = FQ(0),
+        storage_key: Expression = FQ(0),
         value: Expression = FQ(0),
         value_prev: Expression = FQ(0),
         aux0: Expression = FQ(0),
@@ -744,10 +744,10 @@ class RWDictionary:
                 FQ(rw_counter),
                 FQ(rw),
                 FQ(tag),
-                key1,
-                key2,
-                key3,
-                key4,
+                id,
+                address,
+                field_tag,
+                storage_key,
                 value,
                 value_prev,
                 aux0,

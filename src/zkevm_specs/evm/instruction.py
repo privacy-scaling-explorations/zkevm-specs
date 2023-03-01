@@ -637,10 +637,10 @@ class Instruction:
         value = self.rw_lookup(
             RW.Write,
             RWTableTag.TxLog,
-            key1=tx_id,
-            key2=FQ(index + (int(field_tag) << 32) + (log_id.expr().n << 48)),
-            key3=FQ(0),
-            key4=FQ(0),
+            id=tx_id,
+            address=FQ(index + (int(field_tag) << 32) + (log_id.expr().n << 48)),
+            field_tag=FQ(0),
+            storage_key=FQ(0),
         ).value
         return value
 
@@ -654,10 +654,10 @@ class Instruction:
         value = self.rw_lookup(
             RW.Read,
             RWTableTag.TxReceipt,
-            key1=tx_id,
-            key2=FQ(0),
-            key3=FQ(field_tag),
-            key4=FQ(0),
+            id=tx_id,
+            address=FQ(0),
+            field_tag=FQ(field_tag),
+            storage_key=FQ(0),
             rw_counter=rw_counter,
         ).value
         return value
@@ -671,10 +671,10 @@ class Instruction:
         value = self.rw_lookup(
             RW.Write,
             RWTableTag.TxReceipt,
-            key1=tx_id,
-            key2=FQ(0),
-            key3=FQ(field_tag),
-            key4=FQ(0),
+            id=tx_id,
+            address=FQ(0),
+            field_tag=FQ(field_tag),
+            storage_key=FQ(0),
         ).value
         return value
 
@@ -723,10 +723,10 @@ class Instruction:
         self,
         rw: RW,
         tag: RWTableTag,
-        key1: Optional[Expression] = None,
-        key2: Optional[Expression] = None,
-        key3: Optional[Expression] = None,
-        key4: Optional[Expression] = None,
+        id: Optional[Expression] = None,
+        address: Optional[Expression] = None,
+        field_tag: Optional[Expression] = None,
+        storage_key: Optional[Expression] = None,
         value: Optional[Expression] = None,
         value_prev: Optional[Expression] = None,
         aux0: Optional[Expression] = None,
@@ -740,10 +740,10 @@ class Instruction:
             rw_counter,
             FQ(rw),
             FQ(tag),
-            key1,
-            key2,
-            key3,
-            key4,
+            id,
+            address,
+            field_tag,
+            storage_key,
             value,
             value_prev,
             aux0,
@@ -752,10 +752,10 @@ class Instruction:
     def state_write(
         self,
         tag: RWTableTag,
-        key1: Optional[Expression] = None,
-        key2: Optional[Expression] = None,
-        key3: Optional[Expression] = None,
-        key4: Optional[Expression] = None,
+        id: Optional[Expression] = None,
+        address: Optional[Expression] = None,
+        field_tag: Optional[Expression] = None,
+        storage_key: Optional[Expression] = None,
         value: Optional[Expression] = None,
         value_prev: Optional[Expression] = None,
         aux0: Optional[Expression] = None,
@@ -763,17 +763,17 @@ class Instruction:
     ) -> RWTableRow:
         assert tag.write_with_reversion()
 
-        row = self.rw_lookup(RW.Write, tag, key1, key2, key3, key4, value, value_prev, aux0)
+        row = self.rw_lookup(RW.Write, tag, id, address, field_tag, storage_key, value, value_prev, aux0)
 
         if reversion_info is not None and reversion_info.is_persistent == FQ(0):
             self.tables.rw_lookup(
                 rw_counter=reversion_info.rw_counter_of_reversion(),
                 rw=FQ(RW.Write),
                 tag=FQ(tag),
-                key1=row.key1,
-                key2=row.key2,
-                key3=row.key3,
-                key4=row.key4,
+                id=row.id,
+                address=row.address,
+                field_tag=row.field_tag,
+                storage_key=row.storage_key,
                 # Swap value and value_prev
                 value=row.value_prev,
                 value_prev=row.value,
@@ -785,15 +785,15 @@ class Instruction:
     def state_read(
         self,
         tag: RWTableTag,
-        key1: Optional[Expression] = None,
-        key2: Optional[Expression] = None,
-        key3: Optional[Expression] = None,
-        key4: Optional[Expression] = None,
+        id: Optional[Expression] = None,
+        address: Optional[Expression] = None,
+        field_tag: Optional[Expression] = None,
+        storage_key: Optional[Expression] = None,
         value: Optional[Expression] = None,
         value_prev: Optional[Expression] = None,
         aux0: Optional[Expression] = None,
     ) -> RWTableRow:
-        row = self.rw_lookup(RW.Read, tag, key1, key2, key3, key4, value, value_prev, aux0)
+        row = self.rw_lookup(RW.Read, tag, id, address, field_tag, storage_key, value, value_prev, aux0)
         return row
 
     def call_context_lookup(
@@ -861,7 +861,7 @@ class Instruction:
     def account_read(self, account_address: Expression, account_field_tag: AccountFieldTag) -> RLC:
         return cast_expr(
             self.rw_lookup(
-                RW.Read, RWTableTag.Account, key2=account_address, key3=FQ(account_field_tag)
+                RW.Read, RWTableTag.Account, address=account_address, field_tag=FQ(account_field_tag)
             ).value,
             RLC,
         )
@@ -874,8 +874,8 @@ class Instruction:
     ) -> Tuple[Expression, Expression]:
         row = self.state_write(
             RWTableTag.Account,
-            key2=account_address,
-            key3=FQ(account_field_tag),
+            address=account_address,
+            field_tag=FQ(account_field_tag),
             reversion_info=reversion_info,
         )
         return row.value, row.value_prev
@@ -918,8 +918,8 @@ class Instruction:
             RWTableTag.AccountStorage,
             tx_id,
             account_address,
-            key3=None,
-            key4=storage_key,
+            field_tag=None,
+            storage_key=storage_key,
         )
         return cast_expr(row.value, RLC)
 
@@ -934,8 +934,8 @@ class Instruction:
             RWTableTag.AccountStorage,
             tx_id,
             account_address,
-            key3=None,
-            key4=storage_key,
+            field_tag=None,
+            storage_key=storage_key,
             reversion_info=reversion_info,
         )
         return cast_expr(row.value, RLC), cast_expr(row.value_prev, RLC), cast_expr(row.aux0, RLC)

@@ -179,7 +179,7 @@ def test_bytecode_invalid_byte_data():
     invalid = deepcopy(unrolled)
     row = unrolled.rows[3]
     invalid.rows[3] = BytecodeTableRow(
-        row.bytecode_hash, row.field_tag, row.index, row.is_code, FQ(256)
+        row.bytecode_hash, row.field_tag, row.index, row.is_code, 256
     )
     verify(k, [invalid], randomness, False)
 

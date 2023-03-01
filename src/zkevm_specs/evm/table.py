@@ -385,7 +385,7 @@ class BlockTableRow(TableRow):
     field_tag: Expression
     # meaningful only for HistoryHash, will be zero for other tags
     block_number_or_zero: Expression
-    value: Expression
+    value: WordOrValue
 
 
 @dataclass(frozen=True)
@@ -394,7 +394,7 @@ class TxTableRow(TableRow):
     field_tag: Expression
     # meaningful only for CallData, will be zero for other tags
     call_data_index_or_zero: Expression
-    value: Expression
+    value: WordOrValue
 
 
 @dataclass(frozen=True)
@@ -411,24 +411,24 @@ class RWTableRow(TableRow):
     rw_counter: Expression
     rw: Expression
     key0: Expression  # RWTableTag
-    key1: Expression = field(default=FQ(0))
-    key2: Expression = field(default=FQ(0))
-    key3: Expression = field(default=FQ(0))
-    key4: Expression = field(default=FQ(0))
-    value: Expression = field(default=FQ(0))
-    value_prev: Expression = field(default=FQ(0))
-    aux0: Expression = field(default=FQ(0))
+    id: Expression = field(default=FQ(0))
+    address: Expression = field(default=FQ(0))
+    field_tag: Expression = field(default=FQ(0))
+    storage_key: WordOrValue = field(default=WordOrValue(FQ(0)))
+    value: WordOrValue = field(default=WordOrValue(FQ(0)))
+    value_prev: WordOrValue = field(default=WordOrValue(FQ(0)))
+    aux0: Word = field(default=Word(0)) # TODO: Rename this to initial_value
 
 
 @dataclass(frozen=True)
 class MPTTableRow(TableRow):
     address: Expression
     proof_type: Expression
-    storage_key: Expression
-    root: Expression
-    root_prev: Expression
-    value: Expression
-    value_prev: Expression
+    storage_key: Word
+    root: Word
+    root_prev: Word
+    value: Word
+    value_prev: Word
 
 
 @dataclass
@@ -436,7 +436,7 @@ class CopyCircuitRow(TableRow):
     q_step: FQ
     is_first: FQ
     is_last: FQ
-    id: FQ  # one of call_id, bytecode_hash, tx_id
+    id: WordOrValue  # one of call_id, bytecode_hash, tx_id
     tag: FQ  # CopyDataTypeTag
     addr: FQ
     src_addr_end: FQ
@@ -456,9 +456,9 @@ class CopyCircuitRow(TableRow):
 
 @dataclass(frozen=True)
 class CopyTableRow(TableRow):
-    src_id: FQ
+    src_id: WordOrValue
     src_type: FQ
-    dst_id: FQ
+    dst_id: WordOrValue
     dst_type: FQ
     src_addr: FQ
     src_addr_end: FQ
@@ -484,17 +484,17 @@ class ExpCircuitRow(TableRow):
     is_step: FQ
     identifier: FQ  # rw_counter
     is_last: FQ
-    base: RLC
-    exponent: RLC
-    exponentiation: RLC
+    base: Word
+    exponent: Word
+    exponentiation: Word
     # columns from the MulAddGadget (a*b + c == d)
-    a: RLC
-    b: RLC
-    c: RLC
-    d: RLC
+    a: Word
+    b: Word
+    c: Word
+    d: Word
     # columns from the parity check (2*q + r == exponent)
-    q: RLC
-    r: RLC
+    q: Word
+    r: Word
 
 
 @dataclass(frozen=True)
@@ -506,10 +506,12 @@ class ExpTableRow(TableRow):
     base_limb1: FQ
     base_limb2: FQ
     base_limb3: FQ
-    exponent_lo: FQ
-    exponent_hi: FQ
-    exponentiation_lo: FQ
-    exponentiation_hi: FQ
+    exponent: Word
+    # exponent_lo: FQ
+    # exponent_hi: FQ
+    exponentiation: Word
+    # exponentiation_lo: FQ
+    # exponentiation_hi: FQ
 
 
 class Tables:
@@ -635,7 +637,7 @@ class Tables:
 
     def bytecode_lookup(
         self,
-        bytecode_hash: Expression,
+        bytecode_hash: Word,
         field_tag: Expression,
         index: Expression,
         is_code: Optional[Expression] = None,
@@ -653,22 +655,22 @@ class Tables:
         rw_counter: Expression,
         rw: Expression,
         tag: Expression,
-        key1: Optional[Expression] = None,
-        key2: Optional[Expression] = None,
-        key3: Optional[Expression] = None,
-        key4: Optional[Expression] = None,
-        value: Optional[Expression] = None,
-        value_prev: Optional[Expression] = None,
-        aux0: Optional[Expression] = None,
+        id: Optional[Expression] = None,
+        address: Optional[Expression] = None,
+        field_tag: Optional[Expression] = None,
+        storage_key: Optional[Word] = None,
+        value: Optional[Word] = None,
+        value_prev: Optional[Word] = None,
+        aux0: Optional[Word] = None,
     ) -> RWTableRow:
         query = {
             "rw_counter": rw_counter,
             "rw": rw,
             "key0": tag,
-            "key1": key1,
-            "key2": key2,
-            "key3": key3,
-            "key4": key4,
+            "id": id,
+            "address": address,
+            "field_tag": field_tag,
+            "storage_key": storage_key,
             "value": value,
             "value_prev": value_prev,
             "aux0": aux0,

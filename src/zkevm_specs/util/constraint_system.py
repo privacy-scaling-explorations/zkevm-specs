@@ -1,6 +1,6 @@
 from typing import Optional
 
-from .arithmetic import Expression, FQ
+from .arithmetic import Expression, FQ, Word
 from .param import MAX_N_BYTES
 
 
@@ -32,6 +32,11 @@ class ConstraintSystem:
     def constrain_equal(self, lhs: Expression, rhs: Expression):
         assert self._eval(lhs.expr() - rhs.expr()) == 0, ConstraintUnsatFailure(
             f"Expected values to be equal, but got {lhs} and {rhs}"
+        )
+
+    def constrain_equal_word(self, lhs: Word, rhs: Word):
+        assert self._eval(lhs.lo.expr() - rhs.lo.expr()) == 0 and self._eval(lhs.hi.expr() - rhs.hi.expr()) == 0, ConstraintUnsatFailure(
+            f"Expected words to be equal, but got {lhs} and {rhs}"
         )
 
     def constrain_zero(self, value: Expression):
