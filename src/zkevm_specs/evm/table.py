@@ -24,6 +24,7 @@ class FixedTableTag(IntEnum):
     Range256 = auto()  # value, 0, 0
     Range512 = auto()  # value, 0, 0
     Range1024 = auto()  # value, 0, 0
+    Range24_576 = auto()  # value, 0, 0
     SignByte = auto()  # value, signbyte, 0
     BitwiseAnd = auto()  # lhs, rhs, lhs & rhs, 0
     BitwiseOr = auto()  # lhs, rhs, lhs | rhs, 0
@@ -48,6 +49,8 @@ class FixedTableTag(IntEnum):
             return [FixedTableRow(FQ(self), FQ(i), FQ(0), FQ(0)) for i in range(512)]
         elif self == FixedTableTag.Range1024:
             return [FixedTableRow(FQ(self), FQ(i), FQ(0), FQ(0)) for i in range(1024)]
+        elif self == FixedTableTag.Range24_576:
+            return [FixedTableRow(FQ(self), FQ(i), FQ(0), FQ(0)) for i in range(24576)]
         elif self == FixedTableTag.SignByte:
             return [FixedTableRow(FQ(self), FQ(i), FQ((i >> 7) * 0xFF), FQ(0)) for i in range(256)]
         elif self == FixedTableTag.BitwiseAnd:
@@ -114,6 +117,8 @@ class FixedTableTag(IntEnum):
             return FixedTableTag.Range512
         elif range == 1024:
             return FixedTableTag.Range1024
+        elif range == 24576:
+            return FixedTableTag.Range24_576
         else:
             raise ValueError(
                 f"Range {range} lookup is not supported yet, please add a new variant Range{range} in FixedTableTag with proper table assignments"

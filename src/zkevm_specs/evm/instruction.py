@@ -238,7 +238,7 @@ class Instruction:
             gas_left=gas_left,
             reversible_write_counter=reversible_write_counter,
             log_id=log_id,
-            # Initailization unconditionally
+            # Initialization unconditionally
             program_counter=Transition.to(0),
             stack_pointer=Transition.to(1024),
             memory_word_size=Transition.to(0),

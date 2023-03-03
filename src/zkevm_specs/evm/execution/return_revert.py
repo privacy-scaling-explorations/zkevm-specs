@@ -1,7 +1,8 @@
+from zkevm_specs.util.param import GAS_COST_CODE_DEPOSIT, MAX_CODE_SIZE
 from ...util import EMPTY_HASH, FQ, N_BYTES_MEMORY_ADDRESS, RLC
 from ..instruction import Instruction, Transition
 from ..opcode import Opcode
-from ..table import CallContextFieldTag, CopyDataTypeTag, AccountFieldTag
+from ..table import RW, CallContextFieldTag, CopyDataTypeTag, AccountFieldTag
 from ..execution_state import ExecutionState
 
 
@@ -24,6 +25,7 @@ def return_revert(instruction: Instruction):
 
     rwc_delta = 3
 
+    callee_gas_left = instruction.curr.gas_left
     if instruction.curr.is_create and is_success:
         # A. Returns the specified memory chunk as deployment code.
 
@@ -37,23 +39,34 @@ def return_revert(instruction: Instruction):
         instruction.constrain_equal(code_hash_prev, RLC(EMPTY_HASH))
         instruction.constrain_equal(code_hash, instruction.curr.aux_data)
 
+        # verify bytecode size less than 24,576 bytes
+        instruction.range_lookup(return_length, MAX_CODE_SIZE)
+
+        # gas cost of CREATE = GAS_COST_CREATE + memory expansion + GAS_COST_CODE_DEPOSIT * len(byte_code)
+        # first two part were handled in create.py
+        callee_gas_left = callee_gas_left - return_length * GAS_COST_CODE_DEPOSIT
+        instruction.constrain_equal(
+            instruction.call_context_lookup(CallContextFieldTag.GasLeft, RW.Write), callee_gas_left
+        )
+
         # Return a memory chunk as deployment code by copying each byte from
         # callee's memory to bytecode, using the copy circuit.
         copy_length = return_length
-        copy_rwc_inc, _ = instruction.copy_lookup(
-            instruction.curr.call_id,  # src_id
-            CopyDataTypeTag.Memory,  # src_type
-            code_hash,  # dst_id
-            CopyDataTypeTag.Bytecode,  # dst_type
-            return_offset,  # src_addr
-            return_end,  # src_addr_boundary
-            FQ(0),  # dst_addr
-            copy_length,  # length
-            instruction.curr.rw_counter + instruction.rw_counter_offset,
-        )
-        instruction.constrain_equal(copy_rwc_inc, copy_length)  # rwc += copy_length
-        instruction.rw_counter_offset += int(copy_rwc_inc)
-        rwc_delta += int(copy_length)
+        if return_length > 0:
+            copy_rwc_inc, _ = instruction.copy_lookup(
+                instruction.curr.call_id,  # src_id
+                CopyDataTypeTag.Memory,  # src_type
+                code_hash,  # dst_id
+                CopyDataTypeTag.Bytecode,  # dst_type
+                return_offset,  # src_addr
+                return_end,  # src_addr_boundary
+                FQ(0),  # dst_addr
+                copy_length,  # length
+                instruction.curr.rw_counter + instruction.rw_counter_offset,
+            )
+            instruction.constrain_equal(copy_rwc_inc, copy_length)  # rwc += copy_length
+            instruction.rw_counter_offset += int(copy_rwc_inc)
+            rwc_delta += int(copy_length)
 
     if not instruction.curr.is_root and not instruction.curr.is_create:
         # D. Returns the specified memory chunk to the caller.
@@ -107,6 +120,7 @@ def return_revert(instruction: Instruction):
         # Do step state transition
         instruction.constrain_step_state_transition(
             rw_counter=Transition.delta(rwc_delta + 1),
+            gas_left=Transition.to(callee_gas_left),
             call_id=Transition.same(),
         )
     else:

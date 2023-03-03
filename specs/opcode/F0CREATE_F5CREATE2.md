@@ -13,6 +13,7 @@ The following values are popped from the stack:
 2. `offset` - The memory offset in the caller's memory where the initialization code starts.
 3. `size` - The length of the initialization code, in bytes.
 4. `salt` - Only for `CREATE2`: salt for the hash that will determine the new address.
+
 If the initialization call is successful, the new address will be pushed to the stack.
 If not, 0 will be pushed instead.
 
@@ -86,7 +87,7 @@ The circuit takes the starting `rw_counter` as next call's `call_id` to make sur
 It pops 3 words for `CREATE` and 4 words for `CREATE2` from the stack.
 In both cases, it then pushes 1 word to the stack.
 
-It then checks that `new_call.is_persistent = caller.is_persistent and new_call.is_success`.
+It then checks that `callee.is_persistent = caller.is_persistent and caller.is_success`.
 If the caller is not persistent, we need to propagate the `rw_counter_end_of_reversion` to make sure every state update in the new call has a corresponding reversion.
 
 It stores the current call context by writing the current values `rw_table` and checks that the new call context is setup correctly by reading to `rw_table`, and then does a step state transition to the call and begins the execution o the initialization bytecode.
