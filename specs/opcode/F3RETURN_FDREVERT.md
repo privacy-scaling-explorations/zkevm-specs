@@ -12,7 +12,8 @@ Depending on if the call is a root call and/or is a create call, these opcodes
 will do one or more of the following:
 
 **A** - returns the specified memory chunk as deployment code, if the opcode is
-*RETURN, `is_create` is true, and the chunk is non-empty.
+*RETURN, `is_create` is true, and the chunk is non-empty. Besides, based on EIP-211
+returndatasize should be zero.
 
 **B** - end the execution, if `is_root`.
 

@@ -1,10 +1,12 @@
 from ...util import EMPTY_HASH, FQ, N_BYTES_MEMORY_ADDRESS, RLC
 from ..instruction import Instruction, Transition
 from ..opcode import Opcode
-from ..table import CallContextFieldTag, CopyDataTypeTag, AccountFieldTag
+from ..table import CallContextFieldTag, CopyDataTypeTag, AccountFieldTag, RW
 from ..execution_state import ExecutionState
 
 
+# TODO: Untested case.  Test it once create Tx is implemented, and once
+# CREATE/CREATE2 are implemented. Also need to check to align with MD description
 def return_revert(instruction: Instruction):
     # We do this check explicitly because we're not using same_context transition.
     opcode = instruction.opcode_lookup(True)
@@ -20,15 +22,25 @@ def return_revert(instruction: Instruction):
 
     return_offset = instruction.rlc_to_fq(return_offset_rlc, N_BYTES_MEMORY_ADDRESS)
     return_length = instruction.rlc_to_fq(return_length_rlc, N_BYTES_MEMORY_ADDRESS)
+    return_length_gt_zero, _ = instruction.compare(FQ.zero(), return_length, N_BYTES_MEMORY_ADDRESS)
+    is_return_length_gt_zero = instruction.is_equal(return_length_gt_zero, FQ.one())
     return_end = return_offset + return_length
 
     rwc_delta = 3
 
-    if instruction.curr.is_create and is_success:
+    if instruction.curr.is_create and is_success and is_return_length_gt_zero == FQ.one():
         # A. Returns the specified memory chunk as deployment code.
 
-        # TODO: Untested case.  Test it once create Tx is implemented, and once
-        # CREATE/CREATE2 are implemented.
+        # follow EIP-211: create/create2 successful case must set empty returndatasize
+        for field_tag, expected_value in [
+            (CallContextFieldTag.LastCalleeReturnDataOffset, FQ(0)),
+            (CallContextFieldTag.LastCalleeReturnDataLength, FQ(0)),
+        ]:
+            instruction.constrain_equal(
+                instruction.call_context_lookup(field_tag, RW.Write),
+                expected_value,
+            )
+
         callee_address = instruction.call_context_lookup(CallContextFieldTag.CalleeAddress)
         reversion_info = instruction.reversion_info()
         code_hash, code_hash_prev = instruction.account_write(
@@ -109,7 +121,8 @@ def return_revert(instruction: Instruction):
             rw_counter=Transition.delta(rwc_delta + 1),
             call_id=Transition.same(),
         )
-    else:
+
+    if not instruction.curr.is_root:
         # C. Restores caller's context and switch to it.
 
         # Restore caller state to next StepState
