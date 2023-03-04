@@ -6,8 +6,9 @@ this type of error occurs when mathematical operation detects overflow during ca
 ### EVM behavior
 `ErrorGasUintOverflow` happends following situations.
 
-- new memory size exceeds `0x1FFFFFFFE0`
-- poped stack data exceeds uint64
+- [new memory size exceeds `0x1FFFFFFFE0`](https://github.com/ethereum/go-ethereum/blob/793f0f9ec860f6f51e0cec943a268c10863097c7/core/vm/gas_table.go#L38)
+- [poped stack data exceeds uint64](https://github.com/ethereum/go-ethereum/blob/793f0f9ec860f6f51e0cec943a268c10863097c7/core/vm/gas_table.go#L73)
+- [eip2028 gas check fails](https://github.com/ethereum/go-ethereum/blob/793f0f9ec860f6f51e0cec943a268c10863097c7/core/state_transition.go#L146)
 - copy gas cost exceeds uint64
 - sum of memory expanding gas cost and copy gas cost exceeds uint64
 - call gas cost exceeds uint64
