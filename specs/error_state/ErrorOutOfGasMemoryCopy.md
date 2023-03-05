@@ -2,7 +2,7 @@
 
 ## Procedure
 
-Handle the corresponding out of gas errors for `CALLDATACOPY`, `CODECOPY` and `RETURNDATACOPY` opcodes.
+Handle the corresponding out of gas errors for `CALLDATACOPY`, `CODECOPY`, `EXTCODECOPY` and `RETURNDATACOPY` opcodes.
 
 ### EVM behavior
 
@@ -18,17 +18,26 @@ The constant gas is same for `CALLDATACOPY`, `CODECOPY` and `RETURNDATACOPY`.
 constant_gas = 3
 ```
 
-It is also same for dynamic gas calculation. As each of `CALLDATACOPY`, `CODECOPY` and `RETURNDATACOPY` has three stack read values as `destination_offset`, `source_offset` and `copy_byte_size`. The dynamic gas is calculated as:
+According to EIP-2929, the constant gas of `EXTCODECOPY` is different for cold and warm accounts.
+
+```
+if is_warm:
+    constant_gas = 100
+else:
+    constant_gas = 2600
+```
+
+They are also same for dynamic gas calculation. As each of `CALLDATACOPY`, `CODECOPY` and `RETURNDATACOPY` has `3` stack read values as `destination_offset`, `source_offset` and `copy_byte_size`. `EXTCODECOPY` also has these `3` stack read values (and `1` extra `external_address`). The dynamic gas is calculated as:
 
 ```
 copy_word_size = (copy_byte_size + 31) // 32
 
-dynamic_gas = copy_word_size
+dynamic_gas = copy_word_size * 3
 
 # Note that opcodes with a byte size parameter of 0 will not trigger memory expansion,
 # regardless of their offset parameters.
 if copy_word_size > 0:
-  dynamic_gas = dynamic_gas + memory_expansion_gas_cost
+    dynamic_gas = dynamic_gas + memory_expansion_gas_cost
 ```
 
 The memory expansion gas cost is calculated as:
@@ -57,8 +66,15 @@ else:
 
 ### Lookups
 
-5 basic bus-mapping lookups + restore context lookups (for non-root call):
+`5` basic bus-mapping lookups:
 
-1. 3 stack read `destination_offset`, `source_offset` and `copy_byte_size`.
-2. 2 call context lookups for `is_success` and `rw_counter_end_of_reversion`.
-3. Restore context lookups for non-root call.
+. `3` stack pop `destination_offset`, `source_offset` and `copy_byte_size`.
+. `2` call context lookups for `is_success` and `rw_counter_end_of_reversion`.
+
+`EXTCODECOPY` has extra `3` bus-mapping lookups:
+
+. `1` stack pop for `external_address`.
+. `1` call context lookup for `tx_id`.
+. `1` account access list read for `is_warm`.
+
+And restore context lookups for non-root call.
