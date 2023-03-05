@@ -14,6 +14,7 @@ from ..table import RW, CallContextFieldTag, AccountFieldTag, CopyDataTypeTag
 
 
 def create(instruction: Instruction):
+    # check opcode is CREATE or CREATE2
     opcode = instruction.opcode_lookup(True)
     is_create, is_create2 = instruction.pair_select(opcode, Opcode.CREATE, Opcode.CREATE2)
     instruction.responsible_opcode_lookup(opcode)
