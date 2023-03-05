@@ -19,6 +19,8 @@ def create(instruction: Instruction):
     instruction.responsible_opcode_lookup(opcode)
     callee_call_id = instruction.curr.rw_counter
 
+
+    # Stack parameters and result
     value = instruction.stack_pop()
     offset = instruction.stack_pop()
     size = instruction.stack_pop()
