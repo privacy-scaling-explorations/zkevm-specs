@@ -22,7 +22,6 @@ def create(instruction: Instruction):
     # set the caller_id to the current rw_counter
     callee_call_id = instruction.curr.rw_counter
 
-
     # Stack parameters and result
     value = instruction.stack_pop()
     offset = instruction.stack_pop()
@@ -36,7 +35,9 @@ def create(instruction: Instruction):
     is_success = instruction.call_context_lookup(CallContextFieldTag.IsSuccess)
     is_static = instruction.call_context_lookup(CallContextFieldTag.IsStatic)
     reversion_info = instruction.reversion_info()
-    contract_address = instruction.generate_contract_address(caller_address, nonce_prev)
+    contract_address = is_success * instruction.generate_contract_address(
+        caller_address, nonce_prev
+    )
 
     # Verify depth is less than 1024
     instruction.range_lookup(depth, CALL_CREATE_DEPTH)
@@ -50,7 +51,7 @@ def create(instruction: Instruction):
 
     # ErrContractAddressCollision constraint
     code_hash = instruction.account_read(contract_address, AccountFieldTag.CodeHash)
-    instruction.constrain_equal(code_hash, RLC(EMPTY_HASH))
+    instruction.constrain_equal(code_hash, RLC(0))
 
     # Propagate is_persistent
     callee_reversion_info = instruction.reversion_info(call_id=callee_call_id)
@@ -133,7 +134,7 @@ def create(instruction: Instruction):
         (CallContextFieldTag.IsSuccess, FQ(True)),
         (CallContextFieldTag.IsStatic, FQ(False)),
         (CallContextFieldTag.IsRoot, FQ(False)),
-        (CallContextFieldTag.IsCreate, FQ(False)),
+        (CallContextFieldTag.IsCreate, FQ(True)),
         (CallContextFieldTag.CodeHash, FQ(EMPTY_CODE_HASH)),
     ]:
         instruction.constrain_equal(
