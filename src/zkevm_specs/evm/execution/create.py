@@ -17,6 +17,8 @@ def create(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
     is_create, is_create2 = instruction.pair_select(opcode, Opcode.CREATE, Opcode.CREATE2)
     instruction.responsible_opcode_lookup(opcode)
+
+    # set the caller_id to the current rw_counter
     callee_call_id = instruction.curr.rw_counter
 
 
