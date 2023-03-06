@@ -111,6 +111,9 @@ class Word:
         """Return a new Word with lo and hi multiplied by selector"""
         return Word((selector * self.lo, selector * self.hi))
 
+    def to_64s(self) -> Tuple[FQ, ...]:
+        return lo_hi_to_64s((self.lo.expr(), self.lo.expr()))
+
     # def assert_eq(self, other: Word, assert_msg: str):
     #     assert (
     #         self.lo.expr() == other.lo.expr()
@@ -208,15 +211,15 @@ def add_words(addends: Sequence[RLC], randomness: FQ) -> Tuple[RLC, FQ]:
     return RLC(sum_bytes, randomness, n_bytes=len(sum_bytes)), FQ(carry_hi)
 
 
-def mul_add_words(a: RLC, b: RLC, c: RLC, d: RLC) -> Tuple[FQ, Tuple[FQ, FQ], List[Tuple[FQ, FQ]]]:
+def mul_add_words(a: Word, b: Word, c: Word, d: Word) -> Tuple[FQ, Tuple[FQ, FQ], List[Tuple[FQ, FQ]]]:
     """
     The function constrains a * b + c == d, where a, b, c, d are 256-bit words.
     It returns the overflow part of a * b + c.
     """
     a64s = word_to_64s(a)
     b64s = word_to_64s(b)
-    c_lo, c_hi = word_to_lo_hi(c)
-    d_lo, d_hi = word_to_lo_hi(d)
+    c_lo, c_hi = c.lo.expr(), c.hi.expr()
+    d_lo, d_hi = d.lo.expr(), d.hi.expr()
 
     t0 = a64s[0] * b64s[0]
     t1 = a64s[0] * b64s[1] + a64s[1] * b64s[0]

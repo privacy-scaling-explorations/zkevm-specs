@@ -501,7 +501,7 @@ class ExpCircuitRow(TableRow):
     d: Word
     # columns from the parity check (2*q + r == exponent)
     q: Word
-    r: Word
+    r: FQ
 
 
 @dataclass(frozen=True)

@@ -44,6 +44,11 @@ class ConstraintSystem:
             f"Expected value to be 0, but got {value}"
         )
 
+    def constrain_zero_word(self, value: Word):
+        assert self._eval(value.lo.expr()) == 0 and self._eval(value.hi.expr()), ConstraintUnsatFailure(
+            f"Expected word to be 0, but got {value}"
+        )
+
     def constrain_bool(self, value: Expression):
         assert self._eval(value) in [0, 1], ConstraintUnsatFailure(
             f"Expected value to be a bool, but got {value}"
