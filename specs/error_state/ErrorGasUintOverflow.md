@@ -11,7 +11,7 @@ this type of error occurs when mathematical operation detects overflow during ca
 - [eip2028 gas check fails](https://github.com/ethereum/go-ethereum/blob/793f0f9ec860f6f51e0cec943a268c10863097c7/core/state_transition.go#L146)
 - copy gas cost exceeds uint64
 - sum of memory expanding gas cost and copy gas cost exceeds uint64
-- call gas cost exceeds uint64
+- call, log, keccak256 and create, create2 gas cost exceeds uint64
 
 ### Constraints
 1. At least one of memory size, gas left and call gas cost exceed uint64
