@@ -5,7 +5,7 @@ It also checks the padding behavior that the value read from an out-of-boundary 
 
 ## Circuit Layout
 
-First, copy circuit contains 9 columns from the [copy table](./tables.md#copytable) with the same witness assignment.
+First, copy circuit contains 9 columns from the [copy table](./tables.md#copy_table) with the same witness assignment.
 Every two rows in the copy circuit represent a copy step where the first row is a read operation and the second is a write operation.
 A copy event consists of multiple copy steps, which the first row in the copy event has `is_first` assigned to 1 and the last row has `is_last` assigned to 1.
 
