@@ -50,8 +50,11 @@ def create(instruction: Instruction):
     instruction.add_account_to_access_list(tx_id, contract_address)
 
     # ErrContractAddressCollision constraint
-    code_hash = instruction.account_read(contract_address, AccountFieldTag.CodeHash)
-    instruction.constrain_equal(code_hash, RLC(0))
+    # code_hash_prev could be either 0 or EMPTY
+    code_hash, code_hash_prev = instruction.account_write(
+        contract_address, AccountFieldTag.CodeHash
+    )
+    instruction.constrain_in(code_hash_prev, [RLC(0), RLC(EMPTY_CODE_HASH)])
 
     # Propagate is_persistent
     callee_reversion_info = instruction.reversion_info(call_id=callee_call_id)
@@ -64,7 +67,7 @@ def create(instruction: Instruction):
     instruction.is_zero(is_static)
 
     # transfer value from caller to contract address
-    instruction.transfer(caller_address, contract_address, value)
+    instruction.transfer(caller_address, contract_address, value, callee_reversion_info)
 
     # gas cost of memory expansion
     (next_memory_size, memory_expansion_gas_cost,) = instruction.memory_expansion_constant_length(
@@ -90,7 +93,7 @@ def create(instruction: Instruction):
         all_but_one_64th_gas,
     )
 
-    # calculate code_hash = hash(init_code)
+    # verify code_hash == hash(init_code)
     copy_rwc_inc, rlc_acc = instruction.copy_lookup(
         instruction.curr.call_id,  # src_id
         CopyDataTypeTag.Memory,  # src_type
@@ -102,8 +105,10 @@ def create(instruction: Instruction):
         size,  # length
         instruction.curr.rw_counter + instruction.rw_counter_offset,
     )
-    code_hash = instruction.keccak_lookup(size, rlc_acc)
+    instruction.constrain_equal(code_hash, instruction.keccak_lookup(size, rlc_acc))
 
+    # CREATE:  3 pops and 1 push, stack delta = 2
+    # CREATE2: 4 pops and 1 push, stack delta = 3
     stack_pointer_delta = 2 + is_create2
     # Save caller's call state
     for field_tag, expected_value in [
@@ -135,6 +140,7 @@ def create(instruction: Instruction):
         (CallContextFieldTag.IsStatic, FQ(False)),
         (CallContextFieldTag.IsRoot, FQ(False)),
         (CallContextFieldTag.IsCreate, FQ(True)),
+        # FIXME change to assign either 0 or EMPTY_CODE_HASH?
         (CallContextFieldTag.CodeHash, FQ(EMPTY_CODE_HASH)),
     ]:
         instruction.constrain_equal(
@@ -149,7 +155,7 @@ def create(instruction: Instruction):
         is_create=Transition.to(False),
         code_hash=Transition.to(code_hash),
         gas_left=Transition.to(callee_gas_left),
-        # FIXME
+        # `transfer` includes two balance updates
         reversible_write_counter=Transition.to(2),
         log_id=Transition.same(),
     )
