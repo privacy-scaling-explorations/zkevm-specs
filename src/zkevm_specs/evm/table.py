@@ -368,7 +368,7 @@ class TableRow:
         if not queried.issubset(names):
             raise WrongQueryKey(table_name, queried - names)
 
-    def match(self, query: Mapping[str, Expression]) -> bool:
+    def match(self, query: Mapping[str, Union[Expression, Word]]) -> bool:
         match = True
         for key, value in query.items():
             rhs = getattr(self, key)
@@ -421,7 +421,7 @@ class RWTableRow(TableRow):
     id: Expression = field(default=FQ(0))
     address: Expression = field(default=FQ(0))
     field_tag: Expression = field(default=FQ(0))
-    storage_key: WordOrValue = field(default=WordOrValue(FQ(0)))
+    storage_key: Word = field(default=Word(0))
     value: WordOrValue = field(default=WordOrValue(FQ(0)))
     value_prev: WordOrValue = field(default=WordOrValue(FQ(0)))
     aux0: Word = field(default=Word(0)) # TODO: Rename this to initial_value
@@ -588,7 +588,7 @@ class Tables:
     def _convert_exp_circuit_to_table(self, exp_circuit: Sequence[ExpCircuitRow]):
         rows: List[ExpTableRow] = []
         for i, row in enumerate(exp_circuit):
-            base_limbs = word_to_64s(row.base)
+            base_limbs = row.base.to_64s()
             rows.append(
                 ExpTableRow(
                     is_step=FQ.one(),
@@ -645,7 +645,7 @@ class Tables:
         index: Expression,
         is_code: Optional[Expression] = None,
     ) -> BytecodeTableRow:
-        query = {
+        query: Mapping[str, Union[FQ, Expression, Word, None]] = {
             "bytecode_hash": bytecode_hash,
             "field_tag": field_tag,
             "index": index,
@@ -696,7 +696,7 @@ class Tables:
         if dst_type == CopyDataTypeTag.TxLog:
             assert log_id is not None
             dst_addr = dst_addr + FQ(int(TxLogFieldTag.Data) << 32) + FQ(log_id.expr().n << 48)
-        query = {
+        query: Mapping[str, Union[FQ, Expression, Word, None]] = {
             "src_id": WordOrValue(src_id),
             "src_type": src_type,
             "dst_id": WordOrValue(dst_id),
@@ -724,7 +724,7 @@ class Tables:
         base_limbs: Tuple[Expression, ...],
         exponent: Word,
     ):
-        query = {
+        query: Mapping[str, Union[FQ, Expression, Word, None]] = {
             "is_step": FQ.one().expr(),
             "identifier": identifier.expr(),
             "is_last": is_last.expr(),
@@ -732,8 +732,7 @@ class Tables:
             "base_limb1": base_limbs[1].expr(),
             "base_limb2": base_limbs[2].expr(),
             "base_limb3": base_limbs[3].expr(),
-            "exponent_lo": exponent[0].expr(),
-            "exponent_hi": exponent[1].expr(),
+            "exponent": exponent,
         }
         return lookup(ExpTableRow, self.exp_table, query)
 

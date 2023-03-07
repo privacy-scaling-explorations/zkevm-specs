@@ -1,11 +1,12 @@
 from __future__ import annotations
 from enum import IntEnum, auto
-from typing import Optional, Sequence, Tuple, Union, List
+from typing import Optional, Sequence, Tuple, Union, List, cast
 
 from ..util import (
     FQ,
     IntOrFQ,
     RLC,
+    Word, WordOrValue,
     Expression,
     ExpressionImpl,
     cast_expr,
@@ -48,13 +49,14 @@ class TransitionKind(IntEnum):
     Same = auto()
     Delta = auto()
     To = auto()
+    ToWord = auto()
 
 
 class Transition:
     kind: TransitionKind
-    value: Union[int, Expression]
+    value: Union[int, Expression, Word]
 
-    def __init__(self, kind: TransitionKind, value: Union[int, Expression] = 0) -> None:
+    def __init__(self, kind: TransitionKind, value: Union[int, Expression, Word] = 0) -> None:
         self.kind = kind
         self.value = value
 
@@ -69,6 +71,10 @@ class Transition:
     @staticmethod
     def to(to: Union[int, Expression]):
         return Transition(TransitionKind.To, to)
+
+    @staticmethod
+    def to_word(to: Word):
+        return Transition(TransitionKind.ToWord, to)
 
 
 class ReversionInfo:
@@ -136,6 +142,11 @@ class Instruction:
         assert lhs.expr() == rhs.expr(), ConstraintUnsatFailure(
             f"Expected values to be equal, but got {lhs} and {rhs}"
         )
+    
+    def constrain_equal_word(self, lhs: Word, rhs: Word):
+        assert lhs.lo.expr() == rhs.lo.expr() and lhs.hi.expr() == rhs.hi.expr(), ConstraintUnsatFailure(
+            f"Expected words to be equal, but got {lhs} and {rhs}"
+        )
 
     def constrain_in(self, lhs: Expression, rhs: List[FQ]):
         assert lhs.expr() in rhs, ConstraintUnsatFailure(
@@ -194,20 +205,29 @@ class Instruction:
                 curr = FQ(curr)
             if isinstance(next, int):
                 next = FQ(next)
+            if isinstance(transition.value, int):
+                transition.value = FQ(transition.value)
             if transition.kind == TransitionKind.Same:
                 assert next.expr() == curr.expr(), ConstraintUnsatFailure(
                     f"State {key} should be same as {curr}, but got {next}"
                 )
             elif transition.kind == TransitionKind.Delta:
-                if isinstance(transition.value, int):
-                    transition.value = FQ(transition.value)
-                assert next.expr() == curr.expr() + transition.value.expr(), ConstraintUnsatFailure(
+                curr, next = cast(FQ, curr), cast(FQ, next)
+                value = cast(FQ, transition.value)
+                assert next.expr() == curr.expr() + value.expr(), ConstraintUnsatFailure(
                     f"State {key} should transit to {curr} + {transition.value} ({curr + transition.value}), but got {next}"
                 )
             elif transition.kind == TransitionKind.To:
-                if isinstance(transition.value, int):
-                    transition.value = FQ(transition.value)
-                assert next.expr() == transition.value.expr(), ConstraintUnsatFailure(
+                curr, next = cast(FQ, curr), cast(FQ, next)
+                value = cast(FQ, transition.value)
+                assert next.expr() == value.expr(), ConstraintUnsatFailure(
+                    f"State {key} should transit to {transition.value}, but got {next}"
+                )
+            elif transition.kind == TransitionKind.ToWord:
+                curr, next = cast(Word, curr), cast(Word, next)
+                # mypy gets confused here and thinkgs value must be FQ.
+                value = cast(Word, transition.value) # type: ignore
+                assert next.lo.expr() == value.lo.expr() and next.hi.expr() == value.hi.expr(), ConstraintUnsatFailure( # type: ignore
                     f"State {key} should transit to {transition.value}, but got {next}"
                 )
             else:
@@ -250,7 +270,7 @@ class Instruction:
         rw_counter_delta += 11 + int(caller_id is None)
         # Read caller's context for restore
         if caller_id is None:
-            caller_id = self.call_context_lookup(CallContextFieldTag.CallerId)
+            caller_id = self.call_context_lookup(CallContextFieldTag.CallerId).value()
         [
             caller_is_root,
             caller_is_create,
@@ -281,7 +301,7 @@ class Instruction:
             (CallContextFieldTag.LastCalleeReturnDataLength, return_data_length),
         ]:
             self.constrain_equal(
-                self.call_context_lookup(field_tag, RW.Write, call_id=caller_id),
+                self.call_context_lookup(field_tag, RW.Write, call_id=caller_id).value(),
                 expected_value,
             )
 
@@ -297,17 +317,17 @@ class Instruction:
         self.constrain_step_state_transition(
             rw_counter=Transition.delta(rw_counter_delta),
             call_id=Transition.to(caller_id),
-            is_root=Transition.to(caller_is_root),
-            is_create=Transition.to(caller_is_create),
-            code_hash=Transition.to(caller_code_hash),
-            program_counter=Transition.to(caller_program_counter),
-            stack_pointer=Transition.to(caller_stack_pointer),
+            is_root=Transition.to(caller_is_root.value()),
+            is_create=Transition.to(caller_is_create.value()),
+            code_hash=Transition.to_word(caller_code_hash),
+            program_counter=Transition.to(caller_program_counter.value()),
+            stack_pointer=Transition.to(caller_stack_pointer.value()),
             # Pays back gas_left to caller
-            gas_left=Transition.to(caller_gas_left.expr() + gas_left.expr()),
-            memory_word_size=Transition.to(caller_memory_size),
+            gas_left=Transition.to(caller_gas_left.value() + gas_left.expr()),
+            memory_word_size=Transition.to(caller_memory_size.value()),
             # Accumulate reversible_write_counter to caller
             reversible_write_counter=Transition.to(
-                caller_reversible_write_counter.expr() + reversible_write_counter.expr()
+                caller_reversible_write_counter.value() + reversible_write_counter.expr()
             ),
         )
 
@@ -620,19 +640,19 @@ class Instruction:
 
     def block_context_lookup(
         self, field_tag: BlockContextFieldTag, block_number: Expression = FQ(0)
-    ) -> Expression:
+    ) -> WordOrValue:
         return self.tables.block_lookup(FQ(field_tag), block_number).value
 
-    def tx_context_lookup(self, tx_id: Expression, field_tag: TxContextFieldTag) -> Expression:
+    def tx_context_lookup(self, tx_id: Expression, field_tag: TxContextFieldTag) -> WordOrValue:
         return self.tables.tx_lookup(tx_id, FQ(field_tag)).value
 
     def tx_calldata_lookup(self, tx_id: Expression, call_data_index: Expression) -> Expression:
-        return self.tables.tx_lookup(tx_id, FQ(TxContextFieldTag.CallData), call_data_index).value
+        return self.tables.tx_lookup(tx_id, FQ(TxContextFieldTag.CallData), call_data_index).value.value().expr()
 
     # look up tx log fields (Data, Address, Topic),
     def tx_log_lookup(
         self, tx_id: Expression, log_id: Expression, field_tag: TxLogFieldTag, index: int = 0
-    ) -> Expression:
+    ) -> WordOrValue:
         # evm only write tx log
         value = self.rw_lookup(
             RW.Write,
@@ -640,7 +660,7 @@ class Instruction:
             id=tx_id,
             address=FQ(index + (int(field_tag) << 32) + (log_id.expr().n << 48)),
             field_tag=FQ(0),
-            storage_key=FQ(0),
+            storage_key=Word(0),
         ).value
         return value
 
@@ -657,10 +677,10 @@ class Instruction:
             id=tx_id,
             address=FQ(0),
             field_tag=FQ(field_tag),
-            storage_key=FQ(0),
+            storage_key=Word(0),
             rw_counter=rw_counter,
         ).value
-        return value
+        return value.value().expr()
 
     # look up TxReceipt write for fields (PostStateOrStatus, CumulativeGasUsed, LogLength)
     def tx_receipt_write(
@@ -674,13 +694,13 @@ class Instruction:
             id=tx_id,
             address=FQ(0),
             field_tag=FQ(field_tag),
-            storage_key=FQ(0),
+            storage_key=Word(0),
         ).value
-        return value
+        return value.value().expr()
 
     # look up byte code value
     def bytecode_lookup(
-        self, bytecode_hash: Expression, index: Expression, is_code: Optional[Expression] = None
+        self, bytecode_hash: Word, index: Expression, is_code: Optional[Expression] = None
     ) -> Expression:
         return self.tables.bytecode_lookup(
             bytecode_hash, FQ(BytecodeFieldTag.Byte), index, is_code
@@ -688,18 +708,18 @@ class Instruction:
 
     # lookup value and is_code pair
     def bytecode_lookup_pair(
-        self, bytecode_hash: Expression, index: Expression
+        self, bytecode_hash: Word, index: Expression
     ) -> Tuple[Expression, Expression]:
         rw = self.tables.bytecode_lookup(bytecode_hash, FQ(BytecodeFieldTag.Byte), index, None)
         return rw.value, rw.is_code
 
-    def bytecode_length(self, bytecode_hash: Expression) -> Expression:
+    def bytecode_length(self, bytecode_hash: Word) -> Expression:
         return self.tables.bytecode_lookup(
             bytecode_hash, FQ(BytecodeFieldTag.Header), FQ(0), FQ(0)
         ).value
 
-    def tx_gas_price(self, tx_id: Expression) -> RLC:
-        return cast_expr(self.tx_context_lookup(tx_id, TxContextFieldTag.GasPrice), RLC)
+    def tx_gas_price(self, tx_id: Expression) -> Word:
+        return self.tx_context_lookup(tx_id, TxContextFieldTag.GasPrice)
 
     def responsible_opcode_lookup(self, opcode: Expression, aux: Expression = FQ(0)):
         self.fixed_lookup(
@@ -726,15 +746,19 @@ class Instruction:
         id: Optional[Expression] = None,
         address: Optional[Expression] = None,
         field_tag: Optional[Expression] = None,
-        storage_key: Optional[Expression] = None,
-        value: Optional[Expression] = None,
-        value_prev: Optional[Expression] = None,
-        aux0: Optional[Expression] = None,
+        storage_key: Optional[Word] = None,
+        value: Optional[Union[Expression, Word]] = None,
+        value_prev: Optional[Union[Expression, Word]] = None,
+        aux0: Optional[Word] = None,
         rw_counter: Optional[Expression] = None,
     ) -> RWTableRow:
         if rw_counter is None:
             rw_counter = self.curr.rw_counter + self.rw_counter_offset
             self.rw_counter_offset += 1
+        if value is not None:
+            value = WordOrValue(value)
+        if value_prev is not None:
+            value_prev = WordOrValue(value_prev)
 
         return self.tables.rw_lookup(
             rw_counter,
@@ -755,13 +779,17 @@ class Instruction:
         id: Optional[Expression] = None,
         address: Optional[Expression] = None,
         field_tag: Optional[Expression] = None,
-        storage_key: Optional[Expression] = None,
-        value: Optional[Expression] = None,
-        value_prev: Optional[Expression] = None,
-        aux0: Optional[Expression] = None,
+        storage_key: Optional[Word] = None,
+        value: Optional[Union[Word, Expression]] = None,
+        value_prev: Optional[Union[Word, Expression]] = None,
+        aux0: Optional[Word] = None,
         reversion_info: Optional[ReversionInfo] = None,
     ) -> RWTableRow:
         assert tag.write_with_reversion()
+        if value is not None:
+            value = WordOrValue(value)
+        if value_prev is not None:
+            value_prev = WordOrValue(value_prev)
 
         row = self.rw_lookup(RW.Write, tag, id, address, field_tag, storage_key, value, value_prev, aux0)
 
@@ -788,17 +816,21 @@ class Instruction:
         id: Optional[Expression] = None,
         address: Optional[Expression] = None,
         field_tag: Optional[Expression] = None,
-        storage_key: Optional[Expression] = None,
-        value: Optional[Expression] = None,
-        value_prev: Optional[Expression] = None,
-        aux0: Optional[Expression] = None,
+        storage_key: Optional[Word] = None,
+        value: Optional[Union[Word, Expression]] = None,
+        value_prev: Optional[Union[Word, Expression]] = None,
+        aux0: Optional[Word] = None,
     ) -> RWTableRow:
+        if value is not None:
+            value = WordOrValue(value)
+        if value_prev is not None:
+            value_prev = WordOrValue(value_prev)
         row = self.rw_lookup(RW.Read, tag, id, address, field_tag, storage_key, value, value_prev, aux0)
         return row
 
     def call_context_lookup(
         self, field_tag: CallContextFieldTag, rw: RW = RW.Read, call_id: Optional[Expression] = None
-    ) -> Expression:
+    ) -> WordOrValue:
         if call_id is None:
             call_id = self.curr.call_id
         return self.rw_lookup(rw, RWTableTag.CallContext, call_id, FQ(field_tag)).value
@@ -816,62 +848,57 @@ class Instruction:
             ]
         ]
         return ReversionInfo(
-            rw_counter_end_of_reversion,
-            is_persistent,
+            rw_counter_end_of_reversion.value(),
+            is_persistent.value(),
             self.curr.reversible_write_counter if call_id is None else FQ(0),
         )
 
-    def stack_pop(self) -> RLC:
+    def stack_pop(self) -> Word:
         stack_pointer_offset = self.stack_pointer_offset
         self.stack_pointer_offset += 1
         return self.stack_lookup(RW.Read, FQ(stack_pointer_offset))
 
-    def stack_push(self) -> RLC:
+    def stack_push(self) -> Word:
         self.stack_pointer_offset -= 1
         return self.stack_lookup(RW.Write, FQ(self.stack_pointer_offset))
 
-    def stack_lookup(self, rw: RW, stack_pointer_offset: Expression) -> RLC:
+    def stack_lookup(self, rw: RW, stack_pointer_offset: Expression) -> Word:
         stack_pointer = self.curr.stack_pointer + stack_pointer_offset
-        return cast_expr(
-            self.rw_lookup(rw, RWTableTag.Stack, self.curr.call_id, stack_pointer).value, RLC
-        )
+        return self.rw_lookup(rw, RWTableTag.Stack, self.curr.call_id, stack_pointer).value
 
     def memory_lookup(
         self, rw: RW, memory_address: Expression, call_id: Optional[Expression] = None
     ) -> FQ:
         if call_id is None:
             call_id = self.curr.call_id
-        return cast_expr(self.rw_lookup(rw, RWTableTag.Memory, call_id, memory_address).value, FQ)
+        return cast_expr(self.rw_lookup(rw, RWTableTag.Memory, call_id, memory_address).value.value(), FQ)
 
-    def tx_refund_read(self, tx_id: Expression) -> FQ:
-        return cast_expr(self.rw_lookup(RW.Read, RWTableTag.TxRefund, tx_id).value, FQ)
+    def tx_refund_read(self, tx_id: Expression) -> Word:
+        return self.rw_lookup(RW.Read, RWTableTag.TxRefund, tx_id).value
 
     def tx_refund_write(
         self,
         tx_id: Expression,
         reversion_info: Optional[ReversionInfo] = None,
-    ) -> Tuple[FQ, FQ]:
+    ) -> Tuple[Word, Word]:
         row = self.state_write(
             RWTableTag.TxRefund,
             tx_id,
             reversion_info=reversion_info,
         )
-        return cast_expr(row.value, FQ), cast_expr(row.value_prev, FQ)
+        return row.value, row.value_prev
 
-    def account_read(self, account_address: Expression, account_field_tag: AccountFieldTag) -> RLC:
-        return cast_expr(
-            self.rw_lookup(
+    def account_read(self, account_address: Expression, account_field_tag: AccountFieldTag) -> WordOrValue:
+        return self.rw_lookup(
                 RW.Read, RWTableTag.Account, address=account_address, field_tag=FQ(account_field_tag)
-            ).value,
-            RLC,
-        )
+            ).value
 
     def account_write(
         self,
         account_address: Expression,
         account_field_tag: AccountFieldTag,
         reversion_info: Optional[ReversionInfo] = None,
-    ) -> Tuple[Expression, Expression]:
+    ) -> Tuple[WordOrValue, WordOrValue]:
         row = self.state_write(
             RWTableTag.Account,
             address=account_address,
@@ -883,15 +910,14 @@ class Instruction:
     def add_balance(
         self,
         account_address: Expression,
-        values: Sequence[RLC],
+        values: Sequence[Word],
         reversion_info: Optional[ReversionInfo] = None,
-    ) -> Tuple[RLC, RLC]:
+    ) -> Tuple[Word, Word]:
         value, value_prev = self.account_write(
             account_address, AccountFieldTag.Balance, reversion_info
         )
-        balance, balance_prev = cast_expr(value, RLC), cast_expr(value_prev, RLC)
         result, carry = self.add_words([balance_prev, *values])
-        self.constrain_equal(balance, result)
+        self.constrain_equal_word(balance, result)
         self.constrain_zero(carry)
         return balance, balance_prev
 

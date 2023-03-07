@@ -23,6 +23,7 @@ from ..util import (
     FQ,
     IntOrFQ,
     RLC,
+    WordOrValue,
     Word,
     Expression,
     keccak256,
@@ -104,21 +105,23 @@ class Block:
         self.history_hashes = history_hashes
 
     def table_assignments(self, randomness: FQ) -> List[BlockTableRow]:
+        value = lambda v: WordOrValue(FQ(v))
+        word = lambda w: WordOrValue(Word(w))
         return [
-            BlockTableRow(FQ(BlockContextFieldTag.Coinbase), FQ(0), FQ(self.coinbase)),
-            BlockTableRow(FQ(BlockContextFieldTag.GasLimit), FQ(0), FQ(self.gas_limit)),
-            BlockTableRow(FQ(BlockContextFieldTag.Number), FQ(0), FQ(self.number)),
-            BlockTableRow(FQ(BlockContextFieldTag.Timestamp), FQ(0), FQ(self.timestamp)),
+            BlockTableRow(FQ(BlockContextFieldTag.Coinbase), FQ(0), value(self.coinbase)),
+            BlockTableRow(FQ(BlockContextFieldTag.GasLimit), FQ(0), value(self.gas_limit)),
+            BlockTableRow(FQ(BlockContextFieldTag.Number), FQ(0), value(self.number)),
+            BlockTableRow(FQ(BlockContextFieldTag.Timestamp), FQ(0), value(self.timestamp)),
             BlockTableRow(
-                FQ(BlockContextFieldTag.Difficulty), FQ(0), RLC(self.difficulty, randomness)
+                FQ(BlockContextFieldTag.Difficulty), FQ(0), word(self.difficulty)
             ),
-            BlockTableRow(FQ(BlockContextFieldTag.BaseFee), FQ(0), RLC(self.base_fee, randomness)),
-            BlockTableRow(FQ(BlockContextFieldTag.ChainId), FQ(0), RLC(self.chainid, randomness)),
+            BlockTableRow(FQ(BlockContextFieldTag.BaseFee), FQ(0), word(self.base_fee)),
+            BlockTableRow(FQ(BlockContextFieldTag.ChainId), FQ(0), word(self.chainid)),
         ] + [
             BlockTableRow(
                 FQ(BlockContextFieldTag.HistoryHash),
                 FQ(self.number - idx - 1),
-                RLC(history_hash, randomness),
+                word(history_hash),
             )
             for idx, history_hash in enumerate(reversed(self.history_hashes))
         ]
@@ -193,72 +196,74 @@ class Transaction:
             ]
         )
 
-    def table_fixed(self, randomness: FQ) -> List[TxTableRow]:
+    def table_fixed(self) -> List[TxTableRow]:
+        value = lambda v: WordOrValue(FQ(v))
+        word = lambda w: WordOrValue(Word(w))
         return [
-            TxTableRow(FQ(self.id), FQ(TxContextFieldTag.Nonce), FQ(0), FQ(self.nonce)),
-            TxTableRow(FQ(self.id), FQ(TxContextFieldTag.Gas), FQ(0), FQ(self.gas)),
+            TxTableRow(FQ(self.id), FQ(TxContextFieldTag.Nonce), FQ(0), value(self.nonce)),
+            TxTableRow(FQ(self.id), FQ(TxContextFieldTag.Gas), FQ(0), value(self.gas)),
             TxTableRow(
                 FQ(self.id),
                 FQ(TxContextFieldTag.GasPrice),
                 FQ(0),
-                RLC(self.gas_price, randomness),
+                word(self.gas_price),
             ),
             TxTableRow(
-                FQ(self.id), FQ(TxContextFieldTag.CallerAddress), FQ(0), FQ(self.caller_address)
+                FQ(self.id), FQ(TxContextFieldTag.CallerAddress), FQ(0), value(self.caller_address)
             ),
             TxTableRow(
                 FQ(self.id),
                 FQ(TxContextFieldTag.CalleeAddress),
                 FQ(0),
-                FQ(0 if self.callee_address is None else self.callee_address),
+                value(0 if self.callee_address is None else self.callee_address),
             ),
             TxTableRow(
                 FQ(self.id),
                 FQ(TxContextFieldTag.IsCreate),
                 FQ(0),
-                FQ(self.callee_address is None),
+                value(self.callee_address is None),
             ),
             TxTableRow(
-                FQ(self.id), FQ(TxContextFieldTag.Value), FQ(0), RLC(self.value, randomness)
+                FQ(self.id), FQ(TxContextFieldTag.Value), FQ(0), word(self.value)
             ),
             TxTableRow(
                 FQ(self.id),
                 FQ(TxContextFieldTag.CallDataLength),
                 FQ(0),
-                FQ(len(self.call_data)),
+                value(len(self.call_data)),
             ),
             TxTableRow(
                 FQ(self.id),
                 FQ(TxContextFieldTag.CallDataGasCost),
                 FQ(0),
-                FQ(self.call_data_gas_cost()),
+                value(self.call_data_gas_cost()),
             ),
             TxTableRow(
                 FQ(self.id),
                 FQ(TxContextFieldTag.TxInvalid),
                 FQ(0),
-                FQ(self.invalid_tx),
+                value(self.invalid_tx),
             ),
             TxTableRow(
                 FQ(self.id),
                 FQ(TxContextFieldTag.AccessListGasCost),
                 FQ(0),
-                FQ(self.access_list_gas_cost()),
+                value(self.access_list_gas_cost()),
             ),
             TxTableRow(
                 FQ(self.id),
                 FQ(TxContextFieldTag.TxSignHash),
                 FQ(0),
-                FQ(1234),  # Mock value for TxSignHash
+                value(1234),  # Mock value for TxSignHash
             ),
         ]
 
-    def table_assignments(self, randomness: FQ) -> Iterator[TxTableRow]:
+    def table_assignments(self) -> Iterator[TxTableRow]:
         return chain(
-            self.table_fixed(randomness),
+            self.table_fixed(),
             map(
                 lambda item: TxTableRow(
-                    FQ(self.id), FQ(TxContextFieldTag.CallData), FQ(item[0]), FQ(item[1])
+                    FQ(self.id), FQ(TxContextFieldTag.CallData), FQ(item[0]), WordOrValue(FQ(item[1]))
                 ),
                 enumerate(self.call_data),
             ),
@@ -418,12 +423,12 @@ class RWDictionary:
         self.rw_counter = rw_counter
         self.rws = list()
 
-    def stack_read(self, call_id: IntOrFQ, stack_pointer: IntOrFQ, value: RLC) -> RWDictionary:
+    def stack_read(self, call_id: IntOrFQ, stack_pointer: IntOrFQ, value: Word) -> RWDictionary:
         return self._append(
             RW.Read, RWTableTag.Stack, id=FQ(call_id), address=FQ(stack_pointer), value=value
         )
 
-    def stack_write(self, call_id: IntOrFQ, stack_pointer: IntOrFQ, value: RLC) -> RWDictionary:
+    def stack_write(self, call_id: IntOrFQ, stack_pointer: IntOrFQ, value: Word) -> RWDictionary:
         return self._append(
             RW.Write, RWTableTag.Stack, id=FQ(call_id), address=FQ(stack_pointer), value=value
         )
@@ -441,7 +446,7 @@ class RWDictionary:
         )
 
     def call_context_read(
-        self, call_id: IntOrFQ, field_tag: CallContextFieldTag, value: Union[int, FQ, RLC]
+        self, call_id: IntOrFQ, field_tag: CallContextFieldTag, value: Union[int, FQ, Word]
     ) -> RWDictionary:
         if isinstance(value, int):
             value = FQ(value)
@@ -450,7 +455,7 @@ class RWDictionary:
         )
 
     def call_context_write(
-        self, call_id: IntOrFQ, field_tag: CallContextFieldTag, value: Union[int, FQ, RLC]
+        self, call_id: IntOrFQ, field_tag: CallContextFieldTag, value: Union[int, FQ, Word]
     ) -> RWDictionary:
         if isinstance(value, int):
             value = FQ(value)
@@ -464,7 +469,7 @@ class RWDictionary:
         log_id: int,
         field_tag: TxLogFieldTag,
         index: IntOrFQ,
-        value: Union[int, FQ, RLC],
+        value: Union[int, FQ, Word],
     ) -> RWDictionary:
         if isinstance(value, int):
             value = FQ(value)
@@ -474,7 +479,7 @@ class RWDictionary:
             id=FQ(tx_id),
             address=FQ(index + (int(field_tag) << 32) + (log_id << 48)),
             field_tag=FQ(0),
-            storage_key=FQ(0),
+            storage_key=Word(0),
             value=value,
         )
 
@@ -482,51 +487,47 @@ class RWDictionary:
         self,
         tx_id: IntOrFQ,
         field_tag: TxReceiptFieldTag,
-        value: Union[int, FQ, RLC],
+        value: IntOrFQ,
     ) -> RWDictionary:
-        if isinstance(value, int):
-            value = FQ(value)
         return self._append(
             RW.Read,
             RWTableTag.TxReceipt,
             id=FQ(tx_id),
             field_tag=FQ(field_tag),
-            value=value,
+            value=FQ(value),
         )
 
     def tx_receipt_write(
         self,
         tx_id: IntOrFQ,
         field_tag: TxReceiptFieldTag,
-        value: Union[int, FQ, RLC],
+        value: IntOrFQ,
     ) -> RWDictionary:
-        if isinstance(value, int):
-            value = FQ(value)
         return self._append(
             RW.Write,
             RWTableTag.TxReceipt,
             id=FQ(tx_id),
             field_tag=FQ(field_tag),
-            value=value,
+            value=FQ(value),
         )
 
-    def tx_refund_read(self, tx_id: IntOrFQ, refund: IntOrFQ) -> RWDictionary:
+    def tx_refund_read(self, tx_id: IntOrFQ, refund: Word) -> RWDictionary:
         return self._append(
-            RW.Read, RWTableTag.TxRefund, id=FQ(tx_id), value=FQ(refund), value_prev=FQ(refund)
+            RW.Read, RWTableTag.TxRefund, id=FQ(tx_id), value=refund, value_prev=refund
         )
 
     def tx_refund_write(
         self,
         tx_id: IntOrFQ,
-        refund: IntOrFQ,
-        refund_prev: IntOrFQ,
+        refund:  Word,
+        refund_prev:  Word,
         rw_counter_of_reversion: Optional[int] = None,
     ) -> RWDictionary:
         return self._state_write(
             RWTableTag.TxRefund,
             id=FQ(tx_id),
-            value=FQ(refund),
-            value_prev=FQ(refund_prev),
+            value=refund,
+            value_prev=refund_prev,
             rw_counter_of_reversion=rw_counter_of_reversion,
         )
 
@@ -565,7 +566,7 @@ class RWDictionary:
         self,
         tx_id: IntOrFQ,
         account_address: IntOrFQ,
-        storage_key: RLC,
+        storage_key: Word,
         value: bool,
         value_prev: bool,
         rw_counter_of_reversion: Optional[int] = None,
@@ -574,14 +575,14 @@ class RWDictionary:
             RWTableTag.TxAccessListAccountStorage,
             id=FQ(tx_id),
             address=FQ(account_address),
-            field_tag=storage_key,
+            storage_key=storage_key,
             value=FQ(value),
             value_prev=FQ(value_prev),
             rw_counter_of_reversion=rw_counter_of_reversion,
         )
 
     def account_read(
-        self, account_address: IntOrFQ, field_tag: AccountFieldTag, value: Union[int, FQ, RLC]
+        self, account_address: IntOrFQ, field_tag: AccountFieldTag, value: Union[int, FQ, Word]
     ) -> RWDictionary:
         if isinstance(value, int):
             value = FQ(value)
@@ -598,8 +599,8 @@ class RWDictionary:
         self,
         account_address: IntOrFQ,
         field_tag: AccountFieldTag,
-        value: Union[int, FQ, RLC],
-        value_prev: Union[int, FQ, RLC],
+        value: Union[int, FQ, Word],
+        value_prev: Union[int, FQ, Word],
         rw_counter_of_reversion: Optional[int] = None,
     ) -> RWDictionary:
         if isinstance(value, int):
@@ -618,10 +619,10 @@ class RWDictionary:
     def account_storage_read(
         self,
         account_address: IntOrFQ,
-        storage_key: RLC,
-        value: RLC,
+        storage_key: Word,
+        value: Word,
         tx_id: IntOrFQ,
-        value_committed: RLC,
+        value_committed: Word,
     ) -> RWDictionary:
         if isinstance(tx_id, int):
             tx_id = FQ(tx_id)
@@ -639,11 +640,11 @@ class RWDictionary:
     def account_storage_write(
         self,
         account_address: IntOrFQ,
-        storage_key: RLC,
-        value: RLC,
-        value_prev: RLC,
+        storage_key: Word,
+        value: Word,
+        value_prev: Word,
         tx_id: IntOrFQ,
-        value_committed: RLC,
+        value_committed: Word,
         rw_counter_of_reversion: Optional[int] = None,
     ) -> RWDictionary:
         if isinstance(tx_id, int):
@@ -665,10 +666,10 @@ class RWDictionary:
         id: Expression = FQ(0),
         address: Expression = FQ(0),
         field_tag: Expression = FQ(0),
-        storage_key: Expression = FQ(0),
-        value: Expression = FQ(0),
-        value_prev: Expression = FQ(0),
-        aux0: Expression = FQ(0),
+        storage_key: Word = Word(0),
+        value: Union[Word, FQ] = Word(0),
+        value_prev: Union[Word, FQ] = Word(0),
+        aux0: Word = Word(0),
         rw_counter_of_reversion: Optional[int] = None,
     ) -> RWDictionary:
         self._append(
@@ -705,10 +706,10 @@ class RWDictionary:
         id: Expression = FQ(0),
         address: Expression = FQ(0),
         field_tag: Expression = FQ(0),
-        storage_key: Expression = FQ(0),
-        value: Expression = FQ(0),
-        value_prev: Expression = FQ(0),
-        aux0: Expression = FQ(0),
+        storage_key: Word = Word(0),
+        value: Union[Word, FQ] = Word(0),
+        value_prev: Union[Word, FQ] = Word(0),
+        aux0: Word = Word(0),
     ) -> RWDictionary:
         return self._append(
             RW.Read,
@@ -729,10 +730,10 @@ class RWDictionary:
         id: Expression = FQ(0),
         address: Expression = FQ(0),
         field_tag: Expression = FQ(0),
-        storage_key: Expression = FQ(0),
-        value: Expression = FQ(0),
-        value_prev: Expression = FQ(0),
-        aux0: Expression = FQ(0),
+        storage_key: Word = Word(0),
+        value: Union[Word, FQ] = Word(0),
+        value_prev: Union[Word, FQ] = Word(0),
+        aux0: Word = Word(0),
         rw_counter: Optional[int] = None,
     ) -> RWDictionary:
         if rw_counter is None:
@@ -748,8 +749,8 @@ class RWDictionary:
                 address,
                 field_tag,
                 storage_key,
-                value,
-                value_prev,
+                WordOrValue(value),
+                WordOrValue(value_prev),
                 aux0,
             )
         )
@@ -826,25 +827,25 @@ class ExpCircuit:
         randomness: FQ,
         identifier: IntOrFQ,
     ):
-        base_rlc = RLC(base, randomness, n_bytes=32)
+        base_word = Word(base)
         for i, step in enumerate(steps):
             # multiplication gadget
             a, b, d = step[0], step[1], step[2]
             # exp table
             quotient, is_odd = divmod(exponent, 2)
-            exponent_rlc = RLC(exponent, randomness, n_bytes=32)
+            exponent_word = Word(exponent)
             self._append_step(
                 identifier,
                 FQ(1 if i == len(steps) - 1 else 0),
-                base_rlc,
-                exponent_rlc,
-                RLC(d, randomness, n_bytes=32),
-                RLC(a, randomness, n_bytes=32),
-                RLC(b, randomness, n_bytes=32),
-                RLC(0, randomness, n_bytes=32),
-                RLC(d, randomness, n_bytes=32),
-                RLC(quotient, randomness, n_bytes=32),
-                RLC(is_odd, randomness, n_bytes=32),
+                base_word,
+                exponent_word,
+                Word(d),
+                Word(a),
+                Word(b),
+                Word(0),
+                Word(d),
+                Word(quotient),
+                FQ(is_odd),
             )
             if is_odd == 0:
                 # exponent is even
@@ -860,15 +861,15 @@ class ExpCircuit:
                 is_step=FQ.zero(),
                 identifier=FQ(identifier),
                 is_last=FQ.zero(),
-                base=RLC(0),
-                exponent=RLC(0),
-                exponentiation=RLC(0),
-                a=RLC(0),
-                b=RLC(0),
-                c=RLC(0),
-                d=RLC(0),
-                q=RLC(0),
-                r=RLC(0),
+                base=Word(0),
+                exponent=Word(0),
+                exponentiation=Word(0),
+                a=Word(0),
+                b=Word(0),
+                c=Word(0),
+                d=Word(0),
+                q=Word(0),
+                r=FQ(0),
             )
         )
 
@@ -876,15 +877,15 @@ class ExpCircuit:
         self,
         identifier: IntOrFQ,
         is_last: IntOrFQ,
-        base: RLC,
-        exponent: RLC,
-        exponentiation: RLC,
-        a: RLC,
-        b: RLC,
-        c: RLC,
-        d: RLC,
-        quotient: RLC,
-        remainder: RLC,
+        base: Word,
+        exponent: Word,
+        exponentiation: Word,
+        a: Word,
+        b: Word,
+        c: Word,
+        d: Word,
+        quotient: Word,
+        remainder: FQ,
     ):
         self.rows.append(
             ExpCircuitRow(
@@ -1006,7 +1007,7 @@ class CopyCircuit:
         is_write: bool,
         is_first: bool,
         is_last: bool,
-        id: IntOrFQ,
+        id: Union[int, FQ, Word],
         tag: CopyDataTypeTag,
         addr: IntOrFQ,
         value: IntOrFQ,
@@ -1017,6 +1018,9 @@ class CopyCircuit:
         bytes_left: IntOrFQ = FQ(0),
         log_id: int = 0,
     ):
+        if isinstance(id, int):
+            id = FQ(id)
+        id = WordOrValue(id)
         is_memory = tag == CopyDataTypeTag.Memory
         is_bytecode = tag == CopyDataTypeTag.Bytecode
         is_tx_calldata = tag == CopyDataTypeTag.TxCalldata
@@ -1025,19 +1029,19 @@ class CopyCircuit:
         rw_counter = rw_dict.rw_counter
         if is_memory:
             if is_write:
-                rw_dict.memory_write(id, addr, value)
+                rw_dict.memory_write(id.value().expr(), addr, value)
             elif is_pad is False:
-                rw_dict.memory_read(id, addr, value)
+                rw_dict.memory_read(id.value().expr(), addr, value)
         elif is_tx_log:
             assert is_write
-            rw_dict.tx_log_write(id, log_id, TxLogFieldTag.Data, addr, value)
+            rw_dict.tx_log_write(id.value().expr(), log_id, TxLogFieldTag.Data, addr, value)
             addr += (int(TxLogFieldTag.Data) << 32) + (log_id << 48)
         rows.append(
             CopyCircuitRow(
                 q_step=FQ(not is_write),
                 is_first=FQ(is_first),
                 is_last=FQ(is_last),
-                id=FQ(id),
+                id=id,
                 tag=FQ(tag),
                 addr=FQ(addr),
                 src_addr_end=FQ(src_addr_end),
