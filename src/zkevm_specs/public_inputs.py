@@ -237,7 +237,7 @@ def check_row(
         is_calldata_length_nonzero = row.tx_table.value.lo.expr() * row.tx_value_lo_inv
         is_calldata_length_zero = one - is_calldata_length_nonzero
 
-        calldata_cost = row_next.tx_table.value
+        calldata_cost = row_next.tx_table.value.lo.expr()
 
         assert is_calldata_length_row * is_calldata_length_zero * calldata_cost == zero
         query_condition = is_calldata_length_row * is_calldata_length_nonzero
@@ -279,22 +279,24 @@ def verify_circuit(
     assert rows[BlockTag.ChainId].raw_public_inputs == witness.public_inputs.chain_id
 
     # 1.3 state_root copy constraint from public input to raw_public_inputs
-    assert rows[BLOCK_LEN + 2].raw_public_inputs == witness.public_inputs.state_root.lo.expr()
-    assert rows[BLOCK_LEN + 3].raw_public_inputs == witness.public_inputs.state_root.hi.expr()
+    offset_extra = BLOCK_LEN + 2
+    assert rows[offset_extra + 2].raw_public_inputs == witness.public_inputs.state_root.lo.expr()
+    assert rows[offset_extra + 3].raw_public_inputs == witness.public_inputs.state_root.hi.expr()
 
     # 1.4 state_root_prev copy constraint from public input to raw_public_inputs
-    assert rows[BLOCK_LEN + 4].raw_public_inputs == witness.public_inputs.state_root_prev.lo.expr()
-    assert rows[BLOCK_LEN + 5].raw_public_inputs == witness.public_inputs.state_root_prev.hi.expr()
+    assert rows[offset_extra + 4].raw_public_inputs == witness.public_inputs.state_root_prev.lo.expr()
+    assert rows[offset_extra + 5].raw_public_inputs == witness.public_inputs.state_root_prev.hi.expr()
 
     fixed_u16_table = set([FixedU16Row(FQ(i)) for i in range(1 << 16)])
     for i in range(len(rows)):
+        print("DBG", i)
         row = rows[i]
         row_next = rows[(i + 1) % len(rows)]
         # Offset in raw_public_inputs with block_table -> value.hi column
-        tx_table_offset = BLOCK_LEN + 1
+        tx_table_offset = BLOCK_LEN//2 + 1
         row_offset_block_table_value_hi = rows[(i + tx_table_offset) % len(rows)]
         # Offset in raw_public_inputs with tx_table -> tx_id column
-        tx_table_offset = BLOCK_LEN + 1 + EXTRA_LEN
+        tx_table_offset = BLOCK_LEN + 2 + EXTRA_LEN
         row_offset_tx_table_tx_id = rows[(i + tx_table_offset) % len(rows)]
         # Offset in raw_public_inputs with tx_table -> index column
         tx_table_len = TX_LEN * MAX_TXS + 1
@@ -304,7 +306,7 @@ def verify_circuit(
         tx_table_offset += tx_table_len
         row_offset_tx_table_value_lo = rows[(i + tx_table_offset) % len(rows)]
         # Offset in raw_public_inputs with tx_table -> value.hi column
-        tx_table_offset += tx_table_len
+        tx_table_offset += tx_table_len + MAX_CALLDATA_BYTES
         row_offset_tx_table_value_hi = rows[(i + tx_table_offset) % len(rows)]
 
         check_row(
@@ -486,6 +488,22 @@ class PublicData:
 def public_data2witness(
     public_data: PublicData, MAX_TXS: int, MAX_CALLDATA_BYTES: int, rand_rpi: FQ
 ) -> Witness:
+    # Layout of raw_public_inputs:
+    #   # Block Table
+    #   [0] + [block_table.value.lo] # BLOCK_LEN//2 + 1
+    #   [0] + [block_table.value.hi] # BLOCK_LEN//2 + 1
+    #   # Extra Fields
+    #   [hash.lo, hash.hi] # 2
+    #   [state_root.lo, state_root.hi] # 2
+    #   [state_root_prev.lo, state_root_prev.hi] # 2
+    #   # Tx Table
+    #   [0] + [tx_table.id] # TX_LEN * MAX_TXS + 1
+    #   [0] + [tx_table.index] # TX_LEN * MAX_TXS + 1
+    #   [0] + [tx_table.value.lo] # TX_LEN * MAX_TXS + 1
+    #   [tx_table.calldata.lo] # MAX_CALLDATA_BYTES
+    #   [0] + [tx_table.value.hi] # TX_LEN * MAX_TXS + 1
+    #   [tx_table.calldata.hi] # MAX_CALLDATA_BYTES
+
     # NOTE: Begin rlc calculation of raw_public_inputs.  This logic must be
     # implemented by the verifier.
     raw_public_inputs = []
@@ -545,8 +563,9 @@ def public_data2witness(
         block_row = BlockTableRow(WordOrValue(FQ(0)))
 
         q_block_table = FQ(0)
-        if i < BLOCK_LEN + 1:
+        if i < BLOCK_LEN//2 + 1:
             q_block_table = FQ(1)
+            assert i < len(block_table_value_col)
             block_row = BlockTableRow(block_table_value_col[i])
 
         q_tx_table = FQ(0)
