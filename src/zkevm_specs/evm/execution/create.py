@@ -26,7 +26,7 @@ def create(instruction: Instruction):
     value = instruction.stack_pop()
     offset = instruction.stack_pop()
     size = instruction.stack_pop()
-    contract_address = instruction.stack_push()
+    return_contract_address = instruction.stack_push()
 
     depth = instruction.call_context_lookup(CallContextFieldTag.Depth)
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
@@ -35,9 +35,8 @@ def create(instruction: Instruction):
     is_success = instruction.call_context_lookup(CallContextFieldTag.IsSuccess)
     is_static = instruction.call_context_lookup(CallContextFieldTag.IsStatic)
     reversion_info = instruction.reversion_info()
-    contract_address = is_success * instruction.generate_contract_address(
-        caller_address, nonce_prev
-    )
+    contract_address = instruction.generate_contract_address(caller_address, nonce)
+    return_contract_address = is_success * contract_address
 
     # Verify depth is less than 1024
     instruction.range_lookup(depth, CALL_CREATE_DEPTH)
@@ -47,14 +46,14 @@ def create(instruction: Instruction):
     instruction.is_zero(is_not_overflow)
 
     # add contract address to access list
-    instruction.add_account_to_access_list(tx_id, contract_address)
+    instruction.add_account_to_access_list(tx_id, contract_address, reversion_info)
 
     # ErrContractAddressCollision constraint
     # code_hash_prev could be either 0 or EMPTY
     code_hash, code_hash_prev = instruction.account_write(
         contract_address, AccountFieldTag.CodeHash
     )
-    instruction.constrain_in(code_hash_prev, [RLC(0), RLC(EMPTY_CODE_HASH)])
+    instruction.constrain_in(code_hash_prev, [FQ(0), FQ(EMPTY_CODE_HASH)])
 
     # Propagate is_persistent
     callee_reversion_info = instruction.reversion_info(call_id=callee_call_id)
@@ -70,7 +69,7 @@ def create(instruction: Instruction):
     instruction.transfer(caller_address, contract_address, value, callee_reversion_info)
 
     # gas cost of memory expansion
-    (next_memory_size, memory_expansion_gas_cost,) = instruction.memory_expansion_constant_length(
+    (next_memory_size, memory_expansion_gas_cost,) = instruction.memory_expansion(
         offset,
         size,
     )
@@ -85,7 +84,7 @@ def create(instruction: Instruction):
     one_64th_gas, _ = instruction.constant_divmod(gas_available, FQ(64), N_BYTES_GAS)
     all_but_one_64th_gas = gas_available - one_64th_gas
     is_u64_gas = instruction.is_zero(
-        instruction.sum(instruction.rlc_encode(gas_left).le_bytes[N_BYTES_GAS:])
+        instruction.sum(instruction.rlc_encode(gas_left, N_BYTES_GAS).le_bytes[N_BYTES_GAS:])
     )
     callee_gas_left = instruction.select(
         is_u64_gas,
@@ -93,19 +92,20 @@ def create(instruction: Instruction):
         all_but_one_64th_gas,
     )
 
-    # verify code_hash == hash(init_code)
-    copy_rwc_inc, rlc_acc = instruction.copy_lookup(
+    # copy init_code from memory to bytecode
+    copy_rwc_inc, _ = instruction.copy_lookup(
         instruction.curr.call_id,  # src_id
         CopyDataTypeTag.Memory,  # src_type
-        code_hash,  # dst_id
+        code_hash.expr(),  # dst_id
         CopyDataTypeTag.Bytecode,  # dst_type
-        offset,  # src_addr
-        offset + size,  # src_addr_boundary
+        instruction.rlc_to_fq(offset, N_BYTES_U64),  # src_addr
+        instruction.rlc_to_fq(offset, N_BYTES_U64)
+        + instruction.rlc_to_fq(size, N_BYTES_U64),  # src_addr_boundary
         FQ(0),  # dst_addr
         size,  # length
         instruction.curr.rw_counter + instruction.rw_counter_offset,
     )
-    instruction.constrain_equal(code_hash, instruction.keccak_lookup(size, rlc_acc))
+    instruction.rw_counter_offset += int(copy_rwc_inc)
 
     # CREATE:  3 pops and 1 push, stack delta = 2
     # CREATE2: 4 pops and 1 push, stack delta = 3
@@ -139,9 +139,9 @@ def create(instruction: Instruction):
         (CallContextFieldTag.IsSuccess, FQ(True)),
         (CallContextFieldTag.IsStatic, FQ(False)),
         (CallContextFieldTag.IsRoot, FQ(False)),
-        (CallContextFieldTag.IsCreate, FQ(True)),
-        # FIXME change to assign either 0 or EMPTY_CODE_HASH?
-        (CallContextFieldTag.CodeHash, FQ(EMPTY_CODE_HASH)),
+        (CallContextFieldTag.IsCreate, FQ(False)),
+        # FIXME change to assign either 0 or EMPTY_CODE_HASH? or only EMPTY_CODE_HASH
+        (CallContextFieldTag.CodeHash, RLC(EMPTY_CODE_HASH)),
     ]:
         instruction.constrain_equal(
             instruction.call_context_lookup(field_tag, call_id=callee_call_id),
@@ -149,7 +149,7 @@ def create(instruction: Instruction):
         )
 
     instruction.step_state_transition_to_new_context(
-        rw_counter=Transition.delta(instruction.rw_counter_offset + copy_rwc_inc),
+        rw_counter=Transition.delta(instruction.rw_counter_offset),
         call_id=Transition.to(callee_call_id),
         is_root=Transition.to(False),
         is_create=Transition.to(False),
