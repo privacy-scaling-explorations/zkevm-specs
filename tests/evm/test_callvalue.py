@@ -9,7 +9,7 @@ from zkevm_specs.evm import (
     Bytecode,
     RWDictionary,
 )
-from zkevm_specs.util import rand_fq, RLC, U256
+from zkevm_specs.util import rand_fq, Word, U256
 
 
 TESTING_DATA = (
@@ -22,25 +22,22 @@ TESTING_DATA = (
 
 @pytest.mark.parametrize("callvalue", TESTING_DATA)
 def test_callvalue(callvalue: U256):
-    randomness = rand_fq()
-
     bytecode = Bytecode().callvalue()
-    bytecode_hash = RLC(bytecode.hash(), randomness)
+    bytecode_hash = Word(bytecode.hash())
 
     tables = Tables(
         block_table=set(),
         tx_table=set(),
-        bytecode_table=set(bytecode.table_assignments(randomness)),
+        bytecode_table=set(bytecode.table_assignments()),
         rw_table=set(
             RWDictionary(9)
-            .call_context_read(1, CallContextFieldTag.Value, RLC(callvalue, randomness))
-            .stack_write(1, 1023, RLC(callvalue, randomness))
+            .call_context_read(1, CallContextFieldTag.Value, Word(callvalue))
+            .stack_write(1, 1023, Word(callvalue))
             .rws
         ),
     )
 
     verify_steps(
-        randomness=randomness,
         tables=tables,
         steps=[
             StepState(

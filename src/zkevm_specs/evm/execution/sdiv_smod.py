@@ -44,9 +44,9 @@ def check_witness(
     remainder_abs, remainder_is_neg = instruction.abs_word(remainder)
     dividend_abs, dividend_is_neg = instruction.abs_word(dividend)
 
-    quotient_is_non_zero = 1 - instruction.word_is_zero(quotient)
-    divisor_is_non_zero = 1 - instruction.word_is_zero(divisor)
-    remainder_is_non_zero = 1 - instruction.word_is_zero(remainder)
+    quotient_is_non_zero = 1 - instruction.is_zero_word(quotient)
+    divisor_is_non_zero = 1 - instruction.is_zero_word(divisor)
+    remainder_is_non_zero = 1 - instruction.is_zero_word(remainder)
 
     # Function `mul_add_words` constrains `|quotient| * |divisor| + |remainder| = |dividend|`.
     overflow = instruction.mul_add_words(quotient_abs, divisor_abs, remainder_abs, dividend_abs)

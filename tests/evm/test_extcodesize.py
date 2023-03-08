@@ -14,7 +14,7 @@ from zkevm_specs.evm import (
 from zkevm_specs.util import (
     EXTRA_GAS_COST_ACCOUNT_COLD_ACCESS,
     GAS_COST_WARM_ACCESS,
-    RLC,
+    Word,
     U160,
     keccak256,
     rand_address,
@@ -48,8 +48,6 @@ TESTING_DATA = [
 
 @pytest.mark.parametrize("address, code, exists, is_warm, is_persistent", TESTING_DATA)
 def test_extcodesize(address: U160, code: bytes, exists: bool, is_warm: bool, is_persistent: bool):
-    randomness = rand_fq()
-
     code_hash = int.from_bytes(keccak256(code), "big")
     code_size = len(code) if exists else 0
 
@@ -61,7 +59,7 @@ def test_extcodesize(address: U160, code: bytes, exists: bool, is_warm: bool, is
 
     rw_dictionary = (
         RWDictionary(1)
-        .stack_read(call_id, 1023, RLC(address, randomness))
+        .stack_read(call_id, 1023, Word(address))
         .call_context_read(tx_id, CallContextFieldTag.TxId, tx_id)
         .call_context_read(
             tx_id, CallContextFieldTag.RwCounterEndOfReversion, rw_counter_end_of_reversion
@@ -76,10 +74,10 @@ def test_extcodesize(address: U160, code: bytes, exists: bool, is_warm: bool, is
         )
     )
     rw_dictionary.account_read(
-        address, AccountFieldTag.CodeHash, RLC(code_hash if exists else 0, randomness)
+        address, AccountFieldTag.CodeHash, Word(code_hash if exists else 0)
     )
 
-    rw_table = set(rw_dictionary.stack_write(call_id, 1023, RLC(code_size, randomness)).rws)
+    rw_table = set(rw_dictionary.stack_write(call_id, 1023, Word(code_size)).rws)
 
     bytecode = Bytecode().extcodesize()
     tables = Tables(
@@ -87,16 +85,15 @@ def test_extcodesize(address: U160, code: bytes, exists: bool, is_warm: bool, is
         tx_table=set(),
         bytecode_table=set(
             chain(
-                bytecode.table_assignments(randomness),
-                Bytecode(code).table_assignments(randomness),
+                bytecode.table_assignments(),
+                Bytecode(code).table_assignments(),
             )
         ),
         rw_table=rw_table,
     )
 
-    bytecode_hash = RLC(bytecode.hash(), randomness)
+    bytecode_hash = Word(bytecode.hash())
     verify_steps(
-        randomness=randomness,
         tables=tables,
         steps=[
             StepState(

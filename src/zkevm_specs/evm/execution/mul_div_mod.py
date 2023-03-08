@@ -40,7 +40,7 @@ def mul_div_mod(instruction: Instruction):
             c = push
             a = instruction.rlc_encode((d.int_value - c.int_value) // b.int_value, 32)
 
-    divisor_is_zero = instruction.word_is_zero(b)
+    divisor_is_zero = instruction.is_zero_word(b)
     overflow = instruction.mul_add_words(a, b, c, d)
 
     # constrain the push and pop values

@@ -10,32 +10,29 @@ from zkevm_specs.evm import (
     Bytecode,
     RWDictionary,
 )
-from zkevm_specs.util import rand_fq, RLC
+from zkevm_specs.util import rand_fq, Word
 
 
-TESTING_DATA = ((Opcode.JUMP, bytes([7])),)
+TESTING_DATA = ((Opcode.JUMP, 7),)
 
 
-@pytest.mark.parametrize("opcode, dest_bytes", TESTING_DATA)
-def test_jump(opcode: Opcode, dest_bytes: bytes):
-    randomness = rand_fq()
-    dest = RLC(bytes(reversed(dest_bytes)), randomness)
-
+@pytest.mark.parametrize("opcode, dest", TESTING_DATA)
+def test_jump(opcode: Opcode, dest: int):
+    dest_bytes = dest.to_bytes(1, "little")
     block = Block()
     # Jumps to PC=7
     # PUSH1 80 PUSH1 40 PUSH1 07 JUMP JUMPDEST STOP
     bytecode = Bytecode().push1(0x80).push1(0x40).push1(dest_bytes).jump().jumpdest().stop()
-    bytecode_hash = RLC(bytecode.hash(), randomness)
+    bytecode_hash = Word(bytecode.hash())
 
     tables = Tables(
-        block_table=set(block.table_assignments(randomness)),
+        block_table=set(block.table_assignments()),
         tx_table=set(),
-        bytecode_table=set(bytecode.table_assignments(randomness)),
-        rw_table=set(RWDictionary(9).stack_read(1, 1021, dest).rws),
+        bytecode_table=set(bytecode.table_assignments()),
+        rw_table=set(RWDictionary(9).stack_read(1, 1021, Word(dest)).rws),
     )
 
     verify_steps(
-        randomness=randomness,
         tables=tables,
         steps=[
             StepState(

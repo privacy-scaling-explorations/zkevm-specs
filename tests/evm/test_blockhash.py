@@ -9,7 +9,7 @@ from zkevm_specs.evm import (
     Bytecode,
     RWDictionary,
 )
-from zkevm_specs.util import rand_fq, RLC, U64, U256, Sequence, keccak256
+from zkevm_specs.util import rand_fq, Word, U64, U256, Sequence, keccak256
 
 TESTING_DATA = [
     # valid range
@@ -26,30 +26,28 @@ def test_blockhash(
     current_number: U64, history_hashes: Sequence[U256], block_number: U64, is_valid: bool
 ):
     block = Block(number=current_number, history_hashes=history_hashes)
-    randomness = rand_fq()
     bytecode = Bytecode().blockhash()
 
-    bytecode_hash = RLC(bytecode.hash(), randomness)
+    bytecode_hash = Word(bytecode.hash())
 
     result = keccak256(bytes(block_number)) if is_valid else 0
 
     call_id = 1
     rw_table = set(
         RWDictionary(8)
-        .stack_read(call_id, 1023, RLC(block_number, randomness))
-        .stack_write(call_id, 1023, RLC(result, randomness))
+        .stack_read(call_id, 1023, Word(block_number))
+        .stack_write(call_id, 1023, Word(result))
         .rws
     )
 
     tables = Tables(
-        block_table=set(block.table_assignments(randomness)),
+        block_table=set(block.table_assignments()),
         tx_table=set(),
-        bytecode_table=set(bytecode.table_assignments(randomness)),
+        bytecode_table=set(bytecode.table_assignments()),
         rw_table=rw_table,
     )
 
     verify_steps(
-        randomness=randomness,
         tables=tables,
         steps=[
             StepState(

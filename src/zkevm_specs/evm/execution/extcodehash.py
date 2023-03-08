@@ -8,16 +8,16 @@ def extcodehash(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
     instruction.constrain_equal(opcode, Opcode.EXTCODEHASH)
 
-    address = instruction.rlc_to_fq(instruction.stack_pop(), N_BYTES_ACCOUNT_ADDRESS)
+    address = instruction.word_to_address(instruction.stack_pop())
 
-    tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
+    tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId).value()
     is_warm = instruction.add_account_to_access_list(tx_id, address, instruction.reversion_info())
 
     # We already define code_hash to be 0 when the account doesn't exist.
     code_hash = instruction.account_read(address, AccountFieldTag.CodeHash)
 
-    instruction.constrain_equal(
-        code_hash.expr(),
+    instruction.constrain_equal_word(
+        code_hash,
         instruction.stack_push(),
     )
 

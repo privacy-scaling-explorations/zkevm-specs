@@ -10,7 +10,7 @@ from zkevm_specs.evm import (
     verify_steps,
     RWDictionary,
 )
-from zkevm_specs.util import rand_fq, rand_range, RLC
+from zkevm_specs.util import rand_fq, rand_range, Word
 
 # Start with different values for `gas` before calling the `GAS` opcode.
 TESTING_DATA = tuple([i for i in range(2, 10)] + [rand_range(2**64) for i in range(0, 10)])
@@ -18,26 +18,24 @@ TESTING_DATA = tuple([i for i in range(2, 10)] + [rand_range(2**64) for i in ran
 
 @pytest.mark.parametrize("gas", TESTING_DATA)
 def test_gas(gas: int):
-    randomness = rand_fq()
 
     tx = Transaction()
 
     bytecode = Bytecode().gas().stop()
-    bytecode_hash = RLC(bytecode.hash(), randomness)
+    bytecode_hash = Word(bytecode.hash())
 
     # since the GAS opcode returns the value of available gas after deducting the cost
     # of calling the GAS opcode itself, we should expect gas_left = gas - 2
     gas_left = gas - 2
 
     tables = Tables(
-        block_table=set(Block().table_assignments(randomness)),
-        tx_table=set(tx.table_assignments(randomness)),
-        bytecode_table=set(bytecode.table_assignments(randomness)),
-        rw_table=set(RWDictionary(2).stack_write(1, 1023, RLC(gas_left, randomness)).rws),
+        block_table=set(Block().table_assignments()),
+        tx_table=set(tx.table_assignments()),
+        bytecode_table=set(bytecode.table_assignments()),
+        rw_table=set(RWDictionary(2).stack_write(1, 1023, Word(gas_left)).rws),
     )
 
     verify_steps(
-        randomness=randomness,
         tables=tables,
         steps=[
             StepState(

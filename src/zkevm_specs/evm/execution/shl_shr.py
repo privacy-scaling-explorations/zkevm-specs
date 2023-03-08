@@ -55,7 +55,7 @@ def check_witness(
     push: RLC,
 ):
     is_shr = 1 - is_shl
-    divisor_is_zero = instruction.word_is_zero(divisor)
+    divisor_is_zero = instruction.is_zero_word(divisor)
 
     # Constrain stack pops and pushes as:
     # - for SHL, two pops are shift and quotient, and push is dividend.
@@ -80,7 +80,7 @@ def check_witness(
     instruction.constrain_zero((1 - divisor_is_zero) * (1 - remainder_lt_divisor))
 
     # Constrain remainder == 0 for SHL.
-    remainder_is_zero = instruction.word_is_zero(remainder)
+    remainder_is_zero = instruction.is_zero_word(remainder)
     instruction.constrain_zero(is_shl * (1 - remainder_is_zero))
 
     # Constrain overflow == 0 for SHR.

@@ -120,7 +120,7 @@ class Word:
     def to_le_bytes(self) -> Tuple[FQ, ...]:
         lo = self.lo.expr().n.to_bytes(16, "little")
         hi = self.hi.expr().n.to_bytes(16, "little")
-        return lo + hi
+        return [FQ(v) for v in lo + hi]
 
     # def assert_eq(self, other: Word, assert_msg: str):
     #     assert (

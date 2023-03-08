@@ -10,8 +10,9 @@ def origin(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
     instruction.constrain_equal(opcode, Opcode.ORIGIN)
 
+    address = instruction.tx_context_lookup(tx_id, TxContextFieldTag.CallerAddress).value()
     instruction.constrain_equal_word(
-        instruction.address_to_word(instruction.tx_context_lookup(tx_id, TxContextFieldTag.CallerAddress).value()),
+        instruction.address_to_word(address),
         instruction.stack_push(),
     )
 

@@ -1,12 +1,14 @@
 from ..instruction import Instruction, Transition
-from ...util import N_BYTES_WORD
+from ...util import N_BYTES_WORD, Word, FQ
 
 
 def msize(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
 
-    value = instruction.stack_push()
-    instruction.constrain_equal(value, instruction.curr.memory_word_size * N_BYTES_WORD)
+    instruction.constrain_equal_word(
+        Word((instruction.curr.memory_word_size * N_BYTES_WORD, FQ(0))),
+        instruction.stack_push()
+    )
 
     instruction.step_state_transition_in_same_context(
         opcode,

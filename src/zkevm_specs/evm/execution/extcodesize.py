@@ -4,6 +4,7 @@ from ...util import (
     N_BYTES_ACCOUNT_ADDRESS,
     N_BYTES_U64,
     RLC,
+    Word,
 )
 from ..instruction import Instruction, Transition
 from ..opcode import Opcode
@@ -14,23 +15,23 @@ def extcodesize(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
     instruction.constrain_equal(opcode, Opcode.EXTCODESIZE)
 
-    address = instruction.rlc_to_fq(instruction.stack_pop(), N_BYTES_ACCOUNT_ADDRESS)
+    address = instruction.word_to_address(instruction.stack_pop())
 
-    tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
+    tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId).value()
     is_warm = instruction.add_account_to_access_list(tx_id, address, instruction.reversion_info())
 
     code_hash = instruction.account_read(address, AccountFieldTag.CodeHash)
     # Check account existence with code_hash != 0
-    exists = FQ(1) - instruction.is_zero(code_hash)
+    exists = FQ(1) - instruction.is_zero_word(code_hash)
 
     if exists == 1:
         code_size = instruction.bytecode_length(code_hash)
     else:  # exists == 0
         code_size = RLC(0)
 
-    instruction.constrain_equal(
-        instruction.select(exists, code_size, FQ(0)),
-        instruction.rlc_to_fq(instruction.stack_push(), N_BYTES_U64),
+    instruction.constrain_equal_word(
+        Word((instruction.select(exists, code_size, FQ(0)), FQ(0))),
+        instruction.stack_push(),
     )
 
     instruction.step_state_transition_in_same_context(

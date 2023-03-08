@@ -9,7 +9,7 @@ def callvalue(instruction: Instruction):
 
     # check [rw_table, call_context] table for call value and compare against
     # stack top after push.
-    instruction.constrain_equal(
+    instruction.constrain_equal_word(
         instruction.call_context_lookup(CallContextFieldTag.Value),
         instruction.stack_push(),
     )

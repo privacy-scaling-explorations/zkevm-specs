@@ -16,13 +16,13 @@ def sload(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
     instruction.constrain_equal(opcode, Opcode.SLOAD)
 
-    tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
+    tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId).value()
     reversion_info = instruction.reversion_info()
-    callee_address = instruction.call_context_lookup(CallContextFieldTag.CalleeAddress)
+    callee_address = instruction.call_context_lookup(CallContextFieldTag.CalleeAddress).value()
 
     storage_key = instruction.stack_pop()
 
-    instruction.constrain_equal(
+    instruction.constrain_equal_word(
         instruction.account_storage_read(callee_address, storage_key, tx_id),
         instruction.stack_push(),
     )
@@ -50,14 +50,14 @@ def sstore(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
     instruction.constrain_equal(opcode, Opcode.SSTORE)
 
-    tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
+    tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId).value()
     # check not static call
     instruction.constrain_equal(
-        FQ(0), instruction.call_context_lookup(CallContextFieldTag.IsStatic)
+        FQ(0), instruction.call_context_lookup(CallContextFieldTag.IsStatic).value()
     )
 
     reversion_info = instruction.reversion_info()
-    callee_address = instruction.call_context_lookup(CallContextFieldTag.CalleeAddress)
+    callee_address = instruction.call_context_lookup(CallContextFieldTag.CalleeAddress).value()
 
     storage_key = instruction.stack_pop()
     storage_value = instruction.stack_pop()
@@ -67,7 +67,7 @@ def sstore(instruction: Instruction):
         tx_id,
         reversion_info,
     )
-    instruction.constrain_equal(storage_value, value)
+    instruction.constrain_equal_word(storage_value, value)
 
     is_warm = instruction.add_account_storage_to_access_list(
         tx_id,
@@ -76,41 +76,46 @@ def sstore(instruction: Instruction):
         reversion_info,
     )
 
-    gas_refund, gas_refund_prev = instruction.tx_refund_write(tx_id, reversion_info)
+    # FIXME: This assumes that gas_refund can't exceed 128 bits!
+    # We should decide if we encode the TxRefund as a Word, or as a smaller
+    # type.  Can we found a worst-case upper bound that guarantees that we can
+    # always use less than 256 bits for it?
+    gas_refund_word, gas_refund_prev_word = instruction.tx_refund_write(tx_id, reversion_info)
+    gas_refund, gas_refund_prev = gas_refund_word.lo.expr(), gas_refund_prev_word.lo.expr()
 
     # original_value, value_prev, value all are different; original_value!=0
     nz_allne_case_refund = instruction.select(
-        instruction.is_zero(value_prev),
+        instruction.is_zero_word(value_prev),
         gas_refund_prev - SSTORE_CLEARS_SCHEDULE,
         instruction.select(
-            instruction.is_zero(value),
+            instruction.is_zero_word(value),
             gas_refund_prev + SSTORE_CLEARS_SCHEDULE,
             gas_refund_prev,
         ),
     )
     # original_value!=value_prev, value_prev!=value, original_value!=0
     nz_ne_ne_case_refund = instruction.select(
-        1 - instruction.is_equal(original_value, value),
+        1 - instruction.is_equal_word(original_value, value),
         nz_allne_case_refund,
         nz_allne_case_refund + SSTORE_RESET_GAS - SLOAD_GAS,
     )
     # original_value!=value_prev, value_prev!=value
     ne_ne_case_refund = instruction.select(
-        1 - instruction.is_zero(original_value),
+        1 - instruction.is_zero_word(original_value),
         nz_ne_ne_case_refund,
         instruction.select(
-            instruction.is_equal(original_value, value),
+            instruction.is_equal_word(original_value, value),
             gas_refund_prev + SSTORE_SET_GAS - SLOAD_GAS,
             gas_refund_prev,
         ),
     )
     gas_refund_new = instruction.select(
-        instruction.is_equal(value_prev, value),
+        instruction.is_equal_word(value_prev, value),
         gas_refund_prev,
         instruction.select(
-            instruction.is_equal(original_value, value_prev),
+            instruction.is_equal_word(original_value, value_prev),
             instruction.select(
-                (1 - instruction.is_zero(original_value)) * instruction.is_zero(value),
+                (1 - instruction.is_zero_word(original_value)) * instruction.is_zero_word(value),
                 gas_refund_prev + SSTORE_CLEARS_SCHEDULE,
                 gas_refund_prev,
             ),
@@ -120,13 +125,13 @@ def sstore(instruction: Instruction):
 
     instruction.constrain_equal(gas_refund, gas_refund_new)
 
-    eq_prev = instruction.is_equal(value_prev, value)
-    prev_ne_original = 1 - instruction.is_equal(value_prev, original_value)
+    eq_prev = instruction.is_equal_word(value_prev, value)
+    prev_ne_original = 1 - instruction.is_equal_word(value_prev, original_value)
     warm_case_gas = instruction.select(
         eq_prev + prev_ne_original - eq_prev * prev_ne_original,
         FQ(SLOAD_GAS),
         instruction.select(
-            instruction.is_zero(original_value),
+            instruction.is_zero_word(original_value),
             FQ(SSTORE_SET_GAS),
             FQ(SSTORE_RESET_GAS),
         ),

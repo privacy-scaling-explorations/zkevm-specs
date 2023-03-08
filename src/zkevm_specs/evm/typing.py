@@ -76,7 +76,7 @@ class Block:
 
     # Even ChainId is not a block parameter, since all txs of a block are meant
     # to use the same chain_id, we set it as as a block parameter.
-    chainid: U256
+    chainid: U64
 
     # It contains most recent 256 block hashes in history, where the lastest
     # one is at history_hashes[-1].
@@ -90,7 +90,7 @@ class Block:
         timestamp: U64 = U64(0),
         difficulty: U256 = U256(0),
         base_fee: U256 = U256(int(1e9)),
-        chainid: U256 = U256(0x01),
+        chainid: U64 = U64(0x01),
         history_hashes: Sequence[U256] = [],
     ) -> None:
         assert len(history_hashes) <= min(256, number)
@@ -116,7 +116,7 @@ class Block:
                 FQ(BlockContextFieldTag.Difficulty), FQ(0), word(self.difficulty)
             ),
             BlockTableRow(FQ(BlockContextFieldTag.BaseFee), FQ(0), word(self.base_fee)),
-            BlockTableRow(FQ(BlockContextFieldTag.ChainId), FQ(0), word(self.chainid)),
+            BlockTableRow(FQ(BlockContextFieldTag.ChainId), FQ(0), value(self.chainid)),
         ] + [
             BlockTableRow(
                 FQ(BlockContextFieldTag.HistoryHash),

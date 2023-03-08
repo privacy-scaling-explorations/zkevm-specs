@@ -11,7 +11,7 @@ from zkevm_specs.evm import (
     verify_steps,
     RWDictionary,
 )
-from zkevm_specs.util import rand_fq, RLC, U256
+from zkevm_specs.util import rand_fq, Word, U256
 
 TESTING_DATA = (
     0x00,
@@ -23,27 +23,25 @@ TESTING_DATA = (
 
 @pytest.mark.parametrize("gasprice", TESTING_DATA)
 def test_gasprice(gasprice: U256):
-    randomness = rand_fq()
 
     tx = Transaction(gas_price=gasprice)
 
     bytecode = Bytecode().gasprice().stop()
-    bytecode_hash = RLC(bytecode.hash(), randomness)
+    bytecode_hash = Word(bytecode.hash())
 
     tables = Tables(
-        block_table=set(Block().table_assignments(randomness)),
-        tx_table=set(tx.table_assignments(randomness)),
-        bytecode_table=set(bytecode.table_assignments(randomness)),
+        block_table=set(Block().table_assignments()),
+        tx_table=set(tx.table_assignments()),
+        bytecode_table=set(bytecode.table_assignments()),
         rw_table=set(
             RWDictionary(9)
             .call_context_read(1, CallContextFieldTag.TxId, tx.id)
-            .stack_write(1, 1023, RLC(gasprice, randomness))
+            .stack_write(1, 1023, Word(gasprice))
             .rws
         ),
     )
 
     verify_steps(
-        randomness=randomness,
         tables=tables,
         steps=[
             StepState(

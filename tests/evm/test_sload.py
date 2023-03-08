@@ -11,7 +11,7 @@ from zkevm_specs.evm import (
     Bytecode,
     RWDictionary,
 )
-from zkevm_specs.util import rand_fq, rand_address, RLC, COLD_SLOAD_COST, WARM_STORAGE_READ_COST
+from zkevm_specs.util import rand_fq, rand_address, Word, COLD_SLOAD_COST, WARM_STORAGE_READ_COST
 
 TESTING_DATA = (
     (
@@ -43,23 +43,21 @@ TESTING_DATA = (
 
 @pytest.mark.parametrize("tx, storage_key_be_bytes, warm, is_persistent", TESTING_DATA)
 def test_sload(tx: Transaction, storage_key_be_bytes: bytes, warm: bool, is_persistent: bool):
-    randomness = rand_fq()
-
-    storage_key = RLC(bytes(reversed(storage_key_be_bytes)), randomness)
+    storage_key = Word(bytes(reversed(storage_key_be_bytes)))
 
     bytecode = Bytecode().push32(storage_key_be_bytes).sload().stop()
-    bytecode_hash = RLC(bytecode.hash(), randomness)
+    bytecode_hash = Word(bytecode.hash())
 
-    value = RLC(2, randomness)
-    value_committed = RLC(0, randomness)
+    value = Word(2)
+    value_committed = Word(0)
 
     rw_counter_end_of_reversion = 19
     reversible_write_counter = 3
 
     tables = Tables(
-        block_table=set(Block().table_assignments(randomness)),
-        tx_table=set(tx.table_assignments(randomness)),
-        bytecode_table=set(bytecode.table_assignments(randomness)),
+        block_table=set(Block().table_assignments()),
+        tx_table=set(tx.table_assignments()),
+        bytecode_table=set(bytecode.table_assignments()),
         rw_table=set(
             # fmt: off
             RWDictionary(9)
@@ -77,7 +75,6 @@ def test_sload(tx: Transaction, storage_key_be_bytes: bytes, warm: bool, is_pers
     )
 
     verify_steps(
-        randomness=randomness,
         tables=tables,
         steps=[
             StepState(

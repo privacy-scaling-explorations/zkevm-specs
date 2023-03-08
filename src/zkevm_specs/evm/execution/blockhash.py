@@ -1,14 +1,14 @@
 from ..instruction import Instruction, Transition
 from ..table import BlockContextFieldTag
-from ...util import FQ, N_BYTES_U64
+from ...util import FQ, N_BYTES_U64, Word
 
 
 def blockhash(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
 
-    block_number = instruction.rlc_to_fq(instruction.stack_pop(), N_BYTES_U64)
+    block_number = instruction.word_to_u64(instruction.stack_pop())
 
-    current_block_number = instruction.block_context_lookup(BlockContextFieldTag.Number)
+    current_block_number = instruction.block_context_lookup(BlockContextFieldTag.Number).value()
     # get value that was pushed to stack (RLC-encoded)
     block_hash = instruction.stack_push()
 
@@ -23,10 +23,10 @@ def blockhash(instruction: Instruction):
             block_number,
         )
     else:
-        expected_block_hash = FQ.zero()
+        expected_block_hash = Word(0)
 
     # block hash is as expected
-    instruction.constrain_equal(block_hash, expected_block_hash)
+    instruction.constrain_equal_word(block_hash, expected_block_hash)
 
     instruction.step_state_transition_in_same_context(
         opcode,

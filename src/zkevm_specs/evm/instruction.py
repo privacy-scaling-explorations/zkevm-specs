@@ -145,7 +145,7 @@ class Instruction:
         assert lhs.expr() == rhs.expr(), ConstraintUnsatFailure(
             f"Expected values to be equal, but got {lhs} and {rhs}"
         )
-    
+
     def constrain_equal_word(self, lhs: Word, rhs: Word):
         assert lhs.lo.expr() == rhs.lo.expr() and lhs.hi.expr() == rhs.hi.expr(), ConstraintUnsatFailure(
             f"Expected words to be equal, but got {lhs} and {rhs}"
@@ -379,6 +379,9 @@ class Instruction:
     def is_equal(self, lhs: Expression, rhs: Expression) -> FQ:
         return self.is_zero(lhs.expr() - rhs.expr())
 
+    def is_equal_word(self, lhs: Word, rhs: Word) -> FQ:
+        return self.is_zero_word(Word((lhs.lo.expr() - rhs.lo.expr(), lhs.hi.expr() - rhs.hi.expr())))
+
     def continuous_selectors(self, value: Expression, n: int) -> Sequence[FQ]:
         return [FQ(i < value.expr().n) for i in range(n)]
 
@@ -440,10 +443,10 @@ class Instruction:
             raise ConstraintUnsatFailure(f"Word {word} has too many bytes to fit {n_bytes} bytes")
         return self.bytes_to_fq(word.le_bytes[:n_bytes])
  
-    def word_is_neg(self, word: Word) -> FQ:
+    def is_neg_word(self, word: Word) -> FQ:
         return self.compare(FQ(0x7fffffffffffffffffffffffffffffff), word.hi.expr(), 16)[0]
 
-    def word_is_zero(self, word: Word) -> FQ:
+    def is_zero_word(self, word: Word) -> FQ:
         return self.is_zero(self.sum([word.lo.expr(), word.hi.expr()]))
 
     def byte_size(self, word: Word) -> FQ:
@@ -462,9 +465,26 @@ class Instruction:
         return fq
 
     def address_to_word(self, addr: Expression) -> Word:
+        """Verify that address is 160 bits and return it as a Word (lo, hi)"""
         addr_bytes = addr.expr().n.to_bytes(32, "little")
         self.constrain_zero(FQ(sum(addr_bytes[20:])))
         return Word(addr_bytes)
+
+    def word_to_address(self, word: Word) -> Expression:
+        """Verify that word is 160 bits and return it as a single value"""
+        addr_lo_bytes = word.lo.expr().n.to_bytes(16, "little")
+        addr_hi_bytes = word.hi.expr().n.to_bytes(16, "little")
+        addr_bytes = addr_lo_bytes + addr_hi_bytes
+        self.constrain_zero(FQ(sum(addr_bytes[20:])))
+        return self.bytes_to_fq(addr_bytes[:20])
+
+    def word_to_u64(self, word: Word) -> Expression:
+        """Verify that word is 64 bits and return it as a single value"""
+        addr_lo_bytes = word.lo.expr().n.to_bytes(16, "little")
+        addr_hi_bytes = word.hi.expr().n.to_bytes(16, "little")
+        addr_bytes = addr_lo_bytes + addr_hi_bytes
+        self.constrain_zero(FQ(sum(addr_bytes[8:])))
+        return self.bytes_to_fq(addr_bytes[:8])
 
     def rlc_encode(self, value: Union[FQ, int, bytes], n_bytes: Optional[int] = None) -> RLC:
         if isinstance(value, FQ):
@@ -492,7 +512,7 @@ class Instruction:
     # `x = -(1 << 255)`, this function returns the same value of `-(1 << 255)`,
     # since it is signed overflow.
     def abs_word(self, x: Word) -> Tuple[Word, FQ]:
-        is_neg = self.word_is_neg(x)
+        is_neg = self.is_neg_word(x)
 
         # Generate the witness `x_abs`.
         x_abs = x if is_neg == 0 else Word((1 << 256) - x.word())
@@ -949,7 +969,6 @@ class Instruction:
             RWTableTag.AccountStorage,
             tx_id,
             account_address,
-            field_tag=None,
             storage_key=storage_key,
             reversion_info=reversion_info,
         )
@@ -986,14 +1005,14 @@ class Instruction:
         self,
         tx_id: Expression,
         account_address: Expression,
-        storage_key: Expression,
+        storage_key: Word,
         reversion_info: Optional[ReversionInfo] = None,
     ) -> FQ:
         row = self.state_write(
             RWTableTag.TxAccessListAccountStorage,
             tx_id,
             account_address,
-            storage_key,
+            storage_key=storage_key,
             value=FQ(1),
             reversion_info=reversion_info,
         )
