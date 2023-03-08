@@ -171,25 +171,22 @@ def assert_in_range(x: FQ, min_val: int, max_val: int) -> None:
 
 @is_circuit_code
 def check_start(row: Row, row_prev: Row):
-    # 1.0. field_tag is 0 for Start
+    # 1.0. Unused keys are 0
     assert row.field_tag() == 0
-
-    # 1.1. address is 0 for Start
     assert row.address() == 0
-
-    # 1.2. id is 0 for Start
     assert row.id() == 0
-
-    # 1.3. storage_key is 0 for Start
     assert row.storage_key() == 0
 
-    # 1.4. rw_counter increases by 1 for every non-first row
+    # 1.1. rw_counter increases by 1 for every non-first row
     assert row.lexicographic_ordering_selector * (row.rw_counter - row_prev.rw_counter - 1) == 0
 
-    # 1.5. Start value is 0
+    # 1.2. Start value is 0
     assert row.value == 0
 
-    # 1.6. state_root is unchanged for Start
+    # 1.3. Start initial value is 0
+    assert row.initial_value == 0
+
+    # 1.4. state_root is unchanged for every non-first row
     assert row.lexicographic_ordering_selector * (row.root - row_prev.root) == 0
 
 
@@ -215,7 +212,10 @@ def check_memory(row: Row, row_prev: Row):
     # 2.3. value is a byte
     assert_in_range(row.value, 0, 2**8 - 1)
 
-    # 2.4 state root does not change
+    # 2.4. Start initial value is 0
+    assert row.initial_value == 0
+
+    # 2.5. state root does not change
     assert row.root == row_prev.root
 
 
@@ -247,7 +247,10 @@ def check_stack(row: Row, row_prev: Row):
         stack_ptr_diff = get_stack_ptr(row) - get_stack_ptr(row_prev)
         assert_in_range(stack_ptr_diff, 0, 1)
 
-    # 3.4 state root does not change
+    # 3.4. Stack initial value is 0
+    assert row.initial_value == 0
+
+    # 3.5 state root does not change
     assert row.root == row_prev.root
 
 
@@ -256,15 +259,13 @@ def check_storage(row: Row, row_prev: Row, row_next: Row, tables: Tables):
     # 4.0. Unused keys are 0
     assert row.field_tag() == 0
 
-    # value = 0 means the leaf doesn't exist. 0->0 transition requires a
-    # non-existing proof.
-    is_non_exist = FQ(row.value.expr() == FQ(0)) * FQ(row.initial_value.expr() == FQ(0))
-
     # 4.1. MPT lookup for last access to (address, storage_key)
+    # value = 0 means that the leaf doesn't exist. And this is needed by the non-existing proof.
+    is_non_exist = FQ(row.value.expr() == FQ(0)) * FQ(row.initial_value.expr() == FQ(0))
     if not all_keys_eq(row, row_next):
         tables.mpt_lookup(
             row.address(),
-            is_non_exist * FQ(MPTProofType.NonExistingStorageProof)
+            is_non_exist * FQ(MPTProofType.NonExistingAccountProof)
             + (1 - is_non_exist) * FQ(MPTProofType.StorageMod),
             row.storage_key(),
             row.value,

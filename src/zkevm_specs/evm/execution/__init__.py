@@ -33,6 +33,7 @@ from .jump import *
 from .jumpi import *
 from .mul_div_mod import *
 from .origin import *
+from .pop import *
 from .push import *
 from .returndatasize import *
 from .returndatacopy import *
@@ -45,6 +46,7 @@ from .extcodehash import *
 from .extcodesize import *
 from .log import *
 from .memory import *
+from .msize import *
 from .not_ import not_opcode
 from .sar import sar
 from .sdiv_smod import sdiv_smod
@@ -86,6 +88,7 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.BYTE: byte,
     ExecutionState.JUMP: jump,
     ExecutionState.JUMPI: jumpi,
+    ExecutionState.POP: pop,
     ExecutionState.PUSH: push,
     ExecutionState.RETURNDATASIZE: returndatasize,
     ExecutionState.RETURNDATACOPY: returndatacopy,
@@ -103,6 +106,7 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.EXP: exp,
     ExecutionState.LOG: log,
     ExecutionState.MEMORY: memory,
+    ExecutionState.MSIZE: msize,
     ExecutionState.CALL_OP: callop,
     ExecutionState.ISZERO: iszero,
     ExecutionState.SAR: sar,

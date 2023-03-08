@@ -23,9 +23,9 @@ from zkevm_specs.util import (
     rand_bytes,
     U64,
     rand_address,
-    memory_expansion,
     FQ,
 )
+from common import memory_expansion
 
 CALL_ID = 1
 TX_ID = 2
@@ -185,7 +185,7 @@ def test_single_log(topics: list, mstart: U64, msize: U64, is_persistent: bool):
             code_hash=bytecode_hash,
             program_counter=0,
             stack_pointer=1015,
-            memory_size=0,
+            memory_word_size=0,
             gas_left=dynamic_gas,
             log_id=0,
         )
@@ -204,7 +204,7 @@ def test_single_log(topics: list, mstart: U64, msize: U64, is_persistent: bool):
             code_hash=bytecode_hash,
             program_counter=1,
             stack_pointer=sp,
-            memory_size=next_memory_size,
+            memory_word_size=next_memory_size,
             gas_left=0,
             log_id=is_persistent,
         )
@@ -257,7 +257,7 @@ def test_multi_logs(log_entries):
                 code_hash=bytecode_hash,
                 program_counter=pc,
                 stack_pointer=stack_pointer,
-                memory_size=50,
+                memory_word_size=50,
                 gas_left=gas_left,
                 log_id=log_id,
             )
@@ -286,7 +286,7 @@ def test_multi_logs(log_entries):
             code_hash=bytecode_hash,
             program_counter=len(log_entries),
             stack_pointer=stack_pointer,
-            memory_size=50,
+            memory_word_size=50,
             gas_left=0,
             log_id=log_id,
         )

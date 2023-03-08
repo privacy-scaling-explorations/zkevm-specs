@@ -24,10 +24,8 @@ from zkevm_specs.util import (
     keccak256,
     EXTRA_GAS_COST_ACCOUNT_COLD_ACCESS,
     GAS_COST_COPY,
-    memory_word_size,
-    memory_expansion,
 )
-
+from common import memory_expansion, memory_word_size
 
 TESTING_DATA = (
     # empty code
@@ -166,7 +164,7 @@ def test_extcodecopy(
             code_hash=bytecode_hash,
             program_counter=1,
             stack_pointer=1024,
-            memory_size=next_memory_word_size,
+            memory_word_size=next_memory_word_size,
             gas_left=0,
         )
     )

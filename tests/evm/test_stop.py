@@ -1,7 +1,7 @@
 import pytest
-from collections import namedtuple
-from itertools import chain
 
+from itertools import chain
+from common import CallContext
 from zkevm_specs.evm import (
     ExecutionState,
     StepState,
@@ -69,20 +69,6 @@ def test_stop_is_root(tx: Transaction, bytecode: Bytecode):
     )
 
 
-CallContext = namedtuple(
-    "CallContext",
-    [
-        "is_root",
-        "is_create",
-        "program_counter",
-        "stack_pointer",
-        "gas_left",
-        "memory_size",
-        "reversible_write_counter",
-    ],
-    defaults=[True, False, 232, 1023, 0, 0, 0],
-)
-
 TESTING_DATA_NOT_ROOT = (
     (CallContext(), BYTECODE_END_WITHOUT_STOP),
     (CallContext(), BYTECODE_END_WITH_STOP),
@@ -119,7 +105,7 @@ def test_stop_not_root(caller_ctx: CallContext, callee_bytecode: Bytecode):
             .call_context_read(1, CallContextFieldTag.ProgramCounter, caller_ctx.program_counter)
             .call_context_read(1, CallContextFieldTag.StackPointer, caller_ctx.stack_pointer)
             .call_context_read(1, CallContextFieldTag.GasLeft, caller_ctx.gas_left)
-            .call_context_read(1, CallContextFieldTag.MemorySize, caller_ctx.memory_size)
+            .call_context_read(1, CallContextFieldTag.MemorySize, caller_ctx.memory_word_size)
             .call_context_read(1, CallContextFieldTag.ReversibleWriteCounter, caller_ctx.reversible_write_counter)
             .call_context_write(1, CallContextFieldTag.LastCalleeId, 24)
             .call_context_write(1, CallContextFieldTag.LastCalleeReturnDataOffset, 0)
@@ -155,7 +141,7 @@ def test_stop_not_root(caller_ctx: CallContext, callee_bytecode: Bytecode):
                 program_counter=caller_ctx.program_counter,
                 stack_pointer=caller_ctx.stack_pointer,
                 gas_left=caller_ctx.gas_left + callee_gas_left,
-                memory_size=caller_ctx.memory_size,
+                memory_word_size=caller_ctx.memory_word_size,
                 reversible_write_counter=caller_ctx.reversible_write_counter
                 + callee_reversible_write_counter,
             ),
