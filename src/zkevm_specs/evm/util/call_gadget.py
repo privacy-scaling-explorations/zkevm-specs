@@ -1,5 +1,5 @@
 from zkevm_specs.evm.table import AccountFieldTag
-from zkevm_specs.util.arithmetic import RLC
+from zkevm_specs.util.arithmetic import RLC, Word
 from zkevm_specs.util.hash import EMPTY_CODE_HASH
 from zkevm_specs.util.param import (
     GAS_COST_ACCOUNT_COLD_ACCESS,
@@ -21,7 +21,7 @@ class CallGadget:
 
     gas: FQ
     callee_address: FQ
-    value: RLC
+    value: Word
     cd_offset: FQ
     cd_length: FQ
     rd_offset: FQ
@@ -48,35 +48,35 @@ class CallGadget:
         self.IS_SUCCESS_CALL = is_success_call
 
         # Lookup values from stack
-        self.gas_rlc = instruction.stack_pop()
-        callee_address_rlc = instruction.stack_pop()
+        gas = instruction.stack_pop()
+        callee_address = instruction.stack_pop()
         # For non-OOG case,
         # the third stack pop `value` is not present for both DELEGATECALL and
         # STATICCALL opcodes.
-        self.value = instruction.stack_pop() if is_call + is_callcode == FQ(1) else RLC(0)
-        cd_offset_rlc = instruction.stack_pop()
-        cd_length_rlc = instruction.stack_pop()
-        rd_offset_rlc = instruction.stack_pop()
-        rd_length_rlc = instruction.stack_pop()
+        self.value = instruction.stack_pop() if is_call + is_callcode == FQ(1) else Word(0)
+        cd_offset = instruction.stack_pop()
+        cd_length = instruction.stack_pop()
+        rd_offset = instruction.stack_pop()
+        rd_length = instruction.stack_pop()
         self.is_success = instruction.stack_push().expr()
 
         if self.IS_SUCCESS_CALL == FQ(1):
             # Verify is_success is a bool
             instruction.constrain_bool(self.is_success)
-            self.gas = instruction.rlc_to_fq(self.gas_rlc, N_BYTES_GAS)
+            self.gas = instruction.rlc_to_fq(gas, N_BYTES_GAS)
             self.is_u64_gas = instruction.is_zero(
-                instruction.sum(self.gas_rlc.le_bytes[N_BYTES_GAS:])
+                instruction.sum(gas.to_le_bytes()[N_BYTES_GAS:])
             )
         else:
             instruction.constrain_zero(self.is_success)
         self.has_value = FQ(0) if is_delegatecall == FQ(1) else 1 - instruction.is_zero(self.value)
 
-        self.callee_address = instruction.rlc_to_fq(callee_address_rlc, N_BYTES_ACCOUNT_ADDRESS)
+        self.callee_address = instruction.rlc_to_fq(callee_address, N_BYTES_ACCOUNT_ADDRESS)
         self.cd_offset, self.cd_length = instruction.memory_offset_and_length(
-            cd_offset_rlc, cd_length_rlc
+            cd_offset, cd_length
         )
         self.rd_offset, self.rd_length = instruction.memory_offset_and_length(
-            rd_offset_rlc, rd_length_rlc
+            rd_offset, rd_length
         )
         # Verify memory expansion
         (

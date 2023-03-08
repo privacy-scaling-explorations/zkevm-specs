@@ -373,8 +373,10 @@ class TableRow:
         for key, value in query.items():
             rhs = getattr(self, key)
             if isinstance(value, Word):
+                assert isinstance(rhs, Word)
                 match = match and (value.lo.expr() == rhs.lo.expr() and value.hi.expr() == rhs.hi.expr())
             else:
+                assert isinstance(value, Expression) and isinstance(rhs, Expression)
                 match = match and (value.expr() == rhs.expr())
         return match
 

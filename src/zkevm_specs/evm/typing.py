@@ -104,7 +104,7 @@ class Block:
         self.chainid = chainid
         self.history_hashes = history_hashes
 
-    def table_assignments(self, randomness: FQ) -> List[BlockTableRow]:
+    def table_assignments(self) -> List[BlockTableRow]:
         value = lambda v: WordOrValue(FQ(v))
         word = lambda w: WordOrValue(Word(w))
         return [
@@ -341,7 +341,7 @@ class Bytecode:
     def hash(self) -> U256:
         return U256(int.from_bytes(keccak256(self.code), "big"))
 
-    def table_assignments(self, randomness: FQ) -> Iterator[BytecodeTableRow]:
+    def table_assignments(self) -> Iterator[BytecodeTableRow]:
         class BytecodeIterator:
             idx: int
             hash: Word
@@ -791,11 +791,11 @@ class ExpCircuit:
     def table(self) -> Sequence[ExpCircuitRow]:
         return self.rows + self.pad_rows
 
-    def add_event(self, base: int, exponent: int, randomness: FQ, identifier: IntOrFQ):
+    def add_event(self, base: int, exponent: int, identifier: IntOrFQ):
         steps: List[Tuple[int, int, int]] = []
         exponentiation = self._exp_by_squaring(base, exponent, steps)
         steps.reverse()
-        self._append_steps(base, exponent, exponentiation, steps, randomness, identifier)
+        self._append_steps(base, exponent, exponentiation, steps, identifier)
         self._append_padding_row(identifier)
         return self
 
@@ -824,7 +824,6 @@ class ExpCircuit:
         exponent: int,
         exponentiation: int,
         steps: List[Tuple[int, int, int]],
-        randomness: FQ,
         identifier: IntOrFQ,
     ):
         base_word = Word(base)

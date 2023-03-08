@@ -5,14 +5,14 @@ from ..table import CallContextFieldTag, TxContextFieldTag
 
 
 def origin(instruction: Instruction):
-    tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
+    tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId).value()
 
     opcode = instruction.opcode_lookup(True)
     instruction.constrain_equal(opcode, Opcode.ORIGIN)
 
-    instruction.constrain_equal(
-        instruction.tx_context_lookup(tx_id, TxContextFieldTag.CallerAddress),
-        instruction.rlc_to_fq(instruction.stack_push(), N_BYTES_ACCOUNT_ADDRESS),
+    instruction.constrain_equal_word(
+        instruction.address_to_word(instruction.tx_context_lookup(tx_id, TxContextFieldTag.CallerAddress).value()),
+        instruction.stack_push(),
     )
 
     instruction.step_state_transition_in_same_context(

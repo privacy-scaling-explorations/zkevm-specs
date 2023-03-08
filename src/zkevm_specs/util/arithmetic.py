@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import List, Protocol, Sequence, Tuple, Type, TypeVar, Union
+from typing import runtime_checkable, List, Protocol, Sequence, Tuple, Type, TypeVar, Union
 from py_ecc import bn128
 from py_ecc.utils import prime_field_inv
 from .param import MAX_N_BYTES
@@ -111,8 +111,16 @@ class Word:
         """Return a new Word with lo and hi multiplied by selector"""
         return Word((selector * self.lo, selector * self.hi))
 
+    def to_lo_hi(self) -> Tuple[FQ, FQ]:
+        return (self.lo.expr(), self.hi.expr())
+
     def to_64s(self) -> Tuple[FQ, ...]:
         return lo_hi_to_64s((self.lo.expr(), self.lo.expr()))
+
+    def to_le_bytes(self) -> Tuple[FQ, ...]:
+        lo = self.lo.expr().n.to_bytes(16, "little")
+        hi = self.hi.expr().n.to_bytes(16, "little")
+        return lo + hi
 
     # def assert_eq(self, other: Word, assert_msg: str):
     #     assert (
@@ -149,6 +157,7 @@ class WordOrValue(Word):
             return f"Value({hex(self.lo.expr().n)})"
 
 
+@runtime_checkable
 class Expression(Protocol):
     def expr(self) -> FQ:
         ...
@@ -178,9 +187,8 @@ def bytes_to_fq(value: bytes):
     return FQ(int.from_bytes(value, "little"))
 
 
-def word_to_lo_hi(word: RLC) -> Tuple[FQ, FQ]:
-    assert len(word.le_bytes) == 32, "Expected word to contain 32 bytes"
-    return bytes_to_fq(word.le_bytes[:16]), bytes_to_fq(word.le_bytes[16:])
+def word_to_lo_hi(self, word: Word) -> Tuple[FQ, FQ]:
+    return (word.lo.expr(), word.hi.expr())
 
 
 def word_to_64s(word: RLC) -> Tuple[FQ, ...]:
@@ -203,12 +211,14 @@ def sum_values(values: Sequence[IntOrFQ]) -> FQ:
     return FQ(sum(values))
 
 
-def add_words(addends: Sequence[RLC], randomness: FQ) -> Tuple[RLC, FQ]:
-    addends_lo, addends_hi = list(zip(*map(word_to_lo_hi, addends)))
-    carry_lo, sum_lo = divmod(sum_values(addends_lo).n, 1 << 128)
-    carry_hi, sum_hi = divmod((sum_values(addends_hi) + carry_lo).n, 1 << 128)
-    sum_bytes = sum_lo.to_bytes(16, "little") + sum_hi.to_bytes(16, "little")
-    return RLC(sum_bytes, randomness, n_bytes=len(sum_bytes)), FQ(carry_hi)
+def add_words(addends: Sequence[Word]) -> Tuple[Word, FQ]:
+    addends_lo, addends_hi = list(*[w.to_lo_hi() for w in addends])
+
+    carry_lo, sum_lo = divmod(self.sum(addends_lo).n, 1 << 128)
+    carry_hi, sum_hi = divmod((self.sum(addends_hi) + carry_lo).n, 1 << 128)
+
+    return Word([sum_lo, sum_hi]), FQ(carry_hi)
+
 
 
 def mul_add_words(a: Word, b: Word, c: Word, d: Word) -> Tuple[FQ, Tuple[FQ, FQ], List[Tuple[FQ, FQ]]]:
@@ -216,8 +226,8 @@ def mul_add_words(a: Word, b: Word, c: Word, d: Word) -> Tuple[FQ, Tuple[FQ, FQ]
     The function constrains a * b + c == d, where a, b, c, d are 256-bit words.
     It returns the overflow part of a * b + c.
     """
-    a64s = word_to_64s(a)
-    b64s = word_to_64s(b)
+    a64s = a.to_64s()
+    b64s = b.to_64s()
     c_lo, c_hi = c.lo.expr(), c.hi.expr()
     d_lo, d_hi = d.lo.expr(), d.hi.expr()
 
