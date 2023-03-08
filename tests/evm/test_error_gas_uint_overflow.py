@@ -24,7 +24,7 @@ CallContext = namedtuple(
         "program_counter",
         "stack_pointer",
         "gas_left",
-        "memory_size",
+        "memory_word_size",
         "reversible_write_counter",
     ],
     defaults=[True, False, 232, 1023, 0, 0, 0],
@@ -40,7 +40,7 @@ Stack = namedtuple(
 
 TEST_DATA = [
     (
-        CallContext(memory_size=MAX_MEMORY_SIZE + 1),
+        CallContext(memory_word_size=MAX_MEMORY_SIZE + 1),
         Transaction(
             call_data=bytes.fromhex(
                 "00000000000000000000000000000000000000000000000000000000000000FF"
@@ -68,7 +68,7 @@ def test_error_gas_uint_overflow_root(
         bytecode_table=set(bytecode.table_assignments(randomness)),
         rw_table=set(
             RWDictionary(24)
-            .call_context_read(1, CallContextFieldTag.MemorySize, ctx.memory_size)
+            .call_context_read(1, CallContextFieldTag.MemorySize, ctx.memory_word_size)
             .call_context_read(1, CallContextFieldTag.TxId, tx.id)
             .stack_read(1, 1017, RLC(stack.gas, randomness))
             .stack_read(1, 1018, RLC(account.address, randomness))
@@ -119,17 +119,18 @@ def test_error_gas_uint_overflow_not_root(
 ):
     randomness = rand_fq()
 
-    bytecode = Bytecode().add().stop()
-    bytecode_hash = RLC(bytecode.hash(), randomness)
-    callee_bytecode_hash = RLC(account.code_hash(), randomness)
+    caller_bytecode = Bytecode().add().stop()
+    callee_bytecode = Bytecode().push1(0x10).push1(0x20)
+    caller_bytecode_hash = RLC(caller_bytecode.hash(), randomness)
+    callee_bytecode_hash = RLC(callee_bytecode.hash(), randomness)
 
     tables = Tables(
         block_table=set(Block().table_assignments(randomness)),
         tx_table=set(tx.table_assignments(randomness)),
-        bytecode_table=set(bytecode.table_assignments(randomness)),
+        bytecode_table=set(caller_bytecode.table_assignments(randomness)),
         rw_table=set(
             RWDictionary(24)
-            .call_context_read(1, CallContextFieldTag.MemorySize, ctx.memory_size)
+            .call_context_read(1, CallContextFieldTag.MemorySize, ctx.memory_word_size)
             .call_context_read(1, CallContextFieldTag.TxId, tx.id)
             .stack_read(1, 1017, RLC(stack.gas, randomness))
             .stack_read(1, 1018, RLC(account.address, randomness))
@@ -139,11 +140,23 @@ def test_error_gas_uint_overflow_not_root(
             .stack_read(1, 1022, RLC(stack.rd_offset, randomness))
             .stack_read(1, 1023, RLC(stack.rd_length, randomness))
             .stack_write(1, 1023, RLC(False, randomness))
-            .account_read(account.address, AccountFieldTag.CodeHash, callee_bytecode_hash)
+            .account_read(account.address, AccountFieldTag.CodeHash, caller_bytecode_hash)
             .tx_access_list_account_read(1, account.address, True)
             .call_context_read(1, CallContextFieldTag.CallDataOffset, 0)
             .call_context_read(1, CallContextFieldTag.CallDataLength, len(tx.call_data))
             .call_context_read(1, CallContextFieldTag.IsSuccess, 0)
+            .call_context_read(2, CallContextFieldTag.CallerId, 1)
+            # .call_context_read(1, CallContextFieldTag.IsRoot, ctx.is_root)
+            # .call_context_read(1, CallContextFieldTag.IsCreate, ctx.is_create)
+            # .call_context_read(1, CallContextFieldTag.CodeHash, callee_bytecode_hash)
+            # .call_context_read(1, CallContextFieldTag.ProgramCounter, ctx.program_counter)
+            # .call_context_read(1, CallContextFieldTag.StackPointer, ctx.stack_pointer)
+            # .call_context_read(1, CallContextFieldTag.GasLeft, ctx.gas_left)
+            # .call_context_read(1, CallContextFieldTag.MemorySize, ctx.memory_word_size)
+            # .call_context_read(1, CallContextFieldTag.ReversibleWriteCounter, ctx.reversible_write_counter)
+            # .call_context_write(1, CallContextFieldTag.LastCalleeId, 2)
+            # .call_context_write(1, CallContextFieldTag.LastCalleeReturnDataOffset, 0)
+            # .call_context_write(1, CallContextFieldTag.LastCalleeReturnDataLength, 0)
             .rws
         ),
     )
@@ -158,7 +171,7 @@ def test_error_gas_uint_overflow_not_root(
                 call_id=1,
                 is_root=False,
                 is_create=False,
-                code_hash=bytecode_hash,
+                code_hash=caller_bytecode_hash,
                 program_counter=0,
                 stack_pointer=1017,
                 gas_left=3,
@@ -170,11 +183,11 @@ def test_error_gas_uint_overflow_not_root(
                 call_id=1,
                 is_root=ctx.is_root,
                 is_create=ctx.is_create,
-                code_hash=bytecode_hash,
+                code_hash=caller_bytecode_hash,
                 program_counter=ctx.program_counter,
                 stack_pointer=ctx.stack_pointer,
                 gas_left=ctx.gas_left,
-                memory_size=ctx.memory_size,
+                memory_word_size=ctx.memory_word_size,
                 reversible_write_counter=ctx.reversible_write_counter,
             ),
         ],

@@ -90,7 +90,7 @@ def error_gas_uint_overflow(instruction: Instruction):
         instruction.call_context_lookup(CallContextFieldTag.IsSuccess), FQ(0)
     )
 
-    # state transition.
+    # # state transition.
     if instruction.curr.is_root:
         # Do step state transition
         instruction.constrain_step_state_transition(

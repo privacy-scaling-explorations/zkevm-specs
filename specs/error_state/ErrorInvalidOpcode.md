@@ -14,7 +14,7 @@
 1. Do a fixed lookup for `FixedTableTag.ResponsibleOpcode`.
 2. Current call must be failed. Do a call context lookup for `CallContextFieldTag.IsSuccess`.
 3. If it's a root call, it transits to `EndTx`.
-4. if it is not root call, it restores caller's context by reading to `rw_table`, then does step state transition to it.
+4. If it is not root call, it restores caller's context by reading to `rw_table`, then does step state transition to it.
 
 ## Code
 

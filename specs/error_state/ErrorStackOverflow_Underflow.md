@@ -2,6 +2,7 @@
 
 ## Procedure
 ### EVM behavior
+
 stack overflow and underflow error can happen within any step which involves stack operation.
 each op code have fixed `min_stack_pointer` & `max_stack_pointer`.  if current stack pointer < `min_stack_pointer`, 
 overflow error happens, if current stack pointer > `max_stack_pointer`, underflow error happens.
