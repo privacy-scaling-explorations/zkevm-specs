@@ -48,7 +48,7 @@ def error_gas_uint_overflow(instruction: Instruction):
     ]
     dataLen = len(data)
 
-    if dataLen > 0:
+    def non_zero_gas_constraints():
         # eip 2028
         nz = len([byte for byte in data if byte != 0])
         gas = TxGasContractCreation if is_create == FQ(1) else TxGas
@@ -72,6 +72,8 @@ def error_gas_uint_overflow(instruction: Instruction):
         #     is_eip3860_overflow, _ = instruction.compare(
         #         FQ((MAX_U64 - gas) // InitCodeWordGas), FQ(lenWords), N_BYTES_U64
         #     )
+
+    instruction.condition(FQ(dataLen > 0), non_zero_gas_constraints)
 
     # verify gas uint overflow.
     is_overflow = (

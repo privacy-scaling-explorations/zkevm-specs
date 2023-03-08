@@ -53,7 +53,9 @@ TEST_DATA = [
 
 
 @pytest.mark.parametrize("ctx, tx, stack, account", TEST_DATA)
-def test_error_gas_uint_overflow_root(ctx: CallContext, tx: Transaction, stack: Stack, account: Account):
+def test_error_gas_uint_overflow_root(
+    ctx: CallContext, tx: Transaction, stack: Stack, account: Account
+):
     randomness = rand_fq()
 
     bytecode = Bytecode().add()
@@ -110,8 +112,11 @@ def test_error_gas_uint_overflow_root(ctx: CallContext, tx: Transaction, stack: 
         ],
     )
 
+
 @pytest.mark.parametrize("ctx, tx, stack, account", TEST_DATA)
-def test_error_gas_uint_overflow_not_root(ctx: CallContext, tx: Transaction, stack: Stack, account: Account):
+def test_error_gas_uint_overflow_not_root(
+    ctx: CallContext, tx: Transaction, stack: Stack, account: Account
+):
     randomness = rand_fq()
 
     bytecode = Bytecode().add().stop()
