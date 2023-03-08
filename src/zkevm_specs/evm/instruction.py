@@ -1,6 +1,6 @@
 from __future__ import annotations
 from enum import IntEnum, auto
-from typing import Optional, Sequence, Tuple, Union, List
+from typing import Optional, Sequence, Tuple, Union, List, Callable
 
 from ..util import (
     FQ,
@@ -367,6 +367,10 @@ class Instruction:
     ) -> ExpressionImpl:
         assert condition in [0, 1], "Condition of select should be a checked bool"
         return when_true if condition == 1 else when_false
+
+    def condition(self, condition: FQ, build: Callable):
+        if condition == FQ(1):
+            build()
 
     def pair_select(self, value: Expression, lhs: Expression, rhs: Expression) -> Tuple[FQ, FQ]:
         lhs_eq, rhs_eq = self.multiple_select(value, (lhs, rhs))
