@@ -171,22 +171,22 @@ def assert_in_range(x: FQ, min_val: int, max_val: int) -> None:
 
 @is_circuit_code
 def check_start(row: Row, row_prev: Row):
-    # 1.0. Unused keys are 0
+    # 1.1. Unused keys are 0
     assert row.field_tag() == 0
     assert row.address() == 0
     assert row.id() == 0
     assert row.storage_key() == 0
 
-    # 1.1. rw_counter increases by 1 for every non-first row
+    # 1.2. rw_counter increases by 1 for every non-first row
     assert row.lexicographic_ordering_selector * (row.rw_counter - row_prev.rw_counter - 1) == 0
 
-    # 1.2. Start value is 0
+    # 1.3. Start value is 0
     assert row.value == 0
 
-    # 1.3. Start initial value is 0
+    # 1.4. Start initial value is 0
     assert row.initial_value == 0
 
-    # 1.4. state_root is unchanged for every non-first row
+    # 1.5. state_root is unchanged for every non-first row
     assert row.lexicographic_ordering_selector * (row.root - row_prev.root) == 0
 
 
@@ -195,27 +195,27 @@ def check_memory(row: Row, row_prev: Row):
     get_call_id = lambda row: row.id()
     get_memory_address = lambda row: row.address()
 
-    # 2.0. Unused keys are 0
+    # 2.1. Unused keys are 0
     assert row.field_tag() == 0
     assert row.storage_key() == 0
 
-    # 2.1. First access for a set of all keys
+    # 2.2. First access for a set of all keys
     #
     # When the set of all keys changes (first access of an address in a call)
     # - If READ, value must be 0
     if not all_keys_eq(row, row_prev) and row.is_write == 0:
         assert row.value == 0
 
-    # 2.2. mem_addr in range
+    # 2.3. mem_addr in range
     assert_in_range(get_memory_address(row), 0, MAX_MEMORY_ADDRESS)
 
-    # 2.3. value is a byte
+    # 2.4. value is a byte
     assert_in_range(row.value, 0, 2**8 - 1)
 
-    # 2.4. Start initial value is 0
+    # 2.5. Start initial value is 0
     assert row.initial_value == 0
 
-    # 2.5. state root does not change
+    # 2.6. state root does not change
     assert row.root == row_prev.root
 
 
@@ -224,11 +224,11 @@ def check_stack(row: Row, row_prev: Row):
     get_call_id = lambda row: row.id()
     get_stack_ptr = lambda row: row.address()
 
-    # 3.0. Unused keys are 0
+    # 3.1. Unused keys are 0
     assert row.field_tag() == 0
     assert row.storage_key() == 0
 
-    # 3.1. First access for a set of all keys
+    # 3.2. First access for a set of all keys
     #
     # The first stack operation in a stack position is always a write (can't
     # read if it isn't written before)
@@ -238,28 +238,28 @@ def check_stack(row: Row, row_prev: Row):
     if not all_keys_eq(row, row_prev):
         assert row.is_write == 1
 
-    # 3.2. stack_ptr in range
+    # 3.3. stack_ptr in range
     stack_ptr = get_stack_ptr(row)
     assert_in_range(stack_ptr, 0, MAX_STACK_PTR)
 
-    # 3.3. stack_ptr only increases by 0 or 1
+    # 3.4. stack_ptr only increases by 0 or 1
     if row.tag() == row_prev.tag() and get_call_id(row) == get_call_id(row_prev):
         stack_ptr_diff = get_stack_ptr(row) - get_stack_ptr(row_prev)
         assert_in_range(stack_ptr_diff, 0, 1)
 
-    # 3.4. Stack initial value is 0
+    # 3.5. Stack initial value is 0
     assert row.initial_value == 0
 
-    # 3.5 state root does not change
+    # 3.6. state root does not change
     assert row.root == row_prev.root
 
 
 @is_circuit_code
 def check_storage(row: Row, row_prev: Row, row_next: Row, tables: Tables):
-    # 4.0. Unused keys are 0
+    # 4.1. Unused keys are 0
     assert row.field_tag() == 0
 
-    # 4.1. MPT lookup for last access to (address, storage_key)
+    # 4.2. MPT lookup for last access to (address, storage_key)
     # value = 0 means that the leaf doesn't exist. And this is needed by the non-existing proof.
     is_non_exist = FQ(row.value.expr() == FQ(0)) * FQ(row.initial_value.expr() == FQ(0))
     if not all_keys_eq(row, row_next):
@@ -282,22 +282,22 @@ def check_call_context(row: Row, row_prev: Row):
     get_call_id = lambda row: row.id()
     get_field_tag = lambda row: row.field_tag()
 
-    # 5.0. Unused keys are 0
+    # 5.1. Unused keys are 0
     assert row.address() == 0
     assert row.storage_key() == 0
 
-    # 5.1. field_tag is in CallContexFieldTag range
+    # 5.2. field_tag is in CallContexFieldTag range
     assert True
 
-    # 5.2. First access for a set of all keys
+    # 5.3. First access for a set of all keys
     # - If READ, value must be 0
     if not all_keys_eq(row, row_prev) and row.is_write == 0:
         assert row.value == 0
 
-    # 5.3. CallContext initial value is 0
+    # 5.4. CallContext initial value is 0
     assert row.initial_value == 0
 
-    # 5.4. state root does not change
+    # 5.5. state root does not change
     assert row.root == row_prev.root
 
 
@@ -308,7 +308,7 @@ def check_account(row: Row, row_prev: Row, row_next: Row, tables: Tables):
     field_tag = row.field_tag()
     proof_type = MPTProofType.from_account_field_tag(field_tag)
 
-    # 6.0. Unused keys are 0
+    # 6.1. Unused keys are 0
     assert row.id() == 0
     assert row.storage_key() == 0
 
@@ -343,18 +343,18 @@ def check_account(row: Row, row_prev: Row, row_next: Row, tables: Tables):
 def check_tx_refund(row: Row, row_prev: Row):
     get_tx_id = lambda row: row.id()
 
-    # 7.0. Unused keys are 0
+    # 7.1. Unused keys are 0
     assert row.address() == 0
     assert row.field_tag() == 0
     assert row.storage_key() == 0
 
-    # 7.1 state root does not change
+    # 7.2. state root does not change
     assert row.root == row_prev.root
 
-    # 7.2 initial value is 0
+    # 7.3. initial value is 0
     assert row.initial_value == 0
 
-    # 7.3 First access for a set of all keys
+    # 7.4. First access for a set of all keys
     # - If READ, value must be 0
     if not all_keys_eq(row, row_prev) and row.is_write == 0:
         assert row.value == 0
