@@ -1,9 +1,12 @@
 from zkevm_specs.evm.opcode import Opcode
 from zkevm_specs.util.arithmetic import FQ, RLC
-from zkevm_specs.util.hash import EMPTY_CODE_HASH, EMPTY_HASH
+from zkevm_specs.util.hash import EMPTY_CODE_HASH
 from zkevm_specs.util.param import (
+    GAS_COST_COPY_SHA3,
     GAS_COST_CREATE,
+    N_BYTES_ACCOUNT_ADDRESS,
     N_BYTES_GAS,
+    N_BYTES_MEMORY_SIZE,
     N_BYTES_U64,
 )
 from ...util import (
@@ -24,9 +27,13 @@ def create(instruction: Instruction):
 
     # Stack parameters and result
     value = instruction.stack_pop()
-    offset = instruction.stack_pop()
-    size = instruction.stack_pop()
+    offset_rlc = instruction.stack_pop()
+    size_rlc = instruction.stack_pop()
+    salt_rlc = instruction.stack_pop() if is_create2 == FQ(1) else RLC(0)
     return_contract_address = instruction.stack_push()
+
+    offset = instruction.rlc_to_fq(offset_rlc, N_BYTES_U64)
+    size = instruction.rlc_to_fq(size_rlc, N_BYTES_U64)
 
     depth = instruction.call_context_lookup(CallContextFieldTag.Depth)
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
@@ -35,8 +42,21 @@ def create(instruction: Instruction):
     is_success = instruction.call_context_lookup(CallContextFieldTag.IsSuccess)
     is_static = instruction.call_context_lookup(CallContextFieldTag.IsStatic)
     reversion_info = instruction.reversion_info()
-    contract_address = instruction.generate_contract_address(caller_address, nonce)
-    return_contract_address = is_success * contract_address
+
+    # calculate contract address
+    contract_address = (
+        instruction.generate_contract_address(caller_address, nonce)
+        if is_create == 1
+        else instruction.generate_CREAET2_contract_address(
+            caller_address, salt_rlc.le_bytes, instruction.next.code_hash
+        )
+    )
+
+    # verify return contract address
+    instruction.constrain_equal(
+        instruction.rlc_to_fq(return_contract_address, N_BYTES_ACCOUNT_ADDRESS),
+        is_success * contract_address,
+    )
 
     # Verify depth is less than 1024
     instruction.range_lookup(depth, CALL_CREATE_DEPTH)
@@ -49,11 +69,13 @@ def create(instruction: Instruction):
     instruction.add_account_to_access_list(tx_id, contract_address, reversion_info)
 
     # ErrContractAddressCollision constraint
-    # code_hash_prev could be either 0 or EMPTY
+    # code_hash_prev could be either 0 or EMPTY_CODE_HASH
+    # code_hash should be EMPTY_CODE_HASH to make sure the account is created properly
     code_hash, code_hash_prev = instruction.account_write(
         contract_address, AccountFieldTag.CodeHash
     )
-    instruction.constrain_in(code_hash_prev, [FQ(0), FQ(EMPTY_CODE_HASH)])
+    instruction.constrain_in(code_hash_prev, [FQ(0), RLC(EMPTY_CODE_HASH)])
+    instruction.constrain_equal(code_hash, RLC(EMPTY_CODE_HASH))
 
     # Propagate is_persistent
     callee_reversion_info = instruction.reversion_info(call_id=callee_call_id)
@@ -74,10 +96,15 @@ def create(instruction: Instruction):
         size,
     )
 
-    # gas cost of CREATE = GAS_COST_CREATE + memory expansion + GAS_COST_CODE_DEPOSIT * len(byte_code)
-    # the last one (GAS_COST_CODE_DEPOSIT * len(byte_code)) would be calculated in `return_revert`
+    # CREATE = GAS_COST_CREATE + memory expansion + GAS_COST_CODE_DEPOSIT * len(byte_code)
+    # CREATE2 = gas cost of CREATE + GAS_COST_COPY_SHA3 * memory_size
+    # byte_code is only available in `return_revert`,
+    # so the last part (GAS_COST_CODE_DEPOSIT * len(byte_code)) won't be calculated here
     gas_left = instruction.curr.gas_left
     gas_cost = GAS_COST_CREATE + memory_expansion_gas_cost
+    if is_create2 == 1:
+        memory_size, _ = instruction.constant_divmod(size.expr() + 31, FQ(32), N_BYTES_MEMORY_SIZE)
+        gas_cost += GAS_COST_COPY_SHA3 * memory_size
     gas_available = gas_left - gas_cost
 
     # Apply EIP 150
@@ -96,11 +123,10 @@ def create(instruction: Instruction):
     copy_rwc_inc, _ = instruction.copy_lookup(
         instruction.curr.call_id,  # src_id
         CopyDataTypeTag.Memory,  # src_type
-        code_hash.expr(),  # dst_id
+        instruction.next.code_hash.expr(),  # dst_id
         CopyDataTypeTag.Bytecode,  # dst_type
-        instruction.rlc_to_fq(offset, N_BYTES_U64),  # src_addr
-        instruction.rlc_to_fq(offset, N_BYTES_U64)
-        + instruction.rlc_to_fq(size, N_BYTES_U64),  # src_addr_boundary
+        offset,  # src_addr
+        offset + size,  # src_addr_boundary
         FQ(0),  # dst_addr
         size,  # length
         instruction.curr.rw_counter + instruction.rw_counter_offset,
@@ -140,8 +166,7 @@ def create(instruction: Instruction):
         (CallContextFieldTag.IsStatic, FQ(False)),
         (CallContextFieldTag.IsRoot, FQ(False)),
         (CallContextFieldTag.IsCreate, FQ(False)),
-        # FIXME change to assign either 0 or EMPTY_CODE_HASH? or only EMPTY_CODE_HASH
-        (CallContextFieldTag.CodeHash, RLC(EMPTY_CODE_HASH)),
+        (CallContextFieldTag.CodeHash, code_hash),
     ]:
         instruction.constrain_equal(
             instruction.call_context_lookup(field_tag, call_id=callee_call_id),
@@ -153,7 +178,7 @@ def create(instruction: Instruction):
         call_id=Transition.to(callee_call_id),
         is_root=Transition.to(False),
         is_create=Transition.to(False),
-        code_hash=Transition.to(code_hash),
+        code_hash=Transition.to(instruction.next.code_hash),
         gas_left=Transition.to(callee_gas_left),
         # `transfer` includes two balance updates
         reversible_write_counter=Transition.to(2),
