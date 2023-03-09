@@ -767,7 +767,7 @@ class KeccakCircuit:
         self.rows = []
 
     def add(self, data: bytes, r: FQ) -> KeccakCircuit:
-        output = Word(bytes(reversed(keccak256(data))))
+        output = Word(keccak256(data))
         acc_input = RLC(bytes(reversed(data)), r, n_bytes=len(data))
         self.rows.append(
             KeccakTableRow(

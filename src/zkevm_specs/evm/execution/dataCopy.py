@@ -12,22 +12,22 @@ def dataCopy(instruction: Instruction):
     instruction.fixed_lookup(
         FixedTableTag.PrecompileInfo,
         FQ(instruction.curr.execution_state),
-        instruction.call_context_lookup(CallContextFieldTag.CalleeAddress, RW.Read),
+        instruction.call_context_lookup(CallContextFieldTag.CalleeAddress, RW.Read).value(),
         FQ(IdentityBaseGas),
     )
 
-    caller_id = instruction.call_context_lookup(CallContextFieldTag.CallerId, RW.Read)
-    call_data_offset = instruction.call_context_lookup(CallContextFieldTag.CallDataOffset, RW.Read)
-    call_data_length = instruction.call_context_lookup(CallContextFieldTag.CallDataLength, RW.Read)
+    caller_id = instruction.call_context_lookup(CallContextFieldTag.CallerId, RW.Read).value()
+    call_data_offset = instruction.call_context_lookup(CallContextFieldTag.CallDataOffset, RW.Read).value()
+    call_data_length = instruction.call_context_lookup(CallContextFieldTag.CallDataLength, RW.Read).value()
     return_data_offset = instruction.call_context_lookup(
         CallContextFieldTag.ReturnDataOffset, RW.Read
-    )
+    ).value()
     return_data_length = instruction.call_context_lookup(
         CallContextFieldTag.ReturnDataLength, RW.Read
-    )
+    ).value()
 
     # Copy current call data to return data
-    size = call_data_length.expr()
+    size = call_data_length
 
     gas_cost = FQ(IdentityBaseGas) + instruction.memory_copier_gas_cost(
         call_data_length, FQ(0), IdentityPerWordGas
@@ -41,7 +41,7 @@ def dataCopy(instruction: Instruction):
         call_data_offset,
         call_data_offset + size,
         return_data_offset,
-        return_data_offset + return_data_length.expr(),
+        return_data_offset + return_data_length,
         instruction.curr.rw_counter + instruction.rw_counter_offset,
     )
 

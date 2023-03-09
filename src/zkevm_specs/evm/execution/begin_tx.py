@@ -1,43 +1,50 @@
-from ...util import GAS_COST_TX, GAS_COST_CREATION_TX, EMPTY_CODE_HASH, FQ, RLC, cast_expr
+from ...util import GAS_COST_TX, GAS_COST_CREATION_TX, EMPTY_CODE_HASH, FQ, Word, WordOrValue, Expression, cast_expr
 from ..execution_state import ExecutionState
 from ..instruction import Instruction, Transition
 from ..precompile import Precompile
 from ..table import CallContextFieldTag, TxContextFieldTag, AccountFieldTag
 
 
+def word(v: Word) -> WordOrValue:
+    return WordOrValue(v)
+
+def value(v: Expression) -> WordOrValue:
+    return WordOrValue(v)
+
+
 def begin_tx(instruction: Instruction):
     call_id = instruction.curr.rw_counter
 
-    tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId, call_id=call_id)
+    tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId, call_id=call_id).value()
     reversion_info = instruction.reversion_info(call_id=call_id)
     instruction.constrain_equal(
-        instruction.call_context_lookup(CallContextFieldTag.IsSuccess, call_id=call_id),
+        instruction.call_context_lookup(CallContextFieldTag.IsSuccess, call_id=call_id).value(),
         reversion_info.is_persistent,
     )
 
     if instruction.is_first_step:
         instruction.constrain_equal(tx_id, FQ(1))
 
-    tx_caller_address = instruction.tx_context_lookup(tx_id, TxContextFieldTag.CallerAddress)
-    tx_callee_address = instruction.tx_context_lookup(tx_id, TxContextFieldTag.CalleeAddress)
-    tx_is_create = instruction.tx_context_lookup(tx_id, TxContextFieldTag.IsCreate)
-    tx_value = cast_expr(instruction.tx_context_lookup(tx_id, TxContextFieldTag.Value), RLC)
-    tx_call_data_length = instruction.tx_context_lookup(tx_id, TxContextFieldTag.CallDataLength)
+    tx_caller_address = instruction.tx_context_lookup(tx_id, TxContextFieldTag.CallerAddress).value()
+    tx_callee_address = instruction.tx_context_lookup(tx_id, TxContextFieldTag.CalleeAddress).value()
+    tx_is_create = instruction.tx_context_lookup(tx_id, TxContextFieldTag.IsCreate).value()
+    tx_value = instruction.tx_context_lookup(tx_id, TxContextFieldTag.Value)
+    tx_call_data_length = instruction.tx_context_lookup(tx_id, TxContextFieldTag.CallDataLength).value()
 
     # CallerAddress != 0 (not a padding tx)
     instruction.constrain_not_zero(tx_caller_address)
 
     # Verify nonce
-    is_tx_invalid = instruction.tx_context_lookup(tx_id, TxContextFieldTag.TxInvalid)
-    tx_nonce = instruction.tx_context_lookup(tx_id, TxContextFieldTag.Nonce)
+    is_tx_invalid = instruction.tx_context_lookup(tx_id, TxContextFieldTag.TxInvalid).value()
+    tx_nonce = instruction.tx_context_lookup(tx_id, TxContextFieldTag.Nonce).value()
     nonce, nonce_prev = instruction.account_write(tx_caller_address, AccountFieldTag.Nonce)
-    is_nonce_valid = instruction.is_zero(tx_nonce.expr() - nonce_prev.expr())
+    is_nonce_valid = instruction.is_zero(tx_nonce.expr() - nonce_prev.value().expr())
     # bump the account nonce if the tx is valid
-    instruction.constrain_equal(nonce, nonce_prev.expr() + 1 - is_tx_invalid.expr())
+    instruction.constrain_equal(nonce.value(), nonce_prev.value().expr() + 1 - is_tx_invalid.expr())
 
     # TODO: Implement EIP 1559 (currently it supports legacy transaction format)
     # Calculate gas fee
-    tx_gas = instruction.tx_context_lookup(tx_id, TxContextFieldTag.Gas)
+    tx_gas = instruction.tx_context_lookup(tx_id, TxContextFieldTag.Gas).value()
     tx_gas_price = instruction.tx_gas_price(tx_id)
     gas_fee, carry = instruction.mul_word_by_u64(tx_gas_price, tx_gas)
     instruction.constrain_zero(carry)
@@ -47,10 +54,10 @@ def begin_tx(instruction: Instruction):
     #       (G_txcreate if tx_to == 0 or 0) +
     #       G_transaction +
     #       sum([G_accesslistaddress + G_accessliststorage * len(TA[j]) for j in len(TA)])
-    tx_calldata_gas_cost = instruction.tx_context_lookup(tx_id, TxContextFieldTag.CallDataGasCost)
+    tx_calldata_gas_cost = instruction.tx_context_lookup(tx_id, TxContextFieldTag.CallDataGasCost).value()
     tx_cost_gas = GAS_COST_CREATION_TX if tx_is_create == 1 else GAS_COST_TX
     # TODO: Handle gas cost of tx level access list (EIP 2930)
-    tx_accesslist_gas = instruction.tx_context_lookup(tx_id, TxContextFieldTag.AccessListGasCost)
+    tx_accesslist_gas = instruction.tx_context_lookup(tx_id, TxContextFieldTag.AccessListGasCost).value()
     tx_intrinsic_gas = tx_calldata_gas_cost.expr() + tx_cost_gas + tx_accesslist_gas.expr()
 
     # check instrinsic gas
@@ -66,14 +73,14 @@ def begin_tx(instruction: Instruction):
     sender_balance_pair, _ = instruction.transfer_with_gas_fee(
         tx_caller_address,
         tx_callee_address,
-        RLC(0) if (is_tx_invalid.expr() == 1) else tx_value,
-        RLC(0) if (is_tx_invalid.expr() == 1) else gas_fee,
+        Word(0) if (is_tx_invalid.expr() == 1) else tx_value,
+        Word(0) if (is_tx_invalid.expr() == 1) else gas_fee,
         reversion_info,
     )
     sender_balance_prev = sender_balance_pair[1]
     balance_not_enough, _ = instruction.compare(
-        instruction.rlc_to_fq(sender_balance_prev, MAX_N_BYTES),
-        instruction.rlc_to_fq(tx_value, MAX_N_BYTES) + instruction.rlc_to_fq(gas_fee, MAX_N_BYTES),
+        instruction.word_to_fq(sender_balance_prev, MAX_N_BYTES),
+        instruction.word_to_fq(tx_value, MAX_N_BYTES) + instruction.word_to_fq(gas_fee, MAX_N_BYTES),
         MAX_N_BYTES,
     )
     invalid_tx = 1 - (1 - balance_not_enough) * (1 - gas_not_enough) * (is_nonce_valid)
@@ -92,8 +99,8 @@ def begin_tx(instruction: Instruction):
         raise NotImplementedError
     else:
         code_hash = instruction.account_read(tx_callee_address, AccountFieldTag.CodeHash)
-        is_empty_code_hash = instruction.is_equal(
-            code_hash, RLC(EMPTY_CODE_HASH, instruction.randomness)
+        is_empty_code_hash = instruction.is_equal_word(
+            code_hash, Word(EMPTY_CODE_HASH)
         )
 
         if is_empty_code_hash == FQ(1) or is_tx_invalid == FQ(1):
@@ -112,23 +119,23 @@ def begin_tx(instruction: Instruction):
             #   should never be used in root call, so unnecessary to be checked
             # - TxId is checked from previous step or constraint to 1 if is_first_step
             # - IsSuccess, IsPersistent will be verified in the end of tx
-            for tag, value in [
-                (CallContextFieldTag.Depth, FQ(1)),
-                (CallContextFieldTag.CallerAddress, tx_caller_address),
-                (CallContextFieldTag.CalleeAddress, tx_callee_address),
-                (CallContextFieldTag.CallDataOffset, FQ(0)),
-                (CallContextFieldTag.CallDataLength, tx_call_data_length),
-                (CallContextFieldTag.Value, tx_value),
-                (CallContextFieldTag.IsStatic, FQ(False)),
-                (CallContextFieldTag.LastCalleeId, FQ(0)),
-                (CallContextFieldTag.LastCalleeReturnDataOffset, FQ(0)),
-                (CallContextFieldTag.LastCalleeReturnDataLength, FQ(0)),
-                (CallContextFieldTag.IsRoot, FQ(True)),
-                (CallContextFieldTag.IsCreate, FQ(False)),
-                (CallContextFieldTag.CodeHash, code_hash),
+            for tag, value_word in [
+                (CallContextFieldTag.Depth, value(FQ(1))),
+                (CallContextFieldTag.CallerAddress, value(tx_caller_address)),
+                (CallContextFieldTag.CalleeAddress, value(tx_callee_address)),
+                (CallContextFieldTag.CallDataOffset, value(FQ(0))),
+                (CallContextFieldTag.CallDataLength, value(tx_call_data_length)),
+                (CallContextFieldTag.Value, word(tx_value)),
+                (CallContextFieldTag.IsStatic, value(FQ(False))),
+                (CallContextFieldTag.LastCalleeId, value(FQ(0))),
+                (CallContextFieldTag.LastCalleeReturnDataOffset, value(FQ(0))),
+                (CallContextFieldTag.LastCalleeReturnDataLength, value(FQ(0))),
+                (CallContextFieldTag.IsRoot, value(FQ(True))),
+                (CallContextFieldTag.IsCreate, value(FQ(False))),
+                (CallContextFieldTag.CodeHash, word(code_hash)),
             ]:
-                instruction.constrain_equal(
-                    instruction.call_context_lookup(tag, call_id=call_id), value
+                instruction.constrain_equal_word(
+                    instruction.call_context_lookup(tag, call_id=call_id), value_word
                 )
 
             instruction.step_state_transition_to_new_context(
@@ -136,7 +143,7 @@ def begin_tx(instruction: Instruction):
                 call_id=Transition.to(call_id),
                 is_root=Transition.to(True),
                 is_create=Transition.to(False),
-                code_hash=Transition.to(code_hash),
+                code_hash=Transition.to_word(code_hash),
                 gas_left=Transition.to(gas_left),
                 reversible_write_counter=Transition.to(2),
                 log_id=Transition.to(0),

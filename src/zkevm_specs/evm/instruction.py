@@ -12,6 +12,7 @@ from ..util import (
     ExpressionImpl,
     cast_expr,
     MAX_N_BYTES,
+    N_BYTES_ACCOUNT_ADDRESS,
     N_BYTES_MEMORY_ADDRESS,
     N_BYTES_MEMORY_SIZE,
     N_BYTES_GAS,
@@ -385,7 +386,7 @@ class Instruction:
         return self.is_zero(lhs.expr() - rhs.expr())
 
     def is_equal_word(self, lhs: Word, rhs: Word) -> FQ:
-        return self.is_zero_word(Word((lhs.lo.expr() - rhs.lo.expr(), lhs.hi.expr() - rhs.hi.expr())))
+        return self.is_zero_word(Word((lhs.lo.expr() - rhs.lo.expr(), lhs.hi.expr() - rhs.hi.expr()), check=False))
 
     def continuous_selectors(self, value: Expression, n: int) -> Sequence[FQ]:
         return [FQ(i < value.expr().n) for i in range(n)]
@@ -449,10 +450,11 @@ class Instruction:
         lt, _ = self.compare(lhs, rhs, n_bytes)
         return cast_expr(self.select(lt, rhs, lhs), FQ)
 
-    def rlc_to_fq(self, word: RLC, n_bytes: int) -> FQ:
-        if any(word.le_bytes[n_bytes:]):
+    def word_to_fq(self, word: Word, n_bytes: int) -> FQ:
+        word_le_bytes = word.to_le_bytes()
+        if sum(word_le_bytes[n_bytes:]) != FQ(0):
             raise ConstraintUnsatFailure(f"Word {word} has too many bytes to fit {n_bytes} bytes")
-        return self.bytes_to_fq(word.le_bytes[:n_bytes])
+        return self.bytes_to_fq(word_le_bytes[:n_bytes])
  
     def is_neg_word(self, word: Word) -> FQ:
         return self.compare(FQ(0x7fffffffffffffffffffffffffffffff), word.hi.expr(), 16)[0]
@@ -464,7 +466,9 @@ class Instruction:
         le_bytes = [b.n for b in word.to_le_bytes()]
         return FQ(len(bytearray(le_bytes).rstrip(b"\x00")))
 
-    def bytes_to_fq(self, value: bytes, constrained=False) -> FQ:
+    def bytes_to_fq(self, value: Union[bytes, Sequence[FQ]], constrained=False) -> FQ:
+        if not isinstance(value, bytes):
+            value = bytes([b.n for b in value])
         assert len(value) <= MAX_N_BYTES, "Too many bytes to composite an integer in field"
 
         fq = FQ(int.from_bytes(value, "little"))
@@ -483,19 +487,11 @@ class Instruction:
 
     def word_to_address(self, word: Word) -> Expression:
         """Verify that word is 160 bits and return it as a single value"""
-        addr_lo_bytes = word.lo.expr().n.to_bytes(16, "little")
-        addr_hi_bytes = word.hi.expr().n.to_bytes(16, "little")
-        addr_bytes = addr_lo_bytes + addr_hi_bytes
-        self.constrain_zero(FQ(sum(addr_bytes[20:])))
-        return self.bytes_to_fq(addr_bytes[:20])
+        return self.word_to_fq(word, N_BYTES_ACCOUNT_ADDRESS)
 
     def word_to_u64(self, word: Word) -> Expression:
         """Verify that word is 64 bits and return it as a single value"""
-        addr_lo_bytes = word.lo.expr().n.to_bytes(16, "little")
-        addr_hi_bytes = word.hi.expr().n.to_bytes(16, "little")
-        addr_bytes = addr_lo_bytes + addr_hi_bytes
-        self.constrain_zero(FQ(sum(addr_bytes[8:])))
-        return self.bytes_to_fq(addr_bytes[:8])
+        return self.word_to_fq(word, 8)
 
     def rlc_encode(self, value: Union[FQ, int, bytes], n_bytes: Optional[int] = None) -> RLC:
         if isinstance(value, FQ):
@@ -894,20 +890,20 @@ class Instruction:
             call_id = self.curr.call_id
         return cast_expr(self.rw_lookup(rw, RWTableTag.Memory, call_id, memory_address).value.value(), FQ)
 
-    def tx_refund_read(self, tx_id: Expression) -> Word:
-        return self.rw_lookup(RW.Read, RWTableTag.TxRefund, tx_id).value
+    def tx_refund_read(self, tx_id: Expression) -> FQ:
+        return cast_expr(self.rw_lookup(RW.Read, RWTableTag.TxRefund, tx_id).value.value(), FQ)
 
     def tx_refund_write(
         self,
         tx_id: Expression,
         reversion_info: Optional[ReversionInfo] = None,
-    ) -> Tuple[Word, Word]:
+    ) -> Tuple[FQ, FQ]:
         row = self.state_write(
             RWTableTag.TxRefund,
             tx_id,
             reversion_info=reversion_info,
         )
-        return row.value, row.value_prev
+        return cast_expr(row.value.value(), FQ), cast_expr(row.value_prev.value(), FQ)
 
     def account_read(self, account_address: Expression, account_field_tag: AccountFieldTag) -> WordOrValue:
         return self.rw_lookup(
@@ -1052,11 +1048,11 @@ class Instruction:
         receiver_balance_pair = self.add_balance(receiver_address, [value], reversion_info)
         return sender_balance_pair, receiver_balance_pair
 
-    def memory_offset_and_length(self, offset_word: RLC, length_word: RLC) -> Tuple[FQ, FQ]:
-        length = self.rlc_to_fq(length_word, N_BYTES_MEMORY_ADDRESS)
+    def memory_offset_and_length(self, offset_word: Word, length_word: Word) -> Tuple[FQ, FQ]:
+        length = self.word_to_fq(length_word, N_BYTES_MEMORY_ADDRESS)
         if self.is_zero(length) == 1:
             return FQ(0), FQ(0)
-        offset = self.rlc_to_fq(offset_word, N_BYTES_MEMORY_ADDRESS)
+        offset = self.word_to_fq(offset_word, N_BYTES_MEMORY_ADDRESS)
         return offset, length
 
     def memory_gas_cost(self, memory_size: Expression) -> FQ:
@@ -1125,9 +1121,9 @@ class Instruction:
 
     def copy_lookup(
         self,
-        src_id: Expression,
+        src_id: Union[Expression, Word],
         src_type: CopyDataTypeTag,
-        dst_id: Expression,
+        dst_id: Unioon[Expression, Word],
         dst_type: CopyDataTypeTag,
         src_addr: Expression,
         src_addr_end: Expression,
@@ -1159,9 +1155,9 @@ class Instruction:
         is_last: Expression,
         base_limbs: Tuple[Expression, ...],
         exponent: Word,
-    ) -> Tuple[FQ, FQ]:
+    ) -> Word:
         exp_table_row = self.tables.exp_lookup(identifier, is_last, base_limbs, exponent)
-        return exp_table_row.exponentiation_lo, exp_table_row.exponentiation_hi
+        return exp_table_row.exponentiation
 
     def constrain_error_state(self, rw_counter_delta: int):
         # Current call must fail.

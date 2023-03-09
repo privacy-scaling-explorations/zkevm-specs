@@ -7,7 +7,7 @@ from zkevm_specs.evm import (
     verify_steps,
     Tables,
     CallContextFieldTag,
-    RLC,
+    Word,
     Block,
     Transaction,
     Bytecode,
@@ -54,14 +54,14 @@ def test_calldatacopy(
     from_tx: bool,
     call_data_offset: int,
 ):
-    randomness = rand_fq()
+    randomness_keccak = rand_fq()
 
     bytecode = Bytecode().calldatacopy(memory_offset, data_offset, length)
-    bytecode_hash = RLC(bytecode.hash(), randomness)
+    bytecode_hash = Word(bytecode.hash())
 
-    memory_offset_rlc = RLC(memory_offset, randomness)
-    data_offset_rlc = RLC(data_offset, randomness)
-    length_rlc = RLC(length, randomness)
+    memory_offset_rlc = Word(memory_offset)
+    data_offset_rlc = Word(data_offset)
+    length_rlc = Word(length)
     call_data = rand_bytes(call_data_length)
 
     curr_mem_size = memory_word_size(0 if from_tx else call_data_offset + call_data_length)
@@ -124,7 +124,7 @@ def test_calldatacopy(
         ]
     )
     copy_circuit = CopyCircuit().copy(
-        randomness,
+        randomness_keccak,
         rw_dictionary,
         TX_ID if from_tx else CALLER_ID,
         CopyDataTypeTag.TxCalldata if from_tx else CopyDataTypeTag.Memory,
@@ -153,16 +153,15 @@ def test_calldatacopy(
     )
 
     tables = Tables(
-        block_table=set(Block().table_assignments(randomness)),
-        tx_table=set(tx.table_assignments(randomness)),
-        bytecode_table=set(bytecode.table_assignments(randomness)),
+        block_table=set(Block().table_assignments()),
+        tx_table=set(tx.table_assignments()),
+        bytecode_table=set(bytecode.table_assignments()),
         rw_table=set(rw_dictionary.rws),
         copy_circuit=copy_circuit.rows,
     )
 
-    verify_copy_table(copy_circuit, tables, randomness)
+    verify_copy_table(copy_circuit, tables, randomness_keccak)
     verify_steps(
-        randomness=randomness,
         tables=tables,
         steps=steps,
     )

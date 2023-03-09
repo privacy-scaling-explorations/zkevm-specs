@@ -11,27 +11,27 @@ def log(instruction: Instruction):
     instruction.range_lookup(opcode - Opcode.LOG0, 5)
 
     # pop `mstart`, `msize` from stack
-    mstart = instruction.rlc_to_fq(instruction.stack_pop(), 8)
-    msize = instruction.rlc_to_fq(instruction.stack_pop(), 8)
+    mstart = instruction.word_to_fq(instruction.stack_pop(), 8)
+    msize = instruction.word_to_fq(instruction.stack_pop(), 8)
 
     # read tx id
-    tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
+    tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId).value()
     # check not static call
     instruction.constrain_equal(
-        FQ(0), instruction.call_context_lookup(CallContextFieldTag.IsStatic)
+        FQ(0), instruction.call_context_lookup(CallContextFieldTag.IsStatic).value()
     )
 
     # check contract_address in CallContext & TxLog
     # use call context's  callee address as contract address
 
-    contract_address = instruction.call_context_lookup(CallContextFieldTag.CalleeAddress)
-    is_persistent = instruction.call_context_lookup(CallContextFieldTag.IsPersistent)
+    contract_address = instruction.call_context_lookup(CallContextFieldTag.CalleeAddress).value()
+    is_persistent = instruction.call_context_lookup(CallContextFieldTag.IsPersistent).value()
     if instruction.is_zero(is_persistent) == 0:
         instruction.constrain_equal(
             contract_address,
             instruction.tx_log_lookup(
                 tx_id=tx_id, log_id=instruction.curr.log_id + 1, field_tag=TxLogFieldTag.Address
-            ),
+            ).value(),
         )
 
     # constrain topics in stack & logs
@@ -42,14 +42,14 @@ def log(instruction: Instruction):
             topic_selectors[i] = 1
             topic = instruction.stack_pop()
             if instruction.is_zero(is_persistent) == 0:
-                instruction.constrain_equal(
-                    topic.expr(),
+                instruction.constrain_equal_word(
+                    topic,
                     instruction.tx_log_lookup(
                         tx_id=tx_id,
                         log_id=instruction.curr.log_id + 1,
                         field_tag=TxLogFieldTag.Topic,
                         index=i,
-                    ).expr(),
+                    ),
                 )
 
     # TOPIC_COUNT == Non zero topic selector count

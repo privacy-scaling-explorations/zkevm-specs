@@ -20,7 +20,7 @@ from zkevm_specs.util import (
     rand_fq,
     FQ,
     GAS_COST_COPY_SHA3,
-    RLC,
+    Word,
     U64,
 )
 from common import memory_expansion, memory_word_size
@@ -36,7 +36,7 @@ TESTING_DATA = (
 
 @pytest.mark.parametrize("offset, length", TESTING_DATA)
 def test_sha3(offset: U64, length: U64):
-    randomness = rand_fq()
+    randomness_keccak = rand_fq()
 
     # divide rand memory into chunks of 32 which we will push and mstore.
     memory_snapshot = rand_bytes(offset + length)
@@ -54,11 +54,11 @@ def test_sha3(offset: U64, length: U64):
     for i, chunk in enumerate(memory_chunks):
         bytecode.push(32 * i, n_bytes=32).push(chunk, n_bytes=32).mstore()
     bytecode.push(offset, n_bytes=32).push(length, n_bytes=32).sha3().stop()
-    bytecode_hash = RLC(bytecode.hash(), randomness)
+    bytecode_hash = Word(bytecode.hash())
 
     pc = len(memory_chunks) * 67 + 66
     memory_sha3 = keccak256(memory_snapshot[offset : offset + length])
-    memory_sha3_rlc = RLC(memory_sha3, randomness, n_bytes=32)
+    memory_sha3_word = Word(memory_sha3)
     next_memory_size, memory_expansion_cost = memory_expansion(offset + length, offset + length)
     gas = (
         Opcode.SHA3.constant_gas_cost()
@@ -66,21 +66,21 @@ def test_sha3(offset: U64, length: U64):
         + memory_word_size(length) * GAS_COST_COPY_SHA3
     )
 
-    offset_rlc = RLC(offset, randomness)
-    length_rlc = RLC(length, randomness)
+    offset_word = Word(offset)
+    length_word = Word(length)
 
     rw_dictionary = (
         RWDictionary(1)
-        .stack_write(CALL_ID, 1023, length_rlc)
-        .stack_write(CALL_ID, 1022, offset_rlc)
-        .stack_read(CALL_ID, 1022, offset_rlc)
-        .stack_read(CALL_ID, 1023, length_rlc)
-        .stack_write(CALL_ID, 1023, memory_sha3_rlc)
+        .stack_write(CALL_ID, 1023, length_word)
+        .stack_write(CALL_ID, 1022, offset_word)
+        .stack_read(CALL_ID, 1022, offset_word)
+        .stack_read(CALL_ID, 1023, length_word)
+        .stack_write(CALL_ID, 1023, memory_sha3_word)
     )
     rw_counter_interim = rw_dictionary.rw_counter
 
     copy_circuit = CopyCircuit().copy(
-        randomness,
+        randomness_keccak,
         rw_dictionary,
         CALL_ID,
         CopyDataTypeTag.Memory,
@@ -94,21 +94,20 @@ def test_sha3(offset: U64, length: U64):
     )
     assert rw_dictionary.rw_counter - rw_counter_interim == length
 
-    keccak_circuit = KeccakCircuit().add(memory_snapshot[offset : offset + length], randomness)
+    keccak_circuit = KeccakCircuit().add(memory_snapshot[offset : offset + length], randomness_keccak)
 
     tables = Tables(
-        block_table=set(Block().table_assignments(randomness)),
+        block_table=set(Block().table_assignments()),
         tx_table=set(),
-        bytecode_table=set(bytecode.table_assignments(randomness)),
+        bytecode_table=set(bytecode.table_assignments()),
         rw_table=set(rw_dictionary.rws),
         copy_circuit=copy_circuit.rows,
         keccak_table=keccak_circuit.rows,
     )
 
-    verify_copy_table(copy_circuit, tables, randomness)
+    verify_copy_table(copy_circuit, tables, randomness_keccak)
 
     verify_steps(
-        randomness=randomness,
         tables=tables,
         steps=[
             StepState(

@@ -11,7 +11,7 @@ from zkevm_specs.evm import (
     Opcode,
     U64,
     U160,
-    RLC,
+    Word,
     CopyCircuit,
     CopyDataTypeTag,
     AccountFieldTag,
@@ -68,9 +68,9 @@ def test_extcodecopy(
     dst_addr: U64,
     length: U64,
 ):
-    randomness = rand_fq()
+    randomness_keccak = rand_fq()
     code = code if exists else bytes()
-    code_hash = int.from_bytes(keccak256(code), "big")
+    code_hash = Word(int.from_bytes(keccak256(code), "big"))
 
     next_memory_word_size = memory_word_size(dst_addr + length)
     _, memory_expansion_cost = memory_expansion(0, dst_addr + length if length else 0)
@@ -90,10 +90,10 @@ def test_extcodecopy(
 
     rw_dictionary = (
         RWDictionary(1)
-        .stack_read(call_id, 1020, RLC(address, randomness))
-        .stack_read(call_id, 1021, RLC(dst_addr, randomness))
-        .stack_read(call_id, 1022, RLC(src_addr, randomness))
-        .stack_read(call_id, 1023, RLC(length, randomness))
+        .stack_read(call_id, 1020, Word(address))
+        .stack_read(call_id, 1021, Word(dst_addr))
+        .stack_read(call_id, 1022, Word(src_addr))
+        .stack_read(call_id, 1023, Word(length))
         .call_context_read(call_id, CallContextFieldTag.TxId, tx_id)
         .call_context_read(
             call_id, CallContextFieldTag.RwCounterEndOfReversion, rw_counter_end_of_reversion
@@ -108,11 +108,11 @@ def test_extcodecopy(
         )
     )
     rw_dictionary.account_read(
-        address, AccountFieldTag.CodeHash, RLC(code_hash if exists else 0, randomness)
+        address, AccountFieldTag.CodeHash, code_hash if exists else Word(0)
     )
 
     bytecode = Bytecode().extcodecopy()
-    bytecode_hash = RLC(bytecode.hash(), randomness)
+    bytecode_hash = Word(bytecode.hash())
 
     steps = [
         StepState(
@@ -136,9 +136,9 @@ def test_extcodecopy(
             for i in range(len(Bytecode(code).code))
         ]
     )
-    result = RLC(code_hash if exists else 0, randomness).rlc_value
+    result = code_hash if exists else Word(0)
     copy_circuit = CopyCircuit().copy(
-        randomness,
+        randomness_keccak,
         rw_dictionary,
         result,
         CopyDataTypeTag.Bytecode,
@@ -173,18 +173,17 @@ def test_extcodecopy(
         tx_table=set(),
         bytecode_table=set(
             chain(
-                bytecode.table_assignments(randomness),
-                Bytecode(code).table_assignments(randomness),
+                bytecode.table_assignments(),
+                Bytecode(code).table_assignments(),
             )
         ),
         rw_table=rw_dictionary.rws,
         copy_circuit=copy_circuit.rows,
     )
 
-    verify_copy_table(copy_circuit, tables, randomness)
+    verify_copy_table(copy_circuit, tables, randomness_keccak)
 
     verify_steps(
-        randomness=randomness,
         tables=tables,
         steps=steps,
     )

@@ -17,7 +17,7 @@ from zkevm_specs.copy_circuit import verify_copy_table
 from zkevm_specs.util import (
     rand_fq,
     IdentityPerWordGas,
-    RLC,
+    Word,
     FQ,
 )
 
@@ -42,7 +42,7 @@ def test_dataCopy(
     return_data_offset: int,
     return_data_length: int,
 ):
-    randomness = rand_fq()
+    randomness_keccak = rand_fq()
 
     size = call_data_length
     call_id = CALLER_ID
@@ -64,7 +64,7 @@ def test_dataCopy(
         )
         .stop()
     )
-    code_hash = RLC(code.hash(), randomness)
+    code_hash = Word(code.hash())
 
     rw_dictionary = (
         # fmt: off
@@ -104,7 +104,7 @@ def test_dataCopy(
     copy_circuit = (
         CopyCircuit()
         .copy(
-            randomness,
+            randomness_keccak,
             rw_dictionary,
             call_id,
             CopyDataTypeTag.Memory,
@@ -117,7 +117,7 @@ def test_dataCopy(
             src_data,
         )
         .copy(
-            randomness,
+            randomness_keccak,
             rw_dictionary,
             call_id,
             CopyDataTypeTag.Memory,
@@ -169,15 +169,14 @@ def test_dataCopy(
     tables = Tables(
         block_table=set(),
         tx_table=set(),
-        bytecode_table=set(code.table_assignments(randomness)),
+        bytecode_table=set(code.table_assignments()),
         rw_table=set(rw_dictionary.rws),
         copy_circuit=copy_circuit.rows,
     )
 
-    verify_copy_table(copy_circuit, tables, randomness)
+    verify_copy_table(copy_circuit, tables, randomness_keccak)
 
     verify_steps(
-        randomness,
         tables,
         steps,
     )

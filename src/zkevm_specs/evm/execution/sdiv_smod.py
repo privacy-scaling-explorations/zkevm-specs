@@ -1,6 +1,6 @@
 from ..instruction import Instruction, Transition
 from ..opcode import Opcode
-from ...util import FQ, RLC, get_int_abs, get_int_neg, int_is_neg
+from ...util import FQ, Word, get_int_abs, get_int_neg, int_is_neg
 
 
 def sdiv_smod(instruction: Instruction):
@@ -34,10 +34,10 @@ def sdiv_smod(instruction: Instruction):
 
 def check_witness(
     instruction: Instruction,
-    quotient: RLC,
-    divisor: RLC,
-    remainder: RLC,
-    dividend: RLC,
+    quotient: Word,
+    divisor: Word,
+    remainder: Word,
+    dividend: Word,
 ):
     quotient_abs, quotient_is_neg = instruction.abs_word(quotient)
     divisor_abs, divisor_is_neg = instruction.abs_word(divisor)
@@ -66,7 +66,7 @@ def check_witness(
     # the quotient result should be `1 << 255`. But a `signed` word could only express
     # `signed` value from `-(1 << 255)` to `(1 << 255) - 1`. So below constraint
     # `sign(dividend) == sign(divisor) ^ sign(quotient)` cannot be applied for this case.
-    dividend_is_signed_overflow = instruction.word_is_neg(dividend_abs)
+    dividend_is_signed_overflow = instruction.is_neg_word(dividend_abs)
 
     # Constrain sign(dividend) == sign(divisor) ^ sign(quotient) when both
     # quotient and divisor are non-zero and dividend is not signed overflow.
@@ -77,36 +77,36 @@ def check_witness(
     )
 
 
-def gen_witness(opcode: FQ, pop1: RLC, pop2: RLC, push: RLC):
+def gen_witness(opcode: FQ, pop1: Word, pop2: Word, push: Word):
     # The opcode value for SDIV and SMOD are 5 and 7. When the opcode is SDIV,
     # `Opcode.SMOD - opcode` is 2. To make `is_sdiv` be either 0 or 1, we need
     # to divide the product by 2, which is equivalent to multiply it by
     # inversion of 2.
     is_sdiv = (Opcode.SMOD - opcode) * FQ(2).inv()
 
-    pop1_abs = get_int_abs(pop1.int_value)
-    pop2_abs = get_int_abs(pop2.int_value)
-    push_abs = get_int_abs(push.int_value)
-    pop1_is_neg = int_is_neg(pop1.int_value)
-    pop2_is_neg = int_is_neg(pop2.int_value)
+    pop1_abs = get_int_abs(pop1.word())
+    pop2_abs = get_int_abs(pop2.word())
+    push_abs = get_int_abs(push.word())
+    pop1_is_neg = int_is_neg(pop1.word())
+    pop2_is_neg = int_is_neg(pop2.word())
 
     if is_sdiv == 1:
         quotient = push
         divisor = pop2
         if pop1_is_neg == 0:
-            remainder = RLC(pop1_abs - push_abs * pop2_abs)
+            remainder = Word(pop1_abs - push_abs * pop2_abs)
         else:
-            remainder = RLC(get_int_neg(pop1_abs - push_abs * pop2_abs))
+            remainder = Word(get_int_neg(pop1_abs - push_abs * pop2_abs))
         dividend = pop1
     else:
-        if pop2.int_value == 0:
-            quotient = RLC(0)
+        if pop2.word() == 0:
+            quotient = Word(0)
         elif pop1_is_neg == pop2_is_neg:
-            quotient = RLC(pop1_abs // pop2_abs)
+            quotient = Word(pop1_abs // pop2_abs)
         else:
-            quotient = RLC(get_int_neg(pop1_abs // pop2_abs))
+            quotient = Word(get_int_neg(pop1_abs // pop2_abs))
         divisor = pop2
-        remainder = pop1 if pop2.int_value == 0 else push
+        remainder = pop1 if pop2.word() == 0 else push
         dividend = pop1
 
     return (

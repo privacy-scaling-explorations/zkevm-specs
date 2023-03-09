@@ -2,7 +2,7 @@ from ...util import (
     FQ,
     MAX_U64,
     N_BYTES_U64,
-    RLC,
+    Word,
     int_is_neg,
     word_to_lo_hi,
 )
@@ -54,9 +54,9 @@ def sar(instruction: Instruction):
 
 def check_witness(
     instruction: Instruction,
-    shift: RLC,
-    a: RLC,
-    b: RLC,
+    shift: Word,
+    a: Word,
+    b: Word,
     a64s: Sequence[FQ],
     b64s: Sequence[FQ],
     a64s_lo: Sequence[FQ],
@@ -67,8 +67,10 @@ def check_witness(
     p_hi: FQ,
     p_top: FQ,
 ):
-    is_neg, _ = instruction.compare(FQ(127), FQ(a.le_bytes[31]), 1)
-    shf_lo, shf_hi = instruction.word_to_lo_hi(shift)
+    a_le_bytes = a.to_le_bytes()
+    b_le_bytes = b.to_le_bytes()
+    is_neg, _ = instruction.compare(FQ(127), FQ(a_le_bytes[31]), 1)
+    shf_lo, shf_hi = shift.to_lo_hi()
     shf_hi_is_zero = instruction.is_zero(shf_hi)
 
     for idx in range(4):
@@ -77,13 +79,13 @@ def check_witness(
         # a64s constraint
         instruction.constrain_equal(
             a64s[idx],
-            instruction.bytes_to_fq(a.le_bytes[offset : offset + N_BYTES_U64]),
+            instruction.bytes_to_fq(a_le_bytes[offset : offset + N_BYTES_U64]),
         )
 
         # b64s constraint
         instruction.constrain_equal(
             b64s[idx],
-            instruction.bytes_to_fq(b.le_bytes[offset : offset + N_BYTES_U64]),
+            instruction.bytes_to_fq(b_le_bytes[offset : offset + N_BYTES_U64]),
         )
 
         # Constrain `a64s[idx] == a64s_lo[idx] + a64s_hi[idx] * p_lo`.
@@ -136,7 +138,7 @@ def check_witness(
     # `is_neg` constraints
     instruction.constrain_bool(is_neg)
     instruction.sign_byte_lookup(
-        instruction.bytes_to_fq(a.le_bytes[31:]),
+        instruction.bytes_to_fq(a_le_bytes[31:]),
         instruction.select(is_neg, FQ(255), FQ(0)),
     )
 
@@ -148,9 +150,9 @@ def check_witness(
     instruction.pow2_lookup(64 - shf_mod64, p_hi, FQ(0))
 
 
-def gen_witness(instruction: Instruction, shift: RLC, a: RLC):
-    is_neg = int_is_neg(a.int_value)
-    shf_lo, shf_hi = word_to_lo_hi(shift)
+def gen_witness(instruction: Instruction, shift: Word, a: Word):
+    is_neg = int_is_neg(a.word())
+    shf_lo, shf_hi = shift.to_lo_hi()
     shf_div64 = shf_lo.n // 64
     shf_mod64 = shf_lo.n % 64
     p_lo = 1 << shf_mod64
@@ -162,7 +164,7 @@ def gen_witness(instruction: Instruction, shift: RLC, a: RLC):
     # Each of the four `a64s` limbs is split into two parts `a64s_lo` and
     # `a64s_hi` at position `shf_mod64`. `a64s_lo` is the lower `shf_mod64`
     # bits, and `a64s_hi` is the higher `64 - shf_mod64` bits,
-    a64s = instruction.word_to_64s(a)
+    a64s = a.to_64s()
     a64s_lo = [FQ(0)] * 4
     a64s_hi = [FQ(0)] * 4
     for idx in range(4):

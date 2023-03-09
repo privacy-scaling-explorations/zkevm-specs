@@ -9,7 +9,7 @@ from zkevm_specs.evm import (
     verify_steps,
 )
 from zkevm_specs.util import (
-    RLC,
+    Word,
     get_int_abs,
     get_int_neg,
     int_is_neg,
@@ -73,18 +73,17 @@ TESTING_DATA = [
 def test_sar(shift: int, a: int):
     b = get_int_neg(-(-get_int_abs(a) >> shift)) if int_is_neg(a) else a >> shift
 
-    randomness = rand_fq()
-    shift = RLC(shift, randomness)
-    a = RLC(a, randomness)
-    b = RLC(b, randomness)
+    shift = Word(shift)
+    a = Word(a)
+    b = Word(b)
 
     bytecode = Bytecode().sar(shift, a)
-    bytecode_hash = RLC(bytecode.hash(), randomness)
+    bytecode_hash = Word(bytecode.hash())
 
     tables = Tables(
-        block_table=set(Block().table_assignments(randomness)),
+        block_table=set(Block().table_assignments()),
         tx_table=set(),
-        bytecode_table=set(bytecode.table_assignments(randomness)),
+        bytecode_table=set(bytecode.table_assignments()),
         rw_table=set(
             RWDictionary(9)
             .stack_read(1, 1022, shift)
@@ -95,7 +94,6 @@ def test_sar(shift: int, a: int):
     )
 
     verify_steps(
-        randomness=randomness,
         tables=tables,
         steps=[
             StepState(

@@ -69,7 +69,7 @@ def end_block(instruction: Instruction):
                 tx_row
                 for tx_row in instruction.tables.tx_table
                 if tx_row.field_tag == TxContextFieldTag.CallerAddress
-                and tx_row.value.expr() != FQ(0)
+                and tx_row.value.value().expr() != FQ(0)
             ]
         )
     )
@@ -80,7 +80,7 @@ def end_block(instruction: Instruction):
             [
                 tx_row
                 for tx_row in instruction.tables.tx_table
-                if tx_row.field_tag == TxContextFieldTag.TxInvalid and tx_row.value.expr() == FQ(1)
+                if tx_row.field_tag == TxContextFieldTag.TxInvalid and tx_row.value.value().expr() == FQ(1)
             ]
         )
     )
@@ -97,10 +97,10 @@ def end_block(instruction: Instruction):
         else:
             # 1b. total_txs matches the tx_id that corresponds to the final step.
             instruction.constrain_equal(
-                instruction.call_context_lookup(CallContextFieldTag.TxId), total_txs
+                instruction.call_context_lookup(CallContextFieldTag.TxId).value(), total_txs
             )
             # 4. Verify that CumulativeGasUsed does not exceed the block gas limit.
-            gas_limit = instruction.block_context_lookup(BlockContextFieldTag.GasLimit)
+            gas_limit = instruction.block_context_lookup(BlockContextFieldTag.GasLimit).value()
             cumulative_gas = instruction.tx_receipt_read(
                 total_txs,
                 TxReceiptFieldTag.CumulativeGasUsed,
@@ -116,7 +116,7 @@ def end_block(instruction: Instruction):
             # showing that the Tx following the last processed one has
             # CallerAddress = 0x0 (which means padding tx).
             instruction.constrain_equal(
-                instruction.tx_context_lookup(FQ(total_txs + 1), TxContextFieldTag.CallerAddress),
+                instruction.tx_context_lookup(FQ(total_txs + 1), TxContextFieldTag.CallerAddress).value(),
                 FQ(0),
             )
             # Since every tx lookup done in the EVM circuit must succeed and

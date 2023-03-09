@@ -107,15 +107,15 @@ def verify_copy_table(copy_circuit: CopyCircuit, tables: Tables, r: FQ):
         if row.is_memory == 1 and row.is_pad == 0:
             val = tables.rw_lookup(
                 row.rw_counter, 1 - row.q_step, FQ(RWTableTag.Memory), row.id.value(), row.addr
-            ).value
-            cs.constrain_equal(cast_expr(val, FQ), row.value)
+            ).value.value()
+            cs.constrain_equal(val, row.value)
         if row.is_bytecode == 1 and row.is_pad == 0:
             val = tables.bytecode_lookup(
                 row.id, FQ(BytecodeFieldTag.Byte), row.addr, row.is_code
             ).value
             cs.constrain_equal(cast_expr(val, FQ), row.value)
         if row.is_tx_calldata == 1 and row.is_pad == 0:
-            val = tables.tx_lookup(row.id.value(), FQ(TxContextFieldTag.CallData), row.addr).value
+            val = tables.tx_lookup(row.id.value(), FQ(TxContextFieldTag.CallData), row.addr).value.value()
             cs.constrain_equal(val, row.value)
         if row.is_tx_log == 1:
             val = tables.rw_lookup(
@@ -124,5 +124,5 @@ def verify_copy_table(copy_circuit: CopyCircuit, tables: Tables, r: FQ):
                 FQ(RWTableTag.TxLog),
                 row.id.value(),  # tx_id
                 row.addr,
-            ).value
-            cs.constrain_equal(cast_expr(val, FQ), row.value)
+            ).value.value()
+            cs.constrain_equal(val, row.value)

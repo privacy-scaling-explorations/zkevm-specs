@@ -13,7 +13,7 @@ from zkevm_specs.evm import (
     Block,
     Transaction,
 )
-from zkevm_specs.util import rand_fq, FQ
+from zkevm_specs.util import rand_fq, FQ, Word, WordOrValue
 
 TESTING_DATA = (
     # (is_last_step, empty_block, max_txs, cumulative_gas, success)
@@ -35,25 +35,24 @@ MAX_RWS = 32
 def test_end_block(
     is_last_step: bool, empty_block: bool, max_txs: int, cumulative_gas: int, success: bool
 ):
-    randomness = rand_fq()
-
     tx = Transaction()
 
     rw_rows = []
     rw_counter = 1
     if not empty_block:
         # dummy read/write for counting
-        rw_rows += [RWTableRow(FQ(i + 1), *9 * [FQ(0)]) for i in range(21)]
+        rw_rows += [RWTableRow(FQ(i + 1), *2 * [FQ(0)]) for i in range(21)]
         rw_counter += 21
         if is_last_step:
             rw_rows.append(
                 RWTableRow(
                     FQ(22),
                     FQ(RW.Read),
-                    FQ(RWTableTag.CallContext),
-                    FQ(1),
-                    FQ(CallContextFieldTag.TxId),
-                    value=FQ(tx.id),
+                    key0=FQ(RWTableTag.CallContext),
+                    id=FQ(1),
+                    address=FQ(3),
+                    field_tag=FQ(CallContextFieldTag.TxId),
+                    value=WordOrValue(FQ(tx.id)),
                 )
             )
             # append CumlativeGasUsed
@@ -65,8 +64,8 @@ def test_end_block(
                     id=FQ(tx.id),
                     address=FQ(0),
                     field_tag=FQ(TxReceiptFieldTag.CumulativeGasUsed),
-                    storage_key=FQ(0),
-                    value=FQ(cumulative_gas),
+                    storage_key=Word(0),
+                    value=WordOrValue(FQ(cumulative_gas)),
                 )
             )
 
@@ -77,21 +76,20 @@ def test_end_block(
     num_txs = 0 if empty_block else 1
     tx_padding = []
     for i in range(num_txs, max_txs):
-        tx_padding += Transaction.padding(id=i + 1).table_fixed(randomness)
+        tx_padding += Transaction.padding(id=i + 1).table_fixed()
 
     tx_table = tx_padding
     if not empty_block:
-        tx_table = list(tx.table_assignments(randomness))
+        tx_table = list(tx.table_assignments())
 
     tables = Tables(
-        block_table=set(Block().table_assignments(randomness)),
+        block_table=set(Block().table_assignments()),
         tx_table=set(tx_table),
         bytecode_table=set(),
         rw_table=set(rw_padding + rw_rows),
     )
 
     verify_steps(
-        randomness=randomness,
         tables=tables,
         steps=[
             StepState(

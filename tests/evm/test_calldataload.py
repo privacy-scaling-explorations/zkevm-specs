@@ -10,7 +10,7 @@ from zkevm_specs.evm import (
     verify_steps,
     RWDictionary,
 )
-from zkevm_specs.util import rand_fq, RLC, U64
+from zkevm_specs.util import rand_fq, Word, U64
 
 TESTING_DATA = (
     (
@@ -68,17 +68,15 @@ def test_calldataload(
     is_root: bool,
     call_data_offset: U64,
 ):
-    randomness = rand_fq()
-
     tx = Transaction(id=1)
     if is_root:
         tx.call_data = call_data
 
-    offset_rlc = RLC(offset, randomness)
-    expected_stack_top = RLC(expected_stack_top, randomness)
+    offset_word = Word(offset)
+    expected_stack_top_word = Word(int.from_bytes(expected_stack_top, "little"))
 
-    bytecode = Bytecode().push(offset_rlc, n_bytes=32).calldataload().stop()
-    bytecode_hash = RLC(bytecode.hash(), randomness)
+    bytecode = Bytecode().push(offset_word, n_bytes=32).calldataload().stop()
+    bytecode_hash = Word(bytecode.hash())
 
     if is_root:
         call_id = 1
@@ -87,12 +85,12 @@ def test_calldataload(
         parent_call_id = 1
 
     rw_dictionary = (
-        RWDictionary(1).stack_write(call_id, 1023, offset_rlc).stack_read(call_id, 1023, offset_rlc)
+        RWDictionary(1).stack_write(call_id, 1023, offset_word).stack_read(call_id, 1023, offset_word)
     )
     if is_root:
         rw_dictionary.call_context_read(call_id, CallContextFieldTag.TxId, 1).call_context_read(
             call_id, CallContextFieldTag.CallDataLength, call_data_length
-        ).stack_write(call_id, 1023, expected_stack_top)
+        ).stack_write(call_id, 1023, expected_stack_top_word)
     else:
         # add to RW table call context, caller'd ID (read)
         rw_dictionary.call_context_read(call_id, CallContextFieldTag.CallerId, parent_call_id)
@@ -110,17 +108,16 @@ def test_calldataload(
             if idx < len(call_data):
                 rw_dictionary.memory_read(parent_call_id, idx, call_data[idx])
         # add to RW table stack (write)
-        rw_dictionary.stack_write(call_id, 1023, expected_stack_top)
+        rw_dictionary.stack_write(call_id, 1023, expected_stack_top_word)
 
     tables = Tables(
         block_table=set(),
-        tx_table=set(tx.table_assignments(randomness)),
-        bytecode_table=set(bytecode.table_assignments(randomness)),
+        tx_table=set(tx.table_assignments()),
+        bytecode_table=set(bytecode.table_assignments()),
         rw_table=rw_dictionary.rws,
     )
 
     verify_steps(
-        randomness=randomness,
         tables=tables,
         steps=[
             StepState(

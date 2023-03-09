@@ -83,15 +83,15 @@ class Word:
     # highest 128 bits
     hi: Expression
 
-    def __init__(self, value: Union[Tuple[Expression, Expression], int, U256, bytes]) -> None:
+    def __init__(self, value: Union[Tuple[Expression, Expression], int, U256, bytes], check=True) -> None:
         if isinstance(value, tuple):
             self.lo, self.hi = value
             # sanity check
-            assert self.lo.expr().n < 256**16 and self.hi.expr().n < 256**16
+            assert not check or (self.lo.expr().n < 256**16 and self.hi.expr().n < 256**16)
             return
         elif isinstance(value, int):
             # sanity check
-            assert value < 256**32
+            assert not check or (value < 256**32)
             value = value.to_bytes(32, "little")
         elif len(value) != 32:
             raise ValueError(f"Word expects to receive 32 bytes, but got {len(value)} bytes")
