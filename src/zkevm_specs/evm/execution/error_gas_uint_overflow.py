@@ -81,7 +81,7 @@ def error_gas_uint_overflow(instruction: Instruction):
         )
         gas += z * zero_gas
 
-        # eip 3860
+        # TODO: eip 3860
         # if is_create:
         #     lenWords = dataLen // 32
         #     is_eip3860_overflow, _ = instruction.compare(
