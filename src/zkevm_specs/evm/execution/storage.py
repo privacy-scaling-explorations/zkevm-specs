@@ -76,12 +76,7 @@ def sstore(instruction: Instruction):
         reversion_info,
     )
 
-    # FIXME: This assumes that gas_refund can't exceed 128 bits!
-    # We should decide if we encode the TxRefund as a Word, or as a smaller
-    # type.  Can we found a worst-case upper bound that guarantees that we can
-    # always use less than 256 bits for it?
-    gas_refund_word, gas_refund_prev_word = instruction.tx_refund_write(tx_id, reversion_info)
-    gas_refund, gas_refund_prev = gas_refund_word.lo.expr(), gas_refund_prev_word.lo.expr()
+    gas_refund, gas_refund_prev = instruction.tx_refund_write(tx_id, reversion_info)
 
     # original_value, value_prev, value all are different; original_value!=0
     nz_allne_case_refund = instruction.select(

@@ -11,10 +11,9 @@ def bitwise(instruction: Instruction):
     b = instruction.stack_pop()
     c = instruction.stack_push()
 
-    # decode RLC to bytes for a and b
-    a8s = a.le_bytes
-    b8s = b.le_bytes
-    c8s = c.le_bytes
+    a8s = a.to_le_bytes()
+    b8s = b.to_le_bytes()
+    c8s = c.to_le_bytes()
 
     tag = FixedTableTag.BitwiseAnd + (opcode.n - Opcode.AND)
 

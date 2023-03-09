@@ -1,5 +1,5 @@
 from ..instruction import Instruction, Transition
-from ...util import FQ
+from ...util import FQ, Word
 
 
 def byte(instruction: Instruction):
@@ -9,8 +9,8 @@ def byte(instruction: Instruction):
     b = instruction.stack_pop()
     c = instruction.stack_push()
 
-    index = a.le_bytes
-    value = b.le_bytes
+    index = a.to_le_bytes()
+    value = b.to_le_bytes()
 
     # Any index >= 32 always returns all zeros
     is_msb_sum_zero = instruction.is_zero(FQ(sum(index[1:])))
@@ -26,9 +26,9 @@ def byte(instruction: Instruction):
     for cell, is_selected in zip(value, is_byte_selected):
         selected_byte += is_selected * is_msb_sum_zero * FQ(cell)
 
-    instruction.constrain_equal(
+    instruction.constrain_equal_word(
+        Word((selected_byte, FQ(0))),
         c,
-        selected_byte,
     )
 
     instruction.step_state_transition_in_same_context(

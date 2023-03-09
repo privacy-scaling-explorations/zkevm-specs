@@ -1,6 +1,6 @@
 import pytest
 from random import randrange
-from zkevm_specs.util import rand_fq, RLC
+from zkevm_specs.util import rand_fq, Word
 from zkevm_specs.evm import (
     ExecutionState,
     StepState,
@@ -20,19 +20,17 @@ def gen_test_data():
 
 @pytest.mark.parametrize("a, b, c", gen_test_data())
 def test_byte(a: int, b: int, c: int):
-    randomness = rand_fq()
-
-    a = RLC(a, randomness)
-    b = RLC(b, randomness)
-    c = RLC(c, randomness)
+    a = Word(a)
+    b = Word(b)
+    c = Word(c)
 
     bytecode = Bytecode().byte(a, b).stop()
-    bytecode_hash = RLC(bytecode.hash(), randomness)
+    bytecode_hash = Word(bytecode.hash())
 
     tables = Tables(
-        block_table=set(Block().table_assignments(randomness)),
+        block_table=set(Block().table_assignments()),
         tx_table=set(),
-        bytecode_table=set(bytecode.table_assignments(randomness)),
+        bytecode_table=set(bytecode.table_assignments()),
         rw_table=set(
             RWDictionary(9)
             .stack_read(1, 1022, a)
@@ -43,7 +41,6 @@ def test_byte(a: int, b: int, c: int):
     )
 
     verify_steps(
-        randomness=randomness,
         tables=tables,
         steps=[
             StepState(

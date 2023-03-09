@@ -7,7 +7,7 @@ from ...util import FQ
 def memory(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
 
-    address = instruction.stack_pop()
+    address = instruction.word_to_address(instruction.stack_pop())
 
     is_mload = instruction.is_equal(opcode, Opcode.MLOAD)
     is_mstore8 = instruction.is_equal(opcode, Opcode.MSTORE8)
@@ -15,6 +15,7 @@ def memory(instruction: Instruction):
     is_not_mstore8 = FQ(1) - is_mstore8
 
     value = instruction.stack_push() if is_mload == FQ(1) else instruction.stack_pop()
+    value_le_bytes = value.to_le_bytes()
 
     memory_offset = instruction.curr.memory_word_size
     next_memory_size, memory_expansion_gas_cost = instruction.memory_expansion(
@@ -23,16 +24,16 @@ def memory(instruction: Instruction):
 
     if is_mstore8 == FQ(1):
         instruction.is_equal(
-            instruction.memory_lookup(RW.Write, address.expr()), FQ(value.le_bytes[0])
+            instruction.memory_lookup(RW.Write, address), FQ(value_le_bytes[0])
         )
 
     if is_not_mstore8 == FQ(1):
         for idx in range(32):
             instruction.is_equal(
                 instruction.memory_lookup(
-                    RW.Write if is_store == FQ(1) else RW.Read, address.expr() + idx
+                    RW.Write if is_store == FQ(1) else RW.Read, address + idx
                 ),
-                FQ(value.le_bytes[31 - idx]),
+                FQ(value_le_bytes[31 - idx]),
             )
 
     instruction.step_state_transition_in_same_context(

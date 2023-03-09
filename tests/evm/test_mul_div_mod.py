@@ -10,7 +10,7 @@ from zkevm_specs.evm import (
     Block,
     Bytecode,
 )
-from zkevm_specs.util import rand_fq, rand_word, RLC
+from zkevm_specs.util import rand_fq, rand_word, Word
 from common import generate_nasty_tests
 
 
@@ -44,8 +44,6 @@ generate_nasty_tests(TESTING_DATA, (Opcode.MUL, Opcode.DIV, Opcode.MOD))
 
 @pytest.mark.parametrize("opcode, a, b", TESTING_DATA)
 def test_mul_div_mod(opcode: Opcode, a: int, b: int):
-    randomness = rand_fq()
-
     if opcode == Opcode.MUL:
         c = a * b % 2**256
     elif opcode == Opcode.DIV:
@@ -53,9 +51,9 @@ def test_mul_div_mod(opcode: Opcode, a: int, b: int):
     else:  # Opcode.MOD
         c = 0 if b == 0 else a % b
 
-    a = RLC(a, randomness)
-    b = RLC(b, randomness)
-    c = RLC(c, randomness)
+    a = Word(a)
+    b = Word(b)
+    c = Word(c)
 
     if opcode == Opcode.MUL:
         bytecode = Bytecode().mul(a, b)
@@ -63,12 +61,12 @@ def test_mul_div_mod(opcode: Opcode, a: int, b: int):
         bytecode = Bytecode().div(a, b)
     else:
         bytecode = Bytecode().mod(a, b)
-    bytecode_hash = RLC(bytecode.hash(), randomness)
+    bytecode_hash = Word(bytecode.hash())
 
     tables = Tables(
-        block_table=set(Block().table_assignments(randomness)),
+        block_table=set(Block().table_assignments()),
         tx_table=set(),
-        bytecode_table=set(bytecode.table_assignments(randomness)),
+        bytecode_table=set(bytecode.table_assignments()),
         rw_table=set(
             RWDictionary(9)
             .stack_read(1, 1022, a)
@@ -79,7 +77,6 @@ def test_mul_div_mod(opcode: Opcode, a: int, b: int):
     )
 
     verify_steps(
-        randomness=randomness,
         tables=tables,
         steps=[
             StepState(

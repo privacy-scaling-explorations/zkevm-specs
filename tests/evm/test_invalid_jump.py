@@ -13,7 +13,7 @@ from zkevm_specs.evm import (
     RWDictionary,
     CallContextFieldTag,
 )
-from zkevm_specs.util import rand_fq, RLC
+from zkevm_specs.util import rand_fq, Word
 
 TESTING_DATA = (
     (Opcode.JUMP, bytes([5])),
@@ -24,19 +24,18 @@ TESTING_DATA = (
 
 @pytest.mark.parametrize("opcode, dest_bytes", TESTING_DATA)
 def test_invalid_jump_root(opcode: Opcode, dest_bytes: bytes):
-    randomness = rand_fq()
-    dest = RLC(bytes(reversed(dest_bytes)), randomness)
+    dest = Word(int.from_bytes(bytes(reversed(dest_bytes)), "little"))
 
     block = Block()
     # dest is invalid for error case
     # PUSH1 80 PUSH1 40 PUSH1 07 JUMP JUMPDEST STOP
     bytecode = Bytecode().push1(0x80).push1(0x40).push1(dest_bytes).jump().jumpdest().stop()
-    bytecode_hash = RLC(bytecode.hash(), randomness)
+    bytecode_hash = Word(bytecode.hash())
 
     tables = Tables(
-        block_table=set(block.table_assignments(randomness)),
+        block_table=set(block.table_assignments()),
         tx_table=set(),
-        bytecode_table=set(bytecode.table_assignments(randomness)),
+        bytecode_table=set(bytecode.table_assignments()),
         rw_table=set(
             RWDictionary(9)
             .stack_read(1, 1021, dest)
@@ -46,7 +45,6 @@ def test_invalid_jump_root(opcode: Opcode, dest_bytes: bytes):
     )
 
     verify_steps(
-        randomness=randomness,
         tables=tables,
         steps=[
             StepState(
@@ -78,22 +76,21 @@ TESTING_DATA_NOT_ROOT = (
 
 @pytest.mark.parametrize("caller_ctx, dest_bytes", TESTING_DATA_NOT_ROOT)
 def test_invalid_jump_not_root(caller_ctx: CallContext, dest_bytes: bytes):
-    randomness = rand_fq()
-    dest = RLC(bytes(reversed(dest_bytes)), randomness)
+    dest = Word(int.from_bytes(bytes(reversed(dest_bytes)), "little"))
 
     caller_bytecode = Bytecode().call(0, 0xFF, 0, 0, 0, 0, 0).stop()
-    caller_bytecode_hash = RLC(caller_bytecode.hash(), randomness)
+    caller_bytecode_hash = Word(caller_bytecode.hash())
     callee_bytecode = Bytecode().push1(0x80).push1(0x40).push1(dest_bytes).jump().jumpdest().stop()
-    callee_bytecode_hash = RLC(callee_bytecode.hash(), randomness)
+    callee_bytecode_hash = Word(callee_bytecode.hash())
     callee_reversible_write_counter = 2
 
     tables = Tables(
-        block_table=set(Block().table_assignments(randomness)),
+        block_table=set(Block().table_assignments()),
         tx_table=set(),
         bytecode_table=set(
             chain(
-                caller_bytecode.table_assignments(randomness),
-                callee_bytecode.table_assignments(randomness),
+                caller_bytecode.table_assignments(),
+                callee_bytecode.table_assignments(),
             )
         ),
         rw_table=set(
@@ -119,7 +116,6 @@ def test_invalid_jump_not_root(caller_ctx: CallContext, dest_bytes: bytes):
     )
 
     verify_steps(
-        randomness=randomness,
         tables=tables,
         steps=[
             StepState(

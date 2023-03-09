@@ -10,7 +10,7 @@ from zkevm_specs.evm import (
     Tables,
     verify_steps,
 )
-from zkevm_specs.util import rand_fq, rand_word, RLC
+from zkevm_specs.util import rand_fq, rand_word, Word
 from common import generate_nasty_tests
 
 
@@ -51,16 +51,15 @@ def test_shl_shr(opcode: Opcode, shift: int, a: int):
         b = a >> shift if shift < 256 else 0
         bytecode = Bytecode().shr(shift, a)
 
-    randomness = rand_fq()
-    shift = RLC(shift, randomness)
-    a = RLC(a, randomness)
-    b = RLC(b, randomness)
-    bytecode_hash = RLC(bytecode.hash(), randomness)
+    shift = Word(shift)
+    a = Word(a)
+    b = Word(b)
+    bytecode_hash = Word(bytecode.hash())
 
     tables = Tables(
-        block_table=set(Block().table_assignments(randomness)),
+        block_table=set(Block().table_assignments()),
         tx_table=set(),
-        bytecode_table=set(bytecode.table_assignments(randomness)),
+        bytecode_table=set(bytecode.table_assignments()),
         rw_table=set(
             RWDictionary(9)
             .stack_read(1, 1022, shift)
@@ -71,7 +70,6 @@ def test_shl_shr(opcode: Opcode, shift: int, a: int):
     )
 
     verify_steps(
-        randomness=randomness,
         tables=tables,
         steps=[
             StepState(

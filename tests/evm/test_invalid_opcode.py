@@ -13,7 +13,7 @@ from zkevm_specs.evm import (
     Transaction,
     verify_steps,
 )
-from zkevm_specs.util import RLC, rand_fq
+from zkevm_specs.util import Word, rand_fq
 
 TESTING_INVALID_CODES = [
     # Single invalid opcode
@@ -38,28 +38,25 @@ TESTING_INVALID_CODES = [
 
 @pytest.mark.parametrize("invalid_code", TESTING_INVALID_CODES)
 def test_invalid_opcode_root(invalid_code):
-    randomness = rand_fq()
-
     bytecode = Bytecode(bytearray(invalid_code), [True] * len(invalid_code)).stop()
-    bytecode_hash = RLC(bytecode.hash(), randomness)
+    bytecode_hash = Word(bytecode.hash())
 
     block = Block()
     tx = Transaction()
 
     tables = Tables(
-        block_table=set(block.table_assignments(randomness)),
+        block_table=set(block.table_assignments()),
         tx_table=set(
             chain(
-                tx.table_assignments(randomness),
-                Transaction(id=tx.id + 1).table_assignments(randomness),
+                tx.table_assignments(),
+                Transaction(id=tx.id + 1).table_assignments(),
             )
         ),
-        bytecode_table=set(bytecode.table_assignments(randomness)),
+        bytecode_table=set(bytecode.table_assignments()),
         rw_table=set(RWDictionary(24).call_context_read(1, CallContextFieldTag.IsSuccess, 0).rws),
     )
 
     verify_steps(
-        randomness=randomness,
         tables=tables,
         steps=[
             StepState(
@@ -86,25 +83,23 @@ def test_invalid_opcode_root(invalid_code):
 
 @pytest.mark.parametrize("invalid_callee_code", TESTING_INVALID_CODES)
 def test_invalid_opcode_internal(invalid_callee_code: list[int]):
-    randomness = rand_fq()
-
     caller_ctx = CallContext(gas_left=10)
     caller_bytecode = Bytecode().call(0, 0xFF, 0, 0, 0, 0, 0).stop()
     callee_bytecode = Bytecode(
         bytearray(invalid_callee_code), [True] * len(invalid_callee_code)
     ).stop()
-    caller_bytecode_hash = RLC(caller_bytecode.hash(), randomness)
-    callee_bytecode_hash = RLC(callee_bytecode.hash(), randomness)
+    caller_bytecode_hash = Word(caller_bytecode.hash())
+    callee_bytecode_hash = Word(callee_bytecode.hash())
 
     callee_reversible_write_counter = 2
 
     tables = Tables(
-        block_table=set(Block().table_assignments(randomness)),
+        block_table=set(Block().table_assignments()),
         tx_table=set(),
         bytecode_table=set(
             chain(
-                caller_bytecode.table_assignments(randomness),
-                callee_bytecode.table_assignments(randomness),
+                caller_bytecode.table_assignments(),
+                callee_bytecode.table_assignments(),
             )
         ),
         rw_table=set(
@@ -129,7 +124,6 @@ def test_invalid_opcode_internal(invalid_callee_code: list[int]):
     )
 
     verify_steps(
-        randomness=randomness,
         tables=tables,
         steps=[
             StepState(

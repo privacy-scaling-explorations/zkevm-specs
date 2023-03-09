@@ -10,7 +10,7 @@ from zkevm_specs.evm import (
     Bytecode,
     RWDictionary,
 )
-from zkevm_specs.util import rand_fq, RLC
+from zkevm_specs.util import rand_fq, Word
 from common import memory_expansion
 
 TESTING_DATA = (
@@ -41,13 +41,13 @@ TESTING_DATA = (
     (
         Opcode.MSTORE8,
         0,
-        bytes.fromhex("FFFF"),
+        0xFFFF,
         bytes.fromhex("FF"),
     ),
     (
         Opcode.MSTORE8,
         1,
-        bytes.fromhex("FF"),
+        0xFF,
         bytes.fromhex("FFFF"),
     ),
 )
@@ -55,10 +55,8 @@ TESTING_DATA = (
 
 @pytest.mark.parametrize("opcode, offset, value, memory", TESTING_DATA)
 def test_memory(opcode: Opcode, offset: int, value: int, memory: bytes):
-    randomness = rand_fq()
-
-    offset_rlc = RLC(offset, randomness)
-    value_rlc = RLC(value, randomness)
+    offset_word = Word(offset)
+    value_word = Word(value)
     call_id = 1
     curr_memory_word_size = 0
     length = offset
@@ -69,23 +67,23 @@ def test_memory(opcode: Opcode, offset: int, value: int, memory: bytes):
     is_not_mstore8 = 1 - is_mstore8
 
     bytecode = (
-        Bytecode().mload(offset_rlc).stop()
+        Bytecode().mload(offset_word).stop()
         if is_mload
-        else Bytecode().mstore8(offset_rlc, value_rlc).stop()
+        else Bytecode().mstore8(offset_word, value_word).stop()
         if is_mstore8
-        else Bytecode().mstore(offset_rlc, value_rlc).stop()
+        else Bytecode().mstore(offset_word, value_word).stop()
     )
     rw_dictionary = (
-        RWDictionary(1).stack_read(call_id, 1022, offset_rlc).stack_write(call_id, 1022, value_rlc)
+        RWDictionary(1).stack_read(call_id, 1022, offset_word).stack_write(call_id, 1022, value_word)
         if is_mload
         else RWDictionary(1)
-        .stack_read(call_id, 1022, offset_rlc)
-        .stack_read(call_id, 1023, value_rlc)
+        .stack_read(call_id, 1022, offset_word)
+        .stack_read(call_id, 1023, value_word)
     )
 
-    bytecode_hash = RLC(bytecode.hash(), randomness)
+    bytecode_hash = Word(bytecode.hash())
     if is_mstore8:
-        rw_dictionary.memory_write(call_id, length, value[0])
+        rw_dictionary.memory_write(call_id, length, value.to_bytes(32, "little")[0])
 
     if is_not_mstore8:
         for idx in range(32):
@@ -95,9 +93,9 @@ def test_memory(opcode: Opcode, offset: int, value: int, memory: bytes):
                 rw_dictionary.memory_write(call_id, offset + idx, memory[idx])
 
     tables = Tables(
-        block_table=set(Block().table_assignments(randomness)),
+        block_table=set(Block().table_assignments()),
         tx_table=set(),
-        bytecode_table=set(bytecode.table_assignments(randomness)),
+        bytecode_table=set(bytecode.table_assignments()),
         rw_table=rw_dictionary.rws,
     )
 
@@ -110,7 +108,6 @@ def test_memory(opcode: Opcode, offset: int, value: int, memory: bytes):
     stack_pointer = 1022 + (is_store * 2)
 
     verify_steps(
-        randomness=randomness,
         tables=tables,
         steps=[
             StepState(

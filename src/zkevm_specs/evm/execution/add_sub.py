@@ -11,9 +11,9 @@ def add_sub(instruction: Instruction):
     b = instruction.stack_pop()
     c = instruction.stack_push()
 
-    instruction.constrain_equal(
+    instruction.constrain_equal_word(
         instruction.add_words([instruction.select(is_sub, c, a), b])[0],
-        instruction.select(is_sub, a, c),
+        instruction.select_word(is_sub, a, c),
     )
 
     instruction.step_state_transition_in_same_context(

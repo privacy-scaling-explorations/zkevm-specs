@@ -6,7 +6,7 @@ from ..util import (
     FQ,
     IntOrFQ,
     RLC,
-    add_words,
+    add_words, sum_values,
     Word, WordOrValue,
     Expression,
     ExpressionImpl,
@@ -139,6 +139,11 @@ class Instruction:
     def constrain_not_zero(self, value: Expression):
         assert value.expr() != 0, ConstraintUnsatFailure(
             f"Expected value to be != 0, but got {value}"
+        )
+
+    def constrain_not_zero_word(self, value: Expression):
+        assert value.lo.expr() != 0 or value.hi.expr() != 0, ConstraintUnsatFailure(
+            f"Expected word to be != 0, but got {value}"
         )
 
     def constrain_equal(self, lhs: Expression, rhs: Expression):
@@ -371,7 +376,7 @@ class Instruction:
         )
 
     def sum(self, values: Sequence[IntOrFQ]) -> FQ:
-        return FQ(sum(values))
+        return sum_values(values)
 
     def is_zero(self, value: Expression) -> FQ:
         return FQ(value.expr() == 0)
@@ -389,6 +394,12 @@ class Instruction:
         self, condition: FQ, when_true: ExpressionImpl, when_false: ExpressionImpl
     ) -> ExpressionImpl:
         assert condition in [0, 1], "Condition of select should be a checked bool"
+        return when_true if condition == 1 else when_false
+
+    def select_word(
+        self, condition: FQ, when_true: Word, when_false: Word
+    ) -> ExpressionImpl:
+        assert condition in [0, 1], "Condition of select_word should be a checked bool"
         return when_true if condition == 1 else when_false
 
     def pair_select(self, value: Expression, lhs: Expression, rhs: Expression) -> Tuple[FQ, FQ]:

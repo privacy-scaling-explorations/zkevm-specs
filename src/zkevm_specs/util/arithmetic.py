@@ -86,14 +86,19 @@ class Word:
     def __init__(self, value: Union[Tuple[Expression, Expression], int, U256, bytes]) -> None:
         if isinstance(value, tuple):
             self.lo, self.hi = value
+            # sanity check
+            assert self.lo.expr().n < 256**16 and self.hi.expr().n < 256**16
             return
         elif isinstance(value, int):
+            # sanity check
+            assert value < 256**32
             value = value.to_bytes(32, "little")
         elif len(value) != 32:
             raise ValueError(f"Word expects to receive 32 bytes, but got {len(value)} bytes")
         self.lo = bytes_to_fq(value[0:16])
         self.hi = bytes_to_fq(value[16:32])
 
+    # FIXME: Rename to int_value
     def word(self) -> int:
         """Return the word as an integer"""
         return self.lo.n + (self.hi.n << 128)
@@ -107,6 +112,10 @@ class Word:
     def __eq__(self, other: Word) -> bool:
         return self.lo.expr() == other.lo.expr() and self.hi.expr() == other.hi.expr()
 
+    def __or__(self, other: Word) -> Word:
+        """Combine two words by adding their corresponding lo and hi parts.  Useful with select"""
+        return Word((self.lo.expr() + other.lo.expr(), self.hi.expr() + other.hi.expr()))
+
     def select(self, selector: FQ) -> Word:
         """Return a new Word with lo and hi multiplied by selector"""
         return Word((selector * self.lo, selector * self.hi))
@@ -115,7 +124,7 @@ class Word:
         return (self.lo.expr(), self.hi.expr())
 
     def to_64s(self) -> Tuple[FQ, ...]:
-        return lo_hi_to_64s((self.lo.expr(), self.lo.expr()))
+        return lo_hi_to_64s((self.lo.expr(), self.hi.expr()))
 
     def to_le_bytes(self) -> Tuple[FQ, ...]:
         lo = self.lo.expr().n.to_bytes(16, "little")
@@ -204,13 +213,12 @@ def sum_values(values: Sequence[IntOrFQ]) -> FQ:
 
 
 def add_words(addends: Sequence[Word]) -> Tuple[Word, FQ]:
-    addends_lo, addends_hi = list(*[w.to_lo_hi() for w in addends])
+    addends_lo, addends_hi = list(zip(*[w.to_lo_hi() for w in addends]))
 
-    carry_lo, sum_lo = divmod(self.sum(addends_lo).n, 1 << 128)
-    carry_hi, sum_hi = divmod((self.sum(addends_hi) + carry_lo).n, 1 << 128)
+    carry_lo, sum_lo = divmod(sum_values(addends_lo).n, 1 << 128)
+    carry_hi, sum_hi = divmod((sum_values(addends_hi) + carry_lo).n, 1 << 128)
 
-    return Word([sum_lo, sum_hi]), FQ(carry_hi)
-
+    return Word((FQ(sum_lo), FQ(sum_hi))), FQ(carry_hi)
 
 
 def mul_add_words(a: Word, b: Word, c: Word, d: Word) -> Tuple[FQ, Tuple[FQ, FQ], List[Tuple[FQ, FQ]]]:

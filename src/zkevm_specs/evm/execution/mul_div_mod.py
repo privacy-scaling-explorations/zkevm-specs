@@ -1,6 +1,6 @@
 from ..instruction import Instruction, Transition
 from ..opcode import Opcode
-from ...util import FQ
+from ...util import FQ, Word
 
 
 def mul_div_mod(instruction: Instruction):
@@ -23,38 +23,38 @@ def mul_div_mod(instruction: Instruction):
     if is_mul == 1:
         a = pop1
         b = pop2
-        c = instruction.rlc_encode(0, 32)
+        c = Word(0)
         d = push
     elif is_div == 1:
         d = pop1  # dividend
         b = pop2  # divisor
         a = push  # quotient
-        c = instruction.rlc_encode(d.int_value - b.int_value * a.int_value, 32)  # remainder
+        c = Word(d.word() - b.word() * a.word())  # remainder
     else:  # is_mod == 1
         d = pop1  # dividend
         b = pop2  # divisor
-        if b.int_value == 0:
+        if b.word() == 0:
             c = d
-            a = instruction.rlc_encode(0, 32)
+            a = Word(0)
         else:
             c = push
-            a = instruction.rlc_encode((d.int_value - c.int_value) // b.int_value, 32)
+            a = Word((d.word() - c.word()) // b.word())
 
     divisor_is_zero = instruction.is_zero_word(b)
     overflow = instruction.mul_add_words(a, b, c, d)
 
     # constrain the push and pop values
-    instruction.constrain_equal(pop1, instruction.select(is_mul, a, d))
-    instruction.constrain_equal(pop2, b)
-    instruction.constrain_equal(
+    instruction.constrain_equal_word(pop1, instruction.select_word(is_mul, a, d))
+    instruction.constrain_equal_word(pop2, b)
+    instruction.constrain_equal_word(
         push,
-        is_mul * d.expr()
-        + is_div * a.expr() * (1 - divisor_is_zero)
-        + is_mod * c.expr() * (1 - divisor_is_zero),
+        d.select(is_mul)
+        | a.select(is_div * (1 - divisor_is_zero))
+        | c.select(is_mod * (1 - divisor_is_zero))
     )
 
     # constrain c == 0 for MUL
-    instruction.constrain_zero(is_mul * instruction.sum(c.le_bytes))
+    instruction.constrain_zero(is_mul * instruction.sum(c.to_le_bytes()))
 
     # constrain remainder < divisor when divisor != 0 for DIV and MOD
     lt, _ = instruction.compare_word(c, b)

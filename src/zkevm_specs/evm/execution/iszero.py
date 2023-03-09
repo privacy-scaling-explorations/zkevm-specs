@@ -1,4 +1,5 @@
 from ..instruction import Instruction, Transition
+from ...util import Word, FQ
 
 
 def iszero(instruction: Instruction):
@@ -6,8 +7,8 @@ def iszero(instruction: Instruction):
 
     value = instruction.stack_pop()
 
-    instruction.constrain_equal(
-        instruction.is_zero(value),
+    instruction.constrain_equal_word(
+        Word((instruction.is_zero_word(value), FQ(0))),
         instruction.stack_push(),
     )
 
