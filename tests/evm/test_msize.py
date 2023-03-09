@@ -9,7 +9,8 @@ from zkevm_specs.evm_circuit import (
     Bytecode,
     RWDictionary,
 )
-from zkevm_specs.util import rand_fq, RLC, N_BYTES_WORD
+from zkevm_specs.util import RLC, N_BYTES_WORD
+from common import rand_fq
 
 TESTING_DATA = [i for i in range(0, 7)]
 

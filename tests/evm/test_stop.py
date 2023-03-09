@@ -1,7 +1,7 @@
 import pytest
 
 from itertools import chain
-from common import CallContext
+from common import CallContext, rand_fq
 from zkevm_specs.evm_circuit import (
     ExecutionState,
     StepState,
@@ -13,7 +13,7 @@ from zkevm_specs.evm_circuit import (
     Bytecode,
     RWDictionary,
 )
-from zkevm_specs.util import rand_fq, RLC
+from zkevm_specs.util import RLC
 
 BYTECODE_END_WITHOUT_STOP = Bytecode().push(0, n_bytes=1)
 BYTECODE_END_WITH_STOP = Bytecode().push(0, n_bytes=1).stop()

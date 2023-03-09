@@ -23,9 +23,8 @@ from zkevm_specs.util import (
     GAS_STIPEND_CALL_WITH_VALUE,
     RLC,
     U256,
-    rand_fq,
 )
-from common import CallContext
+from common import CallContext, rand_fq
 
 Stack = namedtuple(
     "Stack",

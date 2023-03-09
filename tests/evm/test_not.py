@@ -9,8 +9,8 @@ from zkevm_specs.evm_circuit import (
     Bytecode,
     RWDictionary,
 )
-from zkevm_specs.util import rand_fq, rand_word, RLC
-
+from zkevm_specs.util import RLC
+from common import rand_fq, rand_word
 
 NOT_TESTING_DATA = [
     0,

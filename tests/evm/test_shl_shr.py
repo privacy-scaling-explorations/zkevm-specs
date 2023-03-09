@@ -10,8 +10,8 @@ from zkevm_specs.evm_circuit import (
     Tables,
     verify_steps,
 )
-from zkevm_specs.util import rand_fq, rand_word, RLC
-from common import generate_nasty_tests
+from zkevm_specs.util import RLC
+from common import generate_nasty_tests, rand_fq, rand_word
 
 
 MAX_WORD = (1 << 256) - 1

@@ -19,13 +19,12 @@ from zkevm_specs.evm_circuit import (
 )
 from zkevm_specs.evm_circuit.typing import RWDictionary
 from zkevm_specs.util import (
-    rand_bytes,
-    rand_fq,
     keccak256,
     EXTRA_GAS_COST_ACCOUNT_COLD_ACCESS,
     GAS_COST_COPY,
 )
-from common import memory_expansion, memory_word_size
+from common import memory_expansion, memory_word_size, rand_bytes, rand_fq
+
 
 TESTING_DATA = (
     # empty code

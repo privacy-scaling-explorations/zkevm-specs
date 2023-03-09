@@ -13,7 +13,8 @@ from zkevm_specs.evm_circuit import (
     Block,
     Transaction,
 )
-from zkevm_specs.util import rand_fq, FQ
+from zkevm_specs.util import FQ
+from common import rand_fq
 
 TESTING_DATA = (
     # (is_last_step, empty_block, max_txs, cumulative_gas, success)

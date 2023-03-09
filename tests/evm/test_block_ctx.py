@@ -9,8 +9,9 @@ from zkevm_specs.evm_circuit import (
     Bytecode,
     RWDictionary,
 )
+from zkevm_specs.util import RLC, U64, U160, U256
 from typing import Union
-from zkevm_specs.util import rand_address, rand_fq, rand_range, RLC, U64, U160, U256
+from common import rand_address, rand_fq, rand_range
 
 
 TESTING_DATA_U160 = (0x030201, rand_address())

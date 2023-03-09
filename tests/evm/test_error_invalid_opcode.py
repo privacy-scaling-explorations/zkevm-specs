@@ -13,7 +13,9 @@ from zkevm_specs.evm_circuit import (
     Transaction,
     verify_steps,
 )
-from zkevm_specs.util import RLC, rand_fq
+from zkevm_specs.util import RLC
+from common import rand_fq
+
 
 TESTING_INVALID_CODES = [
     # Single invalid opcode

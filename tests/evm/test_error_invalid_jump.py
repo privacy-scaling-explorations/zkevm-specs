@@ -13,7 +13,9 @@ from zkevm_specs.evm_circuit import (
     RWDictionary,
     CallContextFieldTag,
 )
-from zkevm_specs.util import rand_fq, RLC
+from zkevm_specs.util import RLC
+from common import rand_fq
+
 
 TESTING_DATA = (
     (Opcode.JUMP, bytes([5])),

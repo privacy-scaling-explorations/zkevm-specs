@@ -14,11 +14,8 @@ from zkevm_specs.evm_circuit import (
     Tables,
     verify_steps,
 )
-from zkevm_specs.util import (
-    RLC,
-    rand_fq,
-)
-from common import CallContext
+from zkevm_specs.util import RLC
+from common import CallContext, rand_fq
 
 Stack = namedtuple(
     "Stack",

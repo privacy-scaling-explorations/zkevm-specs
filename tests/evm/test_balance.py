@@ -18,6 +18,8 @@ from zkevm_specs.util import (
     RLC,
     U160,
     U256,
+)
+from common import (
     rand_address,
     rand_fq,
     rand_range,

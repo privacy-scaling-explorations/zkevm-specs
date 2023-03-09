@@ -10,7 +10,8 @@ from zkevm_specs.evm_circuit import (
     verify_steps,
     RWDictionary,
 )
-from zkevm_specs.util import rand_fq, RLC, U64
+from zkevm_specs.util import RLC, U64
+from common import rand_fq
 
 TESTING_DATA = (
     (

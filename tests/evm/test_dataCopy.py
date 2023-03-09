@@ -15,11 +15,12 @@ from zkevm_specs.evm_circuit import (
 )
 from zkevm_specs.copy_circuit import verify_copy_table
 from zkevm_specs.util import (
-    rand_fq,
     IdentityPerWordGas,
     RLC,
     FQ,
 )
+from common import rand_fq
+
 
 CALLER_ID = 1
 CALLEE_ID = 2

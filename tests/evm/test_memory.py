@@ -10,8 +10,8 @@ from zkevm_specs.evm_circuit import (
     Bytecode,
     RWDictionary,
 )
-from zkevm_specs.util import rand_fq, RLC
-from common import memory_expansion
+from zkevm_specs.util import RLC
+from common import memory_expansion, rand_fq
 
 TESTING_DATA = (
     (

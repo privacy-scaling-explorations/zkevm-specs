@@ -19,13 +19,10 @@ from zkevm_specs.evm_circuit import (
 )
 from zkevm_specs.copy_circuit import verify_copy_table
 from zkevm_specs.util import (
-    rand_fq,
-    rand_bytes,
     U64,
-    rand_address,
     FQ,
 )
-from common import memory_expansion
+from common import memory_expansion, rand_fq, rand_bytes, rand_address
 
 CALL_ID = 1
 TX_ID = 2

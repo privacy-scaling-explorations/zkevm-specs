@@ -11,7 +11,9 @@ from zkevm_specs.evm_circuit import (
     Bytecode,
     RWDictionary,
 )
-from zkevm_specs.util import rand_fq, rand_address, RLC, COLD_SLOAD_COST, WARM_STORAGE_READ_COST
+from zkevm_specs.util import RLC, COLD_SLOAD_COST, WARM_STORAGE_READ_COST
+from common import rand_fq, rand_address
+
 
 TESTING_DATA = (
     (

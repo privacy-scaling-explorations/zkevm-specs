@@ -18,8 +18,8 @@ from zkevm_specs.util import (
     MEMORY_EXPANSION_QUAD_DENOMINATOR,
     RLC,
     U64,
-    rand_fq,
 )
+from common import rand_fq
 
 
 CALL_ID = 1

@@ -12,7 +12,9 @@ from zkevm_specs.evm_circuit import (
     Transaction,
     RWDictionary,
 )
-from zkevm_specs.util import rand_fq, RLC, EMPTY_CODE_HASH, MAX_REFUND_QUOTIENT_OF_GAS_USED
+from zkevm_specs.util import RLC, EMPTY_CODE_HASH, MAX_REFUND_QUOTIENT_OF_GAS_USED
+from common import rand_fq
+
 
 CALLEE_ADDRESS = 0xFF
 
