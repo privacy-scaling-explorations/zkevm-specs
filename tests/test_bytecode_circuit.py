@@ -2,7 +2,7 @@ import traceback
 from copy import deepcopy
 
 from zkevm_specs.bytecode_circuit import *
-from zkevm_specs.evm import Opcode, Bytecode, BytecodeFieldTag, BytecodeTableRow, is_push
+from zkevm_specs.evm_circuit import Opcode, Bytecode, BytecodeFieldTag, BytecodeTableRow, is_push
 from zkevm_specs.util import RLC, rand_fq, U256
 
 

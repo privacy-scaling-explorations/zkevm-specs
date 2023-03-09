@@ -1,7 +1,7 @@
 import pytest
 from collections import namedtuple
 from itertools import chain, product
-from zkevm_specs.evm import (
+from zkevm_specs.evm_circuit import (
     Account,
     AccountFieldTag,
     Block,

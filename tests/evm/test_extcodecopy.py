@@ -1,7 +1,7 @@
 import pytest
 from itertools import chain
 from zkevm_specs.copy_circuit import verify_copy_table
-from zkevm_specs.evm import (
+from zkevm_specs.evm_circuit import (
     verify_steps,
     Tables,
     Block,
@@ -17,7 +17,7 @@ from zkevm_specs.evm import (
     AccountFieldTag,
     CallContextFieldTag,
 )
-from zkevm_specs.evm.typing import RWDictionary
+from zkevm_specs.evm_circuit.typing import RWDictionary
 from zkevm_specs.util import (
     rand_bytes,
     rand_fq,

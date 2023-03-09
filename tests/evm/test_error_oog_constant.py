@@ -2,47 +2,43 @@ import pytest
 
 from itertools import chain
 from common import CallContext
-from zkevm_specs.evm import (
+from zkevm_specs.evm_circuit import (
     ExecutionState,
     StepState,
-    Opcode,
     verify_steps,
     Tables,
+    CallContextFieldTag,
     Block,
+    Transaction,
     Bytecode,
     RWDictionary,
-    CallContextFieldTag,
+    Opcode,
 )
 from zkevm_specs.util import rand_fq, RLC
 
-TESTING_DATA = (
-    (Opcode.JUMP, bytes([5])),
-    # out of range
-    (Opcode.JUMP, bytes([20])),
-)
+
+BYTECODE = Bytecode().push1(0x40)
+TESTING_DATA_IS_ROOT = ((Transaction(), BYTECODE),)
 
 
-@pytest.mark.parametrize("opcode, dest_bytes", TESTING_DATA)
-def test_invalid_jump_root(opcode: Opcode, dest_bytes: bytes):
+@pytest.mark.parametrize("tx, bytecode", TESTING_DATA_IS_ROOT)
+def test_oog_constant_root(tx: Transaction, bytecode: Bytecode):
     randomness = rand_fq()
-    dest = RLC(bytes(reversed(dest_bytes)), randomness)
 
     block = Block()
-    # dest is invalid for error case
-    # PUSH1 80 PUSH1 40 PUSH1 07 JUMP JUMPDEST STOP
-    bytecode = Bytecode().push1(0x80).push1(0x40).push1(dest_bytes).jump().jumpdest().stop()
+
     bytecode_hash = RLC(bytecode.hash(), randomness)
 
     tables = Tables(
         block_table=set(block.table_assignments(randomness)),
-        tx_table=set(),
-        bytecode_table=set(bytecode.table_assignments(randomness)),
-        rw_table=set(
-            RWDictionary(9)
-            .stack_read(1, 1021, dest)
-            .call_context_read(1, CallContextFieldTag.IsSuccess, 0)
-            .rws
+        tx_table=set(
+            chain(
+                tx.table_assignments(randomness),
+                Transaction(id=tx.id + 1).table_assignments(randomness),
+            )
         ),
+        bytecode_table=set(bytecode.table_assignments(randomness)),
+        rw_table=set(RWDictionary(24).call_context_read(1, CallContextFieldTag.IsSuccess, 0).rws),
     )
 
     verify_steps(
@@ -50,19 +46,20 @@ def test_invalid_jump_root(opcode: Opcode, dest_bytes: bytes):
         tables=tables,
         steps=[
             StepState(
-                execution_state=ExecutionState.ErrorInvalidJump,
-                rw_counter=9,
+                execution_state=ExecutionState.ErrorOutOfGasConstant,
+                rw_counter=24,
                 call_id=1,
                 is_root=True,
                 is_create=False,
                 code_hash=bytecode_hash,
-                program_counter=6,
-                stack_pointer=1021,
-                gas_left=8,
+                program_counter=0,
+                stack_pointer=1023,
+                gas_left=2,
+                reversible_write_counter=2,
             ),
             StepState(
                 execution_state=ExecutionState.EndTx,
-                rw_counter=11,
+                rw_counter=27,
                 call_id=1,
                 gas_left=0,
             ),
@@ -70,21 +67,18 @@ def test_invalid_jump_root(opcode: Opcode, dest_bytes: bytes):
     )
 
 
-TESTING_DATA_NOT_ROOT = (
-    (CallContext(gas_left=10), bytes([5])),
-    (CallContext(gas_left=10), bytes([20])),
-)
+TESTING_DATA_NOT_ROOT = ((CallContext(gas_left=10), BYTECODE),)
 
 
-@pytest.mark.parametrize("caller_ctx, dest_bytes", TESTING_DATA_NOT_ROOT)
-def test_invalid_jump_not_root(caller_ctx: CallContext, dest_bytes: bytes):
+@pytest.mark.parametrize("caller_ctx, callee_bytecode", TESTING_DATA_NOT_ROOT)
+def test_oog_constant_not_root(caller_ctx: CallContext, callee_bytecode: Bytecode):
     randomness = rand_fq()
-    dest = RLC(bytes(reversed(dest_bytes)), randomness)
 
     caller_bytecode = Bytecode().call(0, 0xFF, 0, 0, 0, 0, 0).stop()
     caller_bytecode_hash = RLC(caller_bytecode.hash(), randomness)
-    callee_bytecode = Bytecode().push1(0x80).push1(0x40).push1(dest_bytes).jump().jumpdest().stop()
     callee_bytecode_hash = RLC(callee_bytecode.hash(), randomness)
+    # gas is insufficient
+    callee_gas_left = 2
     callee_reversible_write_counter = 2
 
     tables = Tables(
@@ -99,7 +93,6 @@ def test_invalid_jump_not_root(caller_ctx: CallContext, dest_bytes: bytes):
         rw_table=set(
             # fmt: off
             RWDictionary(69)
-            .stack_read(2, 1021, dest)
             .call_context_read(2, CallContextFieldTag.IsSuccess, 0)
             .call_context_read(2, CallContextFieldTag.CallerId, 1)
             .call_context_read(1, CallContextFieldTag.IsRoot, caller_ctx.is_root)
@@ -123,20 +116,21 @@ def test_invalid_jump_not_root(caller_ctx: CallContext, dest_bytes: bytes):
         tables=tables,
         steps=[
             StepState(
-                execution_state=ExecutionState.ErrorInvalidJump,
+                execution_state=ExecutionState.ErrorOutOfGasConstant,
                 rw_counter=69,
                 call_id=2,
                 is_root=False,
                 is_create=False,
                 code_hash=callee_bytecode_hash,
-                program_counter=6,
-                stack_pointer=1021,
-                gas_left=10,
+                program_counter=0,
+                stack_pointer=1023,
+                gas_left=callee_gas_left,
                 reversible_write_counter=callee_reversible_write_counter,
+                aux_data=Opcode.PUSH1,
             ),
             StepState(
                 execution_state=ExecutionState.STOP,
-                rw_counter=83 + callee_reversible_write_counter,
+                rw_counter=82 + callee_reversible_write_counter,
                 call_id=1,
                 is_root=caller_ctx.is_root,
                 is_create=caller_ctx.is_create,

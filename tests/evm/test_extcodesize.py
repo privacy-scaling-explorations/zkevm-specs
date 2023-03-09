@@ -1,6 +1,6 @@
 import pytest
 from itertools import chain
-from zkevm_specs.evm import (
+from zkevm_specs.evm_circuit import (
     AccountFieldTag,
     Block,
     Bytecode,

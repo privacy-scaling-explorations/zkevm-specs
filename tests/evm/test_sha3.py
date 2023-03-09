@@ -1,6 +1,6 @@
 import pytest
 
-from zkevm_specs.evm import (
+from zkevm_specs.evm_circuit import (
     Block,
     Bytecode,
     CopyCircuit,
