@@ -17,9 +17,24 @@ from ..opcode import Opcode
 def error_gas_uint_overflow(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
 
-    is_call = instruction.is_equal(opcode, Opcode.CALL)
-    is_create_flag = instruction.is_equal(opcode, Opcode.CREATE)
-    is_create2_flag = instruction.is_equal(opcode, Opcode.CREATE2)
+    (
+        is_call,
+        is_callcode,
+        is_delegatecall,
+        is_staticcall,
+        is_create_flag,
+        is_create2_flag,
+    ) = instruction.multiple_select(
+        opcode,
+        (
+            Opcode.CALL,
+            Opcode.CALLCODE,
+            Opcode.DELEGATECALL,
+            Opcode.STATICCALL,
+            Opcode.CREATE,
+            Opcode.CREATE2,
+        ),
+    )
     is_create = is_create_flag + is_create2_flag
 
     # init overflow flag
@@ -34,7 +49,7 @@ def error_gas_uint_overflow(instruction: Instruction):
     # call gas_cost overflow flag.
     # seems never overflow because of checking range inside of CallGadget
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
-    call = CallGadget(instruction, FQ(0), FQ(1), FQ(0), FQ(0))
+    call = CallGadget(instruction, FQ(0), is_call, is_callcode, is_delegatecall)
     is_warm_access = instruction.read_account_to_access_list(tx_id, call.callee_address)
     gas_cost = call.gas_cost(instruction, is_warm_access)
     is_call_gas_cost_overflow = is_call * instruction.is_u64_overflow(gas_cost)

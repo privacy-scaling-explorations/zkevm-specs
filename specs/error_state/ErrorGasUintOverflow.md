@@ -22,13 +22,6 @@ This type of error occurs when mathematical operation detects overflow during ca
 3. If it's a root call, it transits to `EndTx`.
 4. If it is not root call, it restores caller's context by reading to `rw_table`, then does step state transition to it.
 
-### Lookups
-
-- Call Context lookup `TxId`
-- Call Context lookup `IsSuccess`
-- Call Context lookup `CallDataOffset`
-- Call Context lookup `CallDataLength`
-
 ## Code
 
 Please refer to `src/zkevm_specs/evm/execution/error_gas_uint_overflow.py`.

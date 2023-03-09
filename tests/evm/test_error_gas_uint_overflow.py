@@ -73,12 +73,11 @@ def test_error_gas_uint_overflow_root(
             .call_context_read(1, CallContextFieldTag.TxId, tx.id)
             .stack_read(1, 1017, RLC(stack.gas, randomness))
             .stack_read(1, 1018, RLC(account.address, randomness))
-            .stack_read(1, 1019, RLC(stack.value, randomness))
-            .stack_read(1, 1020, RLC(stack.cd_offset, randomness))
-            .stack_read(1, 1021, RLC(stack.cd_length, randomness))
-            .stack_read(1, 1022, RLC(stack.rd_offset, randomness))
-            .stack_read(1, 1023, RLC(stack.rd_length, randomness))
-            .stack_write(1, 1023, RLC(False, randomness))
+            .stack_read(1, 1019, RLC(stack.cd_offset, randomness))
+            .stack_read(1, 1020, RLC(stack.cd_length, randomness))
+            .stack_read(1, 1021, RLC(stack.rd_offset, randomness))
+            .stack_read(1, 1022, RLC(stack.rd_length, randomness))
+            .stack_write(1, 1022, RLC(False, randomness))
             .account_read(account.address, AccountFieldTag.CodeHash, callee_bytecode_hash)
             .tx_access_list_account_read(1, account.address, True)
             .call_context_read(1, CallContextFieldTag.CallDataOffset, 0)
@@ -87,6 +86,8 @@ def test_error_gas_uint_overflow_root(
             .rws
         ),
     )
+
+    print(sorted(tables.rw_table, key=lambda x: x.rw_counter.n))
 
     verify_steps(
         randomness=randomness,
@@ -142,12 +143,11 @@ def test_error_gas_uint_overflow_not_root(
             .call_context_read(callee_id, CallContextFieldTag.TxId, tx.id)
             .stack_read(callee_id, 1017, RLC(stack.gas, randomness))
             .stack_read(callee_id, 1018, RLC(account.address, randomness))
-            .stack_read(callee_id, 1019, RLC(stack.value, randomness))
-            .stack_read(callee_id, 1020, RLC(stack.cd_offset, randomness))
-            .stack_read(callee_id, 1021, RLC(stack.cd_length, randomness))
-            .stack_read(callee_id, 1022, RLC(stack.rd_offset, randomness))
-            .stack_read(callee_id, 1023, RLC(stack.rd_length, randomness))
-            .stack_write(callee_id, 1023, RLC(False, randomness))
+            .stack_read(callee_id, 1019, RLC(stack.cd_offset, randomness))
+            .stack_read(callee_id, 1020, RLC(stack.cd_length, randomness))
+            .stack_read(callee_id, 1021, RLC(stack.rd_offset, randomness))
+            .stack_read(callee_id, 1022, RLC(stack.rd_length, randomness))
+            .stack_write(callee_id, 1022, RLC(False, randomness))
             .account_read(account.address, AccountFieldTag.CodeHash, callee_bytecode_hash)
             .tx_access_list_account_read(caller_id, account.address, True)
             .call_context_read(callee_id, CallContextFieldTag.CallDataOffset, 0)
