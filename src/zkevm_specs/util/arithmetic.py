@@ -122,14 +122,6 @@ class Word:
         hi = self.hi.expr().n.to_bytes(16, "little")
         return [FQ(v) for v in lo + hi]
 
-    # def assert_eq(self, other: Word, assert_msg: str):
-    #     assert (
-    #         self.lo.expr() == other.lo.expr()
-    #     ), f"{assert_msg}: {hex(self.lo.expr().n)} != {hex(other.lo.expr().n)}"
-    #     assert (
-    #         self.hi.expr() == other.hi.expr()
-    #     ), f"{assert_msg}: {hex(self.hi.expr().n)} != {hex(other.hi.expr().n)}"
-
 
 class WordOrValue(Word):
     """Type that holds a 256 bit word (as lo/hi) or a value that fits in the field"""

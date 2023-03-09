@@ -511,23 +511,23 @@ class RWDictionary:
             value=FQ(value),
         )
 
-    def tx_refund_read(self, tx_id: IntOrFQ, refund: Word) -> RWDictionary:
+    def tx_refund_read(self, tx_id: IntOrFQ, refund: IntOrFQ) -> RWDictionary:
         return self._append(
-            RW.Read, RWTableTag.TxRefund, id=FQ(tx_id), value=refund, value_prev=refund
+            RW.Read, RWTableTag.TxRefund, id=FQ(tx_id), value=FQ(refund), value_prev=FQ(refund)
         )
 
     def tx_refund_write(
         self,
         tx_id: IntOrFQ,
-        refund:  Word,
-        refund_prev:  Word,
+        refund:  IntOrFQ,
+        refund_prev:  IntOrFQ,
         rw_counter_of_reversion: Optional[int] = None,
     ) -> RWDictionary:
         return self._state_write(
             RWTableTag.TxRefund,
             id=FQ(tx_id),
-            value=refund,
-            value_prev=refund_prev,
+            value=FQ(refund),
+            value_prev=FQ(refund_prev),
             rw_counter_of_reversion=rw_counter_of_reversion,
         )
 
