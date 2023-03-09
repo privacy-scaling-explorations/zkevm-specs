@@ -34,13 +34,13 @@ def calldatacopy(instruction: Instruction):
     )
     gas_cost = instruction.memory_copier_gas_cost(length, memory_expansion_gas_cost)
 
-    src_type = instruction.select(
+    src_tag = instruction.select(
         FQ(instruction.curr.is_root), FQ(CopyDataTypeTag.TxCalldata), FQ(CopyDataTypeTag.Memory)
     )
     if instruction.is_zero(length) == 0:
         copy_rwc_inc, _ = instruction.copy_lookup(
             src_id,
-            CopyDataTypeTag(src_type.n),
+            CopyDataTypeTag(src_tag.n),
             instruction.curr.call_id,
             CopyDataTypeTag.Memory,
             call_data_offset.expr() + data_offset.expr(),

@@ -457,10 +457,11 @@ class CopyCircuitRow(TableRow):
 
 @dataclass(frozen=True)
 class CopyTableRow(TableRow):
+    is_first: FQ
     src_id: FQ
-    src_type: FQ
+    src_tag: FQ
     dst_id: FQ
-    dst_type: FQ
+    dst_tag: FQ
     src_addr: FQ
     src_addr_end: FQ
     dst_addr: FQ
@@ -562,10 +563,11 @@ class Tables:
                 assert next_row.q_step == 0, "Invalid copy circuit"
                 rows.append(
                     CopyTableRow(
+                        is_first=first_row.is_first,
                         src_id=first_row.id,
-                        src_type=first_row.tag,
+                        src_tag=first_row.tag,
                         dst_id=next_row.id,
-                        dst_type=next_row.tag,
+                        dst_tag=next_row.tag,
                         src_addr=first_row.addr,
                         src_addr_end=first_row.src_addr_end,
                         dst_addr=next_row.addr,
@@ -679,9 +681,9 @@ class Tables:
     def copy_lookup(
         self,
         src_id: Expression,
-        src_type: Expression,
+        src_tag: Expression,
         dst_id: Expression,
-        dst_type: Expression,
+        dst_tag: Expression,
         src_addr: Expression,
         src_addr_end: Expression,
         dst_addr: Expression,
@@ -689,14 +691,14 @@ class Tables:
         rw_counter: Expression,
         log_id: Optional[Expression] = None,
     ) -> CopyTableRow:
-        if dst_type == CopyDataTypeTag.TxLog:
+        if dst_tag == CopyDataTypeTag.TxLog:
             assert log_id is not None
             dst_addr = dst_addr + FQ(int(TxLogFieldTag.Data) << 32) + FQ(log_id.expr().n << 48)
         query = {
             "src_id": src_id,
-            "src_type": src_type,
+            "src_tag": src_tag,
             "dst_id": dst_id,
-            "dst_type": dst_type,
+            "dst_tag": dst_tag,
             "src_addr": src_addr,
             "src_addr_end": src_addr_end,
             "dst_addr": dst_addr,
