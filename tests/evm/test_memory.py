@@ -54,7 +54,7 @@ TESTING_DATA = (
 
 
 @pytest.mark.parametrize("opcode, offset, value, memory", TESTING_DATA)
-def test_memory(opcode: Opcode, offset: int, value: int, memory: bytes):
+def test_memory(opcode: Opcode, offset: int, value: bytes, memory: bytes):
     randomness = rand_fq()
 
     offset_rlc = RLC(offset, randomness)
