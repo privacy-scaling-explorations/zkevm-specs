@@ -745,7 +745,7 @@ class ExpCircuit:
     max_exp_steps: int
     OFFSET_INCREMENT = 7
 
-    def __init__(self, max_exp_steps: Optional[int] = 100) -> None:
+    def __init__(self, max_exp_steps: int = 100) -> None:
         self.rows = []
         self.max_exp_steps = max_exp_steps
 
