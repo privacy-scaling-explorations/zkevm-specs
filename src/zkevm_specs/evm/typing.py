@@ -1,4 +1,5 @@
 from __future__ import annotations
+import dataclasses
 from typing import (
     cast,
     Dict,
@@ -994,10 +995,12 @@ class CopyCircuit:
 
         # update the rwc_inc_left column
         rw_counter = rw_dict.rw_counter
-        for row in new_rows:
-            row.rwc_inc_left = rw_counter - row.rw_counter
-            if dst_type == CopyDataTypeTag.RlcAcc:
-                row.rlc_acc = rlc_acc
+        new_rows = [
+            dataclasses.replace(row, rwc_inc_left=rw_counter - row.rw_counter, rlc_acc=rlc_acc)
+            if dst_type == CopyDataTypeTag.RlcAcc
+            else dataclasses.replace(row, rwc_inc_left=rw_counter - row.rw_counter)
+            for row in new_rows
+        ]
         self.rows.extend(new_rows)
         return self
 

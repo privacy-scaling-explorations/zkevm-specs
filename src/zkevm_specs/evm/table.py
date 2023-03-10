@@ -360,6 +360,7 @@ class LookupAmbiguousFailure(Exception):
         self.message = f"Lookup {table_name} is ambiguous on inputs {inputs}, ${len(matched_rows)} matched rows found: {matched_rows}"
 
 
+@dataclass(frozen=True)
 class TableRow:
     @classmethod
     def validate_query(cls, table_name: str, query: Mapping[str, Any]):
@@ -440,7 +441,7 @@ class MPTTableRow(TableRow):
     value_prev: Word
 
 
-@dataclass
+@dataclass(frozen=True)
 class CopyCircuitRow(TableRow):
     q_step: FQ
     is_first: FQ
@@ -486,7 +487,7 @@ class KeccakTableRow(TableRow):
     output: Word
 
 
-@dataclass
+@dataclass(frozen=True)
 class ExpCircuitRow(TableRow):
     q_usable: FQ
     # columns from the exponentiation table
