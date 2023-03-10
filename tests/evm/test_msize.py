@@ -9,7 +9,7 @@ from zkevm_specs.evm import (
     Bytecode,
     RWDictionary,
 )
-from zkevm_specs.util import rand_fq, Word, N_BYTES_WORD
+from zkevm_specs.util import Word, N_BYTES_WORD
 
 TESTING_DATA = [i for i in range(0, 7)]
 

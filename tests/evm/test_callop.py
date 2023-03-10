@@ -23,7 +23,6 @@ from zkevm_specs.util import (
     GAS_STIPEND_CALL_WITH_VALUE,
     Word,
     U256,
-    rand_fq,
 )
 from common import CallContext
 

@@ -13,7 +13,7 @@ from zkevm_specs.evm import (
     Block,
     Transaction,
 )
-from zkevm_specs.util import rand_fq, FQ, Word, WordOrValue
+from zkevm_specs.util import FQ, Word, WordOrValue
 
 TESTING_DATA = (
     # (is_last_step, empty_block, max_txs, cumulative_gas, success)

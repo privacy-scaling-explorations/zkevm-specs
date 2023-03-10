@@ -13,7 +13,7 @@ from zkevm_specs.evm import (
     Bytecode,
     RWDictionary,
 )
-from zkevm_specs.util import rand_fq, Word
+from zkevm_specs.util import Word
 
 BYTECODE_END_WITHOUT_STOP = Bytecode().push(0, n_bytes=1)
 BYTECODE_END_WITH_STOP = Bytecode().push(0, n_bytes=1).stop()

@@ -19,7 +19,6 @@ from zkevm_specs.util import (
     keccak256,
     rand_address,
     rand_bytes,
-    rand_fq,
     rand_range,
 )
 

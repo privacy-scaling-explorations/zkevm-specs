@@ -6,7 +6,7 @@ from zkevm_specs.evm import (
     Tables,
     verify_steps,
 )
-from zkevm_specs.util import rand_fq, Word
+from zkevm_specs.util import Word
 
 
 def test_codesize():

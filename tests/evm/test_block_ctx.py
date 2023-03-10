@@ -10,7 +10,7 @@ from zkevm_specs.evm import (
     RWDictionary,
 )
 from typing import Union
-from zkevm_specs.util import rand_address, rand_fq, rand_range, Word, U64, U160, U256
+from zkevm_specs.util import rand_address, rand_range, Word, U64, U160, U256
 
 
 TESTING_DATA_U160 = (0x030201, rand_address())

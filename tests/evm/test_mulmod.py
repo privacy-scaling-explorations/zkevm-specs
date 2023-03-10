@@ -9,7 +9,7 @@ from zkevm_specs.evm import (
     Bytecode,
     RWDictionary,
 )
-from zkevm_specs.util import rand_fq, Word
+from zkevm_specs.util import Word
 
 MAXU256 = (2**256) - 1
 

@@ -11,7 +11,7 @@ from zkevm_specs.evm import (
     Bytecode,
     RWDictionary,
 )
-from zkevm_specs.util import rand_fq, rand_address, Word, COLD_SLOAD_COST, WARM_STORAGE_READ_COST
+from zkevm_specs.util import rand_address, Word, COLD_SLOAD_COST, WARM_STORAGE_READ_COST
 
 TESTING_DATA = (
     (

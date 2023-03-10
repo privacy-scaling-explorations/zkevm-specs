@@ -2,7 +2,7 @@ import traceback
 from typing import Union, List
 
 from zkevm_specs.state_circuit import *
-from zkevm_specs.util import rand_fq, FQ
+from zkevm_specs.util import FQ
 
 def word(v: int) -> WordOrValue:
     return WordOrValue(Word(v))

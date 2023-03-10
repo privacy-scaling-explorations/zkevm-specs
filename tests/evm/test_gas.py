@@ -10,7 +10,7 @@ from zkevm_specs.evm import (
     verify_steps,
     RWDictionary,
 )
-from zkevm_specs.util import rand_fq, rand_range, Word
+from zkevm_specs.util import rand_range, Word
 
 # Start with different values for `gas` before calling the `GAS` opcode.
 TESTING_DATA = tuple([i for i in range(2, 10)] + [rand_range(2**64) for i in range(0, 10)])

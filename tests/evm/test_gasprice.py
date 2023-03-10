@@ -11,7 +11,7 @@ from zkevm_specs.evm import (
     verify_steps,
     RWDictionary,
 )
-from zkevm_specs.util import rand_fq, Word, U256
+from zkevm_specs.util import Word, U256
 
 TESTING_DATA = (
     0x00,

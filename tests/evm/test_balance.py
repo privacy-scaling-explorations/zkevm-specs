@@ -19,7 +19,6 @@ from zkevm_specs.util import (
     U160,
     U256,
     rand_address,
-    rand_fq,
     rand_range,
     rand_word,
 )

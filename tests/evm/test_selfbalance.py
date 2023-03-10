@@ -11,7 +11,7 @@ from zkevm_specs.evm import (
     AccountFieldTag,
     RWDictionary,
 )
-from zkevm_specs.util import rand_address, rand_word, rand_fq, Word, U256, U160
+from zkevm_specs.util import rand_address, rand_word, Word, U256, U160
 
 TESTING_DATA = [(0, 0), (0, 10), (rand_address(), rand_word())]
 

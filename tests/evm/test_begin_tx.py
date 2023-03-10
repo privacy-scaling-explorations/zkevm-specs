@@ -14,7 +14,7 @@ from zkevm_specs.evm import (
     Bytecode,
     RWDictionary,
 )
-from zkevm_specs.util import rand_fq, rand_address, rand_range, rand_word, Word, EMPTY_CODE_HASH, U64
+from zkevm_specs.util import rand_address, rand_range, rand_word, Word, EMPTY_CODE_HASH, U64
 
 RETURN_BYTECODE = Bytecode().return_(0, 0)
 REVERT_BYTECODE = Bytecode().revert(0, 0)

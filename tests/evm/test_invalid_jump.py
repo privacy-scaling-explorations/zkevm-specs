@@ -13,7 +13,7 @@ from zkevm_specs.evm import (
     RWDictionary,
     CallContextFieldTag,
 )
-from zkevm_specs.util import rand_fq, Word
+from zkevm_specs.util import Word
 
 TESTING_DATA = (
     (Opcode.JUMP, bytes([5])),

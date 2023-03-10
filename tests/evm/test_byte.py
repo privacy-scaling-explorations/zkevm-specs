@@ -1,6 +1,6 @@
 import pytest
 from random import randrange
-from zkevm_specs.util import rand_fq, Word
+from zkevm_specs.util import Word
 from zkevm_specs.evm import (
     ExecutionState,
     StepState,

@@ -9,7 +9,7 @@ from zkevm_specs.evm import (
     Bytecode,
     RWDictionary,
 )
-from zkevm_specs.util import rand_address, rand_fq, Word, U160
+from zkevm_specs.util import rand_address, Word, U160
 
 
 TESTING_DATA = (

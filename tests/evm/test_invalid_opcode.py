@@ -13,7 +13,7 @@ from zkevm_specs.evm import (
     Transaction,
     verify_steps,
 )
-from zkevm_specs.util import Word, rand_fq
+from zkevm_specs.util import Word
 
 TESTING_INVALID_CODES = [
     # Single invalid opcode

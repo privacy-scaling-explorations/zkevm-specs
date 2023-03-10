@@ -13,7 +13,7 @@ from zkevm_specs.evm import (
     Bytecode,
     RWDictionary,
 )
-from zkevm_specs.util import rand_fq, Word
+from zkevm_specs.util import Word
 
 BYTECODE = Bytecode().pop()
 BYTECODE_PUSH = Bytecode().push1(0x10).push1(0x20)

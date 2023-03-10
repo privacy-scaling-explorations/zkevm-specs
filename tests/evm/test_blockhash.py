@@ -9,7 +9,7 @@ from zkevm_specs.evm import (
     Bytecode,
     RWDictionary,
 )
-from zkevm_specs.util import rand_fq, Word, U64, U256, Sequence, keccak256
+from zkevm_specs.util import Word, U64, U256, Sequence, keccak256
 
 TESTING_DATA = [
     # valid range

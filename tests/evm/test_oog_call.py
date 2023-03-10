@@ -16,7 +16,6 @@ from zkevm_specs.evm import (
 )
 from zkevm_specs.util import (
     Word,
-    rand_fq,
 )
 from common import CallContext
 

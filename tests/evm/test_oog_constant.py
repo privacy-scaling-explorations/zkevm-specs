@@ -14,7 +14,7 @@ from zkevm_specs.evm import (
     RWDictionary,
     Opcode,
 )
-from zkevm_specs.util import rand_fq, Word
+from zkevm_specs.util import Word
 
 
 BYTECODE = Bytecode().push1(0x40)

@@ -9,7 +9,7 @@ from zkevm_specs.evm import (
     Tables,
     verify_steps,
 )
-from zkevm_specs.util import Word, U160, rand_address, rand_fq
+from zkevm_specs.util import Word, U160, rand_address
 
 
 TESTING_DATA = (

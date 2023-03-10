@@ -13,7 +13,6 @@ from zkevm_specs.util import (
     get_int_abs,
     get_int_neg,
     int_is_neg,
-    rand_fq,
     rand_word,
 )
 

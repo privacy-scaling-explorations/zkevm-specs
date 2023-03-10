@@ -12,7 +12,7 @@ from zkevm_specs.evm import (
     Transaction,
     RWDictionary,
 )
-from zkevm_specs.util import rand_fq, Word, EMPTY_CODE_HASH, MAX_REFUND_QUOTIENT_OF_GAS_USED
+from zkevm_specs.util import Word, EMPTY_CODE_HASH, MAX_REFUND_QUOTIENT_OF_GAS_USED
 
 CALLEE_ADDRESS = 0xFF
 

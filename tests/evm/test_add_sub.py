@@ -10,7 +10,7 @@ from zkevm_specs.evm import (
     Bytecode,
     RWDictionary,
 )
-from zkevm_specs.util import rand_fq, rand_word, Word
+from zkevm_specs.util import rand_word, Word
 from common import generate_nasty_tests
 
 
