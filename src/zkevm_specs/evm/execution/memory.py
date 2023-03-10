@@ -31,7 +31,7 @@ def memory(instruction: Instruction):
         for idx in range(32):
             instruction.is_equal(
                 instruction.memory_lookup(
-                    RW.Write if is_store == FQ(1) else RW.Read, address + idx
+                    RW.Write if is_store == FQ(1) else RW.Read, address.expr() + idx
                 ),
                 FQ(value_le_bytes[31 - idx]),
             )

@@ -1,6 +1,6 @@
 from ..instruction import Instruction, Transition
 from ..table import BlockContextFieldTag
-from ...util import FQ, N_BYTES_U64, Word
+from ...util import FQ, N_BYTES_U64, Word, WordOrValue
 
 
 def blockhash(instruction: Instruction):
@@ -23,7 +23,7 @@ def blockhash(instruction: Instruction):
             block_number,
         )
     else:
-        expected_block_hash = Word(0)
+        expected_block_hash = WordOrValue(FQ(0))
 
     # block hash is as expected
     instruction.constrain_equal_word(block_hash, expected_block_hash)

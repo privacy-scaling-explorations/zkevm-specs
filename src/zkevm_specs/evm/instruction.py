@@ -142,7 +142,7 @@ class Instruction:
             f"Expected value to be != 0, but got {value}"
         )
 
-    def constrain_not_zero_word(self, value: Expression):
+    def constrain_not_zero_word(self, value: Word):
         assert value.lo.expr() != 0 or value.hi.expr() != 0, ConstraintUnsatFailure(
             f"Expected word to be != 0, but got {value}"
         )
@@ -399,7 +399,7 @@ class Instruction:
 
     def select_word(
         self, condition: FQ, when_true: Word, when_false: Word
-    ) -> ExpressionImpl:
+    ) -> Word:
         assert condition in [0, 1], "Condition of select_word should be a checked bool"
         return when_true if condition == 1 else when_false
 
@@ -492,15 +492,6 @@ class Instruction:
     def word_to_u64(self, word: Word) -> Expression:
         """Verify that word is 64 bits and return it as a single value"""
         return self.word_to_fq(word, 8)
-
-    def rlc_encode(self, value: Union[FQ, int, bytes], n_bytes: Optional[int] = None) -> RLC:
-        if isinstance(value, FQ):
-            value = value.n
-        if isinstance(value, bytes):
-            n_bytes = len(value) if n_bytes is None else n_bytes
-        else:
-            assert n_bytes is not None
-        return RLC(value, self.randomness, n_bytes)
 
     def range_lookup(self, value: Expression, range: int):
         self.fixed_lookup(FixedTableTag.range_table_tag(range), value)
@@ -1123,7 +1114,7 @@ class Instruction:
         self,
         src_id: Union[Expression, Word],
         src_type: CopyDataTypeTag,
-        dst_id: Unioon[Expression, Word],
+        dst_id: Union[Expression, Word],
         dst_type: CopyDataTypeTag,
         src_addr: Expression,
         src_addr_end: Expression,
@@ -1146,7 +1137,7 @@ class Instruction:
         )
         return copy_table_row.rwc_inc, copy_table_row.rlc_acc
 
-    def keccak_lookup(self, length: Expression, value_rlc: Expression) -> FQ:
+    def keccak_lookup(self, length: Expression, value_rlc: Expression) -> Word:
         return self.tables.keccak_lookup(length, value_rlc).output
 
     def exp_lookup(

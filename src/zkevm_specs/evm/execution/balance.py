@@ -21,7 +21,7 @@ def balance(instruction: Instruction):
     balance = instruction.account_read(address, AccountFieldTag.Balance) if exists == 1 else Word(0)
 
     instruction.constrain_equal_word(
-        instruction.select(exists, balance, Word(0)),
+        instruction.select_word(exists, balance, Word(0)),
         instruction.stack_push(),
     )
 

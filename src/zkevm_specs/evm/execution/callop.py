@@ -190,7 +190,7 @@ def callop(instruction: Instruction):
 
         # Setup next call's context. Note that RwCounterEndOfReversion, IsPersistent
         # have been checked above.
-        for field_tag, expected_value in [
+        for field_tag, expected_value_word in [
             (CallContextFieldTag.CallerId, value(instruction.curr.call_id)),
             (CallContextFieldTag.TxId, value(tx_id.expr())),
             (CallContextFieldTag.Depth, value(depth.expr() + 1)),
@@ -215,7 +215,7 @@ def callop(instruction: Instruction):
         ]:
             instruction.constrain_equal_word(
                 instruction.call_context_lookup(field_tag, call_id=callee_call_id),
-                expected_value,
+                expected_value_word,
             )
 
         # Give gas stipend if value is not zero

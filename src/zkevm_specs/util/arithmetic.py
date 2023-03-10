@@ -98,10 +98,9 @@ class Word:
         self.lo = bytes_to_fq(value[0:16])
         self.hi = bytes_to_fq(value[16:32])
 
-    # FIXME: Rename to int_value
     def int_value(self) -> int:
         """Return the word as an integer"""
-        return self.lo.n + (self.hi.n << 128)
+        return self.lo.expr().n + (self.hi.expr().n << 128)
 
     def __hash__(self) -> int:
         return hash((self.lo, self.hi))
@@ -109,7 +108,8 @@ class Word:
     def __repr__(self) -> str:
         return f"Word({hex(self.int_value())})"
 
-    def __eq__(self, other: Word) -> bool:
+    def __eq__(self, other) -> bool:
+        assert isinstance(other, Word)
         return self.lo.expr() == other.lo.expr() and self.hi.expr() == other.hi.expr()
 
     def __or__(self, other: Word) -> Word:
@@ -129,7 +129,7 @@ class Word:
     def to_le_bytes(self) -> Tuple[FQ, ...]:
         lo = self.lo.expr().n.to_bytes(16, "little")
         hi = self.hi.expr().n.to_bytes(16, "little")
-        return [FQ(v) for v in lo + hi]
+        return tuple([FQ(v) for v in lo + hi])
 
 
 class WordOrValue(Word):
@@ -163,7 +163,8 @@ class Expression(Protocol):
     def expr(self) -> FQ:
         ...
 
-    def __eq__(self, other: Expression) -> bool:
+    def __eq__(self, other) -> bool:
+        assert isinstance(other, Expression)
         return self.expr() == other.expr()
 
 

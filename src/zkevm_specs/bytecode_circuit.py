@@ -128,7 +128,7 @@ def assign_bytecode_circuit(k: int, bytecodes: Sequence[UnrolledBytecode], kecca
                     hash=row.bytecode_hash,
                     tag=row.field_tag.expr(),
                     index=row.index.expr(),
-                    value=row.value,
+                    value=row.value.expr(),
                     is_code=row.is_code.expr(),
                     push_data_left=FQ(push_data_left),
                     value_rlc=FQ(value_rlc),

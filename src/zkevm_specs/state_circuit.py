@@ -1,4 +1,4 @@
-from typing import NamedTuple, Tuple, List, Set, Dict, Optional, Union
+from typing import NamedTuple, Tuple, List, Set, Dict, Optional, Union, Mapping
 from enum import IntEnum
 from math import log, ceil
 
@@ -129,7 +129,7 @@ class Tables:
         root: Word,
         root_prev: Word,
     ) -> MPTTableRow:
-        query = {
+        query: Mapping[str, Optional[Union[FQ, Expression, Word]]] = {
             "address": address,
             "proof_type": proof_type,
             "storage_key": storage_key,
@@ -845,7 +845,7 @@ def _mpt_key(op: Operation) -> Optional[Tuple[FQ, FQ, FQ, FQ]]:
     if op.tag != Tag.Account and op.tag != Tag.Storage:
         return None
     storage_key = Word(op.storage_key)
-    return (FQ(op.address), FQ(op.field_tag), storage_key.lo, storage_key.hi)
+    return (FQ(op.address), FQ(op.field_tag), storage_key.lo.expr(), storage_key.hi.expr())
 
 
 def _mock_mpt_updates(ops: List[Operation]) -> Dict[Tuple[FQ, FQ, FQ, FQ], MPTTableRow]:

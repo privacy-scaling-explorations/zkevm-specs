@@ -66,7 +66,7 @@ def test_bytecode_unrolling():
     for i in range(len(rows)):
         rows[i] = BytecodeTableRow(hash, rows[i][1], rows[i][2], rows[i][3], rows[i][4])
     # Prepend the length of bytecode to rows
-    rows.insert(0, BytecodeTableRow(hash, BytecodeFieldTag.Header, 0, 0, len(bytecode)))
+    rows.insert(0, BytecodeTableRow(hash, BytecodeFieldTag.Header, FQ(0), FQ(0), FQ(len(bytecode))))
     # Unroll the bytecode
     unrolled = unroll(bytes(bytecode), randomness_keccak)
     # Check if the bytecode was unrolled correctly
@@ -179,7 +179,7 @@ def test_bytecode_invalid_byte_data():
     invalid = deepcopy(unrolled)
     row = unrolled.rows[3]
     invalid.rows[3] = BytecodeTableRow(
-        row.bytecode_hash, row.field_tag, row.index, row.is_code, 256
+        row.bytecode_hash, row.field_tag, row.index, row.is_code, FQ(256)
     )
     verify(k, [invalid], randomness_keccak, False)
 
