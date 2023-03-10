@@ -1,8 +1,5 @@
 from typing import Sequence
-from .evm import (
-    Bn256Circuit,
-    Bn256TableRow
-)
+from .evm import Bn256Circuit, Bn256TableRow
 from .util import ConstraintSystem
 
 

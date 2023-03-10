@@ -1,4 +1,4 @@
-from . import bytecode
+from . import bytecode_circuit
 from . import copy_circuit
 from . import encoding
 from . import evm
@@ -6,6 +6,5 @@ from . import exp_circuit
 from . import opcode
 from . import state_circuit
 from . import bn256_circuit
-from . import tx
+from . import tx_circuit
 from . import util
-from . import tx
