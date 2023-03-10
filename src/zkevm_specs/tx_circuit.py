@@ -230,7 +230,7 @@ class SignVerifyChip:
         ), f"{assert_msg}: {hex(addr_expr.n)} != {hex(self.address.n)}"
 
         # 3. Verify that the signed message in the ecdsa_chip with RLC encoding
-        # corresponds to msg_hash_rlc
+        # corresponds to msg_hash
         msg_hash = Word(self.msg_hash_bytes)
         assert (
             msg_hash.select(is_not_padding) == self.msg_hash

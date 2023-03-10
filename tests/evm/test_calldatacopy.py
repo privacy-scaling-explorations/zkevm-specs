@@ -59,9 +59,9 @@ def test_calldatacopy(
     bytecode = Bytecode().calldatacopy(memory_offset, data_offset, length)
     bytecode_hash = Word(bytecode.hash())
 
-    memory_offset_rlc = Word(memory_offset)
-    data_offset_rlc = Word(data_offset)
-    length_rlc = Word(length)
+    memory_offset_word = Word(memory_offset)
+    data_offset_word = Word(data_offset)
+    length_word = Word(length)
     call_data = rand_bytes(call_data_length)
 
     curr_mem_size = memory_word_size(0 if from_tx else call_data_offset + call_data_length)
@@ -98,9 +98,9 @@ def test_calldatacopy(
 
     rw_dictionary = (
         RWDictionary(1)
-        .stack_read(CALL_ID, 1021, memory_offset_rlc)
-        .stack_read(CALL_ID, 1022, data_offset_rlc)
-        .stack_read(CALL_ID, 1023, length_rlc)
+        .stack_read(CALL_ID, 1021, memory_offset_word)
+        .stack_read(CALL_ID, 1022, data_offset_word)
+        .stack_read(CALL_ID, 1023, length_word)
     )
     if from_tx:
         rw_dictionary.call_context_read(CALL_ID, CallContextFieldTag.TxId, TX_ID).call_context_read(
