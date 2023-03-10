@@ -33,7 +33,7 @@ class CallGadget:
     memory_expansion_gas_cost: FQ
 
     has_value: FQ
-    callee_code_hash: FQ
+    callee_code_hash: Word
     is_empty_code_hash: FQ
     callee_not_exists: FQ
 
@@ -58,20 +58,22 @@ class CallGadget:
         cd_length = instruction.stack_pop()
         rd_offset = instruction.stack_pop()
         rd_length = instruction.stack_pop()
-        self.is_success = instruction.stack_push().expr()
+        result = instruction.stack_push()
+        self.is_success = result.lo.expr()
+        instruction.constrain_equal_word(Word((self.is_success, FQ(0))), result)
 
         if self.IS_SUCCESS_CALL == FQ(1):
             # Verify is_success is a bool
             instruction.constrain_bool(self.is_success)
-            self.gas = instruction.rlc_to_fq(gas, N_BYTES_GAS)
+            self.gas = instruction.word_to_fq(gas, N_BYTES_GAS)
             self.is_u64_gas = instruction.is_zero(
                 instruction.sum(gas.to_le_bytes()[N_BYTES_GAS:])
             )
         else:
             instruction.constrain_zero(self.is_success)
-        self.has_value = FQ(0) if is_delegatecall == FQ(1) else 1 - instruction.is_zero(self.value)
+        self.has_value = FQ(0) if is_delegatecall == FQ(1) else 1 - instruction.is_zero_word(self.value)
 
-        self.callee_address = instruction.rlc_to_fq(callee_address, N_BYTES_ACCOUNT_ADDRESS)
+        self.callee_address = instruction.word_to_fq(callee_address, N_BYTES_ACCOUNT_ADDRESS)
         self.cd_offset, self.cd_length = instruction.memory_offset_and_length(
             cd_offset, cd_length
         )
@@ -92,11 +94,11 @@ class CallGadget:
         # Check callee account existence with code_hash != 0
         self.callee_code_hash = instruction.account_read(
             self.callee_address, AccountFieldTag.CodeHash
-        ).expr()
-        self.is_empty_code_hash = instruction.is_equal(
-            self.callee_code_hash, instruction.rlc_encode(EMPTY_CODE_HASH, 32)
         )
-        self.callee_not_exists = instruction.is_zero(self.callee_code_hash)
+        self.is_empty_code_hash = instruction.is_equal_word(
+            self.callee_code_hash, Word(EMPTY_CODE_HASH)
+        )
+        self.callee_not_exists = instruction.is_zero_word(self.callee_code_hash)
 
     def gas_cost(
         self,

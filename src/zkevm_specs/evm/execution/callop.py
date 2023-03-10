@@ -3,12 +3,19 @@ from zkevm_specs.util.param import N_BYTES_GAS
 from ...util import (
     FQ,
     GAS_STIPEND_CALL_WITH_VALUE,
-    RLC,
+    Word, WordOrValue, Expression
 )
 from ..instruction import Instruction, Transition
 from ..opcode import Opcode
 from ..table import RW, CallContextFieldTag, AccountFieldTag
 from ..execution_state import precompile_execution_states
+
+
+def word(v: Word) -> WordOrValue:
+    return WordOrValue(v)
+
+def value(v: Expression) -> WordOrValue:
+    return WordOrValue(v)
 
 
 def callop(instruction: Instruction):
@@ -20,20 +27,20 @@ def callop(instruction: Instruction):
 
     callee_call_id = instruction.curr.rw_counter
 
-    tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
+    tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId).value()
     reversion_info = instruction.reversion_info()
-    caller_address = instruction.call_context_lookup(CallContextFieldTag.CalleeAddress)
+    caller_address = instruction.call_context_lookup(CallContextFieldTag.CalleeAddress).value()
     is_static = instruction.select(
-        is_staticcall, FQ(1), instruction.call_context_lookup(CallContextFieldTag.IsStatic)
+        is_staticcall, FQ(1), instruction.call_context_lookup(CallContextFieldTag.IsStatic).value()
     )
-    depth = instruction.call_context_lookup(CallContextFieldTag.Depth)
+    depth = instruction.call_context_lookup(CallContextFieldTag.Depth).value()
     parent_caller_address, parent_call_value = (
         (
-            instruction.call_context_lookup(CallContextFieldTag.CallerAddress),
+            instruction.call_context_lookup(CallContextFieldTag.CallerAddress).value(),
             instruction.call_context_lookup(CallContextFieldTag.Value),
         )
         if is_delegatecall == 1
-        else (RLC(0), RLC(0))
+        else (FQ(0), Word(0))
     )
 
     # Verify depth is less than 1024
@@ -133,7 +140,7 @@ def callop(instruction: Instruction):
             (CallContextFieldTag.LastCalleeReturnDataLength, FQ(0)),
         ]:
             instruction.constrain_equal(
-                instruction.call_context_lookup(field_tag, RW.Write),
+                instruction.call_context_lookup(field_tag, RW.Write).value(),
                 expected_value,
             )
 
@@ -155,7 +162,7 @@ def callop(instruction: Instruction):
             call_id=Transition.same(),
             is_root=Transition.same(),
             is_create=Transition.same(),
-            code_hash=Transition.same(),
+            code_hash=Transition.same_word(),
         )
     else:
         # Similar as above comment.
@@ -177,36 +184,36 @@ def callop(instruction: Instruction):
             ),
         ]:
             instruction.constrain_equal(
-                instruction.call_context_lookup(field_tag, RW.Write),
+                instruction.call_context_lookup(field_tag, RW.Write).value(),
                 expected_value,
             )
 
         # Setup next call's context. Note that RwCounterEndOfReversion, IsPersistent
         # have been checked above.
         for field_tag, expected_value in [
-            (CallContextFieldTag.CallerId, instruction.curr.call_id),
-            (CallContextFieldTag.TxId, tx_id.expr()),
-            (CallContextFieldTag.Depth, depth.expr() + 1),
-            (CallContextFieldTag.CallerAddress, caller_address.expr()),
-            (CallContextFieldTag.CalleeAddress, callee_address.expr()),
-            (CallContextFieldTag.CallDataOffset, call.cd_offset),
-            (CallContextFieldTag.CallDataLength, call.cd_length),
-            (CallContextFieldTag.ReturnDataOffset, call.rd_offset),
-            (CallContextFieldTag.ReturnDataLength, call.rd_length),
+            (CallContextFieldTag.CallerId, value(instruction.curr.call_id)),
+            (CallContextFieldTag.TxId, value(tx_id.expr())),
+            (CallContextFieldTag.Depth, value(depth.expr() + 1)),
+            (CallContextFieldTag.CallerAddress, value(caller_address.expr())),
+            (CallContextFieldTag.CalleeAddress, value(callee_address.expr())),
+            (CallContextFieldTag.CallDataOffset, value(call.cd_offset)),
+            (CallContextFieldTag.CallDataLength, value(call.cd_length)),
+            (CallContextFieldTag.ReturnDataOffset, value(call.rd_offset)),
+            (CallContextFieldTag.ReturnDataLength, value(call.rd_length)),
             (
                 CallContextFieldTag.Value,
-                instruction.select(is_delegatecall, parent_call_value.expr(), call.value.expr()),
+                word(instruction.select_word(is_delegatecall, parent_call_value, call.value)),
             ),
-            (CallContextFieldTag.IsSuccess, call.is_success),
-            (CallContextFieldTag.IsStatic, is_static.expr()),
-            (CallContextFieldTag.LastCalleeId, FQ(0)),
-            (CallContextFieldTag.LastCalleeReturnDataOffset, FQ(0)),
-            (CallContextFieldTag.LastCalleeReturnDataLength, FQ(0)),
-            (CallContextFieldTag.IsRoot, FQ(False)),
-            (CallContextFieldTag.IsCreate, FQ(False)),
-            (CallContextFieldTag.CodeHash, call.callee_code_hash),
+            (CallContextFieldTag.IsSuccess, value(call.is_success)),
+            (CallContextFieldTag.IsStatic, value(is_static.expr())),
+            (CallContextFieldTag.LastCalleeId, value(FQ(0))),
+            (CallContextFieldTag.LastCalleeReturnDataOffset, value(FQ(0))),
+            (CallContextFieldTag.LastCalleeReturnDataLength, value(FQ(0))),
+            (CallContextFieldTag.IsRoot, value(FQ(False))),
+            (CallContextFieldTag.IsCreate, value(FQ(False))),
+            (CallContextFieldTag.CodeHash, word(call.callee_code_hash)),
         ]:
-            instruction.constrain_equal(
+            instruction.constrain_equal_word(
                 instruction.call_context_lookup(field_tag, call_id=callee_call_id),
                 expected_value,
             )
@@ -219,7 +226,7 @@ def callop(instruction: Instruction):
             call_id=Transition.to(callee_call_id),
             is_root=Transition.to(False),
             is_create=Transition.to(False),
-            code_hash=Transition.to(call.callee_code_hash),
+            code_hash=Transition.to_word(call.callee_code_hash),
             gas_left=Transition.to(callee_gas_left),
             reversible_write_counter=Transition.to(2),
             log_id=Transition.same(),

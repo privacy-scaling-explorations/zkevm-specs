@@ -21,7 +21,7 @@ from zkevm_specs.util import (
     GAS_COST_NEW_ACCOUNT,
     GAS_COST_WARM_ACCESS,
     GAS_STIPEND_CALL_WITH_VALUE,
-    RLC,
+    Word,
     U256,
     rand_fq,
 )
@@ -183,8 +183,6 @@ def test_callop(
     is_warm_access: bool,
     expected: Expected,
 ):
-    randomness = rand_fq()
-
     is_call = 1 if opcode == Opcode.CALL else 0
     is_callcode = 1 if opcode == Opcode.CALLCODE else 0
     is_delegatecall = 1 if opcode == Opcode.DELEGATECALL else 0
@@ -250,7 +248,7 @@ def test_callop(
             .stop()
         )
 
-    caller_bytecode_hash = RLC(caller_bytecode.hash(), randomness)
+    caller_bytecode_hash = Word(caller_bytecode.hash())
 
     callee_bytecode = callee.code
     callee_bytecode_hash = callee_bytecode.hash()
@@ -258,7 +256,7 @@ def test_callop(
         is_empty_code_hash = callee_bytecode_hash == EMPTY_CODE_HASH
     else:
         is_empty_code_hash = True
-    callee_bytecode_hash = RLC(callee_bytecode_hash if not callee.is_empty() else 0, randomness)
+    callee_bytecode_hash = Word(callee_bytecode_hash if not callee.is_empty() else 0)
 
     is_success = False if callee is CALLEE_WITH_REVERT_BYTECODE else True
     is_reverted_by_caller = not caller_ctx.is_persistent and is_success
@@ -296,23 +294,23 @@ def test_callop(
     if is_delegatecall == 1:
         rw_dictionary \
         .call_context_read(1, CallContextFieldTag.CallerAddress, parent_caller.address) \
-        .call_context_read(1, CallContextFieldTag.Value, RLC(parent_value, randomness))
+        .call_context_read(1, CallContextFieldTag.Value, Word(parent_value))
     if is_call + is_callcode == 1:
         rw_dictionary \
-        .stack_read(1, 1017, RLC(stack.gas, randomness)) \
-        .stack_read(1, 1018, RLC(callee.address, randomness)) \
-        .stack_read(1, 1019, RLC(value, randomness))
+        .stack_read(1, 1017, Word(stack.gas)) \
+        .stack_read(1, 1018, Word(callee.address)) \
+        .stack_read(1, 1019, Word(value))
     else: # DELEGATECALL or STATICCALL
         rw_dictionary \
-        .stack_read(1, 1018, RLC(stack.gas, randomness)) \
-        .stack_read(1, 1019, RLC(callee.address, randomness))
+        .stack_read(1, 1018, Word(stack.gas)) \
+        .stack_read(1, 1019, Word(callee.address))
 
     rw_dictionary \
-        .stack_read(1, 1020, RLC(stack.cd_offset, randomness)) \
-        .stack_read(1, 1021, RLC(stack.cd_length, randomness)) \
-        .stack_read(1, 1022, RLC(stack.rd_offset, randomness)) \
-        .stack_read(1, 1023, RLC(stack.rd_length, randomness)) \
-        .stack_write(1, 1023, RLC(is_success, randomness)) \
+        .stack_read(1, 1020, Word(stack.cd_offset)) \
+        .stack_read(1, 1021, Word(stack.cd_length)) \
+        .stack_read(1, 1022, Word(stack.rd_offset)) \
+        .stack_read(1, 1023, Word(stack.rd_length)) \
+        .stack_write(1, 1023, Word(is_success)) \
         .account_read(callee.address, AccountFieldTag.CodeHash, callee_bytecode_hash) \
         .tx_access_list_account_write(1, callee.address, True, is_warm_access, rw_counter_of_reversion=None if caller_ctx.is_persistent else caller_ctx.rw_counter_end_of_reversion - caller_ctx.reversible_write_counter) \
         .call_context_read(call_id, CallContextFieldTag.RwCounterEndOfReversion, callee_rw_counter_end_of_reversion) \
@@ -331,10 +329,10 @@ def test_callop(
         callee = caller
         caller = parent_caller
 
-    caller_balance_prev = RLC(caller.balance, randomness)
-    callee_balance_prev = RLC(callee.balance, randomness)
-    caller_balance = RLC(caller.balance - value, randomness)
-    callee_balance = RLC(callee.balance + value, randomness)
+    caller_balance_prev = Word(caller.balance)
+    callee_balance_prev = Word(callee.balance)
+    caller_balance = Word(caller.balance - value)
+    callee_balance = Word(callee.balance + value)
 
     # fmt: off
     if is_call == 1:
@@ -345,7 +343,7 @@ def test_callop(
     elif is_callcode == 1:
         # Get caller balance to constrain it should be greater than or equal to stack `value`.
         rw_dictionary \
-            .account_read(caller.address, AccountFieldTag.Balance, RLC(caller.balance, randomness))
+            .account_read(caller.address, AccountFieldTag.Balance, Word(caller.balance))
 
     if is_empty_code_hash:
         rw_dictionary \
@@ -368,7 +366,7 @@ def test_callop(
         .call_context_read(call_id, CallContextFieldTag.CallDataLength, stack.cd_length) \
         .call_context_read(call_id, CallContextFieldTag.ReturnDataOffset, stack.rd_offset if stack.rd_length != 0 else 0) \
         .call_context_read(call_id, CallContextFieldTag.ReturnDataLength, stack.rd_length) \
-        .call_context_read(call_id, CallContextFieldTag.Value, RLC(parent_value if is_delegatecall == 1 else value, randomness)) \
+        .call_context_read(call_id, CallContextFieldTag.Value, Word(parent_value if is_delegatecall == 1 else value)) \
         .call_context_read(call_id, CallContextFieldTag.IsSuccess, is_success) \
         .call_context_read(call_id, CallContextFieldTag.IsStatic, is_static) \
         .call_context_read(call_id, CallContextFieldTag.LastCalleeId, 0) \
@@ -380,19 +378,18 @@ def test_callop(
     # fmt: on
 
     tables = Tables(
-        block_table=set(Block().table_assignments(randomness)),
+        block_table=set(Block().table_assignments()),
         tx_table=set(),
         bytecode_table=set(
             chain(
-                caller_bytecode.table_assignments(randomness),
-                callee_bytecode.table_assignments(randomness),
+                caller_bytecode.table_assignments(),
+                callee_bytecode.table_assignments(),
             )
         ),
         rw_table=set(rw_dictionary.rws),
     )
 
     verify_steps(
-        randomness=randomness,
         tables=tables,
         steps=[
             StepState(

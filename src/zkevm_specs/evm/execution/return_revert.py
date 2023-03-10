@@ -1,4 +1,4 @@
-from ...util import EMPTY_HASH, FQ, N_BYTES_MEMORY_ADDRESS, RLC
+from ...util import EMPTY_HASH, FQ, N_BYTES_MEMORY_ADDRESS, Word
 from ..instruction import Instruction, Transition
 from ..opcode import Opcode
 from ..table import CallContextFieldTag, CopyDataTypeTag, AccountFieldTag
@@ -12,14 +12,14 @@ def return_revert(instruction: Instruction):
 
     # When a call ends with RETURN this call must be successful, but it's not
     # necessary persistent depends on if it's a sub-call of a failed call or not.
-    is_success = instruction.call_context_lookup(CallContextFieldTag.IsSuccess)  # rwc += 1
+    is_success = instruction.call_context_lookup(CallContextFieldTag.IsSuccess).value()  # rwc += 1
     instruction.constrain_equal(is_success, is_return)
 
-    return_offset_rlc = instruction.stack_pop()  # rwc += 1
-    return_length_rlc = instruction.stack_pop()  # rwc += 1
+    return_offset_word = instruction.stack_pop()  # rwc += 1
+    return_length_word = instruction.stack_pop()  # rwc += 1
 
-    return_offset = instruction.rlc_to_fq(return_offset_rlc, N_BYTES_MEMORY_ADDRESS)
-    return_length = instruction.rlc_to_fq(return_length_rlc, N_BYTES_MEMORY_ADDRESS)
+    return_offset = instruction.word_to_fq(return_offset_word, N_BYTES_MEMORY_ADDRESS)
+    return_length = instruction.word_to_fq(return_length_word, N_BYTES_MEMORY_ADDRESS)
     return_end = return_offset + return_length
 
     rwc_delta = 3
@@ -29,13 +29,13 @@ def return_revert(instruction: Instruction):
 
         # TODO: Untested case.  Test it once create Tx is implemented, and once
         # CREATE/CREATE2 are implemented.
-        callee_address = instruction.call_context_lookup(CallContextFieldTag.CalleeAddress)
+        callee_address = instruction.call_context_lookup(CallContextFieldTag.CalleeAddress).value()
         reversion_info = instruction.reversion_info()
         code_hash, code_hash_prev = instruction.account_write(
             callee_address, AccountFieldTag.CodeHash
         )
-        instruction.constrain_equal(code_hash_prev, RLC(EMPTY_HASH))
-        instruction.constrain_equal(code_hash, instruction.curr.aux_data)
+        instruction.constrain_equal_word(code_hash_prev, Word(EMPTY_HASH))
+        instruction.constrain_equal_word(code_hash, instruction.curr.aux_data)
 
         # Return a memory chunk as deployment code by copying each byte from
         # callee's memory to bytecode, using the copy circuit.
@@ -62,10 +62,10 @@ def return_revert(instruction: Instruction):
         # callee's memory to caller's memory, using the copy circuit.
         caller_return_offset = instruction.call_context_lookup(
             CallContextFieldTag.ReturnDataOffset
-        )  # rwc += 1
+        ).value()  # rwc += 1
         caller_return_length = instruction.call_context_lookup(
             CallContextFieldTag.ReturnDataLength
-        )  # rwc += 1
+        ).value()  # rwc += 1
         copy_length = instruction.min(return_length, caller_return_length, N_BYTES_MEMORY_ADDRESS)
         copy_rwc_inc, _ = instruction.copy_lookup(
             instruction.curr.call_id,  # src_id
@@ -101,7 +101,7 @@ def return_revert(instruction: Instruction):
         # When a transaction ends with RETURN, this call must be persistent
         is_persistent = instruction.call_context_lookup(
             CallContextFieldTag.IsPersistent
-        )  # rwc += 1
+        ).value()  # rwc += 1
         instruction.constrain_equal(is_persistent, FQ(is_return))
 
         # Do step state transition

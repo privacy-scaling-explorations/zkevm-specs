@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Sequence, Tuple, Set, NamedTuple, List
 from collections import namedtuple
-from .util import keccak256, EMPTY_HASH, FQ, RLC, Word
+from .util import keccak256, EMPTY_HASH, FQ, Word
 from .evm import get_push_size, BytecodeFieldTag, BytecodeTableRow, KeccakTableRow, KeccakCircuit
 from .encoding import is_circuit_code
 
@@ -128,7 +128,7 @@ def assign_bytecode_circuit(k: int, bytecodes: Sequence[UnrolledBytecode], kecca
                     hash=row.bytecode_hash,
                     tag=row.field_tag.expr(),
                     index=row.index.expr(),
-                    value=row.value.expr(),
+                    value=row.value,
                     is_code=row.is_code.expr(),
                     push_data_left=FQ(push_data_left),
                     value_rlc=FQ(value_rlc),
