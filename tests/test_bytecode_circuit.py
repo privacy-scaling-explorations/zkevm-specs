@@ -2,7 +2,7 @@ from copy import deepcopy
 
 from zkevm_specs.bytecode_circuit import *
 from zkevm_specs.evm import Opcode, Bytecode, BytecodeFieldTag, BytecodeTableRow, is_push
-from zkevm_specs.util import rand_fq, U256
+from zkevm_specs.util import rand_fq, U256, keccak256
 
 
 # Unroll the bytecode
