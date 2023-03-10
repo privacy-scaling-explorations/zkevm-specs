@@ -234,7 +234,7 @@ class SignVerifyChip:
         msg_hash = Word(self.msg_hash_bytes)
         assert (
             msg_hash.select(is_not_padding) == self.msg_hash
-        ), f"{assert_msg}: {hex(msg_hash.word())} != {hex(self.msg_hash.word())}"
+        ), f"{assert_msg}: {hex(msg_hash.int_value())} != {hex(self.msg_hash.int_value())}"
 
         # 4. Verify the ECDSA signature
         self.ecdsa_chip.verify(assert_msg)

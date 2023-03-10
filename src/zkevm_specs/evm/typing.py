@@ -324,7 +324,7 @@ class Bytecode:
         elif isinstance(value, RLC):
             value = bytes(reversed(value.le_bytes))
         elif isinstance(value, Word):
-            value = value.word().to_bytes(n_bytes, "big")
+            value = value.int_value().to_bytes(n_bytes, "big")
         elif isinstance(value, bytes) or isinstance(value, bytearray):
             ...
         else:

@@ -522,7 +522,7 @@ class Instruction:
         is_neg = self.is_neg_word(x)
 
         # Generate the witness `x_abs`.
-        x_abs = x if is_neg == 0 else Word((1 << 256) - x.word())
+        x_abs = x if is_neg == 0 else Word((1 << 256) - x.int_value())
 
         x_abs_lo, x_abs_hi = x_abs.to_lo_hi()
         x_lo, x_hi = x.to_lo_hi()

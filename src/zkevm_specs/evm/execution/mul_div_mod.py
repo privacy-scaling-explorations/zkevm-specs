@@ -29,16 +29,16 @@ def mul_div_mod(instruction: Instruction):
         d = pop1  # dividend
         b = pop2  # divisor
         a = push  # quotient
-        c = Word(d.word() - b.word() * a.word())  # remainder
+        c = Word(d.int_value() - b.int_value() * a.int_value())  # remainder
     else:  # is_mod == 1
         d = pop1  # dividend
         b = pop2  # divisor
-        if b.word() == 0:
+        if b.int_value() == 0:
             c = d
             a = Word(0)
         else:
             c = push
-            a = Word((d.word() - c.word()) // b.word())
+            a = Word((d.int_value() - c.int_value()) // b.int_value())
 
     divisor_is_zero = instruction.is_zero_word(b)
     overflow = instruction.mul_add_words(a, b, c, d)

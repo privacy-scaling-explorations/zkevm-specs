@@ -151,7 +151,7 @@ def check_witness(
 
 
 def gen_witness(instruction: Instruction, shift: Word, a: Word):
-    is_neg = int_is_neg(a.word())
+    is_neg = int_is_neg(a.int_value())
     shf_lo, shf_hi = shift.to_lo_hi()
     shf_div64 = shf_lo.n // 64
     shf_mod64 = shf_lo.n % 64

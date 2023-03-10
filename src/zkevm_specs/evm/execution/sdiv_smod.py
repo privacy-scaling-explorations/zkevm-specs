@@ -84,11 +84,11 @@ def gen_witness(opcode: FQ, pop1: Word, pop2: Word, push: Word):
     # inversion of 2.
     is_sdiv = (Opcode.SMOD - opcode) * FQ(2).inv()
 
-    pop1_abs = get_int_abs(pop1.word())
-    pop2_abs = get_int_abs(pop2.word())
-    push_abs = get_int_abs(push.word())
-    pop1_is_neg = int_is_neg(pop1.word())
-    pop2_is_neg = int_is_neg(pop2.word())
+    pop1_abs = get_int_abs(pop1.int_value())
+    pop2_abs = get_int_abs(pop2.int_value())
+    push_abs = get_int_abs(push.int_value())
+    pop1_is_neg = int_is_neg(pop1.int_value())
+    pop2_is_neg = int_is_neg(pop2.int_value())
 
     if is_sdiv == 1:
         quotient = push
@@ -99,14 +99,14 @@ def gen_witness(opcode: FQ, pop1: Word, pop2: Word, push: Word):
             remainder = Word(get_int_neg(pop1_abs - push_abs * pop2_abs))
         dividend = pop1
     else:
-        if pop2.word() == 0:
+        if pop2.int_value() == 0:
             quotient = Word(0)
         elif pop1_is_neg == pop2_is_neg:
             quotient = Word(pop1_abs // pop2_abs)
         else:
             quotient = Word(get_int_neg(pop1_abs // pop2_abs))
         divisor = pop2
-        remainder = pop1 if pop2.word() == 0 else push
+        remainder = pop1 if pop2.int_value() == 0 else push
         dividend = pop1
 
     return (

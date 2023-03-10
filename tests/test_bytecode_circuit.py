@@ -112,7 +112,7 @@ def test_bytecode_invalid_hash_data():
     invalid = deepcopy(unrolled)
     row = unrolled.rows[0]
     invalid.rows[0] = BytecodeTableRow(
-        Word(row.bytecode_hash.word() + 1), row.field_tag, row.index, row.is_code, row.value
+        Word(row.bytecode_hash.int_value() + 1), row.field_tag, row.index, row.is_code, row.value
     )
     verify(k, [invalid], randomness_keccak, False)
 
@@ -120,7 +120,7 @@ def test_bytecode_invalid_hash_data():
     invalid = deepcopy(unrolled)
     row = unrolled.rows[1]
     invalid.rows[1] = BytecodeTableRow(
-        Word(row.bytecode_hash.word() + 1), row.field_tag, row.index, row.is_code, row.value
+        Word(row.bytecode_hash.int_value() + 1), row.field_tag, row.index, row.is_code, row.value
     )
     verify(k, [invalid], randomness_keccak, False)
 
@@ -128,7 +128,7 @@ def test_bytecode_invalid_hash_data():
     invalid = deepcopy(unrolled)
     row = unrolled.rows[4]
     invalid.rows[1] = BytecodeTableRow(
-        Word(row.bytecode_hash.word() + 1), row.field_tag, row.index, row.is_code, row.value
+        Word(row.bytecode_hash.int_value() + 1), row.field_tag, row.index, row.is_code, row.value
     )
     verify(k, [invalid], randomness_keccak, False)
 
@@ -147,14 +147,14 @@ def test_bytecode_invalid_index():
     invalid = deepcopy(unrolled)
     for idx, row in enumerate(unrolled.rows):
         invalid.rows[idx] = BytecodeTableRow(
-            Word(row.bytecode_hash.word() + 1), row.field_tag, row.index, row.is_code, row.value
+            Word(row.bytecode_hash.int_value() + 1), row.field_tag, row.index, row.is_code, row.value
         )
     verify(k, [invalid], randomness_keccak, False)
 
     # Don't increment an index once
     invalid = deepcopy(unrolled)
     invalid.rows[-1] = BytecodeTableRow(
-        Word(invalid.rows[-1].bytecode_hash.word() - 1), row.field_tag, row.index, row.is_code, row.value
+        Word(invalid.rows[-1].bytecode_hash.int_value() - 1), row.field_tag, row.index, row.is_code, row.value
     )
     verify(k, [invalid], randomness_keccak, False)
 

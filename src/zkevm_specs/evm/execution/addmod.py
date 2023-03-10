@@ -29,15 +29,15 @@ def addmod(instruction: Instruction):
     pushed_r = instruction.stack_push()
 
     # witness
-    if n.word() == 0:
-        a_reduced = a.word()
+    if n.int_value() == 0:
+        a_reduced = a.int_value()
         k = 0
         d = 0
-        r = Word((a_reduced + b.word()) % (2**256))
+        r = Word((a_reduced + b.int_value()) % (2**256))
     else:
-        a_reduced = a.word() % n.word()
-        k = a.word() // n.word()
-        d = (a_reduced + b.word()) // n.word()
+        a_reduced = a.int_value() % n.int_value()
+        k = a.int_value() // n.int_value()
+        d = (a_reduced + b.int_value()) // n.int_value()
         r = pushed_r
 
     # check a == a_reduced + k * n
@@ -47,7 +47,7 @@ def addmod(instruction: Instruction):
     # check a_reduced + b ≡ d * n + r  in 512 bit space
     a_reduced_plus_b, overflow = instruction.add_words([Word(a_reduced), b])
     instruction.mul_add_words_512(
-        Word(d), n, r, Word((overflow, FQ(0))) if n.word() > 0 else Word(0), a_reduced_plus_b
+        Word(d), n, r, Word((overflow, FQ(0))) if n.int_value() > 0 else Word(0), a_reduced_plus_b
     )
 
     # check that r<n and a_reduced<n iff n!=0
@@ -56,7 +56,7 @@ def addmod(instruction: Instruction):
     a_reduced_lt_n = lt_u256(instruction, Word(a_reduced), n)
     instruction.constrain_zero(FQ(2) - (a_reduced_lt_n + r_lt_n + 2 * n_is_zero))
 
-    assert pushed_r.word() == r.word() * (1 - n_is_zero)
+    assert pushed_r.int_value() == r.int_value() * (1 - n_is_zero)
 
     instruction.step_state_transition_in_same_context(
         opcode,

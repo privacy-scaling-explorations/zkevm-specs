@@ -99,7 +99,7 @@ class Word:
         self.hi = bytes_to_fq(value[16:32])
 
     # FIXME: Rename to int_value
-    def word(self) -> int:
+    def int_value(self) -> int:
         """Return the word as an integer"""
         return self.lo.n + (self.hi.n << 128)
 
@@ -107,7 +107,7 @@ class Word:
         return hash((self.lo, self.hi))
 
     def __repr__(self) -> str:
-        return f"Word({hex(self.word())})"
+        return f"Word({hex(self.int_value())})"
 
     def __eq__(self, other: Word) -> bool:
         return self.lo.expr() == other.lo.expr() and self.hi.expr() == other.hi.expr()

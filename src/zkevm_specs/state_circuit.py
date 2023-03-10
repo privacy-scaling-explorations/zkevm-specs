@@ -873,8 +873,8 @@ def _mock_mpt_updates(ops: List[Operation]) -> Dict[Tuple[FQ, FQ, FQ, FQ], MPTTa
             Word(op.storage_key),
             Word(new_root),
             Word(root),
-            Word(op.value.word()),
-            Word(op.initial_value.word()),
+            Word(op.value.int_value()),
+            Word(op.initial_value.int_value()),
         )
         root = new_root
 

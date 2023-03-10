@@ -64,7 +64,7 @@ def test_exp(base: int, exponent: int):
         .stack_write(CALL_ID, 1023, exponentiation)
     )
 
-    exp_circuit = ExpCircuit().add_event(base.word(), exponent.word(), rw_dict.rw_counter)
+    exp_circuit = ExpCircuit().add_event(base.int_value(), exponent.int_value(), rw_dict.rw_counter)
 
     tables = Tables(
         block_table=set(Block().table_assignments()),
@@ -76,7 +76,7 @@ def test_exp(base: int, exponent: int):
 
     verify_exp_circuit(exp_circuit)
 
-    gas = Opcode.EXP.constant_gas_cost() + byte_size(exponent.word()) * GAS_COST_EXP_PER_BYTE
+    gas = Opcode.EXP.constant_gas_cost() + byte_size(exponent.int_value()) * GAS_COST_EXP_PER_BYTE
     verify_steps(
         tables=tables,
         steps=[

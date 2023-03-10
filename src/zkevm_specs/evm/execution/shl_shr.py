@@ -100,7 +100,7 @@ def gen_witness(opcode: FQ, pop1: Word, pop2: Word, push: Word):
     is_shl = Opcode.SHR - opcode
     shift = pop1
     shf0 = shift.to_le_bytes()[0]
-    divisor = Word(1 << shf0.n) if shf0 == shift.word() else Word(0)
+    divisor = Word(1 << shf0.n) if shf0 == shift.int_value() else Word(0)
     if is_shl.n == 1:
         dividend = push
         quotient = pop2
@@ -108,7 +108,7 @@ def gen_witness(opcode: FQ, pop1: Word, pop2: Word, push: Word):
     else:  # SHR
         dividend = pop2
         quotient = push
-        remainder = Word(dividend.word() - quotient.word() * divisor.word())
+        remainder = Word(dividend.int_value() - quotient.int_value() * divisor.int_value())
 
     return (
         is_shl,

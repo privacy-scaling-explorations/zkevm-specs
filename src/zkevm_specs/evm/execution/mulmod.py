@@ -10,12 +10,12 @@ def mod(instruction: Instruction, a: Word, n: Word, r: Word):
       - k * n + r = a  if n != 0
       - r = 0  if n == 0
     """
-    if n.word() == 0:
+    if n.int_value() == 0:
         a_or_zero = Word(0)
         k = 0
     else:
         a_or_zero = a
-        k = a.word() // n.word()
+        k = a.int_value() // n.int_value()
 
     instruction.mul_add_words(Word(k), n, r, a_or_zero)
     eq = instruction.is_equal_word(a, a_or_zero)
@@ -38,19 +38,19 @@ def mulmod(instruction: Instruction):
     n = instruction.stack_pop()
     r = instruction.stack_push()
 
-    if n.word() == 0:
+    if n.int_value() == 0:
         a_reduced = 0
         k = 0
     else:
-        a_reduced = a.word() % n.word()
-        k = (a_reduced * b.word()) // n.word()
+        a_reduced = a.int_value() % n.int_value()
+        k = (a_reduced * b.int_value()) // n.int_value()
 
-    a_reduced_times_b = a_reduced * b.word()
+    a_reduced_times_b = a_reduced * b.int_value()
     e = Word(a_reduced_times_b % MOD)
     d = Word(a_reduced_times_b // MOD)
 
     # Safety check
-    assert (a_reduced_times_b) == k * n.word() + r.word()
+    assert (a_reduced_times_b) == k * n.int_value() + r.int_value()
 
     # Reduction of first factor
     mod(instruction, a, n, Word(a_reduced))
