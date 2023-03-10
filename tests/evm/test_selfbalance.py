@@ -18,7 +18,6 @@ TESTING_DATA = [(0, 0), (0, 10), (rand_address(), rand_word())]
 
 @pytest.mark.parametrize("callee_address, balance", TESTING_DATA)
 def test_selfbalance(callee_address: U160, balance: U256):
-
     bytecode = Bytecode().selfbalance()
     bytecode_hash = Word(bytecode.hash())
 

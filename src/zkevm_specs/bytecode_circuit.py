@@ -4,6 +4,7 @@ from .util import EMPTY_HASH, FQ, Word
 from .evm import get_push_size, BytecodeFieldTag, BytecodeTableRow, KeccakTableRow, KeccakCircuit
 from .encoding import is_circuit_code
 
+
 # Row in the circuit
 @dataclass
 class Row:
