@@ -66,7 +66,7 @@ def create(instruction: Instruction):
     instruction.is_zero(is_not_overflow)
 
     # add contract address to access list
-    instruction.add_account_to_access_list(tx_id, contract_address, reversion_info)
+    instruction.add_account_to_access_list(tx_id, contract_address)
 
     # ErrContractAddressCollision constraint
     # code_hash_prev could be either 0 or EMPTY_CODE_HASH
@@ -74,7 +74,7 @@ def create(instruction: Instruction):
     code_hash, code_hash_prev = instruction.account_write(
         contract_address, AccountFieldTag.CodeHash
     )
-    instruction.constrain_in(code_hash_prev, [FQ(0), RLC(EMPTY_CODE_HASH)])
+    instruction.constrain_in(code_hash_prev, [FQ(0), RLC(EMPTY_CODE_HASH).expr()])
     instruction.constrain_equal(code_hash, RLC(EMPTY_CODE_HASH))
 
     # Propagate is_persistent

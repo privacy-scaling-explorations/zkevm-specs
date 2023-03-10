@@ -96,7 +96,7 @@ def gen_testing_data():
         Opcode.CREATE,
         Opcode.CREATE2,
     ]
-    callee_init_codes = [
+    init_codes = [
         RETURN_BYTECODE,
         REVERT_BYTECODE,
     ]
@@ -115,7 +115,7 @@ def gen_testing_data():
         (
             opcode,
             CALLER,
-            callee_init_codes,
+            init_codes,
             create_contexts,
             stack,
             is_warm_access,
@@ -125,8 +125,8 @@ def gen_testing_data():
                 stack,
             ),
         )
-        for opcode, callee_init_codes, create_contexts, stack, is_warm_access in product(
-            opcodes, callee_init_codes, create_contexts, stacks, is_warm_accesss
+        for opcode, init_codes, create_contexts, stack, is_warm_access in product(
+            opcodes, init_codes, create_contexts, stacks, is_warm_accesss
         )
     ]
 
@@ -135,25 +135,26 @@ TESTING_DATA = gen_testing_data()
 
 
 @pytest.mark.parametrize(
-    "opcode, caller, callee_init_codes, caller_ctx, stack, is_warm_access, expected",
+    "opcode, caller, init_codes, caller_ctx, stack, is_warm_access, expected",
     TESTING_DATA,
 )
 def test_create_create2(
     opcode: Opcode,
     caller: Account,
-    callee_init_codes: Bytecode,
+    init_codes: Bytecode,
     caller_ctx: CreateContext,
     stack: Stack,
     is_warm_access: bool,
     expected: Expected,
 ):
     randomness = rand_fq()
+    CURRENT_CALL_ID = 1
 
     is_create2 = 1 if opcode == Opcode.CREATE2 else 0
     if is_create2 == 1:
         caller_bytecode = (
             Bytecode()
-            .mstore(stack.offset, callee_init_codes.code)
+            .mstore(stack.offset, init_codes.code)
             .create2(
                 stack.value,
                 stack.offset,
@@ -165,7 +166,7 @@ def test_create_create2(
     else:  # CREATE
         caller_bytecode = (
             Bytecode()
-            .mstore(stack.offset, callee_init_codes.code)
+            .mstore(stack.offset, init_codes.code)
             .create(
                 stack.value,
                 stack.offset,
@@ -174,11 +175,11 @@ def test_create_create2(
             .stop()
         )
 
-    callee_bytecode = callee_init_codes
-    callee_bytecode_hash = RLC(callee_bytecode.hash(), randomness)
+    init_bytecode = init_codes
+    init_bytecode_hash = RLC(init_bytecode.hash(), randomness)
 
     nonce = caller.nonce
-    is_success = True if callee_init_codes is RETURN_BYTECODE else True
+    is_success = True if init_codes is RETURN_BYTECODE else True
     is_reverted_by_caller = not caller_ctx.is_persistent and is_success
     is_reverted_by_callee = not is_success
     callee_is_persistent = caller_ctx.is_persistent and is_success
@@ -197,7 +198,7 @@ def test_create_create2(
             b"\xff"
             + caller.address.to_bytes(20, "big")
             + int(stack.salt).to_bytes(32, "little")
-            + callee_bytecode_hash.le_bytes
+            + init_bytecode_hash.le_bytes
         )
         contract_addr = keccak256(preimage)
     else:
@@ -207,8 +208,8 @@ def test_create_create2(
     # can't be a static all
     is_static = 0
 
-    call_id = 65
-    rw_counter = call_id
+    next_call_id = 65
+    rw_counter = next_call_id
     # CREATE: 33 * (3(push) + 2(push from mstore)) + 1(CREATE) + 1(mstore)
     # CREATE2: 33 * (4(push) + 2(push from mstore)) + 1(CREATE) + 1(mstore)
     next_program_counter = 33 * 6 + 1 + 1 if is_create2 else 33 * 5 + 1 + 1
@@ -222,37 +223,37 @@ def test_create_create2(
     # stack
     rw_dictionary = (
         RWDictionary(rw_counter)
-        .stack_read(1, 1021 - is_create2, RLC(stack.value, randomness))
-        .stack_read(1, 1022 - is_create2, RLC(stack.offset, randomness))
-        .stack_read(1, 1023 - is_create2, RLC(stack.size, randomness))
+        .stack_read(CURRENT_CALL_ID, 1021 - is_create2, RLC(stack.value, randomness))
+        .stack_read(CURRENT_CALL_ID, 1022 - is_create2, RLC(stack.offset, randomness))
+        .stack_read(CURRENT_CALL_ID, 1023 - is_create2, RLC(stack.size, randomness))
     )
     if is_create2:
-        rw_dictionary.stack_read(1, 1023, RLC(stack.salt, randomness))   
-    rw_dictionary.stack_write(1, 1023, RLC(contract_address, randomness))
+        rw_dictionary.stack_read(CURRENT_CALL_ID, 1023, RLC(stack.salt, randomness))   
+    rw_dictionary.stack_write(CURRENT_CALL_ID, 1023, RLC(contract_address, randomness))
     
     # caller's call context
     rw_dictionary \
-        .call_context_read(1, CallContextFieldTag.Depth, 1) \
-        .call_context_read(1, CallContextFieldTag.TxId, 1) \
-        .call_context_read(1, CallContextFieldTag.CallerAddress, caller.address) \
+        .call_context_read(CURRENT_CALL_ID, CallContextFieldTag.Depth, 1) \
+        .call_context_read(CURRENT_CALL_ID, CallContextFieldTag.TxId, 1) \
+        .call_context_read(CURRENT_CALL_ID, CallContextFieldTag.CallerAddress, caller.address) \
         .account_write(caller.address, AccountFieldTag.Nonce, nonce, nonce - 1) \
-        .call_context_read(1, CallContextFieldTag.IsSuccess, is_success) \
-        .call_context_read(1, CallContextFieldTag.IsStatic, is_static) \
-        .call_context_read(1, CallContextFieldTag.RwCounterEndOfReversion, caller_ctx.rw_counter_end_of_reversion) \
-        .call_context_read(1, CallContextFieldTag.IsPersistent, caller_ctx.is_persistent) \
-        .tx_access_list_account_write(1, contract_address, True, is_warm_access, rw_counter_of_reversion=None if caller_ctx.is_persistent else caller_ctx.rw_counter_end_of_reversion - caller_ctx.reversible_write_counter) \
+        .call_context_read(CURRENT_CALL_ID, CallContextFieldTag.IsSuccess, is_success) \
+        .call_context_read(CURRENT_CALL_ID, CallContextFieldTag.IsStatic, is_static) \
+        .call_context_read(CURRENT_CALL_ID, CallContextFieldTag.RwCounterEndOfReversion, caller_ctx.rw_counter_end_of_reversion) \
+        .call_context_read(CURRENT_CALL_ID, CallContextFieldTag.IsPersistent, caller_ctx.is_persistent) \
+        .tx_access_list_account_write(CURRENT_CALL_ID, contract_address, True, is_warm_access, rw_counter_of_reversion=None if caller_ctx.is_persistent else caller_ctx.rw_counter_end_of_reversion - caller_ctx.reversible_write_counter) \
         .account_write(contract_address, AccountFieldTag.CodeHash, RLC(EMPTY_CODE_HASH), 0) \
     
     # callee's reversion_info
+    rw_dictionary \
+        .call_context_read(next_call_id, CallContextFieldTag.RwCounterEndOfReversion, callee_rw_counter_end_of_reversion) \
+        .call_context_read(next_call_id, CallContextFieldTag.IsPersistent, callee_is_persistent)
+
+    # For `transfer` invocation.
     caller_balance_prev = RLC(caller.balance, randomness)
     callee_balance_prev = RLC(0, randomness)
     caller_balance = RLC(caller.balance - stack.value, randomness)
     callee_balance = RLC(stack.value, randomness)
-    rw_dictionary \
-        .call_context_read(call_id, CallContextFieldTag.RwCounterEndOfReversion, callee_rw_counter_end_of_reversion) \
-        .call_context_read(call_id, CallContextFieldTag.IsPersistent, callee_is_persistent)
-
-    # For `transfer` invocation.
     rw_dictionary \
         .account_write(caller.address, AccountFieldTag.Balance, caller_balance, caller_balance_prev, rw_counter_of_reversion=None if callee_is_persistent else callee_rw_counter_end_of_reversion) \
         .account_write(contract_address, AccountFieldTag.Balance, callee_balance, callee_balance_prev, rw_counter_of_reversion=None if callee_is_persistent else callee_rw_counter_end_of_reversion - 1)
@@ -260,7 +261,7 @@ def test_create_create2(
     # copy_table
     src_data = dict(
         [
-            (i, callee_bytecode.code[i-stack.offset] if i - stack.offset  < len(callee_bytecode.code) else 0)
+            (i, init_bytecode.code[i-stack.offset] if i - stack.offset  < len(init_bytecode.code) else 0)
             for i in range(stack.offset, stack.offset+ stack.size)
         ]
     )
@@ -269,7 +270,7 @@ def test_create_create2(
         rw_dictionary,
         1,
         CopyDataTypeTag.Memory,
-        callee_bytecode_hash.expr(),
+        init_bytecode_hash.expr(),
         CopyDataTypeTag.Bytecode,
         stack.offset,
         stack.offset + stack.size,
@@ -280,24 +281,24 @@ def test_create_create2(
 
     # caller's call context
     rw_dictionary \
-        .call_context_write(1, CallContextFieldTag.ProgramCounter, next_program_counter) \
-        .call_context_write(1, CallContextFieldTag.StackPointer, 1023) \
-        .call_context_write(1, CallContextFieldTag.GasLeft, expected.caller_gas_left) \
-        .call_context_write(1, CallContextFieldTag.MemorySize, expected.next_memory_size) \
-        .call_context_write(1, CallContextFieldTag.ReversibleWriteCounter, caller_ctx.reversible_write_counter + 1) 
+        .call_context_write(CURRENT_CALL_ID, CallContextFieldTag.ProgramCounter, next_program_counter) \
+        .call_context_write(CURRENT_CALL_ID, CallContextFieldTag.StackPointer, 1023) \
+        .call_context_write(CURRENT_CALL_ID, CallContextFieldTag.GasLeft, expected.caller_gas_left) \
+        .call_context_write(CURRENT_CALL_ID, CallContextFieldTag.MemorySize, expected.next_memory_size) \
+        .call_context_write(CURRENT_CALL_ID, CallContextFieldTag.ReversibleWriteCounter, caller_ctx.reversible_write_counter + 1) 
     
     # callee's call context
     rw_dictionary \
-        .call_context_read(call_id, CallContextFieldTag.CallerId, 1) \
-        .call_context_read(call_id, CallContextFieldTag.TxId, 1) \
-        .call_context_read(call_id, CallContextFieldTag.Depth, 2) \
-        .call_context_read(call_id, CallContextFieldTag.CallerAddress, caller.address) \
-        .call_context_read(call_id, CallContextFieldTag.CalleeAddress, contract_address) \
-        .call_context_read(call_id, CallContextFieldTag.IsSuccess, is_success) \
-        .call_context_read(call_id, CallContextFieldTag.IsStatic, is_static) \
-        .call_context_read(call_id, CallContextFieldTag.IsRoot, False) \
-        .call_context_read(call_id, CallContextFieldTag.IsCreate, False) \
-        .call_context_read(call_id, CallContextFieldTag.CodeHash, RLC(EMPTY_CODE_HASH))
+        .call_context_read(next_call_id, CallContextFieldTag.CallerId, 1) \
+        .call_context_read(next_call_id, CallContextFieldTag.TxId, 1) \
+        .call_context_read(next_call_id, CallContextFieldTag.Depth, 2) \
+        .call_context_read(next_call_id, CallContextFieldTag.CallerAddress, caller.address) \
+        .call_context_read(next_call_id, CallContextFieldTag.CalleeAddress, contract_address) \
+        .call_context_read(next_call_id, CallContextFieldTag.IsSuccess, is_success) \
+        .call_context_read(next_call_id, CallContextFieldTag.IsStatic, is_static) \
+        .call_context_read(next_call_id, CallContextFieldTag.IsRoot, False) \
+        .call_context_read(next_call_id, CallContextFieldTag.IsCreate, False) \
+        .call_context_read(next_call_id, CallContextFieldTag.CodeHash, RLC(EMPTY_CODE_HASH))
     # fmt: on
 
     tables = Tables(
@@ -306,8 +307,8 @@ def test_create_create2(
         bytecode_table=set(
             chain(
                 caller_bytecode.table_assignments(randomness),
-                callee_bytecode.table_assignments(randomness),
-                callee_init_codes.table_assignments(randomness),
+                init_bytecode.table_assignments(randomness),
+                init_codes.table_assignments(randomness),
             )
         ),
         rw_table=set(rw_dictionary.rws),
@@ -326,7 +327,7 @@ def test_create_create2(
                 if is_create2 == 1
                 else ExecutionState.CREATE,
                 rw_counter=rw_counter,
-                call_id=1,
+                call_id=CURRENT_CALL_ID,
                 is_root=False,
                 is_create=True,
                 code_hash=RLC(caller_bytecode.hash(), randomness),
@@ -340,10 +341,10 @@ def test_create_create2(
                 StepState(
                     execution_state=ExecutionState.STOP,
                     rw_counter=rw_dictionary.rw_counter,
-                    call_id=call_id,
+                    call_id=next_call_id,
                     is_root=False,
                     is_create=False,
-                    code_hash=callee_bytecode_hash,
+                    code_hash=init_bytecode_hash,
                     program_counter=0,
                     stack_pointer=1024,
                     gas_left=expected.callee_gas_left,
