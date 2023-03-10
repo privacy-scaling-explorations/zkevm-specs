@@ -6,10 +6,8 @@ from .evm import (
 from .util import (
     ConstraintSystem,
     FQ,
-    RLC,
     Word,
     mul_add_words,
-    word_to_lo_hi,
 )
 
 

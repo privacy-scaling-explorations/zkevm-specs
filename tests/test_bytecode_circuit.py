@@ -1,4 +1,3 @@
-import traceback
 from copy import deepcopy
 
 from zkevm_specs.bytecode_circuit import *

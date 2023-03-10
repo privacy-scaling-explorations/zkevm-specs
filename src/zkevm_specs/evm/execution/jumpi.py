@@ -1,4 +1,3 @@
-from ...util import FQ, N_BYTES_PROGRAM_COUNTER
 from ..instruction import Instruction, Transition
 from ..opcode import Opcode
 

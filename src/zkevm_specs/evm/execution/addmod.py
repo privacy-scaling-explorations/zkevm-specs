@@ -1,6 +1,6 @@
 from ..instruction import Instruction, Transition
 from ..opcode import Opcode
-from zkevm_specs.util import FQ, RLC, Word
+from zkevm_specs.util import FQ, Word
 
 
 # Returns 1 when a is lower than b, 0 otherwise

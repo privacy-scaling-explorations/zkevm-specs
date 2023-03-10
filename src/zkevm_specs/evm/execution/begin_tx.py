@@ -6,7 +6,6 @@ from ...util import (
     Word,
     WordOrValue,
     Expression,
-    cast_expr,
 )
 from ..execution_state import ExecutionState
 from ..instruction import Instruction, Transition

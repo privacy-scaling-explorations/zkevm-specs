@@ -1,6 +1,6 @@
 from ..instruction import Instruction, Transition
 from ...util.param import EXTRA_GAS_COST_ACCOUNT_COLD_ACCESS
-from ...util import N_BYTES_MEMORY_ADDRESS, N_BYTES_ACCOUNT_ADDRESS, FQ, RLC
+from ...util import FQ
 from ..table import AccountFieldTag, CallContextFieldTag, CopyDataTypeTag
 
 

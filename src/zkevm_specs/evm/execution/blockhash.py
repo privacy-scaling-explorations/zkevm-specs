@@ -1,6 +1,6 @@
 from ..instruction import Instruction, Transition
 from ..table import BlockContextFieldTag
-from ...util import FQ, N_BYTES_U64, Word, WordOrValue
+from ...util import FQ, N_BYTES_U64, WordOrValue
 
 
 def blockhash(instruction: Instruction):

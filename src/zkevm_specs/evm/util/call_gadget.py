@@ -1,5 +1,5 @@
 from zkevm_specs.evm.table import AccountFieldTag
-from zkevm_specs.util.arithmetic import RLC, Word
+from zkevm_specs.util.arithmetic import Word
 from zkevm_specs.util.hash import EMPTY_CODE_HASH
 from zkevm_specs.util.param import (
     GAS_COST_ACCOUNT_COLD_ACCESS,
@@ -11,7 +11,6 @@ from ...util import (
     FQ,
     N_BYTES_ACCOUNT_ADDRESS,
     N_BYTES_GAS,
-    RLC,
 )
 from ..instruction import Instruction
 

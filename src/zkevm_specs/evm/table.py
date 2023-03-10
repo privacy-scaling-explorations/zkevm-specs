@@ -7,7 +7,7 @@ from dataclasses import dataclass, field, fields
 from .opcode import constant_gas_cost_pairs
 from .precompile import precompile_info_pairs
 
-from ..util import Expression, FQ, RLC, Word, WordOrValue, word_to_lo_hi, word_to_64s
+from ..util import Expression, FQ, Word, WordOrValue
 from .execution_state import ExecutionState
 
 

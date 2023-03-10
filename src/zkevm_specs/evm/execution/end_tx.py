@@ -1,4 +1,4 @@
-from ...util import N_BYTES_GAS, MAX_REFUND_QUOTIENT_OF_GAS_USED, FQ, RLC, cast_expr
+from ...util import N_BYTES_GAS, MAX_REFUND_QUOTIENT_OF_GAS_USED, FQ
 from ..execution_state import ExecutionState
 from ..instruction import Instruction, Transition
 from ..table import BlockContextFieldTag, CallContextFieldTag, TxContextFieldTag, TxReceiptFieldTag

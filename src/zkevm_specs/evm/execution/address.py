@@ -1,4 +1,3 @@
-from ...util import N_BYTES_ACCOUNT_ADDRESS
 from ..instruction import Instruction, Transition
 from ..table import CallContextFieldTag
 from ..opcode import Opcode

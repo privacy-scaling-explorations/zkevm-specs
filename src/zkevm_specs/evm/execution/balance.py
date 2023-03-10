@@ -1,4 +1,4 @@
-from ...util import EXTRA_GAS_COST_ACCOUNT_COLD_ACCESS, FQ, N_BYTES_ACCOUNT_ADDRESS, RLC, Word
+from ...util import EXTRA_GAS_COST_ACCOUNT_COLD_ACCESS, FQ, Word
 from ..instruction import Instruction, Transition
 from ..opcode import Opcode
 from ..table import AccountFieldTag, CallContextFieldTag

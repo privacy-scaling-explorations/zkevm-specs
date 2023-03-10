@@ -1,9 +1,6 @@
 from ...util import (
     EXTRA_GAS_COST_ACCOUNT_COLD_ACCESS,
     FQ,
-    N_BYTES_ACCOUNT_ADDRESS,
-    N_BYTES_U64,
-    RLC,
     Word,
 )
 from ..instruction import Instruction, Transition
@@ -27,7 +24,7 @@ def extcodesize(instruction: Instruction):
     if exists == 1:
         code_size = instruction.bytecode_length(code_hash)
     else:  # exists == 0
-        code_size = RLC(0)
+        code_size = FQ(0)
 
     instruction.constrain_equal_word(
         Word((instruction.select(exists, code_size, FQ(0)), FQ(0))),

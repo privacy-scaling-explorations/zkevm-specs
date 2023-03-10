@@ -1,4 +1,3 @@
-from ...util.param import N_BYTES_ACCOUNT_ADDRESS, N_BYTES_U64
 from ...util import Word, FQ
 from ..instruction import Instruction, Transition
 from ..table import BlockContextFieldTag

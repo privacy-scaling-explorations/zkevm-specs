@@ -1,4 +1,3 @@
-from ...util import FQ
 from ..instruction import Instruction, Transition
 from ..opcode import Opcode
 

@@ -1,4 +1,4 @@
-from ...util import N_BYTES_U64, Word, FQ
+from ...util import Word, FQ
 from ..instruction import Instruction, Transition
 from ..opcode import Opcode
 

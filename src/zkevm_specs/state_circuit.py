@@ -4,7 +4,7 @@ from math import log, ceil
 
 from zkevm_specs.evm.table import MPTProofType
 
-from .util import FQ, RLC, Word, WordOrValue, U160, U256, Expression, linear_combine_bytes
+from .util import FQ, Word, WordOrValue, U160, U256, Expression, linear_combine_bytes
 from .encoding import U8, is_circuit_code
 from .evm import (
     RW,

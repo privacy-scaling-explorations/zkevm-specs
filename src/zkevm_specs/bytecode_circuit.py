@@ -1,7 +1,6 @@
 from dataclasses import dataclass
-from typing import Sequence, Tuple, Set, NamedTuple, List
-from collections import namedtuple
-from .util import keccak256, EMPTY_HASH, FQ, Word
+from typing import Sequence, Tuple, Set, List
+from .util import EMPTY_HASH, FQ, Word
 from .evm import get_push_size, BytecodeFieldTag, BytecodeTableRow, KeccakTableRow, KeccakCircuit
 from .encoding import is_circuit_code
 

@@ -5,7 +5,6 @@ from typing import Optional, Sequence, Tuple, Union, List, cast
 from ..util import (
     FQ,
     IntOrFQ,
-    RLC,
     add_words,
     sum_values,
     Word,

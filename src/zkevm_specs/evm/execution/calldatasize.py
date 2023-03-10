@@ -1,4 +1,4 @@
-from ...util import N_BYTES_MEMORY_ADDRESS, Word, FQ
+from ...util import Word, FQ
 from ..instruction import Instruction, Transition
 from ..table import CallContextFieldTag
 from ..opcode import Opcode
