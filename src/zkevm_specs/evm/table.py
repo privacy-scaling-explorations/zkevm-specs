@@ -512,6 +512,29 @@ class ExpTableRow(TableRow):
     exponentiation_hi: FQ
 
 
+@dataclass(frozen=True)
+class Bn256TableRow(TableRow):
+    q_step: FQ
+    is_first: FQ
+    is_last: FQ
+    id: FQ
+    tag: FQ
+    addr: FQ
+    src_addr_end: FQ
+    bytes_left: FQ
+    value: FQ
+    rlc_acc: FQ
+    is_code: FQ
+    is_pad: FQ
+    rw_counter: FQ
+    rwc_inc_left: FQ
+    is_memory: FQ
+    is_bytecode: FQ
+    is_tx_calldata: FQ
+    is_tx_log: FQ
+    is_rlc_acc: FQ
+
+
 class Tables:
     """
     A collection of lookup tables used in EVM circuit.

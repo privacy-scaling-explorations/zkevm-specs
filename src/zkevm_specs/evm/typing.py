@@ -49,6 +49,7 @@ from .table import (
     CopyCircuitRow,
     KeccakTableRow,
     ExpCircuitRow,
+    Bn256TableRow
 )
 from .opcode import get_push_size, Opcode
 
@@ -1054,3 +1055,17 @@ class CopyCircuit:
                 is_rlc_acc=FQ(is_rlc_acc),
             )
         )
+
+
+class Bn256Circuit:
+    rows: List[Bn256TableRow]
+    pad_rows: List[Bn256TableRow]
+
+    def __init__(self, pad_rows: Optional[List[Bn256TableRow]] = None) -> None:
+        self.rows = []
+        self.pad_rows = []
+        if pad_rows is not None:
+            self.pad_rows = pad_rows
+
+    def table(self) -> Sequence[Bn256TableRow]:
+        return self.rows + self.pad_rows
