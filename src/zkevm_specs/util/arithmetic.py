@@ -128,8 +128,8 @@ class Word:
         return (self.lo.expr(), self.hi.expr())
 
     def to_64s(self) -> Tuple[FQ, ...]:
-        lo_bytes = lo_hi[0].n.to_bytes(16, "little")
-        hi_bytes = lo_hi[1].n.to_bytes(16, "little")
+        lo_bytes = self.lo.expr().n.to_bytes(16, "little")
+        hi_bytes = self.hi.expr().n.to_bytes(16, "little")
         return (
             bytes_to_fq(lo_bytes[0:8]),
             bytes_to_fq(lo_bytes[8:16]),

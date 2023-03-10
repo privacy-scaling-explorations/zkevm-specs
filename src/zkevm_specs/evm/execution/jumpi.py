@@ -1,5 +1,6 @@
 from ..instruction import Instruction, Transition
 from ..opcode import Opcode
+from zkevm_specs.util import FQ
 
 
 def jumpi(instruction: Instruction):
