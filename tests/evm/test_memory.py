@@ -74,7 +74,9 @@ def test_memory(opcode: Opcode, offset: int, value: int, memory: bytes):
         else Bytecode().mstore(offset_word, value_word).stop()
     )
     rw_dictionary = (
-        RWDictionary(1).stack_read(call_id, 1022, offset_word).stack_write(call_id, 1022, value_word)
+        RWDictionary(1)
+        .stack_read(call_id, 1022, offset_word)
+        .stack_write(call_id, 1022, value_word)
         if is_mload
         else RWDictionary(1)
         .stack_read(call_id, 1022, offset_word)

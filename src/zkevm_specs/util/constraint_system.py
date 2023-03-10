@@ -35,9 +35,10 @@ class ConstraintSystem:
         )
 
     def constrain_equal_word(self, lhs: Word, rhs: Word):
-        assert self._eval(lhs.lo.expr() - rhs.lo.expr()) == 0 and self._eval(lhs.hi.expr() - rhs.hi.expr()) == 0, ConstraintUnsatFailure(
-            f"Expected words to be equal, but got {lhs} and {rhs}"
-        )
+        assert (
+            self._eval(lhs.lo.expr() - rhs.lo.expr()) == 0
+            and self._eval(lhs.hi.expr() - rhs.hi.expr()) == 0
+        ), ConstraintUnsatFailure(f"Expected words to be equal, but got {lhs} and {rhs}")
 
     def constrain_zero(self, value: Expression):
         assert self._eval(value) == 0, ConstraintUnsatFailure(
@@ -45,9 +46,9 @@ class ConstraintSystem:
         )
 
     def constrain_zero_word(self, value: Word):
-        assert self._eval(value.lo.expr()) == 0 and self._eval(value.hi.expr()), ConstraintUnsatFailure(
-            f"Expected word to be 0, but got {value}"
-        )
+        assert self._eval(value.lo.expr()) == 0 and self._eval(
+            value.hi.expr()
+        ), ConstraintUnsatFailure(f"Expected word to be 0, but got {value}")
 
     def constrain_bool(self, value: Expression):
         assert self._eval(value) in [0, 1], ConstraintUnsatFailure(

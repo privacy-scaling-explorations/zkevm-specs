@@ -135,7 +135,9 @@ def test_bytecode_invalid_hash_data():
     # Change all the hashes so it doesn't match the keccak lookup hash
     invalid = deepcopy(unrolled)
     for idx, row in enumerate(unrolled.rows):
-        invalid.rows[idx] = BytecodeTableRow(Word(1), row.field_tag, row.index, row.is_code, row.value)
+        invalid.rows[idx] = BytecodeTableRow(
+            Word(1), row.field_tag, row.index, row.is_code, row.value
+        )
     verify(k, [invalid], randomness_keccak, False)
 
 
@@ -147,14 +149,22 @@ def test_bytecode_invalid_index():
     invalid = deepcopy(unrolled)
     for idx, row in enumerate(unrolled.rows):
         invalid.rows[idx] = BytecodeTableRow(
-            Word(row.bytecode_hash.int_value() + 1), row.field_tag, row.index, row.is_code, row.value
+            Word(row.bytecode_hash.int_value() + 1),
+            row.field_tag,
+            row.index,
+            row.is_code,
+            row.value,
         )
     verify(k, [invalid], randomness_keccak, False)
 
     # Don't increment an index once
     invalid = deepcopy(unrolled)
     invalid.rows[-1] = BytecodeTableRow(
-        Word(invalid.rows[-1].bytecode_hash.int_value() - 1), row.field_tag, row.index, row.is_code, row.value
+        Word(invalid.rows[-1].bytecode_hash.int_value() - 1),
+        row.field_tag,
+        row.index,
+        row.is_code,
+        row.value,
     )
     verify(k, [invalid], randomness_keccak, False)
 
@@ -166,13 +176,17 @@ def test_bytecode_invalid_byte_data():
     # Change the first byte in the bytecode
     invalid = deepcopy(unrolled)
     row = unrolled.rows[1]
-    invalid.rows[1] = BytecodeTableRow(row.bytecode_hash, row.field_tag, row.index, row.is_code, FQ(9))
+    invalid.rows[1] = BytecodeTableRow(
+        row.bytecode_hash, row.field_tag, row.index, row.is_code, FQ(9)
+    )
     verify(k, [invalid], randomness_keccak, False)
 
     # Change a byte on another position
     invalid = deepcopy(unrolled)
     row = unrolled.rows[5]
-    invalid.rows[5] = BytecodeTableRow(row.bytecode_hash, row.field_tag, row.index, row.is_code, FQ(6))
+    invalid.rows[5] = BytecodeTableRow(
+        row.bytecode_hash, row.field_tag, row.index, row.is_code, FQ(6)
+    )
     verify(k, [invalid], randomness_keccak, False)
 
     # Set a byte value out of range
@@ -205,19 +219,25 @@ def test_bytecode_invalid_is_code():
     # Mark the 3rd byte as code (is push data from the first PUSH1)
     invalid = deepcopy(unrolled)
     row = unrolled.rows[3]
-    invalid.rows[3] = BytecodeTableRow(row.bytecode_hash, row.field_tag, row.index, FQ(1), row.value)
+    invalid.rows[3] = BytecodeTableRow(
+        row.bytecode_hash, row.field_tag, row.index, FQ(1), row.value
+    )
     verify(k, [invalid], randomness_keccak, False)
 
     # Mark the 4rd byte as data (is code)
     invalid = deepcopy(unrolled)
     row = unrolled.rows[4]
-    invalid.rows[4] = BytecodeTableRow(row.bytecode_hash, row.field_tag, row.index, FQ(0), row.value)
+    invalid.rows[4] = BytecodeTableRow(
+        row.bytecode_hash, row.field_tag, row.index, FQ(0), row.value
+    )
     verify(k, [invalid], randomness_keccak, False)
 
     # Mark the 7th byte as code (is data for the PUSH7)
     invalid = deepcopy(unrolled)
     row = unrolled.rows[7]
-    invalid.rows[7] = BytecodeTableRow(row.bytecode_hash, row.field_tag, row.index, FQ(1), row.value)
+    invalid.rows[7] = BytecodeTableRow(
+        row.bytecode_hash, row.field_tag, row.index, FQ(1), row.value
+    )
     verify(k, [invalid], randomness_keccak, False)
 
 

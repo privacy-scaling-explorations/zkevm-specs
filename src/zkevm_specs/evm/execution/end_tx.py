@@ -28,7 +28,9 @@ def end_tx(instruction: Instruction):
         tx_gas_price, instruction.curr.gas_left + effective_refund
     )
     instruction.constrain_zero(carry)
-    tx_caller_address = instruction.tx_context_lookup(tx_id, TxContextFieldTag.CallerAddress).value()
+    tx_caller_address = instruction.tx_context_lookup(
+        tx_id, TxContextFieldTag.CallerAddress
+    ).value()
     instruction.add_balance(tx_caller_address, [value])
 
     # Add gas_used * effective_tip to coinbase's balance

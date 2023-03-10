@@ -9,10 +9,7 @@ def codesize(instruction: Instruction):
 
     code_size = instruction.bytecode_length(instruction.curr.code_hash)
 
-    instruction.constrain_equal_word(
-        Word((code_size, FQ(0))),
-        instruction.stack_push()
-    )
+    instruction.constrain_equal_word(Word((code_size, FQ(0))), instruction.stack_push())
 
     instruction.step_state_transition_in_same_context(
         opcode,

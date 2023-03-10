@@ -23,10 +23,7 @@ def returndatacopy(instruction: Instruction):
     # out-of-bound-check
     instruction.range_check(
         return_data_length
-        - (
-            instruction.word_to_fq(offset_word, 8)
-            + instruction.word_to_fq(size_word, 8)
-        ),
+        - (instruction.word_to_fq(offset_word, 8) + instruction.word_to_fq(size_word, 8)),
         N_BYTES_MEMORY_SIZE,
     )
 

@@ -76,14 +76,18 @@ class RLC:
     def __repr__(self) -> str:
         return "RLC(%s)" % int.from_bytes(self.le_bytes, "little")
 
+
 class Word:
     """Word stored as lo/hi: lowest 128 bits and highest 128 bits"""
+
     # lowest 128 bits
     lo: Expression
     # highest 128 bits
     hi: Expression
 
-    def __init__(self, value: Union[Tuple[Expression, Expression], int, U256, bytes], check=True) -> None:
+    def __init__(
+        self, value: Union[Tuple[Expression, Expression], int, U256, bytes], check=True
+    ) -> None:
         if isinstance(value, tuple):
             self.lo, self.hi = value
             # sanity check
@@ -134,6 +138,7 @@ class Word:
 
 class WordOrValue(Word):
     """Type that holds a 256 bit word (as lo/hi) or a value that fits in the field"""
+
     is_word: bool
 
     def __init__(self, value: Union[Word, Expression]) -> None:
@@ -222,7 +227,9 @@ def add_words(addends: Sequence[Word]) -> Tuple[Word, FQ]:
     return Word((FQ(sum_lo), FQ(sum_hi))), FQ(carry_hi)
 
 
-def mul_add_words(a: Word, b: Word, c: Word, d: Word) -> Tuple[FQ, Tuple[FQ, FQ], List[Tuple[FQ, FQ]]]:
+def mul_add_words(
+    a: Word, b: Word, c: Word, d: Word
+) -> Tuple[FQ, Tuple[FQ, FQ], List[Tuple[FQ, FQ]]]:
     """
     The function constrains a * b + c == d, where a, b, c, d are 256-bit words.
     It returns the overflow part of a * b + c.

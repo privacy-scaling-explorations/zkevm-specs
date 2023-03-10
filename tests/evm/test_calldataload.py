@@ -85,7 +85,9 @@ def test_calldataload(
         parent_call_id = 1
 
     rw_dictionary = (
-        RWDictionary(1).stack_write(call_id, 1023, offset_word).stack_read(call_id, 1023, offset_word)
+        RWDictionary(1)
+        .stack_write(call_id, 1023, offset_word)
+        .stack_read(call_id, 1023, offset_word)
     )
     if is_root:
         rw_dictionary.call_context_read(call_id, CallContextFieldTag.TxId, 1).call_context_read(

@@ -12,7 +12,14 @@ def returndatasize(instruction: Instruction):
     # check [rw_table, call_context] table for last call return data length and compare
     # against stack top after push.
     instruction.constrain_equal_word(
-        Word((instruction.call_context_lookup(CallContextFieldTag.LastCalleeReturnDataLength).value(), FQ(0))),
+        Word(
+            (
+                instruction.call_context_lookup(
+                    CallContextFieldTag.LastCalleeReturnDataLength
+                ).value(),
+                FQ(0),
+            )
+        ),
         instruction.stack_push(),
     )
 

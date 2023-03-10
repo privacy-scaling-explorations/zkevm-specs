@@ -15,11 +15,14 @@ random.seed(1234)
 randomness = FQ(randrange(FQ.field_modulus))
 rand_rpi = randomness  # Simulate a randomness for now
 
+
 def word(v: int) -> WordOrValue:
     return WordOrValue(Word(v))
 
+
 def value(v: int) -> WordOrValue:
     return WordOrValue(FQ(v))
+
 
 def verify(
     public_data_or_witness: Union[PublicData, Witness],

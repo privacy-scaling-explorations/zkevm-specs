@@ -59,7 +59,9 @@ def test_codecopy(src_addr: U64, dst_addr: U64, length: U64):
     src_addr_word = Word(src_addr)
     dst_addr_word = Word(dst_addr)
 
-    code = Bytecode().push32(length_word).push32(src_addr_word).push32(dst_addr_word).codecopy().stop()
+    code = (
+        Bytecode().push32(length_word).push32(src_addr_word).push32(dst_addr_word).codecopy().stop()
+    )
 
     code_hash = Word(code.hash())
     next_memory_word_size = to_word_size(dst_addr + length)

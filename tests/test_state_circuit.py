@@ -4,11 +4,14 @@ from typing import Union, List
 from zkevm_specs.state_circuit import *
 from zkevm_specs.util import FQ
 
+
 def word(v: int) -> WordOrValue:
     return WordOrValue(Word(v))
 
+
 def value(v: int) -> WordOrValue:
     return WordOrValue(FQ(v))
+
 
 # Verify the state circuit with the given data
 def verify(

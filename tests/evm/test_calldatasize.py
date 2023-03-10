@@ -31,7 +31,13 @@ def test_calldatasize(calldatasize: U64):
         rw_table=set(
             RWDictionary(9)
             .call_context_read(1, CallContextFieldTag.CallDataLength, calldatasize)
-            .stack_write(1, 1023, Word(calldatasize, ))
+            .stack_write(
+                1,
+                1023,
+                Word(
+                    calldatasize,
+                ),
+            )
             .rws
         ),
     )

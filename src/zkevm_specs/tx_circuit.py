@@ -50,7 +50,7 @@ class KeccakTable:
                 FQ(1),
                 RLC(bytes(reversed(input)), keccak_randomness, n_bytes=64).expr(),
                 FQ(len(input)),
-                Word(output)
+                Word(output),
             )
         )
 
@@ -189,7 +189,11 @@ class SignVerifyChip:
 
     @classmethod
     def assign(
-        cls, signature: KeyAPI.Signature, pub_key: KeyAPI.PublicKey, msg_hash: bytes, keccak_randomness: FQ
+        cls,
+        signature: KeyAPI.Signature,
+        pub_key: KeyAPI.PublicKey,
+        msg_hash: bytes,
+        keccak_randomness: FQ,
     ):
         pub_key_hash = keccak(pub_key.to_bytes())
         self_pub_key_hash = pub_key_hash
@@ -215,16 +219,15 @@ class SignVerifyChip:
         )
         keccak_table.lookup(
             is_not_padding,
-            is_not_padding * RLC(bytes(reversed(pub_key_bytes)), keccak_randomness, n_bytes=64).expr(),
+            is_not_padding
+            * RLC(bytes(reversed(pub_key_bytes)), keccak_randomness, n_bytes=64).expr(),
             is_not_padding * FQ(64),
             Word(self.pub_key_hash).select(is_not_padding),
             assert_msg,
         )
 
         # 2. Verify that the first 20 bytes of the pub_key_hash equal the address
-        addr_expr = linear_combine_bytes(
-            list(reversed(self.pub_key_hash[-20:])), FQ(2**8)
-        )
+        addr_expr = linear_combine_bytes(list(reversed(self.pub_key_hash[-20:])), FQ(2**8))
         assert (
             addr_expr == self.address
         ), f"{assert_msg}: {hex(addr_expr.n)} != {hex(self.address.n)}"
@@ -411,7 +414,11 @@ DUMMY_MSG_HASH = 0x0000000000000000000000000000000000000000000000000000000000000
 
 
 def txs2witness(
-    txs: List[Transaction], chain_id: U64, MAX_TXS: int, MAX_CALLDATA_BYTES: int, keccak_randomness: FQ
+    txs: List[Transaction],
+    chain_id: U64,
+    MAX_TXS: int,
+    MAX_CALLDATA_BYTES: int,
+    keccak_randomness: FQ,
 ) -> Witness:
     """
     Generate the complete witness of the transactions for a fixed size circuit.
@@ -424,7 +431,9 @@ def txs2witness(
     tx_fixed_rows: List[Row] = []  # Accumulate fixed rows of each tx
     tx_dyn_rows: List[Row] = []  # Accumulate CallData rows of each tx
     for index, tx in enumerate(txs):
-        tx_rows, sign_verification = tx2witness(index, tx, chain_id, keccak_randomness, keccak_table)
+        tx_rows, sign_verification = tx2witness(
+            index, tx, chain_id, keccak_randomness, keccak_table
+        )
         sign_verifications.append(sign_verification)
         for row in tx_rows:
             if row.tag == Tag.CallData:

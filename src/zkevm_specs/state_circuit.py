@@ -105,7 +105,42 @@ class Row(NamedTuple):
     def storage_key(self) -> Word:
         return self.keys[4]
 
-    def storage_key_bytes(self) -> Tuple[FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ]:
+    def storage_key_bytes(
+        self,
+    ) -> Tuple[
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+    ]:
         return self.key45_bytes
 
 
@@ -464,10 +499,12 @@ def check_state_row(row: Row, row_prev: Row, row_next: Row, tables: Tables):
     )
 
     # 0.2. address is RLC encoded
-    assert row.storage_key() == Word((
+    assert row.storage_key() == Word(
+        (
             linear_combine_bytes(row.storage_key_bytes()[0:16], FQ(256)),
             linear_combine_bytes(row.storage_key_bytes()[16:32], FQ(256)),
-    ))
+        )
+    )
 
     # 0.3. is_write is boolean
     assert row.is_write in [0, 1]
@@ -660,7 +697,12 @@ class CallContextOp(Operation):
     """
 
     def __new__(
-        self, rw_counter: int, rw: RW, call_id: int, field_tag: CallContextFieldTag, value: Union[FQ, Word]
+        self,
+        rw_counter: int,
+        rw: RW,
+        call_id: int,
+        field_tag: CallContextFieldTag,
+        value: Union[FQ, Word],
     ):
         # fmt: off
         return super().__new__(self, rw_counter, rw,

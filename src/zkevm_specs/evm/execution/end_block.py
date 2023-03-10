@@ -80,7 +80,8 @@ def end_block(instruction: Instruction):
             [
                 tx_row
                 for tx_row in instruction.tables.tx_table
-                if tx_row.field_tag == TxContextFieldTag.TxInvalid and tx_row.value.value().expr() == FQ(1)
+                if tx_row.field_tag == TxContextFieldTag.TxInvalid
+                and tx_row.value.value().expr() == FQ(1)
             ]
         )
     )
@@ -116,7 +117,9 @@ def end_block(instruction: Instruction):
             # showing that the Tx following the last processed one has
             # CallerAddress = 0x0 (which means padding tx).
             instruction.constrain_equal(
-                instruction.tx_context_lookup(FQ(total_txs + 1), TxContextFieldTag.CallerAddress).value(),
+                instruction.tx_context_lookup(
+                    FQ(total_txs + 1), TxContextFieldTag.CallerAddress
+                ).value(),
                 FQ(0),
             )
             # Since every tx lookup done in the EVM circuit must succeed and

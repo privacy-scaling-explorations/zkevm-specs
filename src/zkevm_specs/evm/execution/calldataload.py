@@ -14,12 +14,18 @@ def calldataload(instruction: Instruction):
 
     if instruction.curr.is_root:
         src_id = instruction.call_context_lookup(CallContextFieldTag.TxId).value()
-        calldata_length = instruction.call_context_lookup(CallContextFieldTag.CallDataLength).value()
+        calldata_length = instruction.call_context_lookup(
+            CallContextFieldTag.CallDataLength
+        ).value()
         calldata_offset: Expression = FQ(0)
     else:
         src_id = instruction.call_context_lookup(CallContextFieldTag.CallerId).value()
-        calldata_length = instruction.call_context_lookup(CallContextFieldTag.CallDataLength).value()
-        calldata_offset = instruction.call_context_lookup(CallContextFieldTag.CallDataOffset).value()
+        calldata_length = instruction.call_context_lookup(
+            CallContextFieldTag.CallDataLength
+        ).value()
+        calldata_offset = instruction.call_context_lookup(
+            CallContextFieldTag.CallDataOffset
+        ).value()
 
     src_addr = offset + calldata_offset
     src_addr_end = calldata_length.expr() + calldata_offset.expr()

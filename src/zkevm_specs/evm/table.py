@@ -375,7 +375,9 @@ class TableRow:
             rhs = getattr(self, key)
             if isinstance(value, Word):
                 assert isinstance(rhs, Word)
-                match = match and (value.lo.expr() == rhs.lo.expr() and value.hi.expr() == rhs.hi.expr())
+                match = match and (
+                    value.lo.expr() == rhs.lo.expr() and value.hi.expr() == rhs.hi.expr()
+                )
             else:
                 assert isinstance(value, Expression) and isinstance(rhs, Expression)
                 match = match and (value.expr() == rhs.expr())
@@ -427,7 +429,7 @@ class RWTableRow(TableRow):
     storage_key: Word = field(default=Word(0))
     value: WordOrValue = field(default=WordOrValue(FQ(0)))
     value_prev: WordOrValue = field(default=WordOrValue(FQ(0)))
-    aux0: Word = field(default=Word(0)) # TODO: Rename this to initial_value
+    aux0: Word = field(default=Word(0))  # TODO: Rename this to initial_value
 
 
 @dataclass(frozen=True)

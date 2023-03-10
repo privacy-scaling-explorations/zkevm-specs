@@ -17,8 +17,12 @@ def dataCopy(instruction: Instruction):
     )
 
     caller_id = instruction.call_context_lookup(CallContextFieldTag.CallerId, RW.Read).value()
-    call_data_offset = instruction.call_context_lookup(CallContextFieldTag.CallDataOffset, RW.Read).value()
-    call_data_length = instruction.call_context_lookup(CallContextFieldTag.CallDataLength, RW.Read).value()
+    call_data_offset = instruction.call_context_lookup(
+        CallContextFieldTag.CallDataOffset, RW.Read
+    ).value()
+    call_data_length = instruction.call_context_lookup(
+        CallContextFieldTag.CallDataLength, RW.Read
+    ).value()
     return_data_offset = instruction.call_context_lookup(
         CallContextFieldTag.ReturnDataOffset, RW.Read
     ).value()

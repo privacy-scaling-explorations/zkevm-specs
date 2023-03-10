@@ -115,7 +115,9 @@ def verify_copy_table(copy_circuit: CopyCircuit, tables: Tables, r: FQ):
             ).value
             cs.constrain_equal(cast_expr(val, FQ), row.value)
         if row.is_tx_calldata == 1 and row.is_pad == 0:
-            val = tables.tx_lookup(row.id.value(), FQ(TxContextFieldTag.CallData), row.addr).value.value()
+            val = tables.tx_lookup(
+                row.id.value(), FQ(TxContextFieldTag.CallData), row.addr
+            ).value.value()
             cs.constrain_equal(val, row.value)
         if row.is_tx_log == 1:
             val = tables.rw_lookup(

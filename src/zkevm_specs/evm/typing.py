@@ -113,9 +113,7 @@ class Block:
             BlockTableRow(FQ(BlockContextFieldTag.GasLimit), FQ(0), value(self.gas_limit)),
             BlockTableRow(FQ(BlockContextFieldTag.Number), FQ(0), value(self.number)),
             BlockTableRow(FQ(BlockContextFieldTag.Timestamp), FQ(0), value(self.timestamp)),
-            BlockTableRow(
-                FQ(BlockContextFieldTag.Difficulty), FQ(0), word(self.difficulty)
-            ),
+            BlockTableRow(FQ(BlockContextFieldTag.Difficulty), FQ(0), word(self.difficulty)),
             BlockTableRow(FQ(BlockContextFieldTag.BaseFee), FQ(0), word(self.base_fee)),
             BlockTableRow(FQ(BlockContextFieldTag.ChainId), FQ(0), value(self.chainid)),
         ] + [
@@ -224,9 +222,7 @@ class Transaction:
                 FQ(0),
                 value(self.callee_address is None),
             ),
-            TxTableRow(
-                FQ(self.id), FQ(TxContextFieldTag.Value), FQ(0), word(self.value)
-            ),
+            TxTableRow(FQ(self.id), FQ(TxContextFieldTag.Value), FQ(0), word(self.value)),
             TxTableRow(
                 FQ(self.id),
                 FQ(TxContextFieldTag.CallDataLength),
@@ -264,7 +260,10 @@ class Transaction:
             self.table_fixed(),
             map(
                 lambda item: TxTableRow(
-                    FQ(self.id), FQ(TxContextFieldTag.CallData), FQ(item[0]), WordOrValue(FQ(item[1]))
+                    FQ(self.id),
+                    FQ(TxContextFieldTag.CallData),
+                    FQ(item[0]),
+                    WordOrValue(FQ(item[1])),
                 ),
                 enumerate(self.call_data),
             ),
@@ -522,8 +521,8 @@ class RWDictionary:
     def tx_refund_write(
         self,
         tx_id: IntOrFQ,
-        refund:  IntOrFQ,
-        refund_prev:  IntOrFQ,
+        refund: IntOrFQ,
+        refund_prev: IntOrFQ,
         rw_counter_of_reversion: Optional[int] = None,
     ) -> RWDictionary:
         return self._state_write(

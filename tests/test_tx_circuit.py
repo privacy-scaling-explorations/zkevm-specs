@@ -1,7 +1,7 @@
 from typing import Union, List
-from eth_keys import keys # type: ignore
+from eth_keys import keys  # type: ignore
 from eth_utils import keccak
-import rlp # type: ignore
+import rlp  # type: ignore
 from zkevm_specs.tx_circuit import *
 from zkevm_specs.util import rand_fq, FQ, U64
 
@@ -43,7 +43,9 @@ def verify(
     if isinstance(txs_or_witness, Witness):
         witness = txs_or_witness
     else:
-        witness = txs2witness(txs_or_witness, chain_id, MAX_TXS, MAX_CALLDATA_BYTES, keccak_randomness)
+        witness = txs2witness(
+            txs_or_witness, chain_id, MAX_TXS, MAX_CALLDATA_BYTES, keccak_randomness
+        )
     assert len(witness.rows) == MAX_TXS * Tag.TxSignHash + MAX_CALLDATA_BYTES
     assert len(witness.sign_verifications) == MAX_TXS
     exception = None
@@ -104,7 +106,9 @@ def gen_tx(i: int, sk: keys.PrivateKey, to: int, chain_id) -> Transaction:
     value = 0x30000 + i * 4
     data = bytes([i] * i)
 
-    tx = Transaction(U64(nonce), U256(gas_price), U64(gas), U160(to), U256(value), data, U64(0), U256(0), U256(0))
+    tx = Transaction(
+        U64(nonce), U256(gas_price), U64(gas), U160(to), U256(value), data, U64(0), U256(0), U256(0)
+    )
     tx = sign_tx(sk, tx, chain_id)
     return tx
 

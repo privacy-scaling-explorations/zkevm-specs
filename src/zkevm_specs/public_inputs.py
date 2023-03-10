@@ -114,8 +114,14 @@ def check_row(
     assert q_not_end * row.rand_rpi == q_not_end * row_next.rand_rpi
 
     # 0.2 Block table -> value column match with raw_public_inputs at expected offset
-    assert row.q_block_table * row.block_table.value.lo.expr() == row.q_block_table * row_offset_block_table_value_lo.raw_public_inputs
-    assert row.q_block_table * row.block_table.value.hi.expr() == row.q_block_table * row_offset_block_table_value_hi.raw_public_inputs
+    assert (
+        row.q_block_table * row.block_table.value.lo.expr()
+        == row.q_block_table * row_offset_block_table_value_lo.raw_public_inputs
+    )
+    assert (
+        row.q_block_table * row.block_table.value.hi.expr()
+        == row.q_block_table * row_offset_block_table_value_hi.raw_public_inputs
+    )
 
     # 0.3 Tx table -> {tx_id, index, value} column match with raw_public_inputs at expected offset
     assert (
@@ -147,7 +153,11 @@ def check_row(
     one = FQ(1)
     if row.q_tx_calldata != zero:
         assert row.tx_table.tx_id * (one - row.tx_id_inv * row.tx_table.tx_id) == zero
-        assert row.tx_table.value.lo.expr() * (one - row.tx_value_lo_inv * row.tx_table.value.lo.expr()) == zero
+        assert (
+            row.tx_table.value.lo.expr()
+            * (one - row.tx_value_lo_inv * row.tx_table.value.lo.expr())
+            == zero
+        )
         assert (row_next.tx_table.tx_id - row.tx_table.tx_id) * (
             one - row.tx_id_diff_inv * (row_next.tx_table.tx_id - row.tx_table.tx_id)
         ) == zero
@@ -231,7 +241,11 @@ def check_row(
     if row.q_tx_table != zero:
         row_is_cdl = row.tx_table.tag - FQ(TxTag.CallDataLength)
         assert row_is_cdl * (one - row.tx_id_inv * row_is_cdl) == zero
-        assert row.tx_table.value.lo.expr() * (one - row.tx_value_lo_inv * row.tx_table.value.lo.expr()) == zero
+        assert (
+            row.tx_table.value.lo.expr()
+            * (one - row.tx_value_lo_inv * row.tx_table.value.lo.expr())
+            == zero
+        )
 
         is_calldata_length_row = one - row_is_cdl * row.tx_id_inv
         is_calldata_length_nonzero = row.tx_table.value.lo.expr() * row.tx_value_lo_inv
@@ -284,8 +298,12 @@ def verify_circuit(
     assert rows[offset_extra + 3].raw_public_inputs == witness.public_inputs.state_root.hi.expr()
 
     # 1.4 state_root_prev copy constraint from public input to raw_public_inputs
-    assert rows[offset_extra + 4].raw_public_inputs == witness.public_inputs.state_root_prev.lo.expr()
-    assert rows[offset_extra + 5].raw_public_inputs == witness.public_inputs.state_root_prev.hi.expr()
+    assert (
+        rows[offset_extra + 4].raw_public_inputs == witness.public_inputs.state_root_prev.lo.expr()
+    )
+    assert (
+        rows[offset_extra + 5].raw_public_inputs == witness.public_inputs.state_root_prev.hi.expr()
+    )
 
     fixed_u16_table = set([FixedU16Row(FQ(i)) for i in range(1 << 16)])
     for i in range(len(rows)):
@@ -293,7 +311,7 @@ def verify_circuit(
         row = rows[i]
         row_next = rows[(i + 1) % len(rows)]
         # Offset in raw_public_inputs with block_table -> value.hi column
-        tx_table_offset = BLOCK_LEN//2 + 1
+        tx_table_offset = BLOCK_LEN // 2 + 1
         row_offset_block_table_value_hi = rows[(i + tx_table_offset) % len(rows)]
         # Offset in raw_public_inputs with tx_table -> tx_id column
         tx_table_offset = BLOCK_LEN + 2 + EXTRA_LEN
@@ -537,11 +555,15 @@ def public_data2witness(
     raw_public_inputs.extend(
         [FQ(0)] + [w.lo.expr() for w in tx_table_tx_fields[2]]
     )  # start offset += (TX_LEN * MAX_TXS + 1)
-    raw_public_inputs.extend([w.lo.expr() for w in tx_table_tx_calldata[2]])  # start offset += (TX_LEN * MAX_TXS + 1)
+    raw_public_inputs.extend(
+        [w.lo.expr() for w in tx_table_tx_calldata[2]]
+    )  # start offset += (TX_LEN * MAX_TXS + 1)
     raw_public_inputs.extend(
         [FQ(0)] + [w.hi.expr() for w in tx_table_tx_fields[2]]
     )  # start offset += (TX_LEN * MAX_TXS)
-    raw_public_inputs.extend([w.hi.expr() for w in tx_table_tx_calldata[2]])  # start offset += MAX_CALLDATA_BYTES
+    raw_public_inputs.extend(
+        [w.hi.expr() for w in tx_table_tx_calldata[2]]
+    )  # start offset += MAX_CALLDATA_BYTES
 
     assert (
         len(raw_public_inputs)
@@ -563,7 +585,7 @@ def public_data2witness(
         block_row = BlockTableRow(WordOrValue(FQ(0)))
 
         q_block_table = FQ(0)
-        if i < BLOCK_LEN//2 + 1:
+        if i < BLOCK_LEN // 2 + 1:
             q_block_table = FQ(1)
             assert i < len(block_table_value_col)
             block_row = BlockTableRow(block_table_value_col[i])

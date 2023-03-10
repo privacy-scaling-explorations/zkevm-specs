@@ -66,20 +66,16 @@ class CallGadget:
             # Verify is_success is a bool
             instruction.constrain_bool(self.is_success)
             self.gas = instruction.word_to_fq(gas, N_BYTES_GAS)
-            self.is_u64_gas = instruction.is_zero(
-                instruction.sum(gas.to_le_bytes()[N_BYTES_GAS:])
-            )
+            self.is_u64_gas = instruction.is_zero(instruction.sum(gas.to_le_bytes()[N_BYTES_GAS:]))
         else:
             instruction.constrain_zero(self.is_success)
-        self.has_value = FQ(0) if is_delegatecall == FQ(1) else 1 - instruction.is_zero_word(self.value)
+        self.has_value = (
+            FQ(0) if is_delegatecall == FQ(1) else 1 - instruction.is_zero_word(self.value)
+        )
 
         self.callee_address = instruction.word_to_fq(callee_address, N_BYTES_ACCOUNT_ADDRESS)
-        self.cd_offset, self.cd_length = instruction.memory_offset_and_length(
-            cd_offset, cd_length
-        )
-        self.rd_offset, self.rd_length = instruction.memory_offset_and_length(
-            rd_offset, rd_length
-        )
+        self.cd_offset, self.cd_length = instruction.memory_offset_and_length(cd_offset, cd_length)
+        self.rd_offset, self.rd_length = instruction.memory_offset_and_length(rd_offset, rd_length)
         # Verify memory expansion
         (
             self.next_memory_size,

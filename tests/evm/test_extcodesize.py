@@ -72,9 +72,7 @@ def test_extcodesize(address: U160, code: bytes, exists: bool, is_warm: bool, is
             rw_counter_of_reversion=rw_counter_end_of_reversion - reversible_write_counter,
         )
     )
-    rw_dictionary.account_read(
-        address, AccountFieldTag.CodeHash, Word(code_hash if exists else 0)
-    )
+    rw_dictionary.account_read(address, AccountFieldTag.CodeHash, Word(code_hash if exists else 0))
 
     rw_table = set(rw_dictionary.stack_write(call_id, 1023, Word(code_size)).rws)
 

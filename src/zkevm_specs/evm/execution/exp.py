@@ -28,13 +28,9 @@ def exp(instruction: Instruction):
         single_step = instruction.is_zero(exponent_hi) * instruction.is_equal(exponent_lo, FQ(2))
 
         # lookup to enforce the is_first step
-        res = instruction.exp_lookup(
-            identifier, single_step, base_limbs, exponent
-        )
+        res = instruction.exp_lookup(identifier, single_step, base_limbs, exponent)
         # lookup to enforce the is_last step
-        int_res = instruction.exp_lookup(
-            identifier, FQ.one(), base_limbs, Word((FQ(2), FQ.zero()))
-        )
+        int_res = instruction.exp_lookup(identifier, FQ.one(), base_limbs, Word((FQ(2), FQ.zero())))
         # intermediary result should be base^2
         # constrain base * base + 0 == base^2
         instruction.mul_add_words(base, base, Word(0), int_res)

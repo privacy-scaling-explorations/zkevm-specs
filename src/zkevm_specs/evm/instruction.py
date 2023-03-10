@@ -6,8 +6,10 @@ from ..util import (
     FQ,
     IntOrFQ,
     RLC,
-    add_words, sum_values,
-    Word, WordOrValue,
+    add_words,
+    sum_values,
+    Word,
+    WordOrValue,
     Expression,
     ExpressionImpl,
     cast_expr,
@@ -153,9 +155,9 @@ class Instruction:
         )
 
     def constrain_equal_word(self, lhs: Word, rhs: Word):
-        assert lhs.lo.expr() == rhs.lo.expr() and lhs.hi.expr() == rhs.hi.expr(), ConstraintUnsatFailure(
-            f"Expected words to be equal, but got {lhs} and {rhs}"
-        )
+        assert (
+            lhs.lo.expr() == rhs.lo.expr() and lhs.hi.expr() == rhs.hi.expr()
+        ), ConstraintUnsatFailure(f"Expected words to be equal, but got {lhs} and {rhs}")
 
     def constrain_in(self, lhs: Expression, rhs: List[FQ]):
         assert lhs.expr() in rhs, ConstraintUnsatFailure(
@@ -222,7 +224,7 @@ class Instruction:
                 )
             elif transition.kind == TransitionKind.SameWord:
                 curr, next = cast(Word, curr), cast(Word, next)
-                assert next.lo.expr() == curr.lo.expr() and next.hi.expr() == curr.hi.expr(), ConstraintUnsatFailure( # type: ignore
+                assert next.lo.expr() == curr.lo.expr() and next.hi.expr() == curr.hi.expr(), ConstraintUnsatFailure(  # type: ignore
                     f"State {key} should be same as {curr}, but got {next}"
                 )
             elif transition.kind == TransitionKind.Delta:
@@ -240,8 +242,8 @@ class Instruction:
             elif transition.kind == TransitionKind.ToWord:
                 curr, next = cast(Word, curr), cast(Word, next)
                 # mypy gets confused here and thinkgs value must be FQ.
-                value = cast(Word, transition.value) # type: ignore
-                assert next.lo.expr() == value.lo.expr() and next.hi.expr() == value.hi.expr(), ConstraintUnsatFailure( # type: ignore
+                value = cast(Word, transition.value)  # type: ignore
+                assert next.lo.expr() == value.lo.expr() and next.hi.expr() == value.hi.expr(), ConstraintUnsatFailure(  # type: ignore
                     f"State {key} should transit to {transition.value}, but got {next}"
                 )
             else:
@@ -386,7 +388,9 @@ class Instruction:
         return self.is_zero(lhs.expr() - rhs.expr())
 
     def is_equal_word(self, lhs: Word, rhs: Word) -> FQ:
-        return self.is_zero_word(Word((lhs.lo.expr() - rhs.lo.expr(), lhs.hi.expr() - rhs.hi.expr()), check=False))
+        return self.is_zero_word(
+            Word((lhs.lo.expr() - rhs.lo.expr(), lhs.hi.expr() - rhs.hi.expr()), check=False)
+        )
 
     def continuous_selectors(self, value: Expression, n: int) -> Sequence[FQ]:
         return [FQ(i < value.expr().n) for i in range(n)]
@@ -397,9 +401,7 @@ class Instruction:
         assert condition in [0, 1], "Condition of select should be a checked bool"
         return when_true if condition == 1 else when_false
 
-    def select_word(
-        self, condition: FQ, when_true: Word, when_false: Word
-    ) -> Word:
+    def select_word(self, condition: FQ, when_true: Word, when_false: Word) -> Word:
         assert condition in [0, 1], "Condition of select_word should be a checked bool"
         return when_true if condition == 1 else when_false
 
@@ -455,9 +457,9 @@ class Instruction:
         if sum(word_le_bytes[n_bytes:]) != FQ(0):
             raise ConstraintUnsatFailure(f"Word {word} has too many bytes to fit {n_bytes} bytes")
         return self.bytes_to_fq(word_le_bytes[:n_bytes])
- 
+
     def is_neg_word(self, word: Word) -> FQ:
-        return self.compare(FQ(0x7fffffffffffffffffffffffffffffff), word.hi.expr(), 16)[0]
+        return self.compare(FQ(0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF), word.hi.expr(), 16)[0]
 
     def is_zero_word(self, word: Word) -> FQ:
         return self.is_zero(self.sum([word.lo.expr(), word.hi.expr()]))
@@ -655,7 +657,11 @@ class Instruction:
         return self.tables.tx_lookup(tx_id, FQ(field_tag)).value
 
     def tx_calldata_lookup(self, tx_id: Expression, call_data_index: Expression) -> Expression:
-        return self.tables.tx_lookup(tx_id, FQ(TxContextFieldTag.CallData), call_data_index).value.value().expr()
+        return (
+            self.tables.tx_lookup(tx_id, FQ(TxContextFieldTag.CallData), call_data_index)
+            .value.value()
+            .expr()
+        )
 
     # look up tx log fields (Data, Address, Topic),
     def tx_log_lookup(
@@ -799,7 +805,9 @@ class Instruction:
         if value_prev is not None:
             value_prev = WordOrValue(value_prev)
 
-        row = self.rw_lookup(RW.Write, tag, id, address, field_tag, storage_key, value, value_prev, aux0)
+        row = self.rw_lookup(
+            RW.Write, tag, id, address, field_tag, storage_key, value, value_prev, aux0
+        )
 
         if reversion_info is not None and reversion_info.is_persistent == FQ(0):
             self.tables.rw_lookup(
@@ -833,7 +841,9 @@ class Instruction:
             value = WordOrValue(value)
         if value_prev is not None:
             value_prev = WordOrValue(value_prev)
-        row = self.rw_lookup(RW.Read, tag, id, address, field_tag, storage_key, value, value_prev, aux0)
+        row = self.rw_lookup(
+            RW.Read, tag, id, address, field_tag, storage_key, value, value_prev, aux0
+        )
         return row
 
     def call_context_lookup(
@@ -879,7 +889,9 @@ class Instruction:
     ) -> FQ:
         if call_id is None:
             call_id = self.curr.call_id
-        return cast_expr(self.rw_lookup(rw, RWTableTag.Memory, call_id, memory_address).value.value(), FQ)
+        return cast_expr(
+            self.rw_lookup(rw, RWTableTag.Memory, call_id, memory_address).value.value(), FQ
+        )
 
     def tx_refund_read(self, tx_id: Expression) -> FQ:
         return cast_expr(self.rw_lookup(RW.Read, RWTableTag.TxRefund, tx_id).value.value(), FQ)
@@ -896,10 +908,12 @@ class Instruction:
         )
         return cast_expr(row.value.value(), FQ), cast_expr(row.value_prev.value(), FQ)
 
-    def account_read(self, account_address: Expression, account_field_tag: AccountFieldTag) -> WordOrValue:
+    def account_read(
+        self, account_address: Expression, account_field_tag: AccountFieldTag
+    ) -> WordOrValue:
         return self.rw_lookup(
-                RW.Read, RWTableTag.Account, address=account_address, field_tag=FQ(account_field_tag)
-            ).value
+            RW.Read, RWTableTag.Account, address=account_address, field_tag=FQ(account_field_tag)
+        ).value
 
     def account_write(
         self,

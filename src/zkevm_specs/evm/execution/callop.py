@@ -1,10 +1,6 @@
 from zkevm_specs.evm.util.call_gadget import CallGadget
 from zkevm_specs.util.param import N_BYTES_GAS
-from ...util import (
-    FQ,
-    GAS_STIPEND_CALL_WITH_VALUE,
-    Word, WordOrValue, Expression
-)
+from ...util import FQ, GAS_STIPEND_CALL_WITH_VALUE, Word, WordOrValue, Expression
 from ..instruction import Instruction, Transition
 from ..opcode import Opcode
 from ..table import RW, CallContextFieldTag, AccountFieldTag
@@ -13,6 +9,7 @@ from ..execution_state import precompile_execution_states
 
 def word(v: Word) -> WordOrValue:
     return WordOrValue(v)
+
 
 def value(v: Expression) -> WordOrValue:
     return WordOrValue(v)

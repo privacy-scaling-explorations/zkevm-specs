@@ -99,7 +99,9 @@ def check_bytecode_row_byte_to_header(cur: Row, keccak_table: Set[KeccakTableRow
 
 
 # Populate the circuit matrix
-def assign_bytecode_circuit(k: int, bytecodes: Sequence[UnrolledBytecode], keccak_randomness: FQ) -> List[Row]:
+def assign_bytecode_circuit(
+    k: int, bytecodes: Sequence[UnrolledBytecode], keccak_randomness: FQ
+) -> List[Row]:
     # All rows are usable in this emulation
     last_row_offset = 2**k - 1
 

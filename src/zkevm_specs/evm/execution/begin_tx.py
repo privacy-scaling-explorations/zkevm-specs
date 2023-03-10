@@ -1,4 +1,13 @@
-from ...util import GAS_COST_TX, GAS_COST_CREATION_TX, EMPTY_CODE_HASH, FQ, Word, WordOrValue, Expression, cast_expr
+from ...util import (
+    GAS_COST_TX,
+    GAS_COST_CREATION_TX,
+    EMPTY_CODE_HASH,
+    FQ,
+    Word,
+    WordOrValue,
+    Expression,
+    cast_expr,
+)
 from ..execution_state import ExecutionState
 from ..instruction import Instruction, Transition
 from ..precompile import Precompile
@@ -7,6 +16,7 @@ from ..table import CallContextFieldTag, TxContextFieldTag, AccountFieldTag
 
 def word(v: Word) -> WordOrValue:
     return WordOrValue(v)
+
 
 def value(v: Expression) -> WordOrValue:
     return WordOrValue(v)
@@ -25,11 +35,17 @@ def begin_tx(instruction: Instruction):
     if instruction.is_first_step:
         instruction.constrain_equal(tx_id, FQ(1))
 
-    tx_caller_address = instruction.tx_context_lookup(tx_id, TxContextFieldTag.CallerAddress).value()
-    tx_callee_address = instruction.tx_context_lookup(tx_id, TxContextFieldTag.CalleeAddress).value()
+    tx_caller_address = instruction.tx_context_lookup(
+        tx_id, TxContextFieldTag.CallerAddress
+    ).value()
+    tx_callee_address = instruction.tx_context_lookup(
+        tx_id, TxContextFieldTag.CalleeAddress
+    ).value()
     tx_is_create = instruction.tx_context_lookup(tx_id, TxContextFieldTag.IsCreate).value()
     tx_value = instruction.tx_context_lookup(tx_id, TxContextFieldTag.Value)
-    tx_call_data_length = instruction.tx_context_lookup(tx_id, TxContextFieldTag.CallDataLength).value()
+    tx_call_data_length = instruction.tx_context_lookup(
+        tx_id, TxContextFieldTag.CallDataLength
+    ).value()
 
     # CallerAddress != 0 (not a padding tx)
     instruction.constrain_not_zero(tx_caller_address)
@@ -54,10 +70,14 @@ def begin_tx(instruction: Instruction):
     #       (G_txcreate if tx_to == 0 or 0) +
     #       G_transaction +
     #       sum([G_accesslistaddress + G_accessliststorage * len(TA[j]) for j in len(TA)])
-    tx_calldata_gas_cost = instruction.tx_context_lookup(tx_id, TxContextFieldTag.CallDataGasCost).value()
+    tx_calldata_gas_cost = instruction.tx_context_lookup(
+        tx_id, TxContextFieldTag.CallDataGasCost
+    ).value()
     tx_cost_gas = GAS_COST_CREATION_TX if tx_is_create == 1 else GAS_COST_TX
     # TODO: Handle gas cost of tx level access list (EIP 2930)
-    tx_accesslist_gas = instruction.tx_context_lookup(tx_id, TxContextFieldTag.AccessListGasCost).value()
+    tx_accesslist_gas = instruction.tx_context_lookup(
+        tx_id, TxContextFieldTag.AccessListGasCost
+    ).value()
     tx_intrinsic_gas = tx_calldata_gas_cost.expr() + tx_cost_gas + tx_accesslist_gas.expr()
 
     # check instrinsic gas
@@ -80,7 +100,8 @@ def begin_tx(instruction: Instruction):
     sender_balance_prev = sender_balance_pair[1]
     balance_not_enough, _ = instruction.compare(
         instruction.word_to_fq(sender_balance_prev, MAX_N_BYTES),
-        instruction.word_to_fq(tx_value, MAX_N_BYTES) + instruction.word_to_fq(gas_fee, MAX_N_BYTES),
+        instruction.word_to_fq(tx_value, MAX_N_BYTES)
+        + instruction.word_to_fq(gas_fee, MAX_N_BYTES),
         MAX_N_BYTES,
     )
     invalid_tx = 1 - (1 - balance_not_enough) * (1 - gas_not_enough) * (is_nonce_valid)
@@ -99,9 +120,7 @@ def begin_tx(instruction: Instruction):
         raise NotImplementedError
     else:
         code_hash = instruction.account_read(tx_callee_address, AccountFieldTag.CodeHash)
-        is_empty_code_hash = instruction.is_equal_word(
-            code_hash, Word(EMPTY_CODE_HASH)
-        )
+        is_empty_code_hash = instruction.is_equal_word(code_hash, Word(EMPTY_CODE_HASH))
 
         if is_empty_code_hash == FQ(1) or is_tx_invalid == FQ(1):
             # Make sure tx is persistent

@@ -107,9 +107,7 @@ def test_extcodecopy(
             rw_counter_of_reversion=rw_counter_end_of_reversion - reversible_write_counter,
         )
     )
-    rw_dictionary.account_read(
-        address, AccountFieldTag.CodeHash, code_hash if exists else Word(0)
-    )
+    rw_dictionary.account_read(address, AccountFieldTag.CodeHash, code_hash if exists else Word(0))
 
     bytecode = Bytecode().extcodecopy()
     bytecode_hash = Word(bytecode.hash())

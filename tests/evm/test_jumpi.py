@@ -30,7 +30,9 @@ def test_jumpi_cond_nonzero(opcode: Opcode, cond: int, dest: int):
         block_table=set(block.table_assignments()),
         tx_table=set(),
         bytecode_table=set(bytecode.table_assignments()),
-        rw_table=set(RWDictionary(9).stack_read(1, 1021, Word(dest)).stack_read(1, 1022, Word(cond)).rws),
+        rw_table=set(
+            RWDictionary(9).stack_read(1, 1021, Word(dest)).stack_read(1, 1022, Word(cond)).rws
+        ),
     )
 
     verify_steps(
@@ -80,7 +82,9 @@ def test_jumpi_cond_zero(opcode: Opcode, cond: int, dest: int):
         block_table=set(block.table_assignments()),
         tx_table=set(),
         bytecode_table=set(bytecode.table_assignments()),
-        rw_table=set(RWDictionary(9).stack_read(1, 1021, Word(dest)).stack_read(1, 1022, Word(cond)).rws),
+        rw_table=set(
+            RWDictionary(9).stack_read(1, 1021, Word(dest)).stack_read(1, 1022, Word(cond)).rws
+        ),
     )
 
     verify_steps(

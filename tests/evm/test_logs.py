@@ -104,9 +104,7 @@ def construct_topic_rws(
     for i in range(len(topics)):
         rw_dictionary.stack_read(CALL_ID, sp, Word(topics[i]))
         if is_persistent:
-            rw_dictionary.tx_log_write(
-                TX_ID, log_id, TxLogFieldTag.Topic, i, Word(topics[i])
-            )
+            rw_dictionary.tx_log_write(TX_ID, log_id, TxLogFieldTag.Topic, i, Word(topics[i]))
 
         sp += 1
 
@@ -190,7 +188,15 @@ def test_single_log(topics: list, mstart: U64, msize: U64, is_persistent: bool):
         )
     ]
     sp = make_log(
-        rw_dictionary, copy_circuit, randomness_keccak, 1015, 1, topics, mstart, msize, is_persistent
+        rw_dictionary,
+        copy_circuit,
+        randomness_keccak,
+        1015,
+        1,
+        topics,
+        mstart,
+        msize,
+        is_persistent,
     )
 
     steps.append(

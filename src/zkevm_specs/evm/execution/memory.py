@@ -23,9 +23,7 @@ def memory(instruction: Instruction):
     )
 
     if is_mstore8 == FQ(1):
-        instruction.is_equal(
-            instruction.memory_lookup(RW.Write, address), FQ(value_le_bytes[0])
-        )
+        instruction.is_equal(instruction.memory_lookup(RW.Write, address), FQ(value_le_bytes[0]))
 
     if is_not_mstore8 == FQ(1):
         for idx in range(32):

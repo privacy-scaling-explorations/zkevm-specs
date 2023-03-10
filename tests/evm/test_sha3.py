@@ -94,7 +94,9 @@ def test_sha3(offset: U64, length: U64):
     )
     assert rw_dictionary.rw_counter - rw_counter_interim == length
 
-    keccak_circuit = KeccakCircuit().add(memory_snapshot[offset : offset + length], randomness_keccak)
+    keccak_circuit = KeccakCircuit().add(
+        memory_snapshot[offset : offset + length], randomness_keccak
+    )
 
     tables = Tables(
         block_table=set(Block().table_assignments()),
