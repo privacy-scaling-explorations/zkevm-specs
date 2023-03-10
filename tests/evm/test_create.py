@@ -19,7 +19,6 @@ from zkevm_specs.evm import (
 from zkevm_specs.evm.table import CopyDataTypeTag
 from zkevm_specs.evm.typing import CopyCircuit
 from zkevm_specs.util import RLC, rand_fq, keccak256
-from zkevm_specs.util.arithmetic import FQ
 from zkevm_specs.util.hash import EMPTY_CODE_HASH
 from zkevm_specs.util.param import GAS_COST_COPY_SHA3, GAS_COST_CREATE
 
@@ -176,6 +175,7 @@ def test_create_create2(
         )
 
     init_bytecode = init_codes
+    # FIXME: this is not init code hash, it's code hash
     init_bytecode_hash = RLC(init_bytecode.hash(), randomness)
 
     nonce = caller.nonce
@@ -308,7 +308,6 @@ def test_create_create2(
             chain(
                 caller_bytecode.table_assignments(randomness),
                 init_bytecode.table_assignments(randomness),
-                init_codes.table_assignments(randomness),
             )
         ),
         rw_table=set(rw_dictionary.rws),

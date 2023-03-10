@@ -29,10 +29,9 @@ def return_revert(instruction: Instruction):
     if instruction.curr.is_create and is_success:
         # A. Returns the specified memory chunk as deployment code.
 
-        # TODO: Untested case.  Test it once create Tx is implemented, and once
-        # CREATE/CREATE2 are implemented.
+        # TODO EIP-211
+
         callee_address = instruction.call_context_lookup(CallContextFieldTag.CalleeAddress)
-        reversion_info = instruction.reversion_info()
         code_hash, code_hash_prev = instruction.account_write(
             callee_address, AccountFieldTag.CodeHash
         )
@@ -52,11 +51,11 @@ def return_revert(instruction: Instruction):
         # Return a memory chunk as deployment code by copying each byte from
         # callee's memory to bytecode, using the copy circuit.
         copy_length = return_length
-        if return_length > 0:
+        if int(return_length) > 0:
             copy_rwc_inc, _ = instruction.copy_lookup(
                 instruction.curr.call_id,  # src_id
                 CopyDataTypeTag.Memory,  # src_type
-                code_hash,  # dst_id
+                code_hash.expr(),  # dst_id
                 CopyDataTypeTag.Bytecode,  # dst_type
                 return_offset,  # src_addr
                 return_end,  # src_addr_boundary
@@ -131,5 +130,5 @@ def return_revert(instruction: Instruction):
             rw_counter_delta=rwc_delta,
             return_data_offset=return_offset,
             return_data_length=return_length,
-            gas_left=instruction.curr.gas_left - memory_expansion_gas,
+            gas_left=callee_gas_left - memory_expansion_gas,
         )  # rwc += 12
