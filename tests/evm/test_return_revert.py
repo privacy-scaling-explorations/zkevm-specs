@@ -1,8 +1,8 @@
 import pytest
 
 from itertools import chain
-from common import memory_expansion, CallContext
-from zkevm_specs.evm import (
+from common import memory_expansion, CallContext, rand_fq
+from zkevm_specs.evm_circuit import (
     ExecutionState,
     StepState,
     verify_steps,
@@ -16,7 +16,8 @@ from zkevm_specs.evm import (
     CopyDataTypeTag,
 )
 from zkevm_specs.copy_circuit import verify_copy_table
-from zkevm_specs.util import rand_fq, RLC
+from zkevm_specs.util import RLC
+
 
 CALLEE_MEMORY = [0x00] * 4 + [0x22] * 32
 

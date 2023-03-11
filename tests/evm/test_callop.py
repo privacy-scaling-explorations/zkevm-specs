@@ -1,7 +1,7 @@
 import pytest
 from collections import namedtuple
 from itertools import chain, product
-from zkevm_specs.evm import (
+from zkevm_specs.evm_circuit import (
     Account,
     AccountFieldTag,
     Block,
@@ -23,9 +23,8 @@ from zkevm_specs.util import (
     GAS_STIPEND_CALL_WITH_VALUE,
     RLC,
     U256,
-    rand_fq,
 )
-from common import CallContext
+from common import CallContext, rand_fq
 
 Stack = namedtuple(
     "Stack",
