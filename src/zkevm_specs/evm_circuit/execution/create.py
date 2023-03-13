@@ -1,4 +1,4 @@
-from zkevm_specs.evm.opcode import Opcode
+from zkevm_specs.evm_circuit.opcode import Opcode
 from zkevm_specs.util.arithmetic import FQ, RLC
 from zkevm_specs.util.hash import EMPTY_CODE_HASH
 from zkevm_specs.util.param import (

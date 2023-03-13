@@ -52,6 +52,7 @@ from .sar import sar
 from .sdiv_smod import sdiv_smod
 from .sha3 import sha3
 from .shl_shr import shl_shr
+from .create import create
 from .stop import stop
 from .return_revert import *
 from .extcodecopy import *
@@ -111,6 +112,8 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.SAR: sar,
     ExecutionState.SDIV_SMOD: sdiv_smod,
     ExecutionState.SHL_SHR: shl_shr,
+    ExecutionState.CREATE: create,
+    ExecutionState.CREATE2: create,
     ExecutionState.STOP: stop,
     ExecutionState.RETURN: return_revert,
     ExecutionState.ErrorInvalidJump: invalid_jump,

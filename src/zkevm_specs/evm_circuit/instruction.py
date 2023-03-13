@@ -1080,6 +1080,15 @@ class Instruction:
         contract_addr = keccak(rlp.encode([address.expr().n.to_bytes(20, "big"), nonce.expr().n]))
         return FQ(int.from_bytes(contract_addr[-20:], "big"))
 
+    def generate_CREAET2_contract_address(
+        self, address: Expression, salt: bytes, code_hash: RLC
+    ) -> Expression:
+        # keccak256(0xff + sender_address + salt + keccak256(initialisation_code))[12:]
+        contract_addr = keccak(
+            b"\xff" + address.expr().n.to_bytes(20, "big") + salt + code_hash.le_bytes
+        )
+        return FQ(int.from_bytes(contract_addr[-20:], "big"))
+
     def pow2_lookup(self, value: Expression, pow_lo128: Expression, pow_hi128: Expression):
         self.fixed_lookup(FixedTableTag.Pow2, value, pow_lo128, pow_hi128)
 

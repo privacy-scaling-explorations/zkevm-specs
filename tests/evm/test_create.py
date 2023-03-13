@@ -2,7 +2,8 @@ import pytest
 import rlp
 from collections import namedtuple
 from itertools import chain, product
-from zkevm_specs.evm import (
+from common import rand_fq
+from zkevm_specs.evm_circuit import (
     Account,
     AccountFieldTag,
     Block,
@@ -15,11 +16,12 @@ from zkevm_specs.evm import (
     Tables,
     verify_steps,
 )
-from zkevm_specs.evm.table import CopyDataTypeTag
-from zkevm_specs.evm.typing import CopyCircuit
-from zkevm_specs.util import RLC, rand_fq, keccak256
-from zkevm_specs.util.hash import EMPTY_CODE_HASH
+from zkevm_specs.evm_circuit.table import CopyDataTypeTag
+from zkevm_specs.evm_circuit.typing import CopyCircuit
+from zkevm_specs.util.arithmetic import RLC
+from zkevm_specs.util.hash import EMPTY_CODE_HASH, keccak256
 from zkevm_specs.util.param import GAS_COST_COPY_SHA3, GAS_COST_CREATE
+
 
 CreateContext = namedtuple(
     "CreateContext",
@@ -46,6 +48,25 @@ RETURN_BYTECODE = Bytecode().push(0, 1).push(0, 1).return_()
 REVERT_BYTECODE = Bytecode().push(0, 1).push(0, 1).revert()
 
 CALLER = Account(address=0xFE, balance=int(1e20), nonce=10)
+
+
+def gen_bytecode(is_return: bool, offset: int, length: int) -> Bytecode:
+    """Generate bytecode that has 64 bytes of memory initialized and returns with `offset` and `length`"""
+    bytecode = (
+        Bytecode()
+        .push(0x00000000, n_bytes=4)
+        .push(4, n_bytes=1)
+        .mstore()
+        .push(length, n_bytes=1)
+        .push(offset, n_bytes=1)
+    )
+
+    if is_return:
+        bytecode.return_()
+    else:
+        bytecode.revert()
+
+    return bytecode
 
 
 def expected(
@@ -94,9 +115,9 @@ def gen_testing_data():
         Opcode.CREATE,
         Opcode.CREATE2,
     ]
-    init_codes = [
-        RETURN_BYTECODE,
-        REVERT_BYTECODE,
+    is_return = [
+        True,
+        False,
     ]
     create_contexts = [
         CreateContext(gas_left=1_000_000, is_persistent=True),
@@ -113,7 +134,7 @@ def gen_testing_data():
         (
             opcode,
             CALLER,
-            init_codes,
+            is_return,
             create_contexts,
             stack,
             is_warm_access,
@@ -123,8 +144,8 @@ def gen_testing_data():
                 stack,
             ),
         )
-        for opcode, init_codes, create_contexts, stack, is_warm_access in product(
-            opcodes, init_codes, create_contexts, stacks, is_warm_accesss
+        for opcode, is_return, create_contexts, stack, is_warm_access in product(
+            opcodes, is_return, create_contexts, stacks, is_warm_accesss
         )
     ]
 
@@ -133,13 +154,13 @@ TESTING_DATA = gen_testing_data()
 
 
 @pytest.mark.parametrize(
-    "opcode, caller, init_codes, caller_ctx, stack, is_warm_access, expected",
+    "opcode, caller, is_return, caller_ctx, stack, is_warm_access, expected",
     TESTING_DATA,
 )
 def test_create_create2(
     opcode: Opcode,
     caller: Account,
-    init_codes: Bytecode,
+    is_return: Bytecode,
     caller_ctx: CreateContext,
     stack: Stack,
     is_warm_access: bool,
@@ -147,6 +168,8 @@ def test_create_create2(
 ):
     randomness = rand_fq()
     CURRENT_CALL_ID = 1
+
+    init_codes = gen_bytecode(is_return, stack.offset, stack.size)
 
     is_create2 = 1 if opcode == Opcode.CREATE2 else 0
     if is_create2 == 1:
@@ -174,7 +197,6 @@ def test_create_create2(
         )
 
     init_bytecode = init_codes
-    # FIXME: this is not init code hash, it's code hash
     init_bytecode_hash = RLC(init_bytecode.hash(), randomness)
 
     nonce = caller.nonce
@@ -260,10 +282,11 @@ def test_create_create2(
     # copy_table
     src_data = dict(
         [
-            (i, init_bytecode.code[i-stack.offset] if i - stack.offset  < len(init_bytecode.code) else 0)
+            (i, init_bytecode.code[i] if i  < len(init_bytecode.code) else 0)
             for i in range(stack.offset, stack.offset+ stack.size)
         ]
     )
+    print(f"{src_data}")
     copy_circuit = CopyCircuit().copy(
         randomness,
         rw_dictionary,

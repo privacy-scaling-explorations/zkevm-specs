@@ -16,8 +16,8 @@ from zkevm_specs.evm_circuit import (
     CopyDataTypeTag,
 )
 from zkevm_specs.copy_circuit import verify_copy_table
-from zkevm_specs.evm.table import AccountFieldTag
-from zkevm_specs.util import rand_fq, RLC
+from zkevm_specs.evm_circuit.table import AccountFieldTag
+from zkevm_specs.util.arithmetic import RLC
 from zkevm_specs.util.hash import EMPTY_CODE_HASH
 from zkevm_specs.util.param import GAS_COST_CODE_DEPOSIT
 
