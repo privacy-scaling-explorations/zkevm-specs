@@ -2,7 +2,6 @@ import pytest
 import rlp
 from collections import namedtuple
 from itertools import chain, product
-from zkevm_specs.copy_circuit import verify_copy_table
 from zkevm_specs.evm import (
     Account,
     AccountFieldTag,
