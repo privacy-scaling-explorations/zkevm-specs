@@ -1,6 +1,6 @@
 import pytest
 
-from zkevm_specs.evm import (
+from zkevm_specs.evm_circuit import (
     ExecutionState,
     StepState,
     Opcode,
@@ -10,8 +10,8 @@ from zkevm_specs.evm import (
     Bytecode,
     RWDictionary,
 )
-from zkevm_specs.util import rand_fq, RLC
-from common import memory_expansion
+from zkevm_specs.util import RLC
+from common import memory_expansion, rand_fq
 
 TESTING_DATA = (
     (
@@ -54,7 +54,7 @@ TESTING_DATA = (
 
 
 @pytest.mark.parametrize("opcode, offset, value, memory", TESTING_DATA)
-def test_memory(opcode: Opcode, offset: int, value: int, memory: bytes):
+def test_memory(opcode: Opcode, offset: int, value: bytes, memory: bytes):
     randomness = rand_fq()
 
     offset_rlc = RLC(offset, randomness)

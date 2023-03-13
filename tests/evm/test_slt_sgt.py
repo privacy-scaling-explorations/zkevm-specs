@@ -1,6 +1,6 @@
 import pytest
 
-from zkevm_specs.evm import (
+from zkevm_specs.evm_circuit import (
     ExecutionState,
     StepState,
     Opcode,
@@ -10,10 +10,11 @@ from zkevm_specs.evm import (
     Bytecode,
     RWDictionary,
 )
-from zkevm_specs.util import rand_fq, rand_word, RLC
+from zkevm_specs.util import RLC
+from common import rand_fq, rand_word
+
 
 RAND_1 = rand_word()
-
 RAND_2 = rand_word()
 
 TESTING_DATA = (

@@ -1,4 +1,4 @@
-from zkevm_specs.evm.util.call_gadget import CallGadget
+from zkevm_specs.evm_circuit.util.call_gadget import CallGadget
 from zkevm_specs.util.param import N_BYTES_GAS
 from ...util import (
     FQ,
