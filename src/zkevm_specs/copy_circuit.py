@@ -42,7 +42,7 @@ def verify_row(cs: ConstraintSystem, rows: Sequence[CopyCircuitRow]):
         cs.constrain_equal(rows[0].addr + 1, rows[2].addr)
         cs.constrain_equal(rows[0].src_addr_end, rows[2].src_addr_end)
 
-    # contrain the transition for `rw_counter` and `rwc_inc_left`
+    # constrain the transition for `rw_counter` and `rwc_inc_left`
     rw_diff = (1 - rows[0].is_pad) * (rows[0].is_memory + rows[0].is_tx_log)
     with cs.condition(1 - rows[0].is_last) as cs:
         # not last row

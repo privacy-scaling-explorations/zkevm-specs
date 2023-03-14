@@ -717,12 +717,7 @@ class Instruction:
         return self.opcode_lookup_at(index, is_code)
 
     def opcode_lookup_at(self, index: FQ, is_code: bool) -> FQ:
-        if self.curr.is_root and self.curr.is_create:
-            raise NotImplementedError(
-                "The opcode source when is_root and is_create (root creation call) is not determined yet"
-            )
-        else:
-            return self.bytecode_lookup(self.curr.code_hash, index, FQ(is_code)).expr()
+        return self.bytecode_lookup(self.curr.code_hash, index, FQ(is_code)).expr()
 
     def rw_lookup(
         self,

@@ -49,7 +49,7 @@ Expected = namedtuple(
 CALLER = Account(address=0xFE, balance=int(1e20), nonce=10)
 
 
-def gen_bytecode(is_return: bool, offset: int, length: int) -> Bytecode:
+def gen_bytecode(is_return: bool, offset: int) -> Bytecode:
     """Generate bytecode that has 64 bytes of memory initialized and returns with `offset` and `length`"""
     bytecode = (
         Bytecode()
@@ -121,9 +121,9 @@ def gen_testing_data():
         CreateContext(gas_left=1_000_000, is_persistent=False, rw_counter_end_of_reversion=88),
     ]
     stacks = [
-        Stack(value=int(1e18), offset=64, size=32, salt=int(12345)),
+        Stack(value=int(1e18), offset=64, size=64, salt=int(12345)),
         Stack(offset=64, size=32),
-        Stack(offset=0, size=32),
+        Stack(offset=0, size=96),
     ]
     is_warm_accesss = [True, False]
 
@@ -166,7 +166,7 @@ def test_create_create2(
     randomness = rand_fq()
     CURRENT_CALL_ID = 1
 
-    init_codes = gen_bytecode(is_return, stack.offset, stack.size)
+    init_codes = gen_bytecode(is_return, stack.offset)
 
     is_create2 = 1 if opcode == Opcode.CREATE2 else 0
     if is_create2 == 1:
@@ -242,7 +242,7 @@ def test_create_create2(
             for i in range(stack.offset, stack.offset + stack.size)
         ]
     )
-    print(f"src: {init_bytecode.code[0]}")
+
     # fmt: off
     # stack
     rw_dictionary = (

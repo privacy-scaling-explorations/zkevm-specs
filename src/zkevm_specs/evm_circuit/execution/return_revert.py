@@ -29,8 +29,6 @@ def return_revert(instruction: Instruction):
     if instruction.curr.is_create and is_success:
         # A. Returns the specified memory chunk as deployment code.
 
-        # TODO EIP-211
-
         callee_address = instruction.call_context_lookup(CallContextFieldTag.CalleeAddress)
         code_hash, code_hash_prev = instruction.account_write(
             callee_address, AccountFieldTag.CodeHash
@@ -59,7 +57,7 @@ def return_revert(instruction: Instruction):
                 CopyDataTypeTag.Bytecode,  # dst_type
                 return_offset,  # src_addr
                 return_end,  # src_addr_boundary
-                FQ(0),  # dst_addr
+                FQ(1),  # dst_addr
                 copy_length,  # length
                 instruction.curr.rw_counter + instruction.rw_counter_offset,
             )

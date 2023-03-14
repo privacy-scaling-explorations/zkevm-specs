@@ -113,28 +113,10 @@ def test_is_root_not_create(
 
 
 TESTING_DATA_IS_CREATE = (
-    (Transaction(), 1_000_000, True, True, 4, 10),  # RETURN, ROOT, no memory expansion
-    (Transaction(), 1_000_000, True, False, 4, 10),  # REVERT, ROOT, no memory expansion
-    (Transaction(), 1_000_000, True, True, 4, 100),  # RETURN, ROOT, memory expansion (64 -> 128)
-    (Transaction(), 1_000_000, True, False, 4, 100),  # REVERT, ROOT, memory expansion (64 -> 128)
-    (Transaction(), 1_000_000, False, True, 4, 10),  # RETURN, not ROOT, no memory expansion
-    (Transaction(), 1_000_000, False, False, 4, 10),  # REVERT, not ROOT, no memory expansion
-    (
-        Transaction(),
-        1_000_000,
-        False,
-        True,
-        4,
-        100,
-    ),  # RETURN, not ROOT, memory expansion (64 -> 128)
-    (
-        Transaction(),
-        1_000_000,
-        False,
-        False,
-        4,
-        100,
-    ),  # REVERT, not ROOT, memory expansion (64 -> 128)
+    (Transaction(), 1_000_000, True, True, 4, 10),  # RETURN, ROOT
+    (Transaction(), 1_000_000, True, False, 4, 10),  # REVERT, ROOT
+    (Transaction(), 1_000_000, False, True, 4, 10),  # RETURN, not ROOT
+    (Transaction(), 1_000_000, False, False, 4, 10),  # REVERT, not ROOT
 )
 
 
@@ -189,9 +171,12 @@ def test_is_create(
         [
             (
                 i,
-                init_bytecode.code[i - return_offset]
-                if i - return_offset < len(init_bytecode.code)
-                else 0,
+                (
+                    init_bytecode.code[i - return_offset + 1],
+                    init_bytecode.is_code[i - return_offset + 1],
+                )
+                if i - return_offset + 1 < len(init_bytecode.code)
+                else (0, 0),
             )
             for i in range(return_offset, return_offset + return_length)
         ]
@@ -205,7 +190,7 @@ def test_is_create(
         CopyDataTypeTag.Bytecode,
         return_offset,
         return_offset + return_length,
-        0,
+        1,
         return_length,
         src_data,
     )
@@ -250,7 +235,8 @@ def test_is_create(
         copy_circuit=copy_circuit.rows,
     )
 
-    print(f"{len(rw_dict.rws)}, {gas_left}")
+    verify_copy_table(copy_circuit, tables, randomness)
+
     verify_steps(
         randomness=randomness,
         tables=tables,
@@ -277,6 +263,7 @@ def test_is_create(
             if is_root
             else StepState(
                 execution_state=ExecutionState.STOP,
+                # 12 comes from `step_state_transition_to_restored_context`
                 rw_counter=len(rw_dict.rws) + 14 + 12 - 1,
                 call_id=caller_id,
                 is_root=False,
