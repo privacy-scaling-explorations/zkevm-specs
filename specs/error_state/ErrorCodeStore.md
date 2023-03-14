@@ -40,8 +40,9 @@ select which one of the followings occurs:
 ### Constraints
 1. `code_store_cost` > gas_left or `length` > `MAXCODESIZE`
 2. Current call must be failed.
-3. If it's a root call, it transits to `EndTx`
-4. if it is not root call, it restores caller's context by reading to `rw_table`, then does step state transition to it.
+3. Current call is not static call.
+4. If it's a root call, it transits to `EndTx`
+5. if it is not root call, it restores caller's context by reading to `rw_table`, then does step state transition to it.
 
 ### Lookups
 - Byte code lookup.
