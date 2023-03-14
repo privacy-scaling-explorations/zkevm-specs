@@ -3,6 +3,7 @@ import rlp
 from collections import namedtuple
 from itertools import chain, product
 from common import rand_fq
+from zkevm_specs.copy_circuit import verify_copy_table
 from zkevm_specs.evm_circuit import (
     Account,
     AccountFieldTag,
@@ -44,8 +45,6 @@ Expected = namedtuple(
     ["caller_gas_left", "callee_gas_left", "next_memory_size"],
 )
 
-RETURN_BYTECODE = Bytecode().push(0, 1).push(0, 1).return_()
-REVERT_BYTECODE = Bytecode().push(0, 1).push(0, 1).revert()
 
 CALLER = Account(address=0xFE, balance=int(1e20), nonce=10)
 
@@ -54,11 +53,9 @@ def gen_bytecode(is_return: bool, offset: int, length: int) -> Bytecode:
     """Generate bytecode that has 64 bytes of memory initialized and returns with `offset` and `length`"""
     bytecode = (
         Bytecode()
-        .push(0x00000000, n_bytes=4)
-        .push(4, n_bytes=1)
-        .mstore()
-        .push(length, n_bytes=1)
+        .push(0x2222222222222222222222222222222222222222222222222222222222222222, n_bytes=32)
         .push(offset, n_bytes=1)
+        .mstore()
     )
 
     if is_return:
@@ -173,34 +170,24 @@ def test_create_create2(
 
     is_create2 = 1 if opcode == Opcode.CREATE2 else 0
     if is_create2 == 1:
-        caller_bytecode = (
-            Bytecode()
-            .mstore(stack.offset, init_codes.code)
-            .create2(
-                stack.value,
-                stack.offset,
-                stack.size,
-                stack.salt,
-            )
-            .stop()
-        )
+        caller_bytecode = init_codes.create2(
+            stack.value,
+            stack.offset,
+            stack.size,
+            stack.salt,
+        ).stop()
     else:  # CREATE
-        caller_bytecode = (
-            Bytecode()
-            .mstore(stack.offset, init_codes.code)
-            .create(
-                stack.value,
-                stack.offset,
-                stack.size,
-            )
-            .stop()
-        )
+        caller_bytecode = init_codes.create(
+            stack.value,
+            stack.offset,
+            stack.size,
+        ).stop()
 
     init_bytecode = init_codes
     init_bytecode_hash = RLC(init_bytecode.hash(), randomness)
 
     nonce = caller.nonce
-    is_success = True if init_codes is RETURN_BYTECODE else True
+    is_success = is_return
     is_reverted_by_caller = not caller_ctx.is_persistent and is_success
     is_reverted_by_callee = not is_success
     callee_is_persistent = caller_ctx.is_persistent and is_success
@@ -231,15 +218,31 @@ def test_create_create2(
 
     next_call_id = 65
     rw_counter = next_call_id
-    # CREATE: 33 * (3(push) + 2(push from mstore)) + 1(CREATE) + 1(mstore)
-    # CREATE2: 33 * (4(push) + 2(push from mstore)) + 1(CREATE) + 1(mstore)
-    next_program_counter = 33 * 6 + 1 + 1 if is_create2 else 33 * 5 + 1 + 1
-    assert caller_bytecode.code[next_program_counter - 1] == opcode
+    # CREATE: 33 * 3(push) + 1(CREATE) + 1(mstore) + 33(PUSH32) + 2(PUSH) + 1(RETURN)
+    # CREATE2: 33 * 4(push) + 1(CREATE) + 1(mstore) + 33(PUSH32) + 2(PUSH) + 1(RETURN)
+    next_program_counter = 33 * 4 + 1 + 35 + 1 if is_create2 else 33 * 3 + 1 + 35 + 1
+    assert caller_bytecode.code[next_program_counter] == opcode
 
     # CREATE: 1024 - 3 + 1 = 1022
     # CREATE2: 1024 - 4 + 1 = 1021
     stack_pointer = 1021 - is_create2
 
+    # first element of init_bytecode is length of code, so skip it
+    src_data = dict(
+        [
+            (
+                i,
+                (
+                    init_bytecode.code[i - stack.offset + 1],
+                    init_bytecode.is_code[i - stack.offset + 1],
+                )
+                if i - stack.offset + 1 < len(init_bytecode.code)
+                else (0, 0),
+            )
+            for i in range(stack.offset, stack.offset + stack.size)
+        ]
+    )
+    print(f"src: {init_bytecode.code[0]}")
     # fmt: off
     # stack
     rw_dictionary = (
@@ -250,7 +253,7 @@ def test_create_create2(
     )
     if is_create2:
         rw_dictionary.stack_read(CURRENT_CALL_ID, 1023, RLC(stack.salt, randomness))   
-    rw_dictionary.stack_write(CURRENT_CALL_ID, 1023, RLC(contract_address, randomness))
+    rw_dictionary.stack_write(CURRENT_CALL_ID, 1023, RLC(contract_address, randomness) if is_success else RLC(0))
     
     # caller's call context
     rw_dictionary \
@@ -280,13 +283,7 @@ def test_create_create2(
         .account_write(contract_address, AccountFieldTag.Balance, callee_balance, callee_balance_prev, rw_counter_of_reversion=None if callee_is_persistent else callee_rw_counter_end_of_reversion - 1)
 
     # copy_table
-    src_data = dict(
-        [
-            (i, init_bytecode.code[i] if i  < len(init_bytecode.code) else 0)
-            for i in range(stack.offset, stack.offset+ stack.size)
-        ]
-    )
-    print(f"{src_data}")
+   
     copy_circuit = CopyCircuit().copy(
         randomness,
         rw_dictionary,
@@ -296,14 +293,14 @@ def test_create_create2(
         CopyDataTypeTag.Bytecode,
         stack.offset,
         stack.offset + stack.size,
-        0,
+        1,
         stack.size,
         src_data,
     )
 
     # caller's call context
     rw_dictionary \
-        .call_context_write(CURRENT_CALL_ID, CallContextFieldTag.ProgramCounter, next_program_counter) \
+        .call_context_write(CURRENT_CALL_ID, CallContextFieldTag.ProgramCounter, next_program_counter+1) \
         .call_context_write(CURRENT_CALL_ID, CallContextFieldTag.StackPointer, 1023) \
         .call_context_write(CURRENT_CALL_ID, CallContextFieldTag.GasLeft, expected.caller_gas_left) \
         .call_context_write(CURRENT_CALL_ID, CallContextFieldTag.MemorySize, expected.next_memory_size) \
@@ -328,7 +325,6 @@ def test_create_create2(
         tx_table=set(),
         bytecode_table=set(
             chain(
-                caller_bytecode.table_assignments(randomness),
                 init_bytecode.table_assignments(randomness),
             )
         ),
@@ -336,8 +332,7 @@ def test_create_create2(
         copy_circuit=copy_circuit.rows,
     )
 
-    # FIXME
-    # verify_copy_table(copy_circuit, tables, randomness)
+    verify_copy_table(copy_circuit, tables, randomness)
 
     verify_steps(
         randomness=randomness,
@@ -352,7 +347,7 @@ def test_create_create2(
                 is_root=False,
                 is_create=True,
                 code_hash=RLC(caller_bytecode.hash(), randomness),
-                program_counter=next_program_counter - 1,
+                program_counter=next_program_counter,
                 stack_pointer=stack_pointer,
                 gas_left=caller_ctx.gas_left,
                 memory_word_size=caller_ctx.memory_word_size,

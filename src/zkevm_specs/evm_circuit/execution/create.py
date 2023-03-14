@@ -127,7 +127,7 @@ def create(instruction: Instruction):
         CopyDataTypeTag.Bytecode,  # dst_type
         offset,  # src_addr
         offset + size,  # src_addr_boundary
-        FQ(0),  # dst_addr
+        FQ(1),  # dst_addr
         size,  # length
         instruction.curr.rw_counter + instruction.rw_counter_offset,
     )
@@ -162,7 +162,7 @@ def create(instruction: Instruction):
         (CallContextFieldTag.Depth, depth.expr() + 1),
         (CallContextFieldTag.CallerAddress, caller_address.expr()),
         (CallContextFieldTag.CalleeAddress, contract_address.expr()),
-        (CallContextFieldTag.IsSuccess, FQ(True)),
+        (CallContextFieldTag.IsSuccess, is_success),
         (CallContextFieldTag.IsStatic, FQ(False)),
         (CallContextFieldTag.IsRoot, FQ(False)),
         (CallContextFieldTag.IsCreate, FQ(False)),
