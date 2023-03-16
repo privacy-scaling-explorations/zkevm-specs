@@ -1,4 +1,4 @@
-from zkevm_specs.evm.util.call_gadget import CallGadget
+from zkevm_specs.evm_circuit.util.call_gadget import CallGadget
 from ...util import (
     FQ,
     TxDataNonZeroGasEIP2028,

@@ -2,8 +2,9 @@ import pytest
 
 from itertools import chain
 from collections import namedtuple
-from zkevm_specs.util import rand_fq, MAX_MEMORY_SIZE, RLC
-from zkevm_specs.evm import (
+from common import rand_fq
+from zkevm_specs.util import MAX_MEMORY_SIZE, RLC
+from zkevm_specs.evm_circuit import (
     ExecutionState,
     StepState,
     verify_steps,

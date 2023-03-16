@@ -1,5 +1,5 @@
 from typing import List
-from .evm import (
+from .evm_circuit import (
     ExpCircuit,
     ExpCircuitRow,
 )

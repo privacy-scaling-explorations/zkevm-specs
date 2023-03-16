@@ -1,5 +1,5 @@
 from typing import Union, Callable
-from zkevm_specs.public_inputs import (
+from zkevm_specs.pi_circuit import (
     Witness,
     PublicData,
     public_data2witness,

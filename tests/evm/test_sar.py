@@ -1,5 +1,5 @@
 import pytest
-from zkevm_specs.evm import (
+from zkevm_specs.evm_circuit import (
     Block,
     Bytecode,
     ExecutionState,
@@ -13,9 +13,8 @@ from zkevm_specs.util import (
     get_int_abs,
     get_int_neg,
     int_is_neg,
-    rand_fq,
-    rand_word,
 )
+from common import rand_fq, rand_word
 
 # Maximum negative word value of i256 (integer value of -1)
 TESTING_MAX_NEGATIVE = 2**256 - 1
