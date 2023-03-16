@@ -1,6 +1,6 @@
 import pytest
 from common import generate_sassy_tests
-from zkevm_specs.evm import (
+from zkevm_specs.evm_circuit import (
     Bytecode,
     CallContextFieldTag,
     ExecutionState,

@@ -1,7 +1,6 @@
 import pytest
 
-
-from zkevm_specs.evm import (
+from zkevm_specs.evm_circuit import (
     GAS_COST_EXP_PER_BYTE,
     Block,
     Bytecode,
@@ -16,9 +15,9 @@ from zkevm_specs.evm import (
 from zkevm_specs.exp_circuit import verify_exp_circuit
 from zkevm_specs.util import (
     byte_size,
-    rand_fq,
     RLC,
 )
+from common import rand_fq
 
 
 CALL_ID = 1

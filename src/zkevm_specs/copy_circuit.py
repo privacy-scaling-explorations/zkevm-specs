@@ -1,7 +1,7 @@
 from typing import Sequence
 
 from .util import FQ, Expression, ConstraintSystem, cast_expr, MAX_N_BYTES, N_BYTES_MEMORY_ADDRESS
-from .evm import (
+from .evm_circuit import (
     Tables,
     CopyDataTypeTag,
     CopyCircuitRow,

@@ -1,13 +1,17 @@
-from typing import Tuple
+from typing import Tuple, Union
 from collections import namedtuple
 from py_ecc.bn128 import G1, add
+from Crypto.Random import get_random_bytes
+from Crypto.Random.random import randrange
 from zkevm_specs.util import (
-    random_bn128_point,
-    to_cf_form,
     U64,
     U128,
+    U160,
     U256,
     MEMORY_EXPANSION_LINEAR_COEFF,
+    FQ,
+    random_bn128_point,
+    to_cf_form,
 )
 
 
@@ -123,3 +127,23 @@ def memory_expansion(
 
     # Return the new memory size and the memory expansion gas cost
     return (next_memory_size, U128(memory_gas_cost))
+
+
+def rand_range(stop: Union[int, float] = 2**256) -> int:
+    return randrange(0, int(stop))
+
+
+def rand_fq() -> FQ:
+    return FQ(rand_range(FQ.field_modulus))
+
+
+def rand_address() -> U160:
+    return U160(rand_range(2**160))
+
+
+def rand_word() -> U256:
+    return U256(rand_range(2**256))
+
+
+def rand_bytes(n_bytes: int = 32) -> bytes:
+    return get_random_bytes(n_bytes)
