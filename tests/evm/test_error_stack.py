@@ -2,7 +2,7 @@ import pytest
 
 from itertools import chain
 from common import CallContext
-from zkevm_specs.evm import (
+from zkevm_specs.evm_circuit import (
     ExecutionState,
     StepState,
     verify_steps,
@@ -13,12 +13,13 @@ from zkevm_specs.evm import (
     Bytecode,
     RWDictionary,
 )
-from zkevm_specs.util import rand_fq, RLC
+from zkevm_specs.util import RLC
+from common import rand_fq
+
 
 BYTECODE = Bytecode().pop()
 BYTECODE_PUSH = Bytecode().push1(0x10).push1(0x20)
 BYTECODE_ADD = Bytecode().ADD()
-
 
 TESTING_DATA_IS_ROOT = (
     (Transaction(), BYTECODE),

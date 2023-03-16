@@ -1,5 +1,5 @@
 import pytest
-from zkevm_specs.evm import (
+from zkevm_specs.evm_circuit import (
     ExecutionState,
     StepState,
     Opcode,
@@ -14,10 +14,8 @@ from zkevm_specs.util import (
     get_int_abs,
     get_int_neg,
     int_is_neg,
-    rand_fq,
-    rand_word,
 )
-from common import generate_nasty_tests
+from common import generate_nasty_tests, rand_fq, rand_word
 
 TESTING_DATA = [
     (Opcode.SDIV, 0xFFFFFF, 0xABC),

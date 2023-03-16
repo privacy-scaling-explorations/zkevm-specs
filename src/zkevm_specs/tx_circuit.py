@@ -13,7 +13,7 @@ from .util import (
 from eth_keys import KeyAPI  # type: ignore
 import rlp  # type: ignore
 from eth_utils import keccak
-from .evm import TxContextFieldTag as Tag
+from .evm_circuit import TxContextFieldTag as Tag
 
 
 class Row:

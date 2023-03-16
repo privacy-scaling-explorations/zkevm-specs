@@ -1,6 +1,6 @@
 import pytest
 
-from zkevm_specs.evm import (
+from zkevm_specs.evm_circuit import (
     Bytecode,
     CallContextFieldTag,
     ExecutionState,
@@ -9,8 +9,8 @@ from zkevm_specs.evm import (
     Tables,
     verify_steps,
 )
-from zkevm_specs.util import RLC, U160, rand_address, rand_fq
-
+from zkevm_specs.util import RLC, U160
+from common import rand_address, rand_fq
 
 TESTING_DATA = (
     0x00,
