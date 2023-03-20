@@ -68,8 +68,7 @@ def check_witness(
     p_top: FQ,
 ):
     is_neg, _ = instruction.compare(FQ(127), FQ(a.le_bytes[31]), 1)
-    shf_lo, shf_hi = instruction.word_to_lo_hi(shift)
-    shf_hi_is_zero = instruction.is_zero(shf_hi)
+    shf_lt256 = instruction.is_zero(instruction.sum(shift.le_bytes[1:]))
 
     for idx in range(4):
         offset = idx * N_BYTES_U64
@@ -98,10 +97,10 @@ def check_witness(
         instruction.constrain_equal(a64s_hi_lt_p_hi, FQ(1))
 
     # Merge contraints
-    shf_div64_eq0 = shf_hi_is_zero * instruction.is_zero(shf_div64)
-    shf_div64_eq1 = shf_hi_is_zero * instruction.is_zero(shf_div64 - 1)
-    shf_div64_eq2 = shf_hi_is_zero * instruction.is_zero(shf_div64 - 2)
-    shf_div64_eq3 = shf_hi_is_zero * instruction.is_zero(shf_div64 - 3)
+    shf_div64_eq0 = shf_lt256 * instruction.is_zero(shf_div64)
+    shf_div64_eq1 = shf_lt256 * instruction.is_zero(shf_div64 - 1)
+    shf_div64_eq2 = shf_lt256 * instruction.is_zero(shf_div64 - 2)
+    shf_div64_eq3 = shf_lt256 * instruction.is_zero(shf_div64 - 3)
     instruction.constrain_equal(
         b64s[0],
         (a64s_hi[0] + a64s_lo[1] * p_hi) * shf_div64_eq0
@@ -129,9 +128,11 @@ def check_witness(
     )
 
     # Shift constraint
+    shf_div64_lt_4, _ = instruction.compare(shf_div64, FQ(4), 1)
+    instruction.constrain_equal(shf_div64_lt_4, FQ(1))
     shf_mod64_lt_64, _ = instruction.compare(shf_mod64, FQ(64), 1)
     instruction.constrain_equal(shf_mod64_lt_64, FQ(1))
-    instruction.constrain_equal(shf_lo, shf_mod64 + shf_div64 * 64)
+    instruction.constrain_equal(FQ(shift.le_bytes[0]), shf_mod64 + shf_div64 * 64)
 
     # `is_neg` constraints
     instruction.constrain_bool(is_neg)
@@ -150,14 +151,16 @@ def check_witness(
 
 def gen_witness(instruction: Instruction, shift: RLC, a: RLC):
     is_neg = int_is_neg(a.int_value)
-    shf_lo, shf_hi = word_to_lo_hi(shift)
-    shf_div64 = shf_lo.n // 64
-    shf_mod64 = shf_lo.n % 64
+    shf0 = shift.le_bytes[0]
+    shf_div64 = shf0 // 64
+    shf_mod64 = shf0 % 64
     p_lo = 1 << shf_mod64
     p_hi = 1 << (64 - shf_mod64)
 
     # The new bits should be set to 1 if negative.
     p_top = is_neg * (MAX_U64 + 1 - p_hi)
+
+    shf_lt256 = sum(shift.le_bytes) - shf0
 
     # Each of the four `a64s` limbs is split into two parts `a64s_lo` and
     # `a64s_hi` at position `shf_mod64`. `a64s_lo` is the lower `shf_mod64`
@@ -170,7 +173,7 @@ def gen_witness(instruction: Instruction, shift: RLC, a: RLC):
         a64s_hi[idx] = FQ(a64s[idx].n // p_lo)
 
     b64s = [FQ(MAX_U64 if is_neg else 0)] * 4
-    if shf_hi == 0 and shf_div64 < 4:
+    if shf_lt256 == 0 and shf_div64 < 4:
         b64s[3 - shf_div64] = a64s_hi[3] + p_top
         for k in range(3 - shf_div64):
             b64s[k] = a64s_hi[k + shf_div64] + a64s_lo[k + shf_div64 + 1] * p_hi
