@@ -4,7 +4,6 @@ from ...util import (
     N_BYTES_U64,
     RLC,
     int_is_neg,
-    word_to_lo_hi,
 )
 from ..instruction import Instruction, Transition
 from ..typing import Sequence
