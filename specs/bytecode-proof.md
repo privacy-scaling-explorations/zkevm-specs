@@ -45,7 +45,7 @@ The circuit starts by adding a row that contains the bytecode length using `tag 
 
 Then it runs over all the bytes of the bytecode in order starting at the byte at position `0`.
 Each following row unrolls a single byte (using `tag = Byte` and `value = the actual byte value`) of the bytecode while also storing its position
-(`index`), the code hash it's part of (`hash`), and if it is code or not
+(`index`), the code hash its part of (`hash`), and if it is code or not
 (`is_code`). Also `push_data_size` is filled to match the push table, and `push_data_left` is computed.
 
 All byte data is accumulated per byte (with one byte per row) into `value_rlc` as follows, where r is a challenge:
@@ -68,7 +68,7 @@ next.push_data_left := cur.byte_push_size if cur.is_code else cur.push_data_left
 
 The fixed columns `q_first` and `q_last` should be zero for all rows, except the first one where `q_first := 1` and the last one where `q_last := 1`.
 
-## Circuit constrains
+## Circuit constraints
 
 All circuit constraints are based on the current row (`cur`) and the `next` row.
 
@@ -100,7 +100,7 @@ This way we make sure is_code and next.push_data_left have the right values.
 
 ### cur.tag == Header and next.tag == Header
 
-We are in a transition from a empty bytecode to the begining of another bytecode that could be empty or not.
+We are in a transition from a empty bytecode to the beginning of another bytecode that could be empty or not.
 
 Hence:
 ```
@@ -110,7 +110,7 @@ assert cur.hash == EMPTY_HASH
 
 ### cur.tag == Header and next.tag == Byte
 
-We are at the begining of a non-empty bytecode.
+We are at the beginning of a non-empty bytecode.
 
 Hence:
 
