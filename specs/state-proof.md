@@ -66,7 +66,7 @@ to not be in the table.
 - 3.5. `state root` is the same
 
 ### Storage
-- 4.0. `storage_key` is 0
+- 4.0. `field_tag` is 0
 - 4.1. MPT lookup for last access to (address, storage_key)
 
 ### Call Context
