@@ -21,15 +21,15 @@ base ^ exponent == exponentiation (mod 2^256)
 where `base`, `exponent` and `exponentiation` are 256-bit EVM words.
 
 We define _exponentiation by squaring_ with the following pseudocode:
-```
-Function exp_by_squaring(x, n, intermediate_steps)
-    if n = 0  then return  1;
-    if n = 1  then return  x; 
-    
+```py
+def exp_by_squaring(x, n, intermediate_steps):
+    if n = 0  then return  1
+    if n = 1  then return  x
+
     exp1 = exp_by_squaring(x, n // 2)
     exp2 = exp1 * exp1
     intermediate_steps.append((exp1, exp1, exp2))
-    
+
     if n is even:
         return exp2
     if n is odd:

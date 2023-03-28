@@ -17,7 +17,7 @@ a * b + c = d
 ```
 while validating the equation using a `MulAddWordsGadget` where `c == 0`.
 
-For a detailed algorithm, please refer the [design document](../specs/exp-proof-design-doc.md).
+For a detailed algorithm, please refer the [design document](./exp-proof-design-doc.md).
 
 ## Circuit Layout
 
