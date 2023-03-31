@@ -428,16 +428,16 @@ class RWDictionary:
             RW.Write, RWTableTag.Stack, key1=FQ(call_id), key2=FQ(stack_pointer), value=value
         )
 
-    def memory_read(self, call_id: IntOrFQ, memory_address: IntOrFQ, byte: IntOrFQ) -> RWDictionary:
+    def memory_read(self, call_id: IntOrFQ, memory_address: IntOrFQ, value: RLC) -> RWDictionary:
         return self._append(
-            RW.Read, RWTableTag.Memory, key1=FQ(call_id), key2=FQ(memory_address), value=FQ(byte)
+            RW.Read, RWTableTag.Memory, key1=FQ(call_id), key2=FQ(memory_address), value=value
         )
 
     def memory_write(
-        self, call_id: IntOrFQ, memory_address: IntOrFQ, byte: IntOrFQ
+        self, call_id: IntOrFQ, memory_address: IntOrFQ, value: RLC
     ) -> RWDictionary:
         return self._append(
-            RW.Write, RWTableTag.Memory, key1=FQ(call_id), key2=FQ(memory_address), value=FQ(byte)
+            RW.Write, RWTableTag.Memory, key1=FQ(call_id), key2=FQ(memory_address), value=value
         )
 
     def call_context_read(

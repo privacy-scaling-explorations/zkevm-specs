@@ -838,10 +838,10 @@ class Instruction:
 
     def memory_lookup(
         self, rw: RW, memory_address: Expression, call_id: Optional[Expression] = None
-    ) -> FQ:
+    ) -> RLC:
         if call_id is None:
             call_id = self.curr.call_id
-        return cast_expr(self.rw_lookup(rw, RWTableTag.Memory, call_id, memory_address).value, FQ)
+        return cast_expr(self.rw_lookup(rw, RWTableTag.Memory, call_id, memory_address).value, RLC)
 
     def tx_refund_read(self, tx_id: Expression) -> FQ:
         return cast_expr(self.rw_lookup(RW.Read, RWTableTag.TxRefund, tx_id).value, FQ)
