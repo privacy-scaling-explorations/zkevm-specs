@@ -44,35 +44,17 @@ def memory(instruction: Instruction):
         # Check consistency of value, value_left, and value_right.
         mask = make_mask(shift)
         X = instruction.randomness
-        Xoff = make_Xoff(X, shift)
-        v = value.le_bytes[::-1]
-        v_r = instruction.rlc_encode(v).rlc_value
-        b = mul_vec(value_left.le_bytes, not_vec(mask))
-        c = mul_vec(value_right.le_bytes, mask)
+        Xoff = make_Xoff(X, 32-shift)
+        w = value.le_bytes
+        w_r = instruction.rlc_encode(w).rlc_value
+        b = rev_vec(mul_vec(value_left.le_bytes, not_vec(mask)))
+        c = rev_vec(mul_vec(value_right.le_bytes, mask))
         b_r = instruction.rlc_encode(b).rlc_value
         c_r = instruction.rlc_encode(c).rlc_value
 
-        print("shift", shift)
-        print("X", X)
-        print("Xoff", Xoff)
-        print("X32", X32)
-        print("mask", mask)
-        print()
-        print("l", value_left.le_bytes)
-        print("b", b)
-        print("b_r", b_r)
-        print()
-        print("r", value_right.le_bytes)
-        print("c", c)
-        print("c_r", c_r)
-        print()
-        print("value", value.le_bytes)
-        print("v", v)
-        print("v_r", v_r)
-
         instruction.constrain_equal(
-            v_r * Xoff,
-            b_r + c_r * X32,
+            w_r * Xoff,
+            b_r * X32 + c_r,
         )
 
     instruction.step_state_transition_in_same_context(
@@ -112,7 +94,7 @@ def make_mask(offset):
 
 def make_Xoff(X, offset):
     Xoff = 1
-    for i in reversed(range(5)):
+    for i in reversed(range(6)):
         bit = (offset >> i) & 1
         print(i, bit)
         Xoff = Xoff * Xoff
@@ -134,3 +116,7 @@ def mul_vec(a, b):
 
 def not_vec(a):
     return bytes(1 - v for v in a)
+
+
+def rev_vec(a):
+    return bytes(reversed(a))
