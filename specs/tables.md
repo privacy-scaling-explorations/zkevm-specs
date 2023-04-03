@@ -368,26 +368,22 @@ The bn256 table is a virtual table within the bn256 circuit assignments. There a
 
 - **id**: could be `$callID`(RLC encoded).
 - **tag**: indicates the type of bn256 operation, including `ecRecover`, `ecAdd` and `ecMul`, `ecPairing`.
-- **is_step**: an identifier (currently read-write counter at which the bn256 table is looked up) to uniquely identify an bn256 trace.
-- **is_last**: a boolean value to indicate the last row of the bn256 trace's table assignments.
-- **value**: point arithmetics intermediate value and result if `is_last`.
-- **value_alt**: second return value.
+- **input_length**: a input byte length of bn256 operation.
+- **output_length**: a output byte length of bn256 operation.
+- **input**: input for each bn256 operation.
+- **input**: output for each bn256 operation.
 
 
-| id | tag | is_step | is_last | value                                      | value_alt_1                                | value_alt_2                                | value_alt_3                                |
-|----|-----|---------|---------|--------------------------------------------|--------------------------------------------|--------------------------------------------|--------------------------------------------|
-|  1 |  2  |   1     |    0    | 0x1                                        | 0x2                                        | 0x1                                        | 0x2                                        |
-|  1 |  2  |   1     |    0    | 0xE17D52AC8a007Ce5e499b1F6063161919F09eD49 | 0x7a1c32F83D0b8D2E1ECfa74403f18F4d6406340F | 0xbEDA1DF61e0Fbd3763EBFcf47A45Fa4ca175d2B6 | 0xCD12BCd2aDf2D2e13d8Cd1afE6ADFB4D8dE36C61 |
-|  1 |  2  |   1     |    0    | 0x3d44A7E4E8170b00aF96aCA9e8D233d5115B733D | 0xf142e2B4446ad1FE7c3136b57f84e91f0B43e587 | 0xF5A6d0AC00167635a5456D4cD66DB59fF63B7908 | 0x09e359511DA338d0eB72A5f24b4572BF02C4eD6B |
-|  1 |  2  |   1     |    0    | 0xE43726E223B44C5C24221E3BD36EDD34a6E9dcA5 | 0xc6d2128894BD441aAb4B0C24d0fDecDB94406C93 | 0xbE1B6320375Cbd0B9F440D6b78eACC255e9e5913 | 0x74b3Ef5008fA1D43e76fC4d3db79B466f56D5fd2 |
-|  1 |  2  |   1     |    1    | 0xe9f5E956F3Cb5d2CA52D23f83819c6a846E15a86 | 0x784568ff3719159547Ee1b23992b449c9eb384a2 | 0                                          | 0                                          |
+| id | tag | input_length | output_length | input                                                          | output                                                                             |
+|----|-----|--------------|---------------|----------------------------------------------------------------|------------------------------------------------------------------------------------|
+| 1  | 2   | 4          | 2             | 0x00000000000000000000000000000001000000000000000000000000000000020000000000000000000000000000000100000000000000000000000000000002 | 0x37Ed60E69827d67879c9225527190df1650359a4b90d9A02Cc4E31b263Bf6910 |
 
 The bn256 operation tag constrains output length and selects bn256 gadget.
 
-| 0 Tag               | 1 Enum | 2 is_alt_output |
-| ---                 | ---    | ---             |
-| *Bn256OperationTag* |        |                 |
-| ecRecover           | 0      | 0               |
-| ecAdd               | 1      | 1               |
-| ecMul               | 2      | 1               |
-| ecPairing           | 3      | 0               |
+| 0 Tag               | 1 Enum | 2 Input Length | 3 Output Length |
+| ---                 | ---    | ---            | ---             |
+| *Bn256OperationTag* |        |                |                 |
+| ecRecover           | 0      | 4              | 1               |
+| ecAdd               | 1      | 4              | 2               |
+| ecMul               | 2      | 3              | 2               |
+| ecPairing           | 3      | more than 4    | 1               |
