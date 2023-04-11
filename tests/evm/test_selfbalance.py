@@ -11,7 +11,7 @@ from zkevm_specs.evm_circuit import (
     AccountFieldTag,
     RWDictionary,
 )
-from zkevm_specs.util import rand_address, Word, U256, U160
+from zkevm_specs.util import Word, U256, U160
 from common import rand_address, rand_word
 
 
