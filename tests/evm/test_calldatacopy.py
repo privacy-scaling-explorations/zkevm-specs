@@ -1,6 +1,6 @@
 import pytest
 
-from zkevm_specs.evm import (
+from zkevm_specs.evm_circuit import (
     Opcode,
     ExecutionState,
     StepState,
@@ -16,12 +16,8 @@ from zkevm_specs.evm import (
     CopyDataTypeTag,
 )
 from zkevm_specs.copy_circuit import verify_copy_table
-from zkevm_specs.util import (
-    rand_fq,
-    rand_bytes,
-    GAS_COST_COPY,
-)
-from common import memory_expansion, memory_word_size
+from zkevm_specs.util import GAS_COST_COPY
+from common import memory_expansion, memory_word_size, rand_fq, rand_bytes
 
 TX_ID = 13
 CALLER_ID = 0

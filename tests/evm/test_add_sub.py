@@ -1,6 +1,6 @@
 import pytest
 
-from zkevm_specs.evm import (
+from zkevm_specs.evm_circuit import (
     ExecutionState,
     StepState,
     Opcode,
@@ -10,8 +10,8 @@ from zkevm_specs.evm import (
     Bytecode,
     RWDictionary,
 )
-from zkevm_specs.util import rand_word, Word
-from common import generate_nasty_tests
+from zkevm_specs.util import Word
+from common import generate_nasty_tests, rand_word
 
 
 TESTING_DATA = [

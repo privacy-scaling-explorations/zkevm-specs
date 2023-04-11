@@ -1,4 +1,4 @@
-from zkevm_specs.evm import (
+from zkevm_specs.evm_circuit import (
     Bytecode,
     ExecutionState,
     RWDictionary,

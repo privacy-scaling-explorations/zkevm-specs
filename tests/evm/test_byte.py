@@ -1,7 +1,7 @@
 import pytest
 from random import randrange
 from zkevm_specs.util import Word
-from zkevm_specs.evm import (
+from zkevm_specs.evm_circuit import (
     ExecutionState,
     StepState,
     verify_steps,

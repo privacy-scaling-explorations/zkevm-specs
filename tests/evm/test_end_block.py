@@ -1,6 +1,6 @@
 import pytest
 
-from zkevm_specs.evm import (
+from zkevm_specs.evm_circuit import (
     ExecutionState,
     StepState,
     verify_steps,
@@ -14,6 +14,7 @@ from zkevm_specs.evm import (
     Transaction,
 )
 from zkevm_specs.util import FQ, Word, WordOrValue
+
 
 TESTING_DATA = (
     # (is_last_step, empty_block, max_txs, cumulative_gas, success)

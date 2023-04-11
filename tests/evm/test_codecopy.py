@@ -1,6 +1,6 @@
 import pytest
 
-from zkevm_specs.evm import (
+from zkevm_specs.evm_circuit import (
     Bytecode,
     ExecutionState,
     Opcode,
@@ -18,8 +18,8 @@ from zkevm_specs.util import (
     MEMORY_EXPANSION_QUAD_DENOMINATOR,
     Word,
     U64,
-    rand_fq,
 )
+from common import rand_fq
 
 
 CALL_ID = 1

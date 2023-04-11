@@ -1,6 +1,6 @@
 import pytest
 
-from zkevm_specs.evm import (
+from zkevm_specs.evm_circuit import (
     Block,
     Bytecode,
     ExecutionState,
@@ -10,8 +10,8 @@ from zkevm_specs.evm import (
     Tables,
     verify_steps,
 )
-from zkevm_specs.util import rand_word, Word
-from common import generate_nasty_tests
+from zkevm_specs.util import Word
+from common import generate_nasty_tests, rand_word
 
 
 MAX_WORD = (1 << 256) - 1

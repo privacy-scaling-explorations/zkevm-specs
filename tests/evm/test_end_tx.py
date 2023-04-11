@@ -1,6 +1,6 @@
 import pytest
 
-from zkevm_specs.evm import (
+from zkevm_specs.evm_circuit import (
     ExecutionState,
     StepState,
     verify_steps,
@@ -13,6 +13,7 @@ from zkevm_specs.evm import (
     RWDictionary,
 )
 from zkevm_specs.util import Word, EMPTY_CODE_HASH, MAX_REFUND_QUOTIENT_OF_GAS_USED
+
 
 CALLEE_ADDRESS = 0xFF
 

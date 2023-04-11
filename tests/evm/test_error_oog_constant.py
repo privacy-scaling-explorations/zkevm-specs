@@ -2,47 +2,30 @@ import pytest
 
 from itertools import chain
 from common import CallContext
-from zkevm_specs.evm import (
-    Block,
-    Bytecode,
-    CallContextFieldTag,
+from zkevm_specs.evm_circuit import (
     ExecutionState,
-    RWDictionary,
     StepState,
-    Tables,
-    Transaction,
     verify_steps,
+    Tables,
+    CallContextFieldTag,
+    Block,
+    Transaction,
+    Bytecode,
+    RWDictionary,
+    Opcode,
 )
 from zkevm_specs.util import Word
 
-TESTING_INVALID_CODES = [
-    # Single invalid opcode
-    [0x0E],
-    [0x1F],
-    [0x21],
-    [0x4F],
-    [0xA5],
-    [0xB0],
-    [0xC0],
-    [0xD0],
-    [0xE0],
-    [0xF6],
-    [0xFB],
-    [0xFE],
-    # Multiple invalid opcodes
-    [0x5C, 0x5D, 0x5E, 0x5F],
-    # Many duplicate invalid opcodes
-    [0x22] * 256,
-]
+
+BYTECODE = Bytecode().push1(0x40)
+TESTING_DATA_IS_ROOT = ((Transaction(), BYTECODE),)
 
 
-@pytest.mark.parametrize("invalid_code", TESTING_INVALID_CODES)
-def test_invalid_opcode_root(invalid_code):
-    bytecode = Bytecode(bytearray(invalid_code), [True] * len(invalid_code)).stop()
-    bytecode_hash = Word(bytecode.hash())
-
+@pytest.mark.parametrize("tx, bytecode", TESTING_DATA_IS_ROOT)
+def test_oog_constant_root(tx: Transaction, bytecode: Bytecode):
     block = Block()
-    tx = Transaction()
+
+    bytecode_hash = Word(bytecode.hash())
 
     tables = Tables(
         block_table=set(block.table_assignments()),
@@ -60,7 +43,7 @@ def test_invalid_opcode_root(invalid_code):
         tables=tables,
         steps=[
             StepState(
-                execution_state=ExecutionState.ErrorInvalidOpcode,
+                execution_state=ExecutionState.ErrorOutOfGasConstant,
                 rw_counter=24,
                 call_id=1,
                 is_root=True,
@@ -69,11 +52,11 @@ def test_invalid_opcode_root(invalid_code):
                 program_counter=0,
                 stack_pointer=1023,
                 gas_left=2,
-                reversible_write_counter=0,
+                reversible_write_counter=2,
             ),
             StepState(
                 execution_state=ExecutionState.EndTx,
-                rw_counter=25,
+                rw_counter=27,
                 call_id=1,
                 gas_left=0,
             ),
@@ -81,16 +64,16 @@ def test_invalid_opcode_root(invalid_code):
     )
 
 
-@pytest.mark.parametrize("invalid_callee_code", TESTING_INVALID_CODES)
-def test_invalid_opcode_internal(invalid_callee_code: list[int]):
-    caller_ctx = CallContext(gas_left=10)
+TESTING_DATA_NOT_ROOT = ((CallContext(gas_left=10), BYTECODE),)
+
+
+@pytest.mark.parametrize("caller_ctx, callee_bytecode", TESTING_DATA_NOT_ROOT)
+def test_oog_constant_not_root(caller_ctx: CallContext, callee_bytecode: Bytecode):
     caller_bytecode = Bytecode().call(0, 0xFF, 0, 0, 0, 0, 0).stop()
-    callee_bytecode = Bytecode(
-        bytearray(invalid_callee_code), [True] * len(invalid_callee_code)
-    ).stop()
     caller_bytecode_hash = Word(caller_bytecode.hash())
     callee_bytecode_hash = Word(callee_bytecode.hash())
-
+    # gas is insufficient
+    callee_gas_left = 2
     callee_reversible_write_counter = 2
 
     tables = Tables(
@@ -127,7 +110,7 @@ def test_invalid_opcode_internal(invalid_callee_code: list[int]):
         tables=tables,
         steps=[
             StepState(
-                execution_state=ExecutionState.ErrorInvalidOpcode,
+                execution_state=ExecutionState.ErrorOutOfGasConstant,
                 rw_counter=69,
                 call_id=2,
                 is_root=False,
@@ -135,8 +118,9 @@ def test_invalid_opcode_internal(invalid_callee_code: list[int]):
                 code_hash=callee_bytecode_hash,
                 program_counter=0,
                 stack_pointer=1023,
-                gas_left=10,
+                gas_left=callee_gas_left,
                 reversible_write_counter=callee_reversible_write_counter,
+                aux_data=Opcode.PUSH1,
             ),
             StepState(
                 execution_state=ExecutionState.STOP,

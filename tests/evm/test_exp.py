@@ -1,7 +1,6 @@
 import pytest
 
-
-from zkevm_specs.evm import (
+from zkevm_specs.evm_circuit import (
     GAS_COST_EXP_PER_BYTE,
     Block,
     Bytecode,

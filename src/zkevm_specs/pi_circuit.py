@@ -18,10 +18,10 @@ from .util import (
 )
 from .encoding import is_circuit_code
 from .tx_circuit import Tag as TxTag
-from .evm import (
+from .evm_circuit import (
     BlockContextFieldTag as BlockTag,
 )
-from .evm.table import lookup, TableRow
+from .evm_circuit.table import lookup, TableRow
 
 
 @dataclass

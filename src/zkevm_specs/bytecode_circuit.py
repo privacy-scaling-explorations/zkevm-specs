@@ -1,7 +1,13 @@
 from dataclasses import dataclass
 from typing import Sequence, Tuple, Set, List
 from .util import EMPTY_HASH, FQ, Word
-from .evm import get_push_size, BytecodeFieldTag, BytecodeTableRow, KeccakTableRow, KeccakCircuit
+from .evm_circuit import (
+    get_push_size,
+    BytecodeFieldTag,
+    BytecodeTableRow,
+    KeccakTableRow,
+    KeccakCircuit,
+)
 from .encoding import is_circuit_code
 
 
@@ -166,9 +172,9 @@ def assign_bytecode_circuit(
 
 
 # Generate the push table: BYTE -> NUM_PUSHED:
-# [0, OpcodeId::PUSH1[ -> 0
+# [0, OpcodeId::PUSH1] -> 0
 # [OpcodeId::PUSH1, OpcodeId::PUSH32] -> [1..32]
-# ]OpcodeId::PUSH32, 256[ -> 0
+# [OpcodeId::PUSH32, 256] -> 0
 def assign_push_table() -> List[Tuple[FQ, FQ]]:
     push_table = []
     for i in range(256):

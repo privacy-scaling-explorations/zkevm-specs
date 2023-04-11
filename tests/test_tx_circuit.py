@@ -3,7 +3,8 @@ from eth_keys import keys  # type: ignore
 from eth_utils import keccak
 import rlp  # type: ignore
 from zkevm_specs.tx_circuit import *
-from zkevm_specs.util import rand_fq, FQ, U64
+from zkevm_specs.util import FQ, U64
+from common import rand_fq
 
 keccak_randomness = rand_fq()
 r = keccak_randomness

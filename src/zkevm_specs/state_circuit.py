@@ -2,11 +2,11 @@ from typing import NamedTuple, Tuple, List, Set, Dict, Optional, Union, Mapping
 from enum import IntEnum
 from math import log, ceil
 
-from zkevm_specs.evm.table import MPTProofType
+from zkevm_specs.evm_circuit.table import MPTProofType
 
 from .util import FQ, Word, WordOrValue, U160, U256, Expression, linear_combine_bytes
 from .encoding import U8, is_circuit_code
-from .evm import (
+from .evm_circuit import (
     RW,
     AccountFieldTag,
     CallContextFieldTag,
@@ -354,7 +354,7 @@ def check_account(row: Row, row_prev: Row, row_next: Row, tables: Tables):
         * FQ(row.field_tag() == FQ(AccountFieldTag.CodeHash))
     )
 
-    # 6.2. MPT storage lookup for last access to (address, field_tag)
+    # 6.1. MPT storage lookup for last access to (address, field_tag)
     if not all_keys_eq(row, row_next):
         tables.mpt_lookup(
             row.address(),

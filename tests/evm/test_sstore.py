@@ -1,6 +1,6 @@
 import pytest
 
-from zkevm_specs.evm import (
+from zkevm_specs.evm_circuit import (
     ExecutionState,
     StepState,
     verify_steps,
@@ -12,7 +12,6 @@ from zkevm_specs.evm import (
     RWDictionary,
 )
 from zkevm_specs.util import (
-    rand_address,
     Word,
     COLD_SLOAD_COST,
     SLOAD_GAS,
@@ -20,6 +19,7 @@ from zkevm_specs.util import (
     SSTORE_RESET_GAS,
     SSTORE_CLEARS_SCHEDULE,
 )
+from common import rand_address
 
 
 def gen_test_cases():

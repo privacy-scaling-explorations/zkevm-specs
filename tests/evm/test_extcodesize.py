@@ -1,6 +1,6 @@
 import pytest
 from itertools import chain
-from zkevm_specs.evm import (
+from zkevm_specs.evm_circuit import (
     AccountFieldTag,
     Block,
     Bytecode,
@@ -17,6 +17,8 @@ from zkevm_specs.util import (
     Word,
     U160,
     keccak256,
+)
+from common import (
     rand_address,
     rand_bytes,
     rand_range,

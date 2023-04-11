@@ -1,6 +1,6 @@
 import pytest
 
-from zkevm_specs.evm import (
+from zkevm_specs.evm_circuit import (
     AccountFieldTag,
     Block,
     Bytecode,
@@ -18,6 +18,8 @@ from zkevm_specs.util import (
     Word,
     U160,
     U256,
+)
+from common import (
     rand_address,
     rand_range,
     rand_word,

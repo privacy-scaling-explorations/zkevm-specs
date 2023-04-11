@@ -1,6 +1,6 @@
 import pytest
 from random import randrange
-from zkevm_specs.evm import (
+from zkevm_specs.evm_circuit import (
     ExecutionState,
     StepState,
     Opcode,
