@@ -73,11 +73,11 @@ TESTING_DATA = (
 )
 
 
-@pytest.mark.parametrize("opcode, a, b, res", TESTING_DATA)
-def test_lt_gt_eq(opcode: Opcode, a: int, b: int, res: int):
-    a = Word(a)
-    b = Word(b)
-    res = Word(res)
+@pytest.mark.parametrize("opcode, a_int, b_int, res_int", TESTING_DATA)
+def test_lt_gt_eq(opcode: Opcode, a_int: int, b_int: int, res_int: int):
+    a = Word(a_int)
+    b = Word(b_int)
+    res = Word(res_int)
 
     bytecode = (
         Bytecode().lt(a, b).stop()

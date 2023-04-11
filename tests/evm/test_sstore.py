@@ -143,7 +143,7 @@ def test_sstore(
             .stack_read(1, 1022, Word(storage_key))
             .stack_read(1, 1023, Word(value))
             .account_storage_write(tx.callee_address, Word(storage_key), Word(value), Word(value_prev), tx.id, Word(value_committed), rw_counter_of_reversion=None if is_success else 14)
-            .tx_access_list_account_storage_write(tx.id, tx.callee_address, Word(storage_key), 1, 1 if warm else 0, rw_counter_of_reversion=None if is_success else 13)
+            .tx_access_list_account_storage_write(tx.id, tx.callee_address, Word(storage_key), True, True if warm else False, rw_counter_of_reversion=None if is_success else 13)
             .tx_refund_write(tx.id, gas_refund, gas_refund_prev, rw_counter_of_reversion=None if is_success else 12)
             .rws
             # fmt: on

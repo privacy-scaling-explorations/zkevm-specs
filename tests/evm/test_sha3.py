@@ -57,7 +57,7 @@ def test_sha3(offset: U64, length: U64):
     pc = len(memory_chunks) * 67 + 66
     memory_sha3 = keccak256(memory_snapshot[offset : offset + length])
     memory_sha3_word = Word(int.from_bytes(memory_sha3, "big"))
-    next_memory_size, memory_expansion_cost = memory_expansion(offset + length, offset + length)
+    next_memory_size, memory_expansion_cost = memory_expansion(U64(offset + length), U64(offset + length))
     gas = (
         Opcode.SHA3.constant_gas_cost()
         + memory_expansion_cost

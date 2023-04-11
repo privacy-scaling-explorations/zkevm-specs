@@ -42,16 +42,16 @@ TESTING_DATA = (
 )
 
 
-@pytest.mark.parametrize("base, exponent", TESTING_DATA)
-def test_exp(base: int, exponent: int):
-    exponentiation = pow(base, exponent, POW2)
+@pytest.mark.parametrize("base_int, exponent_int", TESTING_DATA)
+def test_exp(base_int: int, exponent_int: int):
+    exponentiation_int = pow(base_int, exponent_int, POW2)
 
-    bytecode = Bytecode().push(exponent, n_bytes=32).push(base, n_bytes=32).exp().stop()
+    bytecode = Bytecode().push(exponent_int, n_bytes=32).push(base_int, n_bytes=32).exp().stop()
     bytecode_hash = Word(bytecode.hash())
 
-    base = Word(base)
-    exponent = Word(exponent)
-    exponentiation = Word(exponentiation)
+    base = Word(base_int)
+    exponent = Word(exponent_int)
+    exponentiation = Word(exponentiation_int)
 
     rw_dict = (
         RWDictionary(1)
