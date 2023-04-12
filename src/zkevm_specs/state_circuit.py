@@ -206,7 +206,6 @@ def assert_in_range(x: FQ, min_val: int, max_val: int) -> None:
 
 @is_circuit_code
 def check_start(row: Row, row_prev: Row):
-    print(row)
     # 1.0. Unused keys are 0
     assert row.field_tag() == 0
     assert row.address() == 0

@@ -25,8 +25,7 @@ Proved by the tx circuit.
 | $TxID    | Value               | 0          | $value{Lo,Hi}  |
 | $TxID    | CallDataLength      | 0          | $value,0       |
 | $TxID    | CallDataGasCost     | 0          | $value,0       |
-| $TxID    | TxSignHashLo        | 0          | $value,0       |
-| $TxID    | TxSignHashHi        | 0          | $value,0       |
+| $TxID    | TxSignHash          | 0          | $value{Lo,Hi}  |
 | $TxID    | TxInvalid           | 0          | $value,0       |
 | $TxID    | AccessListGasCost   | 0          | $value,0       |
 | $TxID    | CallData            | $ByteIndex | $value,0       |
@@ -89,7 +88,7 @@ DELETEME: Review note: Removed aux1 and aux2 and instead added InitialValue whic
 | $counter | $isWrite    | TxRefund                   | $txID     |                    |                            |                           | $val,0           | $valPrev,0            |                        |
 |          |             |                            |           |                    |                            |                           |                  |                       |                        |
 |          |             |                            |           |                    | *AccountFieldTag*          |                           |                  |                       |                        |
-| $counter | $isWrite    | Account                    |           | $address           | Nonce                      |                           | $val,0           | $valPrev,0            | $committedValue{Lo,Hi} |
+| $counter | $isWrite    | Account                    |           | $address           | Nonce                      |                           | $val,0           | $valPrev,0            | $committedValue,0      |
 | $counter | $isWrite    | Account                    |           | $address           | Balance                    |                           | $val{Lo,Hi}      | $valPrev{Lo,Hi}       | $committedValue{Lo,Hi} |
 | $counter | $isWrite    | Account                    |           | $address           | CodeHash                   |                           | $val{Lo,Hi}      | $valPrev{Lo,Hi}       | $committedValue{Lo,Hi} |
 |          |             |                            |           |                    |                            |                           |                  |                       |                        |
@@ -221,8 +220,8 @@ The circuit can prove that updates to account nonces, balances, or storage slots
 | $addr     | CodeHashMod             | 0,0          | $codeHashPrev{Lo,Hi} | $codeHashCur{Lo,Hi} | $rootPrev{Lo,Hi}  | $root{Lo,Hi}  |
 | $addr     | NonExistingAccountProof | 0,0          | 0,0                  | 0,0                 | $rootPrev{Lo,Hi}  | $root{Lo,Hi}  |
 | $addr     | AccountDeleteMod        | 0,0          | 0,0                  | 0,0                 | $rootPrev{Lo,Hi}  | $root{Lo,Hi}  |
-| $addr     | StorageMod              | $key         | $valuePrev{Lo,Hi}    | $value{Lo,Hi}       | $rootPrev{Lo,Hi}  | $root{Lo,Hi}  |
-| $addr     | NonExistingStorageProof | $key         | 0,0                  | 0,0                 | $rootPrev{Lo,Hi}  | $root{Lo,Hi}  |
+| $addr     | StorageMod              | $key{Lo,Hi}  | $valuePrev{Lo,Hi}    | $valueCur{Lo,Hi}    | $rootPrev{Lo,Hi}  | $root{Lo,Hi}  |
+| $addr     | NonExistingStorageProof | $key{Lo,Hi}  | 0,0                  | 0,0                 | $rootPrev{Lo,Hi}  | $root{Lo,Hi}  |
 
 ## `Keccak Table`
 

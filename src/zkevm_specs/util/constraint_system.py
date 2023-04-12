@@ -46,8 +46,8 @@ class ConstraintSystem:
         )
 
     def constrain_zero_word(self, value: Word):
-        assert self._eval(value.lo.expr()) == 0 and self._eval(
-            value.hi.expr()
+        assert (
+            self._eval(value.lo.expr()) == 0 and self._eval(value.hi.expr()) == 0
         ), ConstraintUnsatFailure(f"Expected word to be 0, but got {value}")
 
     def constrain_bool(self, value: Expression):

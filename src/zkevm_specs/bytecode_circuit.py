@@ -42,9 +42,6 @@ def check_bytecode_row(
     keccak_table: Set[Tuple[int, int, int]],
     keccak_randomness: int,
 ):
-    # cur = Row(*[v if isinstance(v, RLC) else FQ(v) for v in cur])
-    # next = Row(*[v if isinstance(v, RLC) else FQ(v) for v in next])
-
     if cur.q_first == 1:
         assert cur.tag == BytecodeFieldTag.Header
 
@@ -55,7 +52,7 @@ def check_bytecode_row(
             if next.tag == BytecodeFieldTag.Byte:
                 check_bytecode_row_header_to_byte(cur, next)
             if next.tag == BytecodeFieldTag.Header:
-                check_bytecode_row_header_to_header(cur, keccak_randomness)
+                check_bytecode_row_header_to_header(cur)
 
         if cur.tag == BytecodeFieldTag.Byte:
             assert (cur.value, cur.push_data_size) in push_table
@@ -68,7 +65,7 @@ def check_bytecode_row(
 
     if cur.q_last == 1:
         assert cur.tag == BytecodeFieldTag.Header
-        check_bytecode_row_header_to_header(cur, keccak_randomness)
+        check_bytecode_row_header_to_header(cur)
 
 
 @is_circuit_code
@@ -81,7 +78,7 @@ def check_bytecode_row_header_to_byte(cur: Row, next: Row):
 
 
 @is_circuit_code
-def check_bytecode_row_header_to_header(cur: Row, keccak_randomness: int):
+def check_bytecode_row_header_to_header(cur: Row):
     assert cur.length == 0
     assert cur.hash == Word(EMPTY_HASH), f"{cur.hash} == {Word(EMPTY_HASH)}"
 
