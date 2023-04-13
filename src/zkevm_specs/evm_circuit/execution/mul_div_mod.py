@@ -49,8 +49,8 @@ def mul_div_mod(instruction: Instruction):
     instruction.constrain_equal_word(
         push,
         d.select(is_mul)
-        | a.select(is_div * (1 - divisor_is_zero))
-        | c.select(is_mod * (1 - divisor_is_zero)),
+        + a.select(is_div * (1 - divisor_is_zero))
+        + c.select(is_mod * (1 - divisor_is_zero)),
     )
 
     # constrain c == 0 for MUL

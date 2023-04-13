@@ -64,10 +64,10 @@ def check_witness(
     instruction.constrain_equal_word(pop1, shift)
     instruction.constrain_equal_word(
         pop2,
-        quotient.select(is_shl) | dividend.select(is_shr),
+        quotient.select(is_shl) + dividend.select(is_shr),
     )
     instruction.constrain_equal_word(
-        push, dividend.select(is_shl) | quotient.select(is_shr * (1 - divisor_is_zero))
+        push, dividend.select(is_shl) + quotient.select(is_shr * (1 - divisor_is_zero))
     )
     instruction.constrain_zero(shf0 - FQ(shift_le_bytes[0]))
 

@@ -519,11 +519,7 @@ class ExpTableRow(TableRow):
     base_limb2: FQ
     base_limb3: FQ
     exponent: Word
-    # exponent_lo: FQ
-    # exponent_hi: FQ
     exponentiation: Word
-    # exponentiation_lo: FQ
-    # exponentiation_hi: FQ
 
 
 class Tables:

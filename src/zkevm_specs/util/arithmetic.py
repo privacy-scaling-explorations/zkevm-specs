@@ -116,8 +116,9 @@ class Word:
         assert isinstance(other, Word)
         return self.lo.expr() == other.lo.expr() and self.hi.expr() == other.hi.expr()
 
-    def __or__(self, other: Word) -> Word:
-        """Combine two words by adding their corresponding lo and hi parts.  Useful with select"""
+    def __add__(self, other: Word) -> Word:
+        """Combine two words by adding their corresponding lo and hi parts.  Useful with select.
+        This is not a 256 bit addition"""
         return Word((self.lo.expr() + other.lo.expr(), self.hi.expr() + other.hi.expr()))
 
     def select(self, selector: FQ) -> Word:
