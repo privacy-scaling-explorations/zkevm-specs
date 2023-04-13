@@ -6,13 +6,13 @@ from ...util import FQ
 
 
 def memory(instruction: Instruction):
-    X32 = make_X32(instruction.randomness)
 
     opcode = instruction.opcode_lookup(True)
 
     address = instruction.stack_pop()
-    shift = address.int_value % 32
-    slot = address.int_value - shift
+    offset = address.int_value % 32
+    offset_bits = to_5_bits(offset)
+    slot = address.int_value - offset
 
     addr_left = FQ(slot)
     addr_right = FQ(slot + 32)
@@ -29,31 +29,61 @@ def memory(instruction: Instruction):
         memory_offset, address.expr() + FQ(1) + (is_not_mstore8 * FQ(31))
     )
 
+    # Generate the binary mask that selects the bytes to be read/written.
+    mask = make_mask(offset, is_mstore8)
+    constrain_mask(instruction, mask, offset_bits, is_mstore8)
+    not_mask = not_vec(mask)
+
+    # Compute powers of the RLC challenge. These are used to shift bytes in equations below.
+    X = instruction.randomness
+    X32 = make_X32(X)
+    X31_off = make_X31_off(X, offset_bits)
+    X32_off = X * X31_off
+
+    # Read the left slot in all cases.
+    left, left_prev = instruction.memory_lookup_update(
+        RW.Write if is_store == FQ(1) else RW.Read, addr_left
+    )
+
+    # Check the consistency of unchanged bytes: L’ & M == L & M
+    instruction.constrain_equal(
+        instruction.rlc_encode(mul_vec(left_prev.le_bytes, mask)).rlc_value,
+        instruction.rlc_encode(mul_vec(left.le_bytes, mask)).rlc_value,
+    )
+
+    # RLC of the B part: the bytes read/written from the left slot.
+    b = rev_vec(mul_vec(left.le_bytes, not_mask))
+    b_r = instruction.rlc_encode(b).rlc_value
+
     if is_mstore8 == FQ(1):
-        value_left = instruction.memory_lookup(RW.Write, addr_left)
-        # TODO: check with mask
+        # Check the consistency of the one byte to write versus the left slot.
+        instruction.constrain_equal(
+            value.le_bytes[0] * X31_off,
+            b_r,
+        )
 
     if is_not_mstore8 == FQ(1):
-        value_left = instruction.memory_lookup(
-            RW.Write if is_store == FQ(1) else RW.Read, addr_left
-        )
-        value_right = instruction.memory_lookup(
+
+        # Read the right slot in the MLOAD/MSTORE case.
+        right, right_prev = instruction.memory_lookup_update(
             RW.Write if is_store == FQ(1) else RW.Read, addr_right
         )
 
-        # Check consistency of value, value_left, and value_right.
-        mask = make_mask(shift)
-        X = instruction.randomness
-        Xoff = make_Xoff(X, 32-shift)
-        w = value.le_bytes
-        w_r = instruction.rlc_encode(w).rlc_value
-        b = rev_vec(mul_vec(value_left.le_bytes, not_vec(mask)))
-        c = rev_vec(mul_vec(value_right.le_bytes, mask))
-        b_r = instruction.rlc_encode(b).rlc_value
+        # Check the consistency of unchanged bytes: R’ & !M == R & !M
+        instruction.constrain_equal(
+            instruction.rlc_encode(mul_vec(right_prev.le_bytes, not_mask)).rlc_value,
+            instruction.rlc_encode(mul_vec(right.le_bytes, not_mask)).rlc_value,
+        )
+
+        # RLC of the C part: the bytes read/written from the right slot.
+        c = rev_vec(mul_vec(right.le_bytes, mask))
         c_r = instruction.rlc_encode(c).rlc_value
 
+        w_r = value.rlc_value # Same value as given from the stack operation.
+
+        # Check the consistency of the value with parts from the left and right slots.
         instruction.constrain_equal(
-            w_r * Xoff,
+            w_r * X32_off,
             b_r * X32 + c_r,
         )
 
@@ -67,44 +97,86 @@ def memory(instruction: Instruction):
     )
 
 
-def check_mask(offset, M):
-    # Compute 2**offset by squaring-and-multiplying.
-    offset_value = 1
-    for i in reversed(range(5)):
-        bit = (offset >> i) & 1
-        offset_value = offset_value * offset_value * (1 + bit)
-
+def constrain_mask(instruction, mask, offset_bits, is_mstore8):
     # Interpret the mask as a binary number.
     mask_value = 0
-    for (i, m) in enumerate(M):
-        assert m * (1 - m) == 0, "Mask value must be 0 or 1"
+    for (i, m) in enumerate(mask):
+        m = FQ(m)
+        # Make sure the mask elements are either 0 or 1.
+        instruction.constrain_zero(m * (1 - m))
         mask_value += 2**i * m
 
-    assert mask_value == (offset_value - 1), "Mask value does not match offset"
+    # Compute 2**offset. As a binary number, it looks like this (example offset=4):
+    #   00001000000000000000000000000000
+    two_pow_offset = FQ(make_two_pow(offset_bits))
+
+    if is_mstore8 == FQ(1):
+        # If MSTORE8, the mask looks like this (example offset=4):
+        #   11110111111111111111111111111111
+        instruction.constrain_equal(
+            mask_value, 2**32 - 1 - two_pow_offset)
+
+    else:
+        # If MLOAD or  MSTORE, the mask looks like this (example offset=4):
+        #   11110000000000000000000000000000
+        instruction.constrain_equal(
+            mask_value, two_pow_offset - 1)
 
 
-def make_mask(offset):
+def make_mask(offset, is_mstore8):
     M = [1] * 32
-    for i in range(offset, 32):
-        M[i] = 0
 
-    check_mask(offset, M)
+    if is_mstore8 == FQ(1):
+        # If MSTORE8, the mask looks like this (example offset=4):
+        #   11110111111111111111111111111111
+        M[offset] = 0
+    else:
+        # If MLOAD or  MSTORE, the mask looks like this (example offset=4):
+        #   11110000000000000000000000000000
+        for i in range(offset, 32):
+            M[i] = 0
+
     return bytes(M)
 
 
-def make_Xoff(X, offset):
-    Xoff = 1
-    for i in reversed(range(6)):
-        bit = (offset >> i) & 1
-        print(i, bit)
-        Xoff = Xoff * Xoff
-        Xoff = Xoff * X if bit else Xoff
-    return Xoff
+# Witness and constrain the bits of the exponent.
+def to_5_bits(offset):
+    assert offset < 2**5
+    # Witness, LSB-first.
+    bits = [(offset >> i) & 1 for i in range(5)]
+    # Constrain.
+    assert sum(bit * 2**i for (i, bit) in enumerate(bits)) == offset
+    for bit in bits:
+        assert bit * (1 - bit) == 0
+    return bits
 
 
+# Compute 2**offset by squaring-and-multiplying.
+def make_two_pow(offset_bits):
+    assert len(offset_bits) == 5
+    two_pow_offset = 1
+    for bit in reversed(offset_bits):
+        two_pow_offset = two_pow_offset * two_pow_offset * (1 + bit)
+    return two_pow_offset
+
+
+# Compute `X**(31-offset)` by squaring-and-multiplying.
+def make_X31_off(X, offset_bits):
+    # Express the bits of `31-offset` by flipping the bits of `offset`.
+    assert len(offset_bits) == 5
+    not_bits = [1 - b for b in offset_bits]
+
+    X_pow = 1
+    for bit in reversed(not_bits):
+        X_pow = X_pow * X_pow
+        X_pow = X_pow * (X if bit else 1)
+    return X_pow
+
+
+# Compute X**32 by squaring. This does *not* depend on a witness, only a the challenge X.
 def make_X32(X):
     X32 = X
-    for i in range(5):
+    for _ in range(5):
         X32 = X32 * X32
     return X32
 

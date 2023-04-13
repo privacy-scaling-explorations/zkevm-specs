@@ -430,15 +430,28 @@ class RWDictionary:
 
     def memory_read(self, call_id: IntOrFQ, memory_address: IntOrFQ, value: RLC) -> RWDictionary:
         return self._append(
-            RW.Read, RWTableTag.Memory, key1=FQ(call_id), key2=FQ(memory_address), value=value
+            RW.Read, RWTableTag.Memory, key1=FQ(call_id), key2=FQ(memory_address), value=value, value_prev=value
         )
 
     def memory_write(
         self, call_id: IntOrFQ, memory_address: IntOrFQ, value: RLC
     ) -> RWDictionary:
+        prev = self._memory_find_prev(call_id, memory_address)
         return self._append(
-            RW.Write, RWTableTag.Memory, key1=FQ(call_id), key2=FQ(memory_address), value=value
+            RW.Write, RWTableTag.Memory, key1=FQ(call_id), key2=FQ(memory_address), value=value, value_prev=prev
         )
+
+    def _memory_find_prev(
+        self, call_id: IntOrFQ, memory_address: IntOrFQ
+    ) -> Optional[RLC]:
+        for rw in reversed(self.rws):
+            if (
+                rw.key0 == RWTableTag.Memory
+                and rw.key1 == FQ(call_id)
+                and rw.key2 == FQ(memory_address)
+            ):
+                return rw.value
+        return RLC(0)
 
     def call_context_read(
         self, call_id: IntOrFQ, field_tag: CallContextFieldTag, value: Union[int, FQ, RLC]

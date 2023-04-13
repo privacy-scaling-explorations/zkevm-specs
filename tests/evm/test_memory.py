@@ -41,20 +41,21 @@ TESTING_DATA = (
     (
         Opcode.MSTORE8,
         0,
-        bytes.fromhex("FFFF"),
-        bytes.fromhex("FF"),
+        bytes.fromhex("1122"),
+        bytes.fromhex("11"),
     ),
     (
         Opcode.MSTORE8,
         1,
-        bytes.fromhex("FF"),
-        bytes.fromhex("FFFF"),
+        bytes.fromhex("1122"),
+        bytes.fromhex("0011"),
     ),
 )
 
 
 @pytest.mark.parametrize("opcode, address, value, memory", TESTING_DATA)
 def test_memory(opcode: Opcode, address: int, value: bytes, memory: bytes):
+
     # pad memory with 0s to the right up to 64 bytes
     memory = memory + bytes(64 - len(memory))
 

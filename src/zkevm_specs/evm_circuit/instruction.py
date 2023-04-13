@@ -839,9 +839,16 @@ class Instruction:
     def memory_lookup(
         self, rw: RW, memory_address: Expression, call_id: Optional[Expression] = None
     ) -> RLC:
+        curr, _prev = self.memory_lookup_update(rw, memory_address, call_id)
+        return curr
+
+    def memory_lookup_update(
+        self, rw: RW, memory_address: Expression, call_id: Optional[Expression] = None
+    ) -> Tuple[RLC, RLC]:
         if call_id is None:
             call_id = self.curr.call_id
-        return cast_expr(self.rw_lookup(rw, RWTableTag.Memory, call_id, memory_address).value, RLC)
+        res = self.rw_lookup(rw, RWTableTag.Memory, call_id, memory_address)
+        return cast_expr(res.value, RLC), cast_expr(res.value_prev, RLC)
 
     def tx_refund_read(self, tx_id: Expression) -> FQ:
         return cast_expr(self.rw_lookup(RW.Read, RWTableTag.TxRefund, tx_id).value, FQ)
