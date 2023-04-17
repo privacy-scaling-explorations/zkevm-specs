@@ -118,7 +118,7 @@ def gen_testing_data():
     ]
     create_contexts = [
         CreateContext(gas_left=1_000_000, is_persistent=True),
-        CreateContext(gas_left=1_000_000, is_persistent=False, rw_counter_end_of_reversion=88),
+        CreateContext(gas_left=1_000_000, is_persistent=False, rw_counter_end_of_reversion=89),
     ]
     stacks = [
         Stack(value=int(1e18), offset=64, size=64, salt=int(12345)),
@@ -195,7 +195,7 @@ def test_create_create2(
         80
         if is_reverted_by_callee
         else (
-            caller_ctx.rw_counter_end_of_reversion - (caller_ctx.reversible_write_counter + 1)
+            caller_ctx.rw_counter_end_of_reversion - caller_ctx.reversible_write_counter
             if is_reverted_by_caller
             else 0
         )
@@ -216,7 +216,7 @@ def test_create_create2(
     # can't be a static all
     is_static = 0
 
-    next_call_id = 65
+    next_call_id = 66
     rw_counter = next_call_id
     # CREATE: 33 * 3(push) + 1(CREATE) + 1(mstore) + 33(PUSH32) + 2(PUSH) + 1(RETURN)
     # CREATE2: 33 * 4(push) + 1(CREATE) + 1(mstore) + 33(PUSH32) + 2(PUSH) + 1(RETURN)
@@ -254,7 +254,7 @@ def test_create_create2(
     if is_create2:
         rw_dictionary.stack_read(CURRENT_CALL_ID, 1023, RLC(stack.salt, randomness))   
     rw_dictionary.stack_write(CURRENT_CALL_ID, 1023, RLC(contract_address, randomness) if is_success else RLC(0))
-    
+
     # caller's call context
     rw_dictionary \
         .call_context_read(CURRENT_CALL_ID, CallContextFieldTag.Depth, 1) \
@@ -263,6 +263,7 @@ def test_create_create2(
         .account_write(caller.address, AccountFieldTag.Nonce, nonce, nonce - 1) \
         .call_context_read(CURRENT_CALL_ID, CallContextFieldTag.IsSuccess, is_success) \
         .call_context_read(CURRENT_CALL_ID, CallContextFieldTag.IsStatic, is_static) \
+        .call_context_read(CURRENT_CALL_ID, CallContextFieldTag.CallDataLength, len(src_data)) \
         .call_context_read(CURRENT_CALL_ID, CallContextFieldTag.RwCounterEndOfReversion, caller_ctx.rw_counter_end_of_reversion) \
         .call_context_read(CURRENT_CALL_ID, CallContextFieldTag.IsPersistent, caller_ctx.is_persistent) \
         .tx_access_list_account_write(CURRENT_CALL_ID, contract_address, True, is_warm_access, rw_counter_of_reversion=None if caller_ctx.is_persistent else caller_ctx.rw_counter_end_of_reversion - caller_ctx.reversible_write_counter) \

@@ -41,6 +41,7 @@ def create(instruction: Instruction):
     nonce, nonce_prev = instruction.account_write(caller_address, AccountFieldTag.Nonce)
     is_success = instruction.call_context_lookup(CallContextFieldTag.IsSuccess)
     is_static = instruction.call_context_lookup(CallContextFieldTag.IsStatic)
+    init_code_len = instruction.call_context_lookup(CallContextFieldTag.CallDataLength)
     reversion_info = instruction.reversion_info()
 
     # calculate contract address
@@ -51,6 +52,9 @@ def create(instruction: Instruction):
             caller_address, salt_rlc.le_bytes, instruction.next.code_hash
         )
     )
+
+    # verify the equality of input `size` and length of calldata
+    instruction.constrain_equal(size, init_code_len)
 
     # verify return contract address
     instruction.constrain_equal(
