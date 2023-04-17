@@ -127,7 +127,7 @@ def create(instruction: Instruction):
         CopyDataTypeTag.Bytecode,  # dst_type
         offset,  # src_addr
         offset + size,  # src_addr_boundary
-        FQ(1),  # dst_addr
+        FQ(0),  # dst_addr
         size,  # length
         instruction.curr.rw_counter + instruction.rw_counter_offset,
     )

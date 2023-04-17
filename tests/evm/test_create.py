@@ -233,10 +233,10 @@ def test_create_create2(
             (
                 i,
                 (
-                    init_bytecode.code[i - stack.offset + 1],
-                    init_bytecode.is_code[i - stack.offset + 1],
+                    init_bytecode.code[i - stack.offset],
+                    init_bytecode.is_code[i - stack.offset],
                 )
-                if i - stack.offset + 1 < len(init_bytecode.code)
+                if i - stack.offset < len(init_bytecode.code)
                 else (0, 0),
             )
             for i in range(stack.offset, stack.offset + stack.size)
@@ -287,20 +287,20 @@ def test_create_create2(
     copy_circuit = CopyCircuit().copy(
         randomness,
         rw_dictionary,
-        1,
+        CURRENT_CALL_ID,
         CopyDataTypeTag.Memory,
         init_bytecode_hash.expr(),
         CopyDataTypeTag.Bytecode,
         stack.offset,
         stack.offset + stack.size,
-        1,
+        0,
         stack.size,
         src_data,
     )
 
     # caller's call context
     rw_dictionary \
-        .call_context_write(CURRENT_CALL_ID, CallContextFieldTag.ProgramCounter, next_program_counter+1) \
+        .call_context_write(CURRENT_CALL_ID, CallContextFieldTag.ProgramCounter, next_program_counter + 1) \
         .call_context_write(CURRENT_CALL_ID, CallContextFieldTag.StackPointer, 1023) \
         .call_context_write(CURRENT_CALL_ID, CallContextFieldTag.GasLeft, expected.caller_gas_left) \
         .call_context_write(CURRENT_CALL_ID, CallContextFieldTag.MemorySize, expected.next_memory_size) \
@@ -308,7 +308,7 @@ def test_create_create2(
     
     # callee's call context
     rw_dictionary \
-        .call_context_read(next_call_id, CallContextFieldTag.CallerId, 1) \
+        .call_context_read(next_call_id, CallContextFieldTag.CallerId, CURRENT_CALL_ID) \
         .call_context_read(next_call_id, CallContextFieldTag.TxId, 1) \
         .call_context_read(next_call_id, CallContextFieldTag.Depth, 2) \
         .call_context_read(next_call_id, CallContextFieldTag.CallerAddress, caller.address) \
