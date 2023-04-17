@@ -14,7 +14,7 @@ def signextend(instruction: Instruction):
     sign_byte = (
         FQ((value.le_bytes[index.le_bytes[0]] >> 7) * 0xFF) if index.le_bytes[0] < 31 else FQ(0)
     )
-    selectors = [FQ(index.expr() == FQ(i)) for i in range(31)]
+    selectors = [FQ(index.expr().n >= i) for i in range(31)]
     is_byte_selected = [FQ(index.le_bytes[0] == i) for i in range(31)]
 
     # Check byte per byte to see if the byte was selected.
