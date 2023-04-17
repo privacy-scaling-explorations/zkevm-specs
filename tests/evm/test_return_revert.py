@@ -148,7 +148,7 @@ def test_is_create(
     return_offset_rlc = RLC(return_offset, randomness)
     return_length_rlc = RLC(return_length, randomness)
     caller_id = 1
-    rw_counter = 17 if is_root else 28
+    rw_counter = 16 if is_root else 27
     callee_id = rw_counter
 
     rw_dict = (
@@ -163,7 +163,6 @@ def test_is_create(
             deployment_bytecode_hash,
             RLC(EMPTY_CODE_HASH),
         )
-        .call_context_write(callee_id, CallContextFieldTag.GasLeft, gas_left)
     )
 
     # copy_table

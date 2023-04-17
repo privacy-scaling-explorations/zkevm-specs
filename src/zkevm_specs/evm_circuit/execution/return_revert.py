@@ -42,9 +42,6 @@ def return_revert(instruction: Instruction):
         # gas cost of CREATE = GAS_COST_CREATE + memory expansion + GAS_COST_CODE_DEPOSIT * len(byte_code)
         # first two part were handled in create.py
         callee_gas_left = callee_gas_left - return_length * GAS_COST_CODE_DEPOSIT
-        instruction.constrain_equal(
-            instruction.call_context_lookup(CallContextFieldTag.GasLeft, RW.Write), callee_gas_left
-        )
 
         # Return a memory chunk as deployment code by copying each byte from
         # callee's memory to bytecode, using the copy circuit.

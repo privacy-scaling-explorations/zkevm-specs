@@ -81,7 +81,7 @@ def create(instruction: Instruction):
     callee_reversion_info = instruction.reversion_info(call_id=callee_call_id)
     instruction.constrain_equal(
         callee_reversion_info.is_persistent,
-        reversion_info.is_persistent * is_success,
+        reversion_info.is_persistent.expr() * is_success.expr(),
     )
 
     # can't be a STATICCALL
@@ -162,11 +162,11 @@ def create(instruction: Instruction):
         (CallContextFieldTag.Depth, depth.expr() + 1),
         (CallContextFieldTag.CallerAddress, caller_address.expr()),
         (CallContextFieldTag.CalleeAddress, contract_address.expr()),
-        (CallContextFieldTag.IsSuccess, is_success),
+        (CallContextFieldTag.IsSuccess, is_success.expr()),
         (CallContextFieldTag.IsStatic, FQ(False)),
         (CallContextFieldTag.IsRoot, FQ(False)),
-        (CallContextFieldTag.IsCreate, FQ(False)),
-        (CallContextFieldTag.CodeHash, code_hash),
+        (CallContextFieldTag.IsCreate, FQ(True)),
+        (CallContextFieldTag.CodeHash, code_hash.expr()),
     ]:
         instruction.constrain_equal(
             instruction.call_context_lookup(field_tag, call_id=callee_call_id),
@@ -177,7 +177,7 @@ def create(instruction: Instruction):
         rw_counter=Transition.delta(instruction.rw_counter_offset),
         call_id=Transition.to(callee_call_id),
         is_root=Transition.to(False),
-        is_create=Transition.to(False),
+        is_create=Transition.to(True),
         code_hash=Transition.to(instruction.next.code_hash),
         gas_left=Transition.to(callee_gas_left),
         # `transfer` includes two balance updates

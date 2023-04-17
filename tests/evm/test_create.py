@@ -316,7 +316,7 @@ def test_create_create2(
         .call_context_read(next_call_id, CallContextFieldTag.IsSuccess, is_success) \
         .call_context_read(next_call_id, CallContextFieldTag.IsStatic, is_static) \
         .call_context_read(next_call_id, CallContextFieldTag.IsRoot, False) \
-        .call_context_read(next_call_id, CallContextFieldTag.IsCreate, False) \
+        .call_context_read(next_call_id, CallContextFieldTag.IsCreate, True) \
         .call_context_read(next_call_id, CallContextFieldTag.CodeHash, RLC(EMPTY_CODE_HASH))
     # fmt: on
 
@@ -359,7 +359,7 @@ def test_create_create2(
                     rw_counter=rw_dictionary.rw_counter,
                     call_id=next_call_id,
                     is_root=False,
-                    is_create=False,
+                    is_create=True,
                     code_hash=init_bytecode_hash,
                     program_counter=0,
                     stack_pointer=1024,

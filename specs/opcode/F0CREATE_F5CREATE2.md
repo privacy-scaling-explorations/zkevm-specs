@@ -57,9 +57,9 @@ The `gas_cost` for the step is:
 
 ```
 GAS_COST_CREATE := 32000
-KECCAK_BYTE_GAS_COST : 6
+KECCAK_WORD_GAS_COST : 6
 
-keccak_gas_cost = KECCAK_BYTE_GAS_COST * size if op_id == CREATE2 else 0
+keccak_gas_cost = KECCAK_WORD_GAS_COST * size if op_id == CREATE2 else 0
 gas_cost = (
     GAS_COST_CREATE
     + memory_expansion_gas_cost
