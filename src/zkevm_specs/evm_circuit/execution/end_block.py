@@ -98,10 +98,10 @@ def end_block(instruction: Instruction):
         else:
             # 1b. total_txs matches the tx_id that corresponds to the final step.
             instruction.constrain_equal(
-                instruction.call_context_lookup(CallContextFieldTag.TxId).value(), total_txs
+                instruction.call_context_lookup(CallContextFieldTag.TxId), total_txs
             )
             # 4. Verify that CumulativeGasUsed does not exceed the block gas limit.
-            gas_limit = instruction.block_context_lookup(BlockContextFieldTag.GasLimit).value()
+            gas_limit = instruction.block_context_lookup(BlockContextFieldTag.GasLimit)
             cumulative_gas = instruction.tx_receipt_read(
                 total_txs,
                 TxReceiptFieldTag.CumulativeGasUsed,
@@ -117,9 +117,7 @@ def end_block(instruction: Instruction):
             # showing that the Tx following the last processed one has
             # CallerAddress = 0x0 (which means padding tx).
             instruction.constrain_equal(
-                instruction.tx_context_lookup(
-                    FQ(total_txs + 1), TxContextFieldTag.CallerAddress
-                ).value(),
+                instruction.tx_context_lookup(FQ(total_txs + 1), TxContextFieldTag.CallerAddress),
                 FQ(0),
             )
             # Since every tx lookup done in the EVM circuit must succeed and

@@ -31,7 +31,7 @@ def cmp(instruction: Instruction):
     result = eq if is_eq == 1 else lt
 
     instruction.constrain_equal_word(
-        Word((FQ(result), FQ(0))),
+        Word.from_lo(FQ(result)),
         c,
     )
 

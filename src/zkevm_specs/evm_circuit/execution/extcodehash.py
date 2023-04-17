@@ -10,11 +10,11 @@ def extcodehash(instruction: Instruction):
 
     address = instruction.word_to_address(instruction.stack_pop())
 
-    tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId).value()
+    tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
     is_warm = instruction.add_account_to_access_list(tx_id, address, instruction.reversion_info())
 
     # We already define code_hash to be 0 when the account doesn't exist.
-    code_hash = instruction.account_read(address, AccountFieldTag.CodeHash)
+    code_hash = instruction.account_read_word(address, AccountFieldTag.CodeHash)
 
     instruction.constrain_equal_word(
         code_hash,

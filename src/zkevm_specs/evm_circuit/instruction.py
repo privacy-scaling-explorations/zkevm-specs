@@ -285,7 +285,8 @@ class Instruction:
         rw_counter_delta += 11 + int(caller_id is None)
         # Read caller's context for restore
         if caller_id is None:
-            caller_id = self.call_context_lookup(CallContextFieldTag.CallerId).value()
+            caller_id = self.call_context_lookup(CallContextFieldTag.CallerId)
+
         [
             caller_is_root,
             caller_is_create,
@@ -296,7 +297,7 @@ class Instruction:
             caller_memory_size,
             caller_reversible_write_counter,
         ] = [
-            self.call_context_lookup(field_tag, call_id=caller_id)
+            self.call_context_lookup_word(field_tag, call_id=caller_id)
             for field_tag in [
                 CallContextFieldTag.IsRoot,
                 CallContextFieldTag.IsCreate,
@@ -316,7 +317,7 @@ class Instruction:
             (CallContextFieldTag.LastCalleeReturnDataLength, return_data_length),
         ]:
             self.constrain_equal(
-                self.call_context_lookup(field_tag, RW.Write, call_id=caller_id).value(),
+                self.call_context_lookup(field_tag, RW.Write, call_id=caller_id),
                 expected_value,
             )
 
@@ -483,7 +484,7 @@ class Instruction:
     def address_to_word(self, addr: Expression) -> Word:
         """Verify that address is 160 bits and return it as a Word (lo, hi)"""
         addr_bytes = addr.expr().n.to_bytes(32, "little")
-        self.constrain_zero(FQ(sum(addr_bytes[20:])))
+        self.constrain_zero(FQ(sum(addr_bytes[N_BYTES_ACCOUNT_ADDRESS:])))
         return Word(addr_bytes)
 
     def word_to_address(self, word: Word) -> Expression:
@@ -649,10 +650,20 @@ class Instruction:
 
     def block_context_lookup(
         self, field_tag: BlockContextFieldTag, block_number: Expression = FQ(0)
+    ) -> Expression:
+        return self.tables.block_lookup(FQ(field_tag), block_number).value.value()
+
+    def block_context_lookup_word(
+        self, field_tag: BlockContextFieldTag, block_number: Expression = FQ(0)
     ) -> WordOrValue:
         return self.tables.block_lookup(FQ(field_tag), block_number).value
 
-    def tx_context_lookup(self, tx_id: Expression, field_tag: TxContextFieldTag) -> WordOrValue:
+    def tx_context_lookup(self, tx_id: Expression, field_tag: TxContextFieldTag) -> Expression:
+        return self.tables.tx_lookup(tx_id, FQ(field_tag)).value.value()
+
+    def tx_context_lookup_word(
+        self, tx_id: Expression, field_tag: TxContextFieldTag
+    ) -> WordOrValue:
         return self.tables.tx_lookup(tx_id, FQ(field_tag)).value
 
     def tx_calldata_lookup(self, tx_id: Expression, call_data_index: Expression) -> Expression:
@@ -664,6 +675,12 @@ class Instruction:
 
     # look up tx log fields (Data, Address, Topic),
     def tx_log_lookup(
+        self, tx_id: Expression, log_id: Expression, field_tag: TxLogFieldTag, index: int = 0
+    ) -> Expression:
+        return self.tx_log_lookup_word(tx_id, log_id, field_tag, index).value()
+
+    # look up tx log fields (Data, Address, Topic),
+    def tx_log_lookup_word(
         self, tx_id: Expression, log_id: Expression, field_tag: TxLogFieldTag, index: int = 0
     ) -> WordOrValue:
         # evm only write tx log
@@ -732,7 +749,7 @@ class Instruction:
         ).value
 
     def tx_gas_price(self, tx_id: Expression) -> Word:
-        return self.tx_context_lookup(tx_id, TxContextFieldTag.GasPrice)
+        return self.tx_context_lookup_word(tx_id, TxContextFieldTag.GasPrice)
 
     def responsible_opcode_lookup(self, opcode: Expression, aux: Expression = FQ(0)):
         self.fixed_lookup(
@@ -847,6 +864,11 @@ class Instruction:
 
     def call_context_lookup(
         self, field_tag: CallContextFieldTag, rw: RW = RW.Read, call_id: Optional[Expression] = None
+    ) -> Expression:
+        return self.call_context_lookup_word(field_tag, rw, call_id).value()
+
+    def call_context_lookup_word(
+        self, field_tag: CallContextFieldTag, rw: RW = RW.Read, call_id: Optional[Expression] = None
     ) -> WordOrValue:
         if call_id is None:
             call_id = self.curr.call_id
@@ -865,8 +887,8 @@ class Instruction:
             ]
         ]
         return ReversionInfo(
-            rw_counter_end_of_reversion.value(),
-            is_persistent.value(),
+            rw_counter_end_of_reversion,
+            is_persistent,
             self.curr.reversible_write_counter if call_id is None else FQ(0),
         )
 
@@ -909,12 +931,26 @@ class Instruction:
 
     def account_read(
         self, account_address: Expression, account_field_tag: AccountFieldTag
+    ) -> Expression:
+        self.account_read_word(account_address, account_field_tag).value()
+
+    def account_read_word(
+        self, account_address: Expression, account_field_tag: AccountFieldTag
     ) -> WordOrValue:
         return self.rw_lookup(
             RW.Read, RWTableTag.Account, address=account_address, field_tag=FQ(account_field_tag)
         ).value
 
     def account_write(
+        self,
+        account_address: Expression,
+        account_field_tag: AccountFieldTag,
+        reversion_info: Optional[ReversionInfo] = None,
+    ) -> Tuple[Expression, Expression]:
+        pair = self.account_write_word(account_address, account_field_tag, reversion_info)
+        return pair[0].value(), pair[1].value()
+
+    def account_write_word(
         self,
         account_address: Expression,
         account_field_tag: AccountFieldTag,
@@ -934,7 +970,7 @@ class Instruction:
         values: Sequence[Word],
         reversion_info: Optional[ReversionInfo] = None,
     ) -> Tuple[Word, Word]:
-        balance, balance_prev = self.account_write(
+        balance, balance_prev = self.account_write_word(
             account_address, AccountFieldTag.Balance, reversion_info
         )
         result, carry = self.add_words([balance_prev, *values])
@@ -948,7 +984,7 @@ class Instruction:
         values: Sequence[Word],
         reversion_info: Optional[ReversionInfo] = None,
     ) -> Tuple[Word, Word]:
-        balance, balance_prev = self.account_write(
+        balance, balance_prev = self.account_write_word(
             account_address, AccountFieldTag.Balance, reversion_info
         )
         result, carry = self.add_words([balance, *values])
@@ -1165,7 +1201,7 @@ class Instruction:
 
     def constrain_error_state(self, rw_counter_delta: int):
         # Current call must fail.
-        is_success = self.call_context_lookup(CallContextFieldTag.IsSuccess).value()
+        is_success = self.call_context_lookup(CallContextFieldTag.IsSuccess)
         self.constrain_equal(is_success, FQ(0))
 
         # Go to EndTx only when is_root.

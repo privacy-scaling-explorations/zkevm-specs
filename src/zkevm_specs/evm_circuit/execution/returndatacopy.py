@@ -12,13 +12,13 @@ def returndatacopy(instruction: Instruction):
         instruction.stack_pop(),
     )
 
-    last_callee_id = instruction.call_context_lookup(CallContextFieldTag.LastCalleeId).value()
+    last_callee_id = instruction.call_context_lookup(CallContextFieldTag.LastCalleeId)
     return_data_length = instruction.call_context_lookup(
         CallContextFieldTag.LastCalleeReturnDataLength, RW.Read
-    ).value()
+    )
     return_data_offset = instruction.call_context_lookup(
         CallContextFieldTag.LastCalleeReturnDataOffset, RW.Read
-    ).value()
+    )
 
     # out-of-bound-check
     instruction.range_check(

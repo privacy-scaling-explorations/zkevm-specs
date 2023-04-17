@@ -8,7 +8,7 @@ def blockhash(instruction: Instruction):
 
     block_number = instruction.word_to_u64(instruction.stack_pop())
 
-    current_block_number = instruction.block_context_lookup(BlockContextFieldTag.Number).value()
+    current_block_number = instruction.block_context_lookup(BlockContextFieldTag.Number)
     # get value that was pushed to stack (RLC-encoded)
     block_hash = instruction.stack_push()
 
@@ -18,7 +18,7 @@ def blockhash(instruction: Instruction):
 
     # get the expected block hash depending on the above conditions (RLC-encoded)
     if instruction.is_equal(block_lt * diff_lt, FQ.one()) == FQ.one():
-        expected_block_hash = instruction.block_context_lookup(
+        expected_block_hash = instruction.block_context_lookup_word(
             BlockContextFieldTag.HistoryHash,
             block_number,
         )

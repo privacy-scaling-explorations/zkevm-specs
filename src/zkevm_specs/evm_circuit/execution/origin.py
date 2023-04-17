@@ -4,12 +4,12 @@ from ..table import CallContextFieldTag, TxContextFieldTag
 
 
 def origin(instruction: Instruction):
-    tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId).value()
+    tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
 
     opcode = instruction.opcode_lookup(True)
     instruction.constrain_equal(opcode, Opcode.ORIGIN)
 
-    address = instruction.tx_context_lookup(tx_id, TxContextFieldTag.CallerAddress).value()
+    address = instruction.tx_context_lookup(tx_id, TxContextFieldTag.CallerAddress)
     instruction.constrain_equal_word(
         instruction.address_to_word(address),
         instruction.stack_push(),

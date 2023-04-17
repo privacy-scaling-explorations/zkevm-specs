@@ -4,7 +4,7 @@ from ..table import CallContextFieldTag, TxContextFieldTag
 
 
 def gasprice(instruction: Instruction):
-    tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId).value()
+    tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
 
     opcode = instruction.opcode_lookup(True)
     instruction.constrain_equal(opcode, Opcode.GASPRICE)
@@ -12,7 +12,7 @@ def gasprice(instruction: Instruction):
     # fetch gasPrice from rw table
     # fetch from the Tx context table the gasPrice
     instruction.constrain_equal_word(
-        instruction.tx_context_lookup(tx_id, TxContextFieldTag.GasPrice),
+        instruction.tx_context_lookup_word(tx_id, TxContextFieldTag.GasPrice),
         instruction.stack_push(),
     )
 

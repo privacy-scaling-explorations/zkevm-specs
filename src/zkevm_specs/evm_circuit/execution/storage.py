@@ -16,9 +16,9 @@ def sload(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
     instruction.constrain_equal(opcode, Opcode.SLOAD)
 
-    tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId).value()
+    tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
     reversion_info = instruction.reversion_info()
-    callee_address = instruction.call_context_lookup(CallContextFieldTag.CalleeAddress).value()
+    callee_address = instruction.call_context_lookup(CallContextFieldTag.CalleeAddress)
 
     storage_key = instruction.stack_pop()
 
@@ -50,14 +50,14 @@ def sstore(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
     instruction.constrain_equal(opcode, Opcode.SSTORE)
 
-    tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId).value()
+    tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
     # check not static call
     instruction.constrain_equal(
-        FQ(0), instruction.call_context_lookup(CallContextFieldTag.IsStatic).value()
+        FQ(0), instruction.call_context_lookup(CallContextFieldTag.IsStatic)
     )
 
     reversion_info = instruction.reversion_info()
-    callee_address = instruction.call_context_lookup(CallContextFieldTag.CalleeAddress).value()
+    callee_address = instruction.call_context_lookup(CallContextFieldTag.CalleeAddress)
 
     storage_key = instruction.stack_pop()
     storage_value = instruction.stack_pop()

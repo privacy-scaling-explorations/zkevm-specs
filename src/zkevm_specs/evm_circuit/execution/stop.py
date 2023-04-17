@@ -15,7 +15,7 @@ def stop(instruction: Instruction):
 
     # When a call ends with STOP, this call must be successful, but it's not
     # necessary persistent depends on if it's a sub-call of a failed call or not.
-    is_success = instruction.call_context_lookup(CallContextFieldTag.IsSuccess).value()
+    is_success = instruction.call_context_lookup(CallContextFieldTag.IsSuccess)
     instruction.constrain_equal(is_success, FQ(1))
 
     # Go to EndTx only when is_root

@@ -15,23 +15,23 @@ def log(instruction: Instruction):
     msize = instruction.word_to_fq(instruction.stack_pop(), 8)
 
     # read tx id
-    tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId).value()
+    tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
     # check not static call
     instruction.constrain_equal(
-        FQ(0), instruction.call_context_lookup(CallContextFieldTag.IsStatic).value()
+        FQ(0), instruction.call_context_lookup(CallContextFieldTag.IsStatic)
     )
 
     # check contract_address in CallContext & TxLog
     # use call context's  callee address as contract address
 
-    contract_address = instruction.call_context_lookup(CallContextFieldTag.CalleeAddress).value()
-    is_persistent = instruction.call_context_lookup(CallContextFieldTag.IsPersistent).value()
+    contract_address = instruction.call_context_lookup(CallContextFieldTag.CalleeAddress)
+    is_persistent = instruction.call_context_lookup(CallContextFieldTag.IsPersistent)
     if instruction.is_zero(is_persistent) == 0:
         instruction.constrain_equal(
             contract_address,
             instruction.tx_log_lookup(
                 tx_id=tx_id, log_id=instruction.curr.log_id + 1, field_tag=TxLogFieldTag.Address
-            ).value(),
+            ),
         )
 
     # constrain topics in stack & logs
@@ -44,7 +44,7 @@ def log(instruction: Instruction):
             if instruction.is_zero(is_persistent) == 0:
                 instruction.constrain_equal_word(
                     topic,
-                    instruction.tx_log_lookup(
+                    instruction.tx_log_lookup_word(
                         tx_id=tx_id,
                         log_id=instruction.curr.log_id + 1,
                         field_tag=TxLogFieldTag.Topic,

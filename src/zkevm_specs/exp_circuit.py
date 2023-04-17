@@ -45,7 +45,7 @@ def verify_step(cs: ConstraintSystem, rows: List[ExpCircuitRow]):
         cs.constrain_zero_word(rows[0].c)
         # parity check multiplication is assigned correctly.
         _overflow, carry_lo_hi, additional_constraints = mul_add_words(
-            Word(2), rows[0].q, Word((rows[0].r, FQ(0))), rows[0].exponent
+            Word(2), rows[0].q, Word.from_lo(rows[0].r), rows[0].exponent
         )
         cs.range_check(carry_lo_hi[0], 9)
         cs.range_check(carry_lo_hi[1], 9)

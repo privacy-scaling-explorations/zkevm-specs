@@ -5,12 +5,12 @@ from ..table import BlockContextFieldTag, CallContextFieldTag, TxContextFieldTag
 
 
 def end_tx(instruction: Instruction):
-    tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId).value()
-    is_persistent = instruction.call_context_lookup(CallContextFieldTag.IsPersistent).value()
-    is_tx_invalid = instruction.tx_context_lookup(tx_id, TxContextFieldTag.TxInvalid).value()
+    tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
+    is_persistent = instruction.call_context_lookup(CallContextFieldTag.IsPersistent)
+    is_tx_invalid = instruction.tx_context_lookup(tx_id, TxContextFieldTag.TxInvalid)
 
     # Handle gas refund (refund is capped to gas_used // MAX_REFUND_QUOTIENT_OF_GAS_USED in EIP 3529)
-    tx_gas = instruction.tx_context_lookup(tx_id, TxContextFieldTag.Gas).value()
+    tx_gas = instruction.tx_context_lookup(tx_id, TxContextFieldTag.Gas)
     gas_used = tx_gas - instruction.curr.gas_left
     max_refund, _ = instruction.constant_divmod(
         gas_used, FQ(MAX_REFUND_QUOTIENT_OF_GAS_USED), N_BYTES_GAS
@@ -28,17 +28,15 @@ def end_tx(instruction: Instruction):
         tx_gas_price, instruction.curr.gas_left + effective_refund
     )
     instruction.constrain_zero(carry)
-    tx_caller_address = instruction.tx_context_lookup(
-        tx_id, TxContextFieldTag.CallerAddress
-    ).value()
+    tx_caller_address = instruction.tx_context_lookup(tx_id, TxContextFieldTag.CallerAddress)
     instruction.add_balance(tx_caller_address, [value])
 
     # Add gas_used * effective_tip to coinbase's balance
-    base_fee = instruction.block_context_lookup(BlockContextFieldTag.BaseFee)
+    base_fee = instruction.block_context_lookup_word(BlockContextFieldTag.BaseFee)
     effective_tip, _ = instruction.sub_word(tx_gas_price, base_fee)
     reward, carry = instruction.mul_word_by_u64(effective_tip, gas_used)
     instruction.constrain_zero(carry)
-    coinbase = instruction.block_context_lookup(BlockContextFieldTag.Coinbase).value()
+    coinbase = instruction.block_context_lookup(BlockContextFieldTag.Coinbase)
     instruction.add_balance(coinbase, [reward])
 
     # constrain tx status matches with `PostStateOrStatus` of TxReceipt tag in RW
@@ -74,7 +72,7 @@ def end_tx(instruction: Instruction):
         instruction.constrain_equal(
             instruction.call_context_lookup(
                 CallContextFieldTag.TxId, call_id=instruction.next.rw_counter
-            ).value(),
+            ),
             tx_id.expr() + 1,
         )
         # Do step state transition for rw_counter

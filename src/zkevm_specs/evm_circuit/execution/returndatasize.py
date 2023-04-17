@@ -14,9 +14,7 @@ def returndatasize(instruction: Instruction):
     instruction.constrain_equal_word(
         Word(
             (
-                instruction.call_context_lookup(
-                    CallContextFieldTag.LastCalleeReturnDataLength
-                ).value(),
+                instruction.call_context_lookup(CallContextFieldTag.LastCalleeReturnDataLength),
                 FQ(0),
             )
         ),

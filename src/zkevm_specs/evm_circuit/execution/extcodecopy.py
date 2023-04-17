@@ -15,10 +15,10 @@ def extcodecopy(instruction: Instruction):
     code_offset = instruction.word_to_u64(code_offset_word)
     memory_offset, size = instruction.memory_offset_and_length(memory_offset_word, size_word)
 
-    tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId).value()
+    tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
     is_warm = instruction.add_account_to_access_list(tx_id, address, instruction.reversion_info())
 
-    code_hash = instruction.account_read(address, AccountFieldTag.CodeHash)
+    code_hash = instruction.account_read_word(address, AccountFieldTag.CodeHash)
     # Check account existence with code_hash != 0
     exists = FQ(1) - instruction.is_zero_word(code_hash)
     if exists == 1:

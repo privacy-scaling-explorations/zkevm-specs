@@ -7,7 +7,7 @@ def address(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
     instruction.constrain_equal(opcode, Opcode.ADDRESS)
 
-    address = instruction.call_context_lookup(CallContextFieldTag.CalleeAddress).value()
+    address = instruction.call_context_lookup(CallContextFieldTag.CalleeAddress)
     # Get callee address from call context and compare with stack top after push.
     instruction.constrain_equal_word(
         instruction.address_to_word(address),

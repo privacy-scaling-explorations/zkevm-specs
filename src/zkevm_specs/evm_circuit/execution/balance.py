@@ -10,15 +10,17 @@ def balance(instruction: Instruction):
 
     address = instruction.word_to_address(instruction.stack_pop())
 
-    tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId).value()
+    tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
     is_warm = instruction.add_account_to_access_list(tx_id, address, instruction.reversion_info())
 
     # Check account existence with code_hash != 0
     exists = FQ(1) - instruction.is_zero_word(
-        instruction.account_read(address, AccountFieldTag.CodeHash)
+        instruction.account_read_word(address, AccountFieldTag.CodeHash)
     )
 
-    balance = instruction.account_read(address, AccountFieldTag.Balance) if exists == 1 else Word(0)
+    balance = (
+        instruction.account_read_word(address, AccountFieldTag.Balance) if exists == 1 else Word(0)
+    )
 
     instruction.constrain_equal_word(
         instruction.select_word(exists, balance, Word(0)),

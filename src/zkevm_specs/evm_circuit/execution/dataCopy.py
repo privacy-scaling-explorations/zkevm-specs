@@ -12,23 +12,19 @@ def dataCopy(instruction: Instruction):
     instruction.fixed_lookup(
         FixedTableTag.PrecompileInfo,
         FQ(instruction.curr.execution_state),
-        instruction.call_context_lookup(CallContextFieldTag.CalleeAddress, RW.Read).value(),
+        instruction.call_context_lookup(CallContextFieldTag.CalleeAddress, RW.Read),
         FQ(IdentityBaseGas),
     )
 
-    caller_id = instruction.call_context_lookup(CallContextFieldTag.CallerId, RW.Read).value()
-    call_data_offset = instruction.call_context_lookup(
-        CallContextFieldTag.CallDataOffset, RW.Read
-    ).value()
-    call_data_length = instruction.call_context_lookup(
-        CallContextFieldTag.CallDataLength, RW.Read
-    ).value()
+    caller_id = instruction.call_context_lookup(CallContextFieldTag.CallerId, RW.Read)
+    call_data_offset = instruction.call_context_lookup(CallContextFieldTag.CallDataOffset, RW.Read)
+    call_data_length = instruction.call_context_lookup(CallContextFieldTag.CallDataLength, RW.Read)
     return_data_offset = instruction.call_context_lookup(
         CallContextFieldTag.ReturnDataOffset, RW.Read
-    ).value()
+    )
     return_data_length = instruction.call_context_lookup(
         CallContextFieldTag.ReturnDataLength, RW.Read
-    ).value()
+    )
 
     # Copy current call data to return data
     size = call_data_length

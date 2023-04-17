@@ -1,18 +1,10 @@
 from zkevm_specs.evm_circuit.util.call_gadget import CallGadget
 from zkevm_specs.util.param import N_BYTES_GAS
-from ...util import FQ, GAS_STIPEND_CALL_WITH_VALUE, Word, WordOrValue, Expression
+from ...util import FQ, GAS_STIPEND_CALL_WITH_VALUE, Word, WordOrValue
 from ..instruction import Instruction, Transition
 from ..opcode import Opcode
 from ..table import RW, CallContextFieldTag, AccountFieldTag
 from ..execution_state import precompile_execution_states
-
-
-def word(v: Word) -> WordOrValue:
-    return WordOrValue(v)
-
-
-def value(v: Expression) -> WordOrValue:
-    return WordOrValue(v)
 
 
 def callop(instruction: Instruction):
@@ -24,17 +16,17 @@ def callop(instruction: Instruction):
 
     callee_call_id = instruction.curr.rw_counter
 
-    tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId).value()
+    tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
     reversion_info = instruction.reversion_info()
-    caller_address = instruction.call_context_lookup(CallContextFieldTag.CalleeAddress).value()
+    caller_address = instruction.call_context_lookup(CallContextFieldTag.CalleeAddress)
     is_static = instruction.select(
-        is_staticcall, FQ(1), instruction.call_context_lookup(CallContextFieldTag.IsStatic).value()
+        is_staticcall, FQ(1), instruction.call_context_lookup(CallContextFieldTag.IsStatic)
     )
-    depth = instruction.call_context_lookup(CallContextFieldTag.Depth).value()
+    depth = instruction.call_context_lookup(CallContextFieldTag.Depth)
     parent_caller_address, parent_call_value = (
         (
-            instruction.call_context_lookup(CallContextFieldTag.CallerAddress).value(),
-            instruction.call_context_lookup(CallContextFieldTag.Value),
+            instruction.call_context_lookup(CallContextFieldTag.CallerAddress),
+            instruction.call_context_lookup_word(CallContextFieldTag.Value),
         )
         if is_delegatecall == 1
         else (FQ(0), Word(0))
@@ -91,7 +83,7 @@ def callop(instruction: Instruction):
     elif is_callcode == 1:
         # For CALLCODE opcode, get caller balance to constrain it should be
         # greater than or equal to stack `value`.
-        caller_balance = instruction.account_read(caller_address, AccountFieldTag.Balance)
+        caller_balance = instruction.account_read_word(caller_address, AccountFieldTag.Balance)
 
     # For both CALL and CALLCODE opcodes, verify caller balance is greater than
     # or equal to stack `value`.
@@ -137,7 +129,7 @@ def callop(instruction: Instruction):
             (CallContextFieldTag.LastCalleeReturnDataLength, FQ(0)),
         ]:
             instruction.constrain_equal(
-                instruction.call_context_lookup(field_tag, RW.Write).value(),
+                instruction.call_context_lookup(field_tag, RW.Write),
                 expected_value,
             )
 
@@ -181,38 +173,38 @@ def callop(instruction: Instruction):
             ),
         ]:
             instruction.constrain_equal(
-                instruction.call_context_lookup(field_tag, RW.Write).value(),
+                instruction.call_context_lookup(field_tag, RW.Write),
                 expected_value,
             )
 
         # Setup next call's context. Note that RwCounterEndOfReversion, IsPersistent
         # have been checked above.
-        for field_tag, expected_value_word in [
-            (CallContextFieldTag.CallerId, value(instruction.curr.call_id)),
-            (CallContextFieldTag.TxId, value(tx_id.expr())),
-            (CallContextFieldTag.Depth, value(depth.expr() + 1)),
-            (CallContextFieldTag.CallerAddress, value(caller_address.expr())),
-            (CallContextFieldTag.CalleeAddress, value(callee_address.expr())),
-            (CallContextFieldTag.CallDataOffset, value(call.cd_offset)),
-            (CallContextFieldTag.CallDataLength, value(call.cd_length)),
-            (CallContextFieldTag.ReturnDataOffset, value(call.rd_offset)),
-            (CallContextFieldTag.ReturnDataLength, value(call.rd_length)),
+        for field_tag, expected_word_or_value in [
+            (CallContextFieldTag.CallerId, instruction.curr.call_id),
+            (CallContextFieldTag.TxId, tx_id.expr()),
+            (CallContextFieldTag.Depth, depth.expr() + 1),
+            (CallContextFieldTag.CallerAddress, caller_address.expr()),
+            (CallContextFieldTag.CalleeAddress, callee_address.expr()),
+            (CallContextFieldTag.CallDataOffset, call.cd_offset),
+            (CallContextFieldTag.CallDataLength, call.cd_length),
+            (CallContextFieldTag.ReturnDataOffset, call.rd_offset),
+            (CallContextFieldTag.ReturnDataLength, call.rd_length),
             (
                 CallContextFieldTag.Value,
-                word(instruction.select_word(is_delegatecall, parent_call_value, call.value)),
+                instruction.select_word(is_delegatecall, parent_call_value, call.value),
             ),
-            (CallContextFieldTag.IsSuccess, value(call.is_success)),
-            (CallContextFieldTag.IsStatic, value(is_static.expr())),
-            (CallContextFieldTag.LastCalleeId, value(FQ(0))),
-            (CallContextFieldTag.LastCalleeReturnDataOffset, value(FQ(0))),
-            (CallContextFieldTag.LastCalleeReturnDataLength, value(FQ(0))),
-            (CallContextFieldTag.IsRoot, value(FQ(False))),
-            (CallContextFieldTag.IsCreate, value(FQ(False))),
-            (CallContextFieldTag.CodeHash, word(call.callee_code_hash)),
+            (CallContextFieldTag.IsSuccess, call.is_success),
+            (CallContextFieldTag.IsStatic, is_static.expr()),
+            (CallContextFieldTag.LastCalleeId, FQ(0)),
+            (CallContextFieldTag.LastCalleeReturnDataOffset, FQ(0)),
+            (CallContextFieldTag.LastCalleeReturnDataLength, FQ(0)),
+            (CallContextFieldTag.IsRoot, FQ(False)),
+            (CallContextFieldTag.IsCreate, FQ(False)),
+            (CallContextFieldTag.CodeHash, call.callee_code_hash),
         ]:
             instruction.constrain_equal_word(
-                instruction.call_context_lookup(field_tag, call_id=callee_call_id),
-                expected_value_word,
+                instruction.call_context_lookup_word(field_tag, call_id=callee_call_id),
+                WordOrValue(expected_word_or_value),
             )
 
         # Give gas stipend if value is not zero

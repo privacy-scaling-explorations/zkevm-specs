@@ -74,7 +74,7 @@ def check_witness(
     # Constrain shift == shift.cells[0] when divisor != 0.
     instruction.constrain_equal_word(
         shift.select(1 - divisor_is_zero),
-        Word((shift_le_bytes[0], FQ(0))).select(1 - divisor_is_zero),
+        Word.from_lo(shift_le_bytes[0]).select(1 - divisor_is_zero),
     )
 
     # Constrain remainder < divisor when divisor != 0.

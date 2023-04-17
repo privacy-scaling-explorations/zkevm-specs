@@ -93,14 +93,19 @@ class Word:
             # sanity check
             assert not check or (self.lo.expr().n < 256**16 and self.hi.expr().n < 256**16)
             return
-        elif isinstance(value, int):
+        if isinstance(value, int):
             # sanity check
             assert not check or (value < 256**32)
             value = value.to_bytes(32, "little")
-        elif len(value) != 32:
-            raise ValueError(f"Word expects to receive 32 bytes, but got {len(value)} bytes")
+        # sanity checks
+        assert isinstance(value, bytes)
+        assert len(value) == 32, f"Word expects to receive 32 bytes, but got {len(value)} bytes"
         self.lo = bytes_to_fq(value[0:16])
         self.hi = bytes_to_fq(value[16:32])
+
+    @classmethod
+    def from_lo(cls, lo: Expression):
+        return cls((lo, FQ(0)))
 
     def int_value(self) -> int:
         """Return the word as an integer"""

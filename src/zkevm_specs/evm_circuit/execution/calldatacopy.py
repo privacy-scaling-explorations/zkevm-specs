@@ -15,19 +15,19 @@ def calldatacopy(instruction: Instruction):
     data_offset = instruction.word_to_fq(data_offset_word, N_BYTES_MEMORY_ADDRESS)
 
     if instruction.curr.is_root:
-        src_id = instruction.call_context_lookup(CallContextFieldTag.TxId, RW.Read).value()
+        src_id = instruction.call_context_lookup(CallContextFieldTag.TxId, RW.Read)
         call_data_length = instruction.call_context_lookup(
             CallContextFieldTag.CallDataLength, RW.Read
-        ).value()
+        )
         call_data_offset: Expression = FQ.zero()
     else:
-        src_id = instruction.call_context_lookup(CallContextFieldTag.CallerId, RW.Read).value()
+        src_id = instruction.call_context_lookup(CallContextFieldTag.CallerId, RW.Read)
         call_data_length = instruction.call_context_lookup(
             CallContextFieldTag.CallDataLength, RW.Read
-        ).value()
+        )
         call_data_offset = instruction.call_context_lookup(
             CallContextFieldTag.CallDataOffset, RW.Read
-        ).value()
+        )
 
     next_memory_size, memory_expansion_gas_cost = instruction.memory_expansion_dynamic_length(
         memory_offset, length

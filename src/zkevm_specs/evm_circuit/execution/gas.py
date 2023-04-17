@@ -1,4 +1,4 @@
-from ...util import Word, FQ
+from ...util import Word
 from ..instruction import Instruction, Transition
 from ..opcode import Opcode
 
@@ -8,7 +8,7 @@ def gas(instruction: Instruction):
     instruction.constrain_equal(opcode, Opcode.GAS)
 
     instruction.constrain_equal_word(
-        Word((instruction.curr.gas_left - Opcode.GAS.constant_gas_cost(), FQ(0))),
+        Word.from_lo(instruction.curr.gas_left - Opcode.GAS.constant_gas_cost()),
         instruction.stack_push(),
     )
 

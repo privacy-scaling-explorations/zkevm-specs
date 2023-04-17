@@ -47,7 +47,7 @@ def addmod(instruction: Instruction):
     # check a_reduced + b ≡ d * n + r  in 512 bit space
     a_reduced_plus_b, overflow = instruction.add_words([Word(a_reduced), b])
     instruction.mul_add_words_512(
-        Word(d), n, r, Word((overflow, FQ(0))) if n.int_value() > 0 else Word(0), a_reduced_plus_b
+        Word(d), n, r, Word.from_lo(overflow) if n.int_value() > 0 else Word(0), a_reduced_plus_b
     )
 
     # check that r<n and a_reduced<n iff n!=0

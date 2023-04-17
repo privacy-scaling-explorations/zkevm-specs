@@ -14,10 +14,10 @@ def extcodesize(instruction: Instruction):
 
     address = instruction.word_to_address(instruction.stack_pop())
 
-    tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId).value()
+    tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
     is_warm = instruction.add_account_to_access_list(tx_id, address, instruction.reversion_info())
 
-    code_hash = instruction.account_read(address, AccountFieldTag.CodeHash)
+    code_hash = instruction.account_read_word(address, AccountFieldTag.CodeHash)
     # Check account existence with code_hash != 0
     exists = FQ(1) - instruction.is_zero_word(code_hash)
 
@@ -27,7 +27,7 @@ def extcodesize(instruction: Instruction):
         code_size = FQ(0)
 
     instruction.constrain_equal_word(
-        Word((instruction.select(exists, code_size, FQ(0)), FQ(0))),
+        Word.from_lo(instruction.select(exists, code_size, FQ(0))),
         instruction.stack_push(),
     )
 

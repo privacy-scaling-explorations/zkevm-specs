@@ -27,7 +27,7 @@ def byte(instruction: Instruction):
         selected_byte += is_selected * is_msb_sum_zero * FQ(cell)
 
     instruction.constrain_equal_word(
-        Word((selected_byte, FQ(0))),
+        Word.from_lo(selected_byte),
         c,
     )
 

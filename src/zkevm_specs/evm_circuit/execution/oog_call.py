@@ -18,7 +18,7 @@ def oog_call(instruction: Instruction):
     # Constrain opcode must be CALL, CALLCODE, DELEGATECALL or STATICCALL.
     instruction.constrain_equal(is_call + is_callcode + is_delegatecall + is_staticcall, FQ(1))
 
-    tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId).value()
+    tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
 
     # init CallGadget to handle stack vars.
     call = CallGadget(instruction, FQ(0), is_call, is_callcode, is_delegatecall)

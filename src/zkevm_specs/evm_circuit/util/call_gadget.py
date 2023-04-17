@@ -59,7 +59,7 @@ class CallGadget:
         rd_length = instruction.stack_pop()
         result = instruction.stack_push()
         self.is_success = result.lo.expr()
-        instruction.constrain_equal_word(Word((self.is_success, FQ(0))), result)
+        instruction.constrain_equal_word(Word.from_lo(self.is_success), result)
 
         if self.IS_SUCCESS_CALL == FQ(1):
             # Verify is_success is a bool
@@ -87,7 +87,7 @@ class CallGadget:
         )
 
         # Check callee account existence with code_hash != 0
-        self.callee_code_hash = instruction.account_read(
+        self.callee_code_hash = instruction.account_read_word(
             self.callee_address, AccountFieldTag.CodeHash
         )
         self.is_empty_code_hash = instruction.is_equal_word(

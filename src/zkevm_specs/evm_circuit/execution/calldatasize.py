@@ -1,4 +1,4 @@
-from ...util import Word, FQ
+from ...util import Word
 from ..instruction import Instruction, Transition
 from ..table import CallContextFieldTag
 from ..opcode import Opcode
@@ -11,7 +11,7 @@ def calldatasize(instruction: Instruction):
     # check [rw_table, call_context] table for call data length and compare
     # against stack top after push.
     instruction.constrain_equal_word(
-        Word((instruction.call_context_lookup(CallContextFieldTag.CallDataLength).value(), FQ(0))),
+        Word.from_lo(instruction.call_context_lookup(CallContextFieldTag.CallDataLength)),
         instruction.stack_push(),
     )
 
