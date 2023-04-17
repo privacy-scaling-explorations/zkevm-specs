@@ -161,9 +161,9 @@ def _convert_table(table):
 
 
 # Generate the push table: BYTE -> NUM_PUSHED:
-# [0, OpcodeId::PUSH1[ -> 0
+# [0, OpcodeId::PUSH1] -> 0
 # [OpcodeId::PUSH1, OpcodeId::PUSH32] -> [1..32]
-# ]OpcodeId::PUSH32, 256[ -> 0
+# [OpcodeId::PUSH32, 256] -> 0
 def assign_push_table():
     push_table = []
     for i in range(256):

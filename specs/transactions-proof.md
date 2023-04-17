@@ -7,7 +7,7 @@ to the EVM proof via the transactions table.
 
 ## Transaction encoding
 
-Different types of transaction encoding exists.  On the first iteration of the zkEVM we will only support Legacy transactions with EIP-155.  We plan to add support for Non-Legacy (EIP-2718) transactions later.
+Different types of transaction encoding exist.  On the first iteration of the zkEVM we will only support Legacy transactions with EIP-155.  We plan to add support for Non-Legacy (EIP-2718) transactions later.
 
 ### Legacy type:
 
@@ -143,12 +143,12 @@ difference in usage compared to the Tx Circuit:
 
 1. The lookup table needs to be defined in the MPT for these Tx Circuit
    particular lookups (which are separate from the State Trie and Account
-   Storage Lookups).  Here we're building a trie from scratch and getting it's
+   Storage Lookups).  Here we're building a trie from scratch and getting its
    root.
 2. While the State Trie and Account Storage Trie inserts use leafs that are
    bounded in size, for the Transactions Trie, the leafs are the RLP of the
-   Transaction, which contain a variable size calldata.  This means that the
-   MPT circuit needs to accomodate variable length leaf values.
+   Transaction, which contains a variable size calldata.  This means that the
+   MPT circuit needs to accommodate variable length leaf values.
 
 Once the first iteration of the MPT (the one that fulfills the needs of the
 State Circuit lookups) is finished, we'll work on this.

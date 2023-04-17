@@ -34,7 +34,7 @@ First, the circuit adds common constraints that applied to every rows in the cir
     - `Address` increase by 1 in the next copy step.
 - The transition constraints for `RwCounter` and `RwcIncreaseLeft` column
     - define `rw_diff` to be 1 if the `Type` is `Memory` or `TxLog` and `Padding` is 0 in the current row; otherwise 0.
-    - when it's not the last row in a copy event (`is_last == 0`), `RwCounter` increases by `rw_diff` and `RwcIncreaseLeft` decrases by `rw_diff`.
+    - when it's not the last row in a copy event (`is_last == 0`), `RwCounter` increases by `rw_diff` and `RwcIncreaseLeft` decreases by `rw_diff`.
     - over all rows, the `rlc_acc` remains the same.
     - when it's the last row in a copy event (`is_last == 1`), `RwcIncreaseLeft` is equal to `rw_diff`.
     - when it's the last row of a copy event (`is_last == 1`) and `is_rlc_acc == 1`, the row `value` should equal the row `rlc_acc`.
