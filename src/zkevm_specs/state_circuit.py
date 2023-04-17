@@ -1,6 +1,7 @@
 from typing import NamedTuple, Tuple, List, Set, Dict, Optional
 from enum import IntEnum
 from math import log, ceil
+
 from zkevm_specs.evm_circuit.table import MPTProofType
 from .util import FQ, RLC, U8, U160, U256, Expression, linear_combine_bytes, is_circuit_code
 from .evm_circuit import (
