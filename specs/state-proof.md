@@ -71,8 +71,10 @@ to not be in the table.
 
 ### Call Context
 - 5.0. `address` and `storage_key` are 0
-- 5.1. `state root` is the same
-- 5.2. First access for a set of all keys are 0 if `READ`
+- 5.1. `field_tag` is in CallContextFieldTag range
+- 5.2. `value` is 0 if first access and READ
+- 5.3. `initial value` is 0
+- 5.4. `state root` is the same
 
 ### Account
 - 6.0. `id` and `storage_key` are 0

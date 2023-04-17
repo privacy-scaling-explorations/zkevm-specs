@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from typing import Sequence, Tuple, Set, List
-from .util import EMPTY_HASH, FQ, Word
+from .util import EMPTY_HASH, FQ, Word, is_circuit_code
 from .evm_circuit import (
     get_push_size,
     BytecodeFieldTag,
@@ -8,7 +8,6 @@ from .evm_circuit import (
     KeccakTableRow,
     KeccakCircuit,
 )
-from .encoding import is_circuit_code
 
 
 # Row in the circuit

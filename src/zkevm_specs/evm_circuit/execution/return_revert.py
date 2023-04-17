@@ -42,9 +42,9 @@ def return_revert(instruction: Instruction):
         copy_length = return_length
         copy_rwc_inc, _ = instruction.copy_lookup(
             instruction.curr.call_id,  # src_id
-            CopyDataTypeTag.Memory,  # src_type
+            CopyDataTypeTag.Memory,  # src_tag
             code_hash,  # dst_id
-            CopyDataTypeTag.Bytecode,  # dst_type
+            CopyDataTypeTag.Bytecode,  # dst_tag
             return_offset,  # src_addr
             return_end,  # src_addr_boundary
             FQ(0),  # dst_addr
@@ -69,9 +69,9 @@ def return_revert(instruction: Instruction):
         copy_length = instruction.min(return_length, caller_return_length, N_BYTES_MEMORY_ADDRESS)
         copy_rwc_inc, _ = instruction.copy_lookup(
             instruction.curr.call_id,  # src_id
-            CopyDataTypeTag.Memory,  # src_type
+            CopyDataTypeTag.Memory,  # src_tag
             instruction.next.call_id,  # dst_id
-            CopyDataTypeTag.Memory,  # dst_type
+            CopyDataTypeTag.Memory,  # dst_tag
             return_offset,  # src_addr
             return_end,  # src_addr_boundary
             caller_return_offset,  # dst_addr

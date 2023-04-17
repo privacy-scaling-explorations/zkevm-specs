@@ -925,9 +925,9 @@ class CopyCircuit:
         r: FQ,
         rw_dict: RWDictionary,
         src_id: IntOrFQ,
-        src_type: CopyDataTypeTag,
+        src_tag: CopyDataTypeTag,
         dst_id: IntOrFQ,
-        dst_type: CopyDataTypeTag,
+        dst_tag: CopyDataTypeTag,
         src_addr: IntOrFQ,
         src_addr_end: IntOrFQ,
         dst_addr: IntOrFQ,
@@ -942,7 +942,7 @@ class CopyCircuit:
                 is_pad = False
                 assert src_addr + i in src_data, f"Cannot find data at the offset {src_addr+i}"
                 value = src_data[src_addr + i]
-                if src_type == CopyDataTypeTag.Bytecode:
+                if src_tag == CopyDataTypeTag.Bytecode:
                     value = cast(Tuple[IntOrFQ, IntOrFQ], value)
                     value, is_code = value
                 else:
@@ -963,7 +963,7 @@ class CopyCircuit:
                 i == 0,
                 False,
                 src_id,
-                src_type,
+                src_tag,
                 src_addr + i,
                 value,
                 FQ.zero(),  # rlc_acc will be updated later
@@ -974,7 +974,7 @@ class CopyCircuit:
             )
 
             # write row
-            if dst_type == CopyDataTypeTag.RlcAcc:
+            if dst_tag == CopyDataTypeTag.RlcAcc:
                 rlc_acc = rlc_acc * r + value
             self._append_row(
                 new_rows,
@@ -983,9 +983,9 @@ class CopyCircuit:
                 False,
                 i == copy_length - 1,
                 dst_id,
-                dst_type,
+                dst_tag,
                 dst_addr + i,
-                rlc_acc if dst_type == CopyDataTypeTag.RlcAcc else value,
+                rlc_acc if dst_tag == CopyDataTypeTag.RlcAcc else value,
                 FQ.zero(),
                 is_code,
                 False,
@@ -996,7 +996,7 @@ class CopyCircuit:
         rw_counter = rw_dict.rw_counter
         new_rows = [
             dataclasses.replace(row, rwc_inc_left=rw_counter - row.rw_counter, rlc_acc=rlc_acc)
-            if dst_type == CopyDataTypeTag.RlcAcc
+            if dst_tag == CopyDataTypeTag.RlcAcc
             else dataclasses.replace(row, rwc_inc_left=rw_counter - row.rw_counter)
             for row in new_rows
         ]

@@ -3,9 +3,17 @@ from enum import IntEnum
 from math import log, ceil
 
 from zkevm_specs.evm_circuit.table import MPTProofType
-
-from .util import FQ, Word, WordOrValue, U160, U256, Expression, linear_combine_bytes
-from .encoding import U8, is_circuit_code
+from .util import (
+    FQ,
+    Word,
+    U8,
+    WordOrValue,
+    U160,
+    U256,
+    Expression,
+    linear_combine_bytes,
+    is_circuit_code,
+)
 from .evm_circuit import (
     RW,
     AccountFieldTag,
@@ -289,7 +297,7 @@ def check_stack(row: Row, row_prev: Row):
     # 3.4. Stack initial value is 0
     assert row.initial_value == Word(0)
 
-    # 3.5 state root does not change
+    # 3.5. state root does not change
     assert row.root == row_prev.root
 
 
@@ -321,17 +329,20 @@ def check_call_context(row: Row, row_prev: Row):
     # 5.0. Unused keys are 0
     assert row.address() == 0
     assert row.storage_key() == Word(0)
-    if row.field_tag() not in [CallContextFieldTag.Value, CallContextFieldTag.CodeHash]:
-        assert row.value.hi == 0
-        assert row.initial_value.hi == 0
 
-    # 5.1 state root does not change
-    assert row.root == row_prev.root
+    # 5.1. field_tag is in CallContexFieldTag range
+    assert_in_range(row.field_tag(), 0, MAX_FIELD_TAG)
 
-    # 5.2 First access for a set of all keys
+    # 5.2. First access for a set of all keys
     # - If READ, value must be 0
     if not all_keys_eq(row, row_prev) and row.is_write == 0:
         assert row.value.value() == 0
+
+    # 5.3. CallContext initial value is 0
+    assert row.initial_value == Word(0)
+
+    # 5.4. state root does not change
+    assert row.root == row_prev.root
 
 
 @is_circuit_code
@@ -379,13 +390,13 @@ def check_tx_refund(row: Row, row_prev: Row):
     assert row.field_tag() == 0
     assert row.storage_key() == Word(0)
 
-    # 7.1 state root does not change
+    # 7.1. state root does not change
     assert row.root == row_prev.root
 
     # 7.2 initial value is 0
     assert row.initial_value == Word(0)
 
-    # 7.3 First access for a set of all keys
+    # 7.3. First access for a set of all keys
     # - If READ, value must be 0
     if not all_keys_eq(row, row_prev) and row.is_write == 0:
         assert row.value == Word(0)

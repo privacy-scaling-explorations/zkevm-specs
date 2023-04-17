@@ -1162,9 +1162,9 @@ class Instruction:
     def copy_lookup(
         self,
         src_id: Union[Expression, Word],
-        src_type: CopyDataTypeTag,
+        src_tag: CopyDataTypeTag,
         dst_id: Union[Expression, Word],
-        dst_type: CopyDataTypeTag,
+        dst_tag: CopyDataTypeTag,
         src_addr: Expression,
         src_addr_end: Expression,
         dst_addr: Expression,
@@ -1174,9 +1174,9 @@ class Instruction:
     ) -> Tuple[FQ, FQ]:
         copy_table_row = self.tables.copy_lookup(
             src_id,
-            FQ(src_type),
+            FQ(src_tag),
             dst_id,
-            FQ(dst_type),
+            FQ(dst_tag),
             src_addr,
             src_addr_end,
             dst_addr,

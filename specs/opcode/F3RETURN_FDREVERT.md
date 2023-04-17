@@ -41,12 +41,12 @@ the following parameters:
 ```
 {
   src_id: callee.call_id,
-  src_type: Memory,
+  src_tag: Memory,
   src_addr: return_offset,
   src_addr_end: return_offset + return_length,
   length: return_length,
   dst_id: code_hash,
-  dst_type: Bytecode,
+  dst_tag: Bytecode,
   dst_addr: 0,
   rw_counter: callee.rw_counter,
   rwc_inc: return_length,
@@ -67,12 +67,12 @@ if the opcode is RETURN or REVERT, respectively.
 ```
 {
   src_id: callee.call_id,
-  src_type: Memory,
+  src_tag: Memory,
   src_addr: return_offset`,
   src_addr_end: return_offset + return_length,
   length: min(return_length, call_context[ReturnDataLength, callee_id]),
   dst_id: caller.call_id,
-  dst_type: Memory,
+  dst_tag: Memory,
   dst_addr: call_context[ReturnDataOffset, callee_id],
   rw_counter: callee.rw_counter,
   rwc_inc: 2 * min(return_length, call_context[ReturnDataLength, callee_id]),
