@@ -287,7 +287,8 @@ def check_call_context(row: Row, row_prev: Row):
     assert row.storage_key() == 0
 
     # 5.2. field_tag is in CallContexFieldTag range
-    assert True
+    field_tag_ptr = get_field_tag(row)
+    assert_in_range(field_tag_ptr, 0, MAX_FIELD_TAG)
 
     # 5.3. First access for a set of all keys
     # - If READ, value must be 0
