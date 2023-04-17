@@ -1,4 +1,3 @@
-from .encoding import is_circuit_code
 from typing import NamedTuple, Tuple, List, Set, Union
 from .util import (
     FQ,
@@ -9,6 +8,7 @@ from .util import (
     linear_combine_bytes,
     GAS_COST_TX_CALL_DATA_PER_NON_ZERO_BYTE,
     GAS_COST_TX_CALL_DATA_PER_ZERO_BYTE,
+    is_circuit_code,
 )
 from eth_keys import KeyAPI  # type: ignore
 import rlp  # type: ignore

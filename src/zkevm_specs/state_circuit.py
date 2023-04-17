@@ -3,9 +3,7 @@ from enum import IntEnum
 from math import log, ceil
 
 from zkevm_specs.evm_circuit.table import MPTProofType
-
-from .util import FQ, RLC, U160, U256, Expression, linear_combine_bytes
-from .encoding import U8, is_circuit_code
+from .util import FQ, RLC, U8, U160, U256, Expression, linear_combine_bytes, is_circuit_code
 from .evm_circuit import (
     RW,
     AccountFieldTag,
