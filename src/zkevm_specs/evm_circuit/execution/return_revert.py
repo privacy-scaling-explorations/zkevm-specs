@@ -2,7 +2,7 @@ from zkevm_specs.util.param import GAS_COST_CODE_DEPOSIT, MAX_CODE_SIZE
 from ...util import EMPTY_HASH, FQ, N_BYTES_MEMORY_ADDRESS, RLC
 from ..instruction import Instruction, Transition
 from ..opcode import Opcode
-from ..table import RW, CallContextFieldTag, CopyDataTypeTag, AccountFieldTag
+from ..table import CallContextFieldTag, CopyDataTypeTag, AccountFieldTag
 from ..execution_state import ExecutionState
 
 
