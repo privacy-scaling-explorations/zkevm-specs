@@ -1,4 +1,4 @@
-from zkevm_specs.evm.table import AccountFieldTag
+from zkevm_specs.evm_circuit.table import AccountFieldTag
 from zkevm_specs.util.arithmetic import RLC
 from zkevm_specs.util.hash import EMPTY_CODE_HASH
 from zkevm_specs.util.param import (

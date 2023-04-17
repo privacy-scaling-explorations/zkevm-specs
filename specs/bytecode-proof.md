@@ -4,23 +4,25 @@ The bytecode proof helps the EVM proof by making the bytecode (identified by its
 
 ## Circuit Layout
 
-The column `tag` (advice) makes the circuit behave as a state machine, selecting different constraints depending on the current and next row value. The `tag` column can have two different values: Header, Byte. A row of `tag==Header` precedes a series of `tag==Byte` rows that contain a complete bytecode sequence. The row `tag==Header` contains the length of the bytecode and the hash of the bytecode, each `tag==Byte` contains one byte of the bytecode, bytecode hash, its length and other for the push data.
+The column `tag` (advice) makes the circuit behave as a state machine, selecting different constraints depending on the current and next row value. The `tag` column can have two different values: `Header`, `Byte`. 
+- If `tag` is `Header`, the row contains length and hash of the bytecode and it's followed by a series of `tag == Byte` rows.
+- If `tag` is `Byte`, the rows contain a complete bytecode sequence. Each row contains one byte of the bytecode, bytecode hash, length and others for the push data.
 
 
 | Column                | Description                                                         |
 | --------------------- | --------------------------------------------------------------------|
-| `q_first` (fixed)     | `1` on the first row, else `0`                                      |
-| `q_last` (fixed)      | `1` on the last row, else `0`                                       |
+| `q_first` (fixed)     | `1` if it's the first row, otherwise `0`                            |
+| `q_last` (fixed)      | `1` if it's the last row, otherwise `0`                             |
 | `hash`                | The keccak hash of the bytecode                                     |
-| `index`               | The position of the byte in the bytecode starting from 0            |
-| `value`               | Value for this row bytecode byte, and the length in Header rows.    |
+| `index`               | The position of the byte in the bytecode, starting from 0           |
+| `value`               | A bytecode byte if it's a `Byte` row. Length if it's a `Header` row.|
 | `is_code`             | `1` if the byte is code, `0` if the byte is PUSH data               |
-| `push_data_left`      | The number of PUSH data bytes that still follow the current row     |
+| `push_data_left`      | The number of left bytes data needs to be PUSHed                    |
 | `value_rlc`           | The accumulator containing the current and previous bytes RLC       |
 | `length`              | The bytecode length, that could be 0 for empty bytecodes and padding|
-| `push_data_size`      | The number of bytes pushed for the current byte                     |
+| `push_data_size`      | The number of bytes needs to be pushed if `is_code` is true         |
 | `push_table.byte`     | Push Table: A byte value                                            |
-| `push_table.push_size`| Push Table: The number of bytes pushed for this byte as opcode      |
+| `push_table.push_size`| Push Table: The number of bytes will be pushed in current opcode    |
 
 
 After all the bytecodes have been added, the rest of the rows are filled with padding in the form of `tag == Header && length == 0 && value == 0 && hash == EMPTY_HASH` rows.
@@ -29,9 +31,9 @@ Additionally we will need one columns for IsZeroChip for `push_data_left`
 
 ## Push table
 
-The push lookup table is used to find how many bytes an opcode pushes, which we need to know to detect which byte is code and which byte is not.
+The push lookup table is used to find how many bytes an opcode pushes, so we need to know which byte is code and which byte is not.
 
-Because we do this lookup for each byte, this table is also indirectly used to range check the byte inputs.
+Because we do this lookup for each byte, this table is also doing range check for every single input byte indirectly.
 
 | Byte                                    | Num bytes pushed  |
 | --------------------------------------- | ----------------- |
@@ -41,12 +43,9 @@ Because we do this lookup for each byte, this table is also indirectly used to r
 
 ## Witness generation
 
-The circuit starts by adding a row that contains the bytecode length using `tag = Header`.
+The circuit starts by adding a row that contains the bytecode length using `tag =＝ Header`.
 
-Then it runs over all the bytes of the bytecode in order starting at the byte at position `0`.
-Each following row unrolls a single byte (using `tag = Byte` and `value = the actual byte value`) of the bytecode while also storing its position
-(`index`), the code hash it's part of (`hash`), and if it is code or not
-(`is_code`). Also `push_data_size` is filled to match the push table, and `push_data_left` is computed.
+Then it runs over all the bytes of the bytecode in order, and starts the first byte at position `0`. Each following row unrolls a single byte (using `tag ＝= Byte` and `value ＝= the actual byte value`) of the bytecode while also storing its position (`index`), its code hash (`hash`), and a `is_code` flag if it is code. Also `push_data_size` is filled to match the push table, and `push_data_left` is computed.
 
 All byte data is accumulated per byte (with one byte per row) into `value_rlc` as follows, where r is a challenge:
 
@@ -68,7 +67,7 @@ next.push_data_left := cur.byte_push_size if cur.is_code else cur.push_data_left
 
 The fixed columns `q_first` and `q_last` should be zero for all rows, except the first one where `q_first := 1` and the last one where `q_last := 1`.
 
-## Circuit constrains
+## Circuit constraints
 
 All circuit constraints are based on the current row (`cur`) and the `next` row.
 
@@ -100,7 +99,7 @@ This way we make sure is_code and next.push_data_left have the right values.
 
 ### cur.tag == Header and next.tag == Header
 
-We are in a transition from a empty bytecode to the begining of another bytecode that could be empty or not.
+We are in a transition from a empty bytecode to the beginning of another bytecode that could be empty or not.
 
 Hence:
 ```
@@ -110,7 +109,7 @@ assert cur.hash == EMPTY_HASH
 
 ### cur.tag == Header and next.tag == Byte
 
-We are at the begining of a non-empty bytecode.
+We are at the beginning of a non-empty bytecode.
 
 Hence:
 

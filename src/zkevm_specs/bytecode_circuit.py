@@ -1,7 +1,8 @@
 from typing import Sequence, Tuple, Set, NamedTuple
 from collections import namedtuple
 from .util import keccak256, EMPTY_HASH, FQ, RLC, is_circuit_code
-from .evm import get_push_size, BytecodeFieldTag, BytecodeTableRow
+from .evm_circuit import get_push_size, BytecodeFieldTag, BytecodeTableRow
+
 
 # Row in the circuit
 Row = namedtuple(
@@ -160,9 +161,9 @@ def _convert_table(table):
 
 
 # Generate the push table: BYTE -> NUM_PUSHED:
-# [0, OpcodeId::PUSH1[ -> 0
+# [0, OpcodeId::PUSH1] -> 0
 # [OpcodeId::PUSH1, OpcodeId::PUSH32] -> [1..32]
-# ]OpcodeId::PUSH32, 256[ -> 0
+# [OpcodeId::PUSH32, 256] -> 0
 def assign_push_table():
     push_table = []
     for i in range(256):

@@ -55,6 +55,7 @@ def check_witness(
     push: RLC,
 ):
     is_shr = 1 - is_shl
+    shf_lt256 = instruction.is_zero(instruction.sum(shift.le_bytes[1:]))
     divisor_is_zero = instruction.word_is_zero(divisor)
 
     # Constrain stack pops and pushes as:
@@ -74,6 +75,9 @@ def check_witness(
     instruction.constrain_zero(
         (1 - divisor_is_zero) * (shift.expr() - shift.le_bytes[0]),
     )
+
+    # Constrain shift < 256 when divisor != 0 or shift >= 256 when divisor == 0.
+    instruction.constrain_zero(1 - divisor_is_zero - shf_lt256)
 
     # Constrain remainder < divisor when divisor != 0.
     remainder_lt_divisor, _ = instruction.compare_word(remainder, divisor)
@@ -99,7 +103,8 @@ def gen_witness(opcode: FQ, pop1: RLC, pop2: RLC, push: RLC):
     is_shl = Opcode.SHR - opcode
     shift = pop1
     shf0 = shift.le_bytes[0]
-    divisor = RLC(1 << shf0) if shf0 == shift.int_value else RLC(0)
+    shf_lt256 = sum(shift.le_bytes) - shf0
+    divisor = RLC(1 << shf0) if shf_lt256 == 0 else RLC(0)
     if is_shl.n == 1:
         dividend = push
         quotient = pop2

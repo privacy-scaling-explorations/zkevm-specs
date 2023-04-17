@@ -1,4 +1,4 @@
-from zkevm_specs.evm import (
+from zkevm_specs.evm_circuit import (
     Bytecode,
     ExecutionState,
     RWDictionary,
@@ -6,7 +6,8 @@ from zkevm_specs.evm import (
     Tables,
     verify_steps,
 )
-from zkevm_specs.util import rand_fq, RLC
+from zkevm_specs.util import RLC
+from common import rand_fq
 
 
 def test_codesize():

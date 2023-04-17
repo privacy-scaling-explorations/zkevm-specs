@@ -1,6 +1,6 @@
 import pytest
 
-from zkevm_specs.evm import (
+from zkevm_specs.evm_circuit import (
     Block,
     Bytecode,
     ExecutionState,
@@ -10,7 +10,8 @@ from zkevm_specs.evm import (
     verify_steps,
     RWDictionary,
 )
-from zkevm_specs.util import rand_fq, rand_range, RLC
+from zkevm_specs.util import RLC
+from common import rand_fq, rand_range
 
 # Start with different values for `gas` before calling the `GAS` opcode.
 TESTING_DATA = tuple([i for i in range(2, 10)] + [rand_range(2**64) for i in range(0, 10)])

@@ -1,8 +1,8 @@
 import pytest
 
 from itertools import chain
-from common import CallContext
-from zkevm_specs.evm import (
+from common import CallContext, rand_fq
+from zkevm_specs.evm_circuit import (
     ExecutionState,
     StepState,
     verify_steps,
@@ -14,7 +14,7 @@ from zkevm_specs.evm import (
     RWDictionary,
     Opcode,
 )
-from zkevm_specs.util import rand_fq, RLC
+from zkevm_specs.util import RLC
 
 
 BYTECODE = Bytecode().push1(0x40)

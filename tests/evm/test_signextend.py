@@ -1,6 +1,7 @@
 import pytest
 import random
-from zkevm_specs.evm import (
+from common import rand_fq, rand_word
+from zkevm_specs.evm_circuit import (
     Bytecode,
     ExecutionState,
     StepState,
@@ -8,7 +9,7 @@ from zkevm_specs.evm import (
     verify_steps,
     RWDictionary,
 )
-from zkevm_specs.util import rand_fq, rand_word, RLC, U256
+from zkevm_specs.util import RLC, U256
 
 
 def generate_tests_data():
