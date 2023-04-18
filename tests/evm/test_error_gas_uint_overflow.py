@@ -36,7 +36,7 @@ CallContext = namedtuple(
 Stack = namedtuple(
     "Stack",
     ["gas", "value", "cd_offset", "cd_length", "rd_offset", "rd_length"],
-    defaults=[100, 0, 64, 320, 0, 32],
+    defaults=[100, 0, 64, 2**32 - 1, 0, 2**32 - 1],
 )
 
 
@@ -70,7 +70,6 @@ def test_error_gas_uint_overflow_root(
         bytecode_table=set(bytecode.table_assignments(randomness)),
         rw_table=set(
             RWDictionary(24)
-            .call_context_read(1, CallContextFieldTag.MemorySize, ctx.memory_word_size)
             .call_context_read(1, CallContextFieldTag.TxId, tx.id)
             .stack_read(1, 1017, RLC(stack.gas, randomness))
             .stack_read(1, 1018, RLC(account.address, randomness))
@@ -140,7 +139,6 @@ def test_error_gas_uint_overflow_not_root(
         ),
         rw_table=set(
             RWDictionary(24)
-            .call_context_read(callee_id, CallContextFieldTag.MemorySize, ctx.memory_word_size)
             .call_context_read(callee_id, CallContextFieldTag.TxId, tx.id)
             .stack_read(callee_id, 1017, RLC(stack.gas, randomness))
             .stack_read(callee_id, 1018, RLC(account.address, randomness))

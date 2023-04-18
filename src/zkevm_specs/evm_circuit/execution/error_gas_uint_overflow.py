@@ -7,7 +7,6 @@ from ...util import (
     TxGas,
     TxGasContractCreation,
     TxDataZeroGas,
-    # InitCodeWordGas,
 )
 from ..instruction import Instruction, Transition
 from ..table import CallContextFieldTag
@@ -38,13 +37,9 @@ def error_gas_uint_overflow(instruction: Instruction):
     is_create = is_create_flag + is_create2_flag
 
     # init overflow flag
-    is_memory_size_overflow = (
-        is_call_gas_cost_overflow
-    ) = is_eip2028_overflow = is_non_zero_gas_overflow = is_eip3860_overflow = FQ(0)
-
-    # memory size overflow flag.
-    memory_size = instruction.call_context_lookup(CallContextFieldTag.MemorySize)
-    is_memory_size_overflow = instruction.is_memory_overflow(memory_size)
+    is_call_gas_cost_overflow = (
+        is_eip2028_overflow
+    ) = is_non_zero_gas_overflow = is_eip3860_overflow = FQ(0)
 
     # call gas_cost overflow flag.
     # seems never overflow because of checking range inside of CallGadget
@@ -92,8 +87,7 @@ def error_gas_uint_overflow(instruction: Instruction):
 
     # verify gas uint overflow.
     is_overflow = (
-        is_memory_size_overflow
-        + is_call_gas_cost_overflow
+        is_call_gas_cost_overflow
         + is_eip2028_overflow
         + is_non_zero_gas_overflow
         + is_eip3860_overflow
