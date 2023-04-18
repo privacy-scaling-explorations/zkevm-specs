@@ -518,14 +518,12 @@ class ExpTableRow(TableRow):
 class Bn256TableRow(TableRow):
     id: FQ
     tag: FQ
-    input_length: FQ
-    output_length: FQ
-    input0: RLC
-    input1: FQ
-    input2: FQ
-    input3: FQ
-    output0: RLC
-    output1: FQ
+    input0: Expression
+    input1: Expression
+    input2: Expression
+    input3: Expression
+    output0: Expression
+    output1: Expression
 
 
 class Tables:

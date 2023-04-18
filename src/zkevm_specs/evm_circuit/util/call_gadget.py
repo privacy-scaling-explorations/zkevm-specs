@@ -1,17 +1,14 @@
 from zkevm_specs.evm_circuit.table import AccountFieldTag
-from zkevm_specs.util.arithmetic import RLC
-from zkevm_specs.util.hash import EMPTY_CODE_HASH
-from zkevm_specs.util.param import (
-    GAS_COST_ACCOUNT_COLD_ACCESS,
-    GAS_COST_CALL_WITH_VALUE,
-    GAS_COST_NEW_ACCOUNT,
-    GAS_COST_WARM_ACCESS,
-)
 from ...util import (
     FQ,
     N_BYTES_ACCOUNT_ADDRESS,
     N_BYTES_GAS,
     RLC,
+    GAS_COST_ACCOUNT_COLD_ACCESS,
+    GAS_COST_CALL_WITH_VALUE,
+    GAS_COST_NEW_ACCOUNT,
+    GAS_COST_WARM_ACCESS,
+    EMPTY_CODE_HASH,
 )
 from ..instruction import Instruction
 

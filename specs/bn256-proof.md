@@ -16,30 +16,36 @@ bn256 field is represented as 32 bytes and bn256 points are 64 bytes.
 
 - For every operation, validate that:
     - `tag` MUST be in from 0 to 3.
-    - `input_length` MUST match byte size corresponding `tag`.
-        - `ecRecover`: 128 bytes
-        - `ecAdd`: 128 bytes
-        - `ecMul`: 96 bytes
-        - `ecPairing`: more than 128 bytes
-    - `output_length` MUST match byte size corresponding `tag`.
+    - `input0` MUST match the type corresponding `tag`.
         - `ecRecover`: 32 bytes
-        - `ecAdd`: 64 bytes
-        - `ecMul`: 64 bytes
-        - `ecPairing`: 32 bytes
-    - `input` MUST match the type corresponding `tag`.
-        - `ecRecover`
-            - `hash`: 32 bytes
-            - `v`: bn256 field
-            - `r`: bn256 field
-            - `s`: bn256 field
         - `ecAdd`: bn256 field
         - `ecMul`: bn256 field
         - `ecPairing`: bn256 field
-    - `output` MUST match the type corresponding `tag`.
+    - `input1` MUST match the type corresponding `tag`.
+        - `ecRecover`: bn256 field
+        - `ecAdd`: bn256 field
+        - `ecMul`: bn256 field
+        - `ecPairing`: bn256 field
+    - `input2` MUST match the type corresponding `tag`.
+        - `ecRecover`: bn256 field
+        - `ecAdd`: bn256 field
+        - `ecMul`: 0
+        - `ecPairing`: bn256 field
+    - `input3` MUST match the type corresponding `tag`.
+        - `ecRecover`: bn256 field
+        - `ecAdd`: bn256 field
+        - `ecMul`: bn256 field
+        - `ecPairing`: bn256 field
+    - `output0` MUST match the type corresponding `tag`.
         - `ecRecover`: 32 bytes
         - `ecAdd`: bn256 field
         - `ecMul`: bn256 field
         - `ecPairing`: boolean
+    - `output1` MUST match the type corresponding `tag`.
+        - `ecRecover`: 0
+        - `ecAdd`: bn256 field
+        - `ecMul`: bn256 field
+        - `ecPairing`: 0
 
 For each operation, bn256 gadget validates the relation between input and output.
 
