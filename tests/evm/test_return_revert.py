@@ -171,10 +171,10 @@ def test_is_create(
             (
                 i,
                 (
-                    init_bytecode.code[i - return_offset + 1],
-                    init_bytecode.is_code[i - return_offset + 1],
+                    init_bytecode.code[i - return_offset],
+                    init_bytecode.is_code[i - return_offset],
                 )
-                if i - return_offset + 1 < len(init_bytecode.code)
+                if i - return_offset < len(init_bytecode.code)
                 else (0, 0),
             )
             for i in range(return_offset, return_offset + return_length)
@@ -189,7 +189,7 @@ def test_is_create(
         CopyDataTypeTag.Bytecode,
         return_offset,
         return_offset + return_length,
-        1,
+        0,
         return_length,
         src_data,
     )

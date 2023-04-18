@@ -54,7 +54,7 @@ def return_revert(instruction: Instruction):
                 CopyDataTypeTag.Bytecode,  # dst_type
                 return_offset,  # src_addr
                 return_end,  # src_addr_boundary
-                FQ(1),  # dst_addr
+                FQ(0),  # dst_addr
                 copy_length,  # length
                 instruction.curr.rw_counter + instruction.rw_counter_offset,
             )
