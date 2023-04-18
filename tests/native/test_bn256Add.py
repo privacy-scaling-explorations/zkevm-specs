@@ -1,5 +1,5 @@
 import pytest
-from common import generate_sassy_tests
+from common import generate_sassy_tests, rand_fq
 from zkevm_specs.evm_circuit import (
     Bytecode,
     CallContextFieldTag,
@@ -13,7 +13,6 @@ from zkevm_specs.evm_circuit import (
     verify_steps,
 )
 from zkevm_specs.util import (
-    rand_fq,
     RLC,
     FQ,
 )

@@ -365,7 +365,7 @@ The bn256 table is a virtual table within the bn256 circuit assignments. There a
 - **input_length**: a input byte length of bn256 operation.
 - **output_length**: a output byte length of bn256 operation.
 - **input**: input for each bn256 operation.
-- **input**: output for each bn256 operation.
+- **output**: output for each bn256 operation.
 
 
 | id | tag | input_length | output_length | input                                                          | output                                                                             |
