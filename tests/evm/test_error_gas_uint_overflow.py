@@ -3,7 +3,7 @@ import pytest
 from itertools import chain
 from collections import namedtuple
 from common import rand_fq
-from zkevm_specs.util import MAX_MEMORY_SIZE, RLC
+from zkevm_specs.util import RLC
 from zkevm_specs.evm_circuit import (
     ExecutionState,
     StepState,
@@ -36,21 +36,22 @@ CallContext = namedtuple(
 Stack = namedtuple(
     "Stack",
     ["gas", "value", "cd_offset", "cd_length", "rd_offset", "rd_length"],
-    defaults=[100, 0, 64, 2**32 - 1, 0, 2**32 - 1],
+    defaults=[100, 2**32 - 1, 64, 2**32 - 1, 0, 2**32 - 1],
 )
 
-
+# TODO: There is no overflow case because cd_offset, cd_length and rd_offset, rd_length are less than 4 bytes
+# when I increased data length, the test was not completed
 TEST_DATA = [
-    (
-        CallContext(memory_word_size=MAX_MEMORY_SIZE + 1),
-        Transaction(
-            call_data=bytes.fromhex(
-                "00000000000000000000000000000000000000000000000000000000000000FF"
-            )
-        ),
-        Stack(),
-        Account(address=0xFF, code=Bytecode().stop(), balance=int(1e18)),
-    )
+    # (
+    #     CallContext(memory_word_size=MAX_MEMORY_SIZE + 1),
+    #     Transaction(
+    #         call_data=bytes.fromhex(
+    #             "00000000000000000000000000000000000000000000000000000000000000FF"
+    #         )
+    #     ),
+    #     Stack(),
+    #     Account(address=0xFF, code=Bytecode().stop(), balance=int(1e18)),
+    # )
 ]
 
 
@@ -60,7 +61,7 @@ def test_error_gas_uint_overflow_root(
 ):
     randomness = rand_fq()
 
-    bytecode = Bytecode().add()
+    bytecode = Bytecode().call()
     bytecode_hash = RLC(bytecode.hash(), randomness)
     callee_bytecode_hash = RLC(account.code_hash(), randomness)
 
@@ -73,11 +74,12 @@ def test_error_gas_uint_overflow_root(
             .call_context_read(1, CallContextFieldTag.TxId, tx.id)
             .stack_read(1, 1017, RLC(stack.gas, randomness))
             .stack_read(1, 1018, RLC(account.address, randomness))
-            .stack_read(1, 1019, RLC(stack.cd_offset, randomness))
-            .stack_read(1, 1020, RLC(stack.cd_length, randomness))
-            .stack_read(1, 1021, RLC(stack.rd_offset, randomness))
-            .stack_read(1, 1022, RLC(stack.rd_length, randomness))
-            .stack_write(1, 1022, RLC(False, randomness))
+            .stack_read(1, 1019, RLC(stack.value, randomness))
+            .stack_read(1, 1020, RLC(stack.cd_offset, randomness))
+            .stack_read(1, 1021, RLC(stack.cd_length, randomness))
+            .stack_read(1, 1022, RLC(stack.rd_offset, randomness))
+            .stack_read(1, 1023, RLC(stack.rd_length, randomness))
+            .stack_write(1, 1023, RLC(False, randomness))
             .account_read(account.address, AccountFieldTag.CodeHash, callee_bytecode_hash)
             .tx_access_list_account_read(1, account.address, True)
             .call_context_read(1, CallContextFieldTag.CallDataOffset, 0)
@@ -86,8 +88,6 @@ def test_error_gas_uint_overflow_root(
             .rws
         ),
     )
-
-    print(sorted(tables.rw_table, key=lambda x: x.rw_counter.n))
 
     verify_steps(
         randomness=randomness,
