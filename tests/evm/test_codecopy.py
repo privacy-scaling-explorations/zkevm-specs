@@ -16,7 +16,7 @@ from zkevm_specs.util import (
     GAS_COST_COPY,
     MEMORY_EXPANSION_LINEAR_COEFF,
     MEMORY_EXPANSION_QUAD_DENOMINATOR,
-    RLC,
+    Word,
     U64,
 )
 from common import rand_fq
@@ -53,15 +53,17 @@ def memory_copier_gas_cost(
 
 @pytest.mark.parametrize("src_addr, dst_addr, length", TESTING_DATA)
 def test_codecopy(src_addr: U64, dst_addr: U64, length: U64):
-    randomness = rand_fq()
+    randomness_keccak = rand_fq()
 
-    length_rlc = RLC(length, randomness)
-    src_addr_rlc = RLC(src_addr, randomness)
-    dst_addr_rlc = RLC(dst_addr, randomness)
+    length_word = Word(length)
+    src_addr_word = Word(src_addr)
+    dst_addr_word = Word(dst_addr)
 
-    code = Bytecode().push32(length_rlc).push32(src_addr_rlc).push32(dst_addr_rlc).codecopy().stop()
+    code = (
+        Bytecode().push32(length_word).push32(src_addr_word).push32(dst_addr_word).codecopy().stop()
+    )
 
-    code_hash = RLC(code.hash(), randomness)
+    code_hash = Word(code.hash())
     next_memory_word_size = to_word_size(dst_addr + length)
 
     gas_cost_push32 = Opcode.PUSH32.constant_gas_cost()
@@ -72,12 +74,12 @@ def test_codecopy(src_addr: U64, dst_addr: U64, length: U64):
 
     rw_dictionary = (
         RWDictionary(1)
-        .stack_write(CALL_ID, 1023, length_rlc)
-        .stack_write(CALL_ID, 1022, src_addr_rlc)
-        .stack_write(CALL_ID, 1021, dst_addr_rlc)
-        .stack_read(CALL_ID, 1021, dst_addr_rlc)
-        .stack_read(CALL_ID, 1022, src_addr_rlc)
-        .stack_read(CALL_ID, 1023, length_rlc)
+        .stack_write(CALL_ID, 1023, length_word)
+        .stack_write(CALL_ID, 1022, src_addr_word)
+        .stack_write(CALL_ID, 1021, dst_addr_word)
+        .stack_read(CALL_ID, 1021, dst_addr_word)
+        .stack_read(CALL_ID, 1022, src_addr_word)
+        .stack_read(CALL_ID, 1023, length_word)
     )
     # rw counter before memory writes
     rw_counter_interim = rw_dictionary.rw_counter
@@ -127,9 +129,9 @@ def test_codecopy(src_addr: U64, dst_addr: U64, length: U64):
 
     src_data = dict([(i, (code.code[i], code.is_code[i])) for i in range(len(code.code))])
     copy_circuit = CopyCircuit().copy(
-        randomness,
+        randomness_keccak,
         rw_dictionary,
-        code_hash.rlc_value,
+        code_hash,
         CopyDataTypeTag.Bytecode,
         CALL_ID,
         CopyDataTypeTag.Memory,
@@ -161,15 +163,14 @@ def test_codecopy(src_addr: U64, dst_addr: U64, length: U64):
     tables = Tables(
         block_table=set(),
         tx_table=set(),
-        bytecode_table=set(code.table_assignments(randomness)),
+        bytecode_table=set(code.table_assignments()),
         rw_table=set(rw_dictionary.rws),
         copy_circuit=copy_circuit.rows,
     )
 
-    verify_copy_table(copy_circuit, tables, randomness)
+    verify_copy_table(copy_circuit, tables, randomness_keccak)
 
     verify_steps(
-        randomness=randomness,
         tables=tables,
         steps=steps,
     )

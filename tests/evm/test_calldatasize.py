@@ -9,8 +9,8 @@ from zkevm_specs.evm_circuit import (
     Bytecode,
     RWDictionary,
 )
-from zkevm_specs.util import RLC, U64
-from common import rand_fq
+from zkevm_specs.util import Word, U64
+
 
 TESTING_DATA = (
     0x00,
@@ -21,25 +21,28 @@ TESTING_DATA = (
 
 @pytest.mark.parametrize("calldatasize", TESTING_DATA)
 def test_calldatasize(calldatasize: U64):
-    randomness = rand_fq()
-
     bytecode = Bytecode().calldatasize()
-    bytecode_hash = RLC(bytecode.hash(), randomness)
+    bytecode_hash = Word(bytecode.hash())
 
     tables = Tables(
         block_table=set(),
         tx_table=set(),
-        bytecode_table=set(bytecode.table_assignments(randomness)),
+        bytecode_table=set(bytecode.table_assignments()),
         rw_table=set(
             RWDictionary(9)
             .call_context_read(1, CallContextFieldTag.CallDataLength, calldatasize)
-            .stack_write(1, 1023, RLC(calldatasize, randomness))
+            .stack_write(
+                1,
+                1023,
+                Word(
+                    calldatasize,
+                ),
+            )
             .rws
         ),
     )
 
     verify_steps(
-        randomness=randomness,
         tables=tables,
         steps=[
             StepState(

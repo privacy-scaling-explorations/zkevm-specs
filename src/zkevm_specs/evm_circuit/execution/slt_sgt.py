@@ -17,14 +17,12 @@ def scmp(instruction: Instruction):
     bb = a if is_sgt == 1 else b
 
     # decode RLC to bytes for a and b
-    a8s = aa.le_bytes
-    b8s = bb.le_bytes
-    c8s = c.le_bytes
+    a8s = aa.to_le_bytes()
+    b8s = bb.to_le_bytes()
+    c8s = c.to_le_bytes()
 
-    a_lo = instruction.bytes_to_fq(a8s[:16])
-    a_hi = instruction.bytes_to_fq(a8s[16:])
-    b_lo = instruction.bytes_to_fq(b8s[:16])
-    b_hi = instruction.bytes_to_fq(b8s[16:])
+    a_lo, a_hi = aa.to_lo_hi()
+    b_lo, b_hi = bb.to_lo_hi()
     assert c8s[31] == 0
     cc = instruction.bytes_to_fq(c8s[:31])
 
@@ -36,10 +34,10 @@ def scmp(instruction: Instruction):
     )
 
     # a < 0 and b >= 0 => a < b == true
-    if a8s[31] >= 128 and b8s[31] < 128:
+    if a8s[31].n >= 128 and b8s[31].n < 128:
         instruction.constrain_equal(cc, FQ(1))
     # b < 0 and a >= 0 => a < b == false
-    elif b8s[31] >= 128 and a8s[31] < 128:
+    elif b8s[31].n >= 128 and a8s[31].n < 128:
         instruction.constrain_equal(cc, FQ(0))
     # (a < 0 and b < 0) or (a >= 0 and b >= 0)
     else:

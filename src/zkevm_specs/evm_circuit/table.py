@@ -7,7 +7,7 @@ from dataclasses import dataclass, field, fields
 from .opcode import constant_gas_cost_pairs
 from .precompile import precompile_info_pairs
 
-from ..util import Expression, FQ, RLC, word_to_lo_hi, word_to_64s
+from ..util import Expression, FQ, Word, WordOrValue
 from .execution_state import ExecutionState
 
 
@@ -369,8 +369,19 @@ class TableRow:
         if not queried.issubset(names):
             raise WrongQueryKey(table_name, queried - names)
 
-    def match(self, query: Mapping[str, Expression]) -> bool:
-        return all([value.expr() == getattr(self, key).expr() for key, value in query.items()])
+    def match(self, query: Mapping[str, Union[Expression, Word]]) -> bool:
+        match = True
+        for key, value in query.items():
+            rhs = getattr(self, key)
+            if isinstance(value, Word):
+                assert isinstance(rhs, Word)
+                match = match and (
+                    value.lo.expr() == rhs.lo.expr() and value.hi.expr() == rhs.hi.expr()
+                )
+            else:
+                assert isinstance(value, Expression) and isinstance(rhs, Expression)
+                match = match and (value.expr() == rhs.expr())
+        return match
 
 
 @dataclass(frozen=True)
@@ -386,7 +397,7 @@ class BlockTableRow(TableRow):
     field_tag: Expression
     # meaningful only for HistoryHash, will be zero for other tags
     block_number_or_zero: Expression
-    value: Expression
+    value: WordOrValue
 
 
 @dataclass(frozen=True)
@@ -395,12 +406,12 @@ class TxTableRow(TableRow):
     field_tag: Expression
     # meaningful only for CallData, will be zero for other tags
     call_data_index_or_zero: Expression
-    value: Expression
+    value: WordOrValue
 
 
 @dataclass(frozen=True)
 class BytecodeTableRow(TableRow):
-    bytecode_hash: Expression
+    bytecode_hash: Word
     field_tag: Expression
     index: Expression
     is_code: Expression
@@ -412,24 +423,24 @@ class RWTableRow(TableRow):
     rw_counter: Expression
     rw: Expression
     key0: Expression  # RWTableTag
-    key1: Expression = field(default=FQ(0))
-    key2: Expression = field(default=FQ(0))
-    key3: Expression = field(default=FQ(0))
-    key4: Expression = field(default=FQ(0))
-    value: Expression = field(default=FQ(0))
-    value_prev: Expression = field(default=FQ(0))
-    aux0: Expression = field(default=FQ(0))
+    id: Expression = field(default=FQ(0))
+    address: Expression = field(default=FQ(0))
+    field_tag: Expression = field(default=FQ(0))
+    storage_key: Word = field(default=Word(0))
+    value: WordOrValue = field(default=WordOrValue(FQ(0)))
+    value_prev: WordOrValue = field(default=WordOrValue(FQ(0)))
+    aux0: Word = field(default=Word(0))  # TODO: Rename this to initial_value
 
 
 @dataclass(frozen=True)
 class MPTTableRow(TableRow):
     address: Expression
     proof_type: Expression
-    storage_key: Expression
-    root: Expression
-    root_prev: Expression
-    value: Expression
-    value_prev: Expression
+    storage_key: Word
+    root: Word
+    root_prev: Word
+    value: Word
+    value_prev: Word
 
 
 @dataclass(frozen=True)
@@ -437,7 +448,7 @@ class CopyCircuitRow(TableRow):
     q_step: FQ
     is_first: FQ
     is_last: FQ
-    id: FQ  # one of call_id, bytecode_hash, tx_id
+    id: WordOrValue  # one of call_id, bytecode_hash, tx_id
     tag: FQ  # CopyDataTypeTag
     addr: FQ
     src_addr_end: FQ
@@ -458,9 +469,9 @@ class CopyCircuitRow(TableRow):
 @dataclass(frozen=True)
 class CopyTableRow(TableRow):
     is_first: FQ
-    src_id: FQ
+    src_id: WordOrValue
     src_tag: FQ
-    dst_id: FQ
+    dst_id: WordOrValue
     dst_tag: FQ
     src_addr: FQ
     src_addr_end: FQ
@@ -474,9 +485,9 @@ class CopyTableRow(TableRow):
 @dataclass(frozen=True)
 class KeccakTableRow(TableRow):
     state_tag: FQ
+    input_rlc: FQ
     input_len: FQ
-    acc_input: FQ
-    output: FQ
+    output: Word
 
 
 @dataclass(frozen=True)
@@ -486,17 +497,17 @@ class ExpCircuitRow(TableRow):
     is_step: FQ
     identifier: FQ  # rw_counter
     is_last: FQ
-    base: RLC
-    exponent: RLC
-    exponentiation: RLC
+    base: Word
+    exponent: Word
+    exponentiation: Word
     # columns from the MulAddGadget (a*b + c == d)
-    a: RLC
-    b: RLC
-    c: RLC
-    d: RLC
+    a: Word
+    b: Word
+    c: Word
+    d: Word
     # columns from the parity check (2*q + r == exponent)
-    q: RLC
-    r: RLC
+    q: Word
+    r: FQ
 
 
 @dataclass(frozen=True)
@@ -508,10 +519,8 @@ class ExpTableRow(TableRow):
     base_limb1: FQ
     base_limb2: FQ
     base_limb3: FQ
-    exponent_lo: FQ
-    exponent_hi: FQ
-    exponentiation_lo: FQ
-    exponentiation_hi: FQ
+    exponent: Word
+    exponentiation: Word
 
 
 class Tables:
@@ -582,9 +591,7 @@ class Tables:
     def _convert_exp_circuit_to_table(self, exp_circuit: Sequence[ExpCircuitRow]):
         rows: List[ExpTableRow] = []
         for i, row in enumerate(exp_circuit):
-            base_limbs = word_to_64s(row.base)
-            exponent_lo_hi = word_to_lo_hi(row.exponent)
-            exponentiation_lo_hi = word_to_lo_hi(row.exponentiation)
+            base_limbs = row.base.to_64s()
             rows.append(
                 ExpTableRow(
                     is_step=FQ.one(),
@@ -594,10 +601,8 @@ class Tables:
                     base_limb1=base_limbs[1],
                     base_limb2=base_limbs[2],
                     base_limb3=base_limbs[3],
-                    exponent_lo=exponent_lo_hi[0],
-                    exponent_hi=exponent_lo_hi[1],
-                    exponentiation_lo=exponentiation_lo_hi[0],
-                    exponentiation_hi=exponentiation_lo_hi[1],
+                    exponent=row.exponent,
+                    exponentiation=row.exponentiation,
                 )
             )
         return set(rows)
@@ -638,12 +643,12 @@ class Tables:
 
     def bytecode_lookup(
         self,
-        bytecode_hash: Expression,
+        bytecode_hash: Word,
         field_tag: Expression,
         index: Expression,
         is_code: Optional[Expression] = None,
     ) -> BytecodeTableRow:
-        query = {
+        query: Mapping[str, Union[FQ, Expression, Word, None]] = {
             "bytecode_hash": bytecode_hash,
             "field_tag": field_tag,
             "index": index,
@@ -656,22 +661,22 @@ class Tables:
         rw_counter: Expression,
         rw: Expression,
         tag: Expression,
-        key1: Optional[Expression] = None,
-        key2: Optional[Expression] = None,
-        key3: Optional[Expression] = None,
-        key4: Optional[Expression] = None,
-        value: Optional[Expression] = None,
-        value_prev: Optional[Expression] = None,
-        aux0: Optional[Expression] = None,
+        id: Optional[Expression] = None,
+        address: Optional[Expression] = None,
+        field_tag: Optional[Expression] = None,
+        storage_key: Optional[Word] = None,
+        value: Optional[Word] = None,
+        value_prev: Optional[Word] = None,
+        aux0: Optional[Word] = None,
     ) -> RWTableRow:
         query = {
             "rw_counter": rw_counter,
             "rw": rw,
             "key0": tag,
-            "key1": key1,
-            "key2": key2,
-            "key3": key3,
-            "key4": key4,
+            "id": id,
+            "address": address,
+            "field_tag": field_tag,
+            "storage_key": storage_key,
             "value": value,
             "value_prev": value_prev,
             "aux0": aux0,
@@ -680,9 +685,9 @@ class Tables:
 
     def copy_lookup(
         self,
-        src_id: Expression,
+        src_id: Union[Expression, Word],
         src_tag: Expression,
-        dst_id: Expression,
+        dst_id: Union[Expression, Word],
         dst_tag: Expression,
         src_addr: Expression,
         src_addr_end: Expression,
@@ -694,10 +699,10 @@ class Tables:
         if dst_tag == CopyDataTypeTag.TxLog:
             assert log_id is not None
             dst_addr = dst_addr + FQ(int(TxLogFieldTag.Data) << 32) + FQ(log_id.expr().n << 48)
-        query = {
-            "src_id": src_id,
+        query: Mapping[str, Union[FQ, Expression, Word, None]] = {
+            "src_id": WordOrValue(src_id),
             "src_tag": src_tag,
-            "dst_id": dst_id,
+            "dst_id": WordOrValue(dst_id),
             "dst_tag": dst_tag,
             "src_addr": src_addr,
             "src_addr_end": src_addr_end,
@@ -711,7 +716,7 @@ class Tables:
         query = {
             "state_tag": FQ(2),  # Finalize
             "input_len": length,
-            "acc_input": value_rlc,
+            "input_rlc": value_rlc,
         }
         return lookup(KeccakTableRow, self.keccak_table, query)
 
@@ -720,9 +725,9 @@ class Tables:
         identifier: Expression,
         is_last: Expression,
         base_limbs: Tuple[Expression, ...],
-        exponent: Tuple[Expression, Expression],
+        exponent: Word,
     ):
-        query = {
+        query: Mapping[str, Union[FQ, Expression, Word, None]] = {
             "is_step": FQ.one().expr(),
             "identifier": identifier.expr(),
             "is_last": is_last.expr(),
@@ -730,8 +735,7 @@ class Tables:
             "base_limb1": base_limbs[1].expr(),
             "base_limb2": base_limbs[2].expr(),
             "base_limb3": base_limbs[3].expr(),
-            "exponent_lo": exponent[0].expr(),
-            "exponent_hi": exponent[1].expr(),
+            "exponent": exponent,
         }
         return lookup(ExpTableRow, self.exp_table, query)
 
@@ -742,7 +746,7 @@ T = TypeVar("T", bound=TableRow)
 def lookup(
     table_cls: Type[T],
     table: Set[T],
-    query: Mapping[str, Optional[Expression]],
+    query: Mapping[str, Optional[Union[FQ, Expression, Word]]],
 ) -> T:
     table_name = table_cls.__name__
     table_cls.validate_query(table_name, query)

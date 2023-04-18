@@ -2,7 +2,7 @@ from ...util import (
     FQ,
     MAX_U64,
     N_BYTES_U64,
-    RLC,
+    Word,
     int_is_neg,
 )
 from ..instruction import Instruction, Transition
@@ -53,9 +53,9 @@ def sar(instruction: Instruction):
 
 def check_witness(
     instruction: Instruction,
-    shift: RLC,
-    a: RLC,
-    b: RLC,
+    shift: Word,
+    a: Word,
+    b: Word,
     a64s: Sequence[FQ],
     b64s: Sequence[FQ],
     a64s_lo: Sequence[FQ],
@@ -66,8 +66,11 @@ def check_witness(
     p_hi: FQ,
     p_top: FQ,
 ):
-    is_neg, _ = instruction.compare(FQ(127), FQ(a.le_bytes[31]), 1)
-    shf_lt256 = instruction.is_zero(instruction.sum(shift.le_bytes[1:]))
+    a_le_bytes = a.to_le_bytes()
+    b_le_bytes = b.to_le_bytes()
+    shift_le_bytes = shift.to_le_bytes()
+    is_neg, _ = instruction.compare(FQ(127), FQ(a_le_bytes[31]), 1)
+    shf_lt256 = instruction.is_zero(instruction.sum(shift_le_bytes[1:]))
 
     for idx in range(4):
         offset = idx * N_BYTES_U64
@@ -75,13 +78,13 @@ def check_witness(
         # a64s constraint
         instruction.constrain_equal(
             a64s[idx],
-            instruction.bytes_to_fq(a.le_bytes[offset : offset + N_BYTES_U64]),
+            instruction.bytes_to_fq(a_le_bytes[offset : offset + N_BYTES_U64]),
         )
 
         # b64s constraint
         instruction.constrain_equal(
             b64s[idx],
-            instruction.bytes_to_fq(b.le_bytes[offset : offset + N_BYTES_U64]),
+            instruction.bytes_to_fq(b_le_bytes[offset : offset + N_BYTES_U64]),
         )
 
         # Constrain `a64s[idx] == a64s_lo[idx] + a64s_hi[idx] * p_lo`.
@@ -131,12 +134,12 @@ def check_witness(
     instruction.constrain_equal(shf_div64_lt_4, FQ(1))
     shf_mod64_lt_64, _ = instruction.compare(shf_mod64, FQ(64), 1)
     instruction.constrain_equal(shf_mod64_lt_64, FQ(1))
-    instruction.constrain_equal(FQ(shift.le_bytes[0]), shf_mod64 + shf_div64 * 64)
+    instruction.constrain_equal(FQ(shift_le_bytes[0]), shf_mod64 + shf_div64 * 64)
 
     # `is_neg` constraints
     instruction.constrain_bool(is_neg)
     instruction.sign_byte_lookup(
-        instruction.bytes_to_fq(a.le_bytes[31:]),
+        instruction.bytes_to_fq(a_le_bytes[31:]),
         instruction.select(is_neg, FQ(255), FQ(0)),
     )
 
@@ -148,23 +151,24 @@ def check_witness(
     instruction.pow2_lookup(64 - shf_mod64, p_hi, FQ(0))
 
 
-def gen_witness(instruction: Instruction, shift: RLC, a: RLC):
-    is_neg = int_is_neg(a.int_value)
-    shf0 = shift.le_bytes[0]
-    shf_div64 = shf0 // 64
-    shf_mod64 = shf0 % 64
+def gen_witness(instruction: Instruction, shift: Word, a: Word):
+    is_neg = int_is_neg(a.int_value())
+    shift_le_bytes = shift.to_le_bytes()
+    shf0 = shift_le_bytes[0]
+    shf_div64 = shf0.n // 64
+    shf_mod64 = shf0.n % 64
     p_lo = 1 << shf_mod64
     p_hi = 1 << (64 - shf_mod64)
 
     # The new bits should be set to 1 if negative.
     p_top = is_neg * (MAX_U64 + 1 - p_hi)
 
-    shf_lt256 = sum(shift.le_bytes) - shf0
+    shf_lt256 = sum(shift_le_bytes) - shf0
 
     # Each of the four `a64s` limbs is split into two parts `a64s_lo` and
     # `a64s_hi` at position `shf_mod64`. `a64s_lo` is the lower `shf_mod64`
     # bits, and `a64s_hi` is the higher `64 - shf_mod64` bits,
-    a64s = instruction.word_to_64s(a)
+    a64s = a.to_64s()
     a64s_lo = [FQ(0)] * 4
     a64s_hi = [FQ(0)] * 4
     for idx in range(4):

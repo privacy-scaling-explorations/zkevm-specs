@@ -1,4 +1,4 @@
-from ...util import FQ, RLC, Expression, N_BYTES_WORD
+from ...util import FQ, Word, Expression, N_BYTES_WORD
 from ..instruction import Instruction, Transition
 from ..opcode import Opcode
 from ..table import RW, CallContextFieldTag
@@ -10,7 +10,7 @@ def calldataload(instruction: Instruction):
     instruction.constrain_equal(opcode, Opcode.CALLDATALOAD)
 
     # offset is the 64-bit offset to start reading 32-bytes from start of calldata.
-    offset = instruction.rlc_to_fq(instruction.stack_pop(), n_bytes=8)
+    offset = instruction.word_to_fq(instruction.stack_pop(), n_bytes=8)
 
     if instruction.curr.is_root:
         src_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
@@ -42,9 +42,9 @@ def calldataload(instruction: Instruction):
         else:
             calldata_word.append(0)
 
-    instruction.constrain_equal(
+    instruction.constrain_equal_word(
+        Word(bytes(calldata_word)),
         instruction.stack_push(),
-        RLC(bytes(calldata_word), instruction.randomness),
     )
 
     instruction.step_state_transition_in_same_context(

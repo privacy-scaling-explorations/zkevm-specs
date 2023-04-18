@@ -1,9 +1,19 @@
-from typing import NamedTuple, Tuple, List, Set, Dict, Optional
+from typing import NamedTuple, Tuple, List, Set, Dict, Optional, Union, Mapping
 from enum import IntEnum
 from math import log, ceil
 
 from zkevm_specs.evm_circuit.table import MPTProofType
-from .util import FQ, RLC, U8, U160, U256, Expression, linear_combine_bytes, is_circuit_code
+from .util import (
+    FQ,
+    Word,
+    U8,
+    WordOrValue,
+    U160,
+    U256,
+    Expression,
+    linear_combine_bytes,
+    is_circuit_code,
+)
 from .evm_circuit import (
     RW,
     AccountFieldTag,
@@ -67,44 +77,79 @@ class Row(NamedTuple):
     # - keys[1]: id
     # - keys[2]: address
     # - keys[3]: field_tag
-    # - keys[4]: storage_key
-    keys: Tuple[FQ, FQ, FQ, FQ, FQ]
+    # - keys[4,5]: storage_key
+    keys: Tuple[FQ, FQ, FQ, FQ, Word]
     key2_limbs: Tuple[FQ, FQ, FQ, FQ, FQ, # key2 in Little-Endian (limbs in base 2**16)
                       FQ, FQ, FQ, FQ, FQ]
-    key4_bytes: Tuple[FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ, # key4 in Little-Endian (limbs in base 2**8)
-                      FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,
-                      FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,
-                      FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ]
-    value: FQ
-    initial_value: FQ
+    key45_bytes: Tuple[FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ, # key{4,5} in Little-Endian (limbs in base 2**8)
+                       FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,
+                       FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ,
+                       FQ,FQ,FQ,FQ,FQ,FQ,FQ,FQ]
+    value: WordOrValue
+    initial_value: WordOrValue
 
-    root: FQ
+    root: Word
 
     # lexicographic_ordering_selector is the selector for transition checks and is set 0 for the first Row and 1 otherwise.
     lexicographic_ordering_selector: FQ
 
     # fmt: on
 
-    def tag(self):
+    def tag(self) -> FQ:
         return self.keys[0]
 
-    def id(self):
+    def id(self) -> FQ:
         return self.keys[1]
 
-    def address(self):
+    def address(self) -> FQ:
         return self.keys[2]
 
-    def address_limbs(self):
+    def address_limbs(self) -> Tuple[FQ, FQ, FQ, FQ, FQ, FQ, FQ, FQ, FQ, FQ]:
         return self.key2_limbs
 
-    def field_tag(self):
+    def field_tag(self) -> FQ:
         return self.keys[3]
 
-    def storage_key(self):
+    def storage_key(self) -> Word:
         return self.keys[4]
 
-    def storage_key_bytes(self):
-        return self.key4_bytes
+    def storage_key_bytes(
+        self,
+    ) -> Tuple[
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+        FQ,
+    ]:
+        return self.key45_bytes
 
 
 class Tables:
@@ -121,13 +166,13 @@ class Tables:
         self,
         address: Expression,
         proof_type: Expression,
-        storage_key: Expression,
-        value: Expression,
-        value_prev: Expression,
-        root: Expression,
-        root_prev: Expression,
+        storage_key: Word,
+        value: Word,
+        value_prev: Word,
+        root: Word,
+        root_prev: Word,
     ) -> MPTTableRow:
-        query = {
+        query: Mapping[str, Optional[Union[FQ, Expression, Word]]] = {
             "address": address,
             "proof_type": proof_type,
             "storage_key": storage_key,
@@ -173,45 +218,49 @@ def check_start(row: Row, row_prev: Row):
     assert row.field_tag() == 0
     assert row.address() == 0
     assert row.id() == 0
-    assert row.storage_key() == 0
+    assert row.storage_key() == Word(0)
+    assert row.value.hi == 0
+    assert row.initial_value.hi == 0
 
     # 1.1. rw_counter increases by 1 for every non-first row
     assert row.lexicographic_ordering_selector * (row.rw_counter - row_prev.rw_counter - 1) == 0
 
     # 1.2. Start value is 0
-    assert row.value == 0
+    assert row.value.value() == 0
 
     # 1.3. Start initial value is 0
-    assert row.initial_value == 0
+    assert row.initial_value.value() == 0
 
     # 1.4. state_root is unchanged for every non-first row
-    assert row.lexicographic_ordering_selector * (row.root - row_prev.root) == 0
+    if row.lexicographic_ordering_selector != 0:
+        assert row.root == row_prev.root
 
 
 @is_circuit_code
 def check_memory(row: Row, row_prev: Row):
-    get_call_id = lambda row: row.id()
     get_memory_address = lambda row: row.address()
 
     # 2.0. Unused keys are 0
     assert row.field_tag() == 0
-    assert row.storage_key() == 0
+    assert row.storage_key() == Word(0)
+    assert row.value.hi == 0
+    assert row.initial_value.hi == 0
 
     # 2.1. First access for a set of all keys
     #
     # When the set of all keys changes (first access of an address in a call)
     # - If READ, value must be 0
     if not all_keys_eq(row, row_prev) and row.is_write == 0:
-        assert row.value == 0
+        assert row.value.value() == 0
 
     # 2.2. mem_addr in range
     assert_in_range(get_memory_address(row), 0, MAX_MEMORY_ADDRESS)
 
     # 2.3. value is a byte
-    assert_in_range(row.value, 0, 2**8 - 1)
+    assert_in_range(row.value.value(), 0, 2**8 - 1)
 
     # 2.4. Start initial value is 0
-    assert row.initial_value == 0
+    assert row.initial_value.value() == 0
 
     # 2.5. state root does not change
     assert row.root == row_prev.root
@@ -224,7 +273,7 @@ def check_stack(row: Row, row_prev: Row):
 
     # 3.0. Unused keys are 0
     assert row.field_tag() == 0
-    assert row.storage_key() == 0
+    assert row.storage_key() == Word(0)
 
     # 3.1. First access for a set of all keys
     #
@@ -246,7 +295,7 @@ def check_stack(row: Row, row_prev: Row):
         assert_in_range(stack_ptr_diff, 0, 1)
 
     # 3.4. Stack initial value is 0
-    assert row.initial_value == 0
+    assert row.initial_value == Word(0)
 
     # 3.5. state root does not change
     assert row.root == row_prev.root
@@ -259,7 +308,7 @@ def check_storage(row: Row, row_prev: Row, row_next: Row, tables: Tables):
 
     # 4.1. MPT lookup for last access to (address, storage_key)
     # value = 0 means that the leaf doesn't exist. And this is needed by the non-existing proof.
-    is_non_exist = FQ(row.value.expr() == FQ(0)) * FQ(row.initial_value.expr() == FQ(0))
+    is_non_exist = FQ(row.value == Word(0)) * FQ(row.initial_value == Word(0))
     if not all_keys_eq(row, row_next):
         tables.mpt_lookup(
             row.address(),
@@ -277,24 +326,20 @@ def check_storage(row: Row, row_prev: Row, row_next: Row, tables: Tables):
 
 @is_circuit_code
 def check_call_context(row: Row, row_prev: Row):
-    get_call_id = lambda row: row.id()
-    get_field_tag = lambda row: row.field_tag()
-
     # 5.0. Unused keys are 0
     assert row.address() == 0
-    assert row.storage_key() == 0
+    assert row.storage_key() == Word(0)
 
     # 5.1. field_tag is in CallContexFieldTag range
-    field_tag_ptr = get_field_tag(row)
-    assert_in_range(field_tag_ptr, 0, MAX_FIELD_TAG)
+    assert_in_range(row.field_tag(), 0, MAX_FIELD_TAG)
 
     # 5.2. First access for a set of all keys
     # - If READ, value must be 0
     if not all_keys_eq(row, row_prev) and row.is_write == 0:
-        assert row.value == 0
+        assert row.value.value() == 0
 
     # 5.3. CallContext initial value is 0
-    assert row.initial_value == 0
+    assert row.initial_value == Word(0)
 
     # 5.4. state root does not change
     assert row.root == row_prev.root
@@ -302,27 +347,27 @@ def check_call_context(row: Row, row_prev: Row):
 
 @is_circuit_code
 def check_account(row: Row, row_prev: Row, row_next: Row, tables: Tables):
-    get_addr = lambda row: row.address()
-
-    field_tag = row.field_tag()
-    proof_type = MPTProofType.from_account_field_tag(field_tag)
+    proof_type = MPTProofType.from_account_field_tag(AccountFieldTag(row.field_tag().n))
 
     # 6.0. Unused keys are 0
     assert row.id() == 0
-    assert row.storage_key() == 0
+    assert row.storage_key() == Word(0)
+    if row.field_tag() == AccountFieldTag.Nonce:
+        assert row.value.hi == 0
+        assert row.initial_value.hi == 0
 
     # We use code_hash = 0 as non-existing account state.  code_hash: 0->0
     # transition requires a non-existing proof.
     is_non_exist = (
-        FQ(row.value.expr() == FQ(0))
-        * FQ(row.initial_value.expr() == FQ(0))
-        * FQ(field_tag == FQ(AccountFieldTag.CodeHash))
+        FQ(row.value == Word(0))
+        * FQ(row.initial_value == Word(0))
+        * FQ(row.field_tag() == FQ(AccountFieldTag.CodeHash))
     )
 
     # 6.1. MPT storage lookup for last access to (address, field_tag)
     if not all_keys_eq(row, row_next):
         tables.mpt_lookup(
-            get_addr(row),
+            row.address(),
             is_non_exist * FQ(MPTProofType.NonExistingAccountProof)
             + (1 - is_non_exist) * FQ(proof_type),
             row.storage_key(),
@@ -340,33 +385,30 @@ def check_account(row: Row, row_prev: Row, row_next: Row, tables: Tables):
 
 @is_circuit_code
 def check_tx_refund(row: Row, row_prev: Row):
-    get_tx_id = lambda row: row.id()
-
     # 7.0. Unused keys are 0
     assert row.address() == 0
     assert row.field_tag() == 0
-    assert row.storage_key() == 0
+    assert row.storage_key() == Word(0)
 
     # 7.1. state root does not change
     assert row.root == row_prev.root
 
-    # 7.2. initial value is 0
-    assert row.initial_value == 0
+    # 7.2 initial value is 0
+    assert row.initial_value == Word(0)
 
     # 7.3. First access for a set of all keys
     # - If READ, value must be 0
     if not all_keys_eq(row, row_prev) and row.is_write == 0:
-        assert row.value == 0
+        assert row.value == Word(0)
 
 
 @is_circuit_code
 def check_tx_access_list_account(row: Row, row_prev: Row):
-    get_tx_id = lambda row: row.id()
-    get_addr = lambda row: row.address()
-
     # 8.0. Unused keys are 0
     assert row.field_tag() == 0
-    assert row.storage_key() == 0
+    assert row.storage_key() == Word(0)
+    assert row.value.hi == 0
+    assert row.initial_value.hi == 0
 
     # 8.1 state root does not change
     assert row.root == row_prev.root
@@ -374,17 +416,15 @@ def check_tx_access_list_account(row: Row, row_prev: Row):
     # 8.2 First access for a set of all keys
     # - If READ, value must be 0
     if not all_keys_eq(row, row_prev) and row.is_write == 0:
-        assert row.value == 0
+        assert row.value.value() == 0
 
 
 @is_circuit_code
 def check_tx_access_list_account_storage(row: Row, row_prev: Row):
-    get_tx_id = lambda row: row.id()
-    get_addr = lambda row: row.address()
-    get_storage_key = lambda row: row.storage_key()
-
     # 9.0. Unused keys are 0
     assert row.field_tag() == 0
+    assert row.value.hi == 0
+    assert row.initial_value.hi == 0
 
     # 9.1 State root cannot change
     assert row.root == row_prev.root
@@ -392,7 +432,7 @@ def check_tx_access_list_account_storage(row: Row, row_prev: Row):
     # 9.2 First access for a set of all keys
     # - If READ, value must be 0
     if not all_keys_eq(row, row_prev) and row.is_write == 0:
-        assert row.value == 0
+        assert row.value.value() == 0
 
 
 @is_circuit_code
@@ -400,6 +440,11 @@ def check_tx_log(row: Row, row_prev: Row):
     # tx_id | log_id | field_tag | index | value
     tx_id = row.id()
     prev_tx_id = row_prev.id()
+
+    # Unused keys are 0
+    if row.field_tag() != TxLogFieldTag.Topic:
+        assert row.value.hi == 0
+        assert row.initial_value.hi == 0
 
     # 10.0 is_write is always true
     assert row.is_write == 1
@@ -418,17 +463,19 @@ def check_tx_receipt(row: Row, row_prev: Row):
     field_tag = row.field_tag()
     # 11.0. Unused keys are 0
     assert row.address() == 0
-    assert row.storage_key() == 0
+    assert row.storage_key() == Word(0)
+    assert row.value.hi == 0
+    assert row.initial_value.hi == 0
 
     # 11.1 value for tag `PostStateOrStatus` is bool (0 or 1) according to EIP#658
     if field_tag == U256(TxReceiptFieldTag.PostStateOrStatus):
-        assert row.value in [0, 1]
+        assert row.value.value() in [0, 1]
 
     # 11.2 when tx id changes, must be increasing by one, the CumulativeGasUsed must be increasing as well
     if tx_id != pre_tx_id and row.tag() == row_prev.tag():
         assert tx_id == pre_tx_id + 1
         if field_tag == U256(TxReceiptFieldTag.CumulativeGasUsed):
-            assert row.value.n > row_prev.value.n
+            assert row.value.value().expr().n > row_prev.value.value().expr().n
 
     # 11.3 tx id starts with 1
     if row.tag() != row_prev.tag():
@@ -442,7 +489,7 @@ def check_tx_receipt(row: Row, row_prev: Row):
 
 
 @is_circuit_code
-def check_state_row(row: Row, row_prev: Row, row_next: Row, tables: Tables, randomness: FQ):
+def check_state_row(row: Row, row_prev: Row, row_next: Row, tables: Tables):
     #
     # Constraints that affect all rows, no matter which Tag they use
     #
@@ -462,7 +509,12 @@ def check_state_row(row: Row, row_prev: Row, row_next: Row, tables: Tables, rand
     )
 
     # 0.2. address is RLC encoded
-    assert row.storage_key() == linear_combine_bytes(row.storage_key_bytes(), randomness)
+    assert row.storage_key() == Word(
+        (
+            linear_combine_bytes(row.storage_key_bytes()[0:16], FQ(256)),
+            linear_combine_bytes(row.storage_key_bytes()[16:32], FQ(256)),
+        )
+    )
 
     # 0.3. is_write is boolean
     assert row.is_write in [0, 1]
@@ -574,8 +626,8 @@ class Operation(NamedTuple):
     address: U256
     field_tag: U256
     storage_key: U256
-    value: FQ
-    initial_value: FQ
+    value: WordOrValue
+    initial_value: WordOrValue
     lexicographic_ordering_selector: FQ
 
 
@@ -588,7 +640,7 @@ class StartOp(Operation):
         # fmt: off
         return super().__new__(self, rw_counter, rw,
                 U256(Tag.Start), U256(0), U256(0), U256(0), U256(0), # keys
-                FQ(0), FQ(0), # values
+                WordOrValue(FQ(0)), WordOrValue(FQ(0)), # values
                 FQ(lexicographic_ordering_selector)) # lexicographic_ordering_selector
         # fmt: on
 
@@ -607,7 +659,7 @@ class MemoryOp(Operation):
         # fmt: off
         return super().__new__(self, rw_counter, rw,
                 U256(Tag.Memory), U256(call_id), U256(mem_addr), U256(0), U256(0), # keys
-                FQ(value), FQ(0), # values
+                WordOrValue(FQ(value)), WordOrValue(FQ(0)), # values
                 FQ(1)) # lexicographic_ordering_selector
         # fmt: on
 
@@ -617,11 +669,11 @@ class StackOp(Operation):
     Stack Operation
     """
 
-    def __new__(self, rw_counter: int, rw: RW, call_id: int, stack_ptr: int, value: FQ):
+    def __new__(self, rw_counter: int, rw: RW, call_id: int, stack_ptr: int, value: Word):
         # fmt: off
         return super().__new__(self, rw_counter, rw,
                 U256(Tag.Stack), U256(call_id), U256(stack_ptr), U256(0), U256(0), # keys
-                FQ(value), FQ(0), # values
+                WordOrValue(value), WordOrValue(FQ(0)), # values
                 FQ(1)) # lexicographic_ordering_selector
         # fmt: on
 
@@ -638,13 +690,13 @@ class StorageOp(Operation):
         tx_id: int,
         addr: U160,
         key: U256,
-        value: FQ,
-        committed_value: FQ,
+        value: Word,
+        committed_value: Word,
     ):
         # fmt: off
         return super().__new__(self, rw_counter, rw,
                 U256(Tag.Storage), U256(tx_id), U256(addr), U256(0), U256(key), # keys
-                value, committed_value, # values
+                WordOrValue(value), WordOrValue(committed_value), # values
                 FQ(1)) # lexicographic_ordering_selector
         # fmt: on
 
@@ -655,12 +707,17 @@ class CallContextOp(Operation):
     """
 
     def __new__(
-        self, rw_counter: int, rw: RW, call_id: int, field_tag: CallContextFieldTag, value: FQ
+        self,
+        rw_counter: int,
+        rw: RW,
+        call_id: int,
+        field_tag: CallContextFieldTag,
+        value: Union[FQ, Word],
     ):
         # fmt: off
         return super().__new__(self, rw_counter, rw,
                 U256(Tag.CallContext), U256(call_id), U256(0), U256(field_tag), U256(0), # keys
-                value, FQ(0), # values
+                WordOrValue(value), WordOrValue(FQ(0)), # values
                 FQ(1)) # lexicographic_ordering_selector
         # fmt: on
 
@@ -676,13 +733,13 @@ class AccountOp(Operation):
         rw: RW,
         addr: U160,
         field_tag: AccountFieldTag,
-        value: FQ,
-        committed_value: FQ,
+        value: Union[FQ, Word],
+        committed_value: Union[FQ, Word],
     ):
         # fmt: off
         return super().__new__(self, rw_counter, rw,
                 U256(Tag.Account), U256(0), U256(addr), U256(field_tag), U256(0), # keys
-                value, committed_value, # values
+                WordOrValue(value), WordOrValue(committed_value), # values
                 FQ(1)) # lexicographic_ordering_selector
         # fmt: on
 
@@ -692,11 +749,11 @@ class TxRefundOp(Operation):
     TxRefund Operation
     """
 
-    def __new__(self, rw_counter: int, rw: RW, tx_id: int, value: FQ):
+    def __new__(self, rw_counter: int, rw: RW, tx_id: int, value: Word):
         # fmt: off
         return super().__new__(self, rw_counter, rw,
                 U256(Tag.TxRefund), U256(tx_id), U256(0), U256(0), U256(0), # keys
-                value, FQ(0), # values
+                WordOrValue(value), WordOrValue(FQ(0)), # values
                 FQ(1)) # lexicographic_ordering_selector
         # fmt: on
 
@@ -710,7 +767,7 @@ class TxAccessListAccountOp(Operation):
         # fmt: off
         return super().__new__(self, rw_counter, rw,
                 U256(Tag.TxAccessListAccount), U256(tx_id), U256(addr), U256(0), U256(0), # keys
-                value, FQ(0), # values
+                WordOrValue(value), WordOrValue(FQ(0)), # values
                 FQ(1)) # lexicographic_ordering_selector
         # fmt: on
 
@@ -725,7 +782,7 @@ class TxAccessListAccountStorageOp(Operation):
         return super().__new__(self, rw_counter, rw,
                 U256(Tag.TxAccessListAccountStorage),
                 U256(tx_id), U256(addr), U256(0), U256(key), # keys
-                value, FQ(0), # values
+                WordOrValue(value), WordOrValue(FQ(0)), # values
                 FQ(1)) # lexicographic_ordering_selector
         # fmt: on
 
@@ -743,12 +800,12 @@ class TxLogOp(Operation):
         log_id: int,
         field_tag: TxLogFieldTag,
         index: int,
-        value: FQ,
+        value: Union[FQ, Word],
     ):
         # fmt: off
         return super().__new__(self, rw_counter, rw,
                 U256(Tag.TxLog),U256(tx_id), U256(log_id), U256(field_tag), U256(index), # keys
-                value, FQ(0), # values
+                WordOrValue(value), WordOrValue(FQ(0)), # values
                 FQ(1)) # lexicographic_ordering_selector
         # fmt: on
 
@@ -762,12 +819,12 @@ class TxReceiptOp(Operation):
         # fmt: off
         return super().__new__(self, rw_counter, rw,
                 U256(Tag.TxReceipt), U256(tx_id),  U256(0), U256(field_tag), U256(0), # keys
-                value, FQ(0), # values
+                WordOrValue(value), WordOrValue(FQ(0)), # values
                 FQ(1)) # lexicographic_ordering_selector
         # fmt: on
 
 
-def op2row(op: Operation, randomness: FQ, root: FQ) -> Row:
+def op2row(op: Operation, root: Word) -> Row:
     rw_counter = FQ(op.rw_counter)
     is_write = FQ(0) if op.rw == RW.Read else FQ(1)
     tag = FQ(op.tag)
@@ -778,14 +835,13 @@ def op2row(op: Operation, randomness: FQ, root: FQ) -> Row:
         [FQ(address_bytes[i] + 2**8 * address_bytes[i + 1]) for i in range(0, 20, 2)]
     )
     field_tag = FQ(op.field_tag)
-    storage_key_rlc = RLC(op.storage_key, randomness)
-    storage_key = storage_key_rlc.expr()
-    storage_key_bytes = tuple([FQ(x) for x in storage_key_rlc.le_bytes])
+    storage_key = Word(op.storage_key)
+    storage_key_bytes = tuple([FQ(x) for x in op.storage_key.to_bytes(32, "little")])
 
     keys = (tag, id, address, field_tag, storage_key)
 
-    value = FQ(op.value)
-    initial_value = FQ(op.initial_value)
+    value = op.value
+    initial_value = op.initial_value
     lexicographic_ordering_selector = FQ(op.lexicographic_ordering_selector)
 
     return Row(
@@ -802,23 +858,23 @@ def op2row(op: Operation, randomness: FQ, root: FQ) -> Row:
 
 
 # Generate the advice Rows from a list of Operations
-def assign_state_circuit(ops: List[Operation], randomness: FQ) -> List[Row]:
-    mpt_updates = _mock_mpt_updates(ops, randomness)
+def assign_state_circuit(ops: List[Operation]) -> List[Row]:
+    mpt_updates = _mock_mpt_updates(ops)
 
     # MPT keys for each Storage and Account row, and None otherwise.
     mpt_keys = [_mpt_key(op) for op in ops]
     # MPT updates for each Storage and Account row, and None otherwise.
     updates = [None if key is None else mpt_updates.get(key) for key in mpt_keys]
     # root_prev for each Storage and Account row, and None otherwise.
-    roots = [None if update is None else update.root_prev.expr() for update in updates]
+    roots = [None if update is None else update.root_prev for update in updates]
 
     # With real mpt updates, the final root would be obtained from the public
     # input. For _mock_mpt_updates, it's just 3 + 5 * number of MPT updates.
-    final_root = FQ(3 + 5 * len(mpt_updates))
+    final_root = Word(3 + 5 * len(mpt_updates))
     roots.append(final_root)
 
     # Fill in the None roots with the first non-None value that comes after it.
-    root: FQ = final_root
+    root: Word = final_root
     for i in reversed(range(len(roots))):
         maybe_root = roots[i]
         if maybe_root is None:
@@ -829,21 +885,22 @@ def assign_state_circuit(ops: List[Operation], randomness: FQ) -> List[Row]:
     rows = []
     for op, maybe_root in zip(ops, roots[1:]):
         assert maybe_root is not None
-        rows.append(op2row(op, randomness, maybe_root))
+        rows.append(op2row(op, maybe_root))
     return rows
 
 
-def mpt_table_from_ops(ops: List[Operation], randomness: FQ) -> Set[MPTTableRow]:
-    return set(_mock_mpt_updates(ops, randomness).values())
+def mpt_table_from_ops(ops: List[Operation]) -> Set[MPTTableRow]:
+    return set(_mock_mpt_updates(ops).values())
 
 
-def _mpt_key(op: Operation) -> Optional[Tuple[FQ, FQ, FQ]]:
+def _mpt_key(op: Operation) -> Optional[Tuple[FQ, FQ, FQ, FQ]]:
     if op.tag != Tag.Account and op.tag != Tag.Storage:
         return None
-    return (FQ(op.address), FQ(op.field_tag), FQ(op.storage_key))
+    storage_key = Word(op.storage_key)
+    return (FQ(op.address), FQ(op.field_tag), storage_key.lo.expr(), storage_key.hi.expr())
 
 
-def _mock_mpt_updates(ops: List[Operation], randomness: FQ) -> Dict[Tuple[FQ, FQ, FQ], MPTTableRow]:
+def _mock_mpt_updates(ops: List[Operation]) -> Dict[Tuple[FQ, FQ, FQ, FQ], MPTTableRow]:
     # makes fake mpt updates for a list of rows. the state root starts at 3 and
     # is incremented by 5 for each Account or Storage MPT update.
     mpt_map = {}
@@ -865,11 +922,11 @@ def _mock_mpt_updates(ops: List[Operation], randomness: FQ) -> Dict[Tuple[FQ, FQ
         mpt_map[mpt_key] = MPTTableRow(
             FQ(op.address),
             FQ(proof_type),
-            RLC(op.storage_key, randomness).expr(),
-            FQ(new_root),
-            FQ(root),
-            op.value,
-            op.initial_value,
+            Word(op.storage_key),
+            Word(new_root),
+            Word(root),
+            Word(op.value.int_value()),
+            Word(op.initial_value.int_value()),
         )
         root = new_root
 

@@ -9,31 +9,27 @@ from zkevm_specs.evm_circuit import (
     Bytecode,
     RWDictionary,
 )
-from zkevm_specs.util import RLC, N_BYTES_WORD
-from common import rand_fq
+from zkevm_specs.util import Word, N_BYTES_WORD
 
 TESTING_DATA = [i for i in range(0, 7)]
 
 
 @pytest.mark.parametrize("memory_word_size", TESTING_DATA)
 def test_msize(memory_word_size: int):
-    randomness = rand_fq()
-
     value = memory_word_size * N_BYTES_WORD
-    value = RLC(value, randomness)
+    value = Word(value)
 
     bytecode = Bytecode().msize().stop()
-    bytecode_hash = RLC(bytecode.hash(), randomness)
+    bytecode_hash = Word(bytecode.hash())
 
     tables = Tables(
-        block_table=set(Block().table_assignments(randomness)),
+        block_table=set(Block().table_assignments()),
         tx_table=set(),
-        bytecode_table=set(bytecode.table_assignments(randomness)),
+        bytecode_table=set(bytecode.table_assignments()),
         rw_table=set(RWDictionary(9).stack_write(1, 1022, value).rws),
     )
 
     verify_steps(
-        randomness=randomness,
         tables=tables,
         steps=[
             StepState(

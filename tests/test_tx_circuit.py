@@ -1,13 +1,13 @@
 from typing import Union, List
-from eth_keys import keys
+from eth_keys import keys  # type: ignore
 from eth_utils import keccak
-import rlp
+import rlp  # type: ignore
 from zkevm_specs.tx_circuit import *
 from zkevm_specs.util import FQ, U64
 from common import rand_fq
 
-randomness = rand_fq()
-r = randomness
+keccak_randomness = rand_fq()
+r = keccak_randomness
 
 
 def sign_tx(sk: keys.PrivateKey, tx: Transaction, chain_id: U64) -> Transaction:
@@ -32,7 +32,7 @@ def verify(
     MAX_TXS: int,
     MAX_CALLDATA_BYTES: int,
     chain_id: U64,
-    randomness: FQ,
+    keccak_randomness: FQ,
     success: bool = True,
 ):
     """
@@ -42,30 +42,29 @@ def verify(
     """
     witness = txs_or_witness
     if isinstance(txs_or_witness, Witness):
-        pass
+        witness = txs_or_witness
     else:
-        witness = txs2witness(txs_or_witness, chain_id, MAX_TXS, MAX_CALLDATA_BYTES, randomness)
+        witness = txs2witness(
+            txs_or_witness, chain_id, MAX_TXS, MAX_CALLDATA_BYTES, keccak_randomness
+        )
     assert len(witness.rows) == MAX_TXS * Tag.TxSignHash + MAX_CALLDATA_BYTES
     assert len(witness.sign_verifications) == MAX_TXS
-    ok = True
-    if success:
+    exception = None
+    try:
         verify_circuit(
             witness,
             MAX_TXS,
             MAX_CALLDATA_BYTES,
-            randomness,
+            keccak_randomness,
         )
+    except AssertionError as e:
+        exception = e
+    if success:
+        if exception:
+            raise exception
+        assert exception is None
     else:
-        try:
-            verify_circuit(
-                witness,
-                MAX_TXS,
-                MAX_CALLDATA_BYTES,
-                randomness,
-            )
-        except AssertionError as e:
-            ok = False
-    assert ok == success
+        assert exception is not None
 
 
 def test_ecdsa_verify_chip():
@@ -98,7 +97,7 @@ def test_tx2witness():
     rows, sign_verification = tx2witness(0, tx, chain_id, r, keccak_table)
     for row in rows:
         if row.tag == Tag.CallerAddress:
-            assert addr == row.value.n.to_bytes(20, "big")
+            assert addr == row.value.value().n.to_bytes(20, "big")
 
 
 def gen_tx(i: int, sk: keys.PrivateKey, to: int, chain_id) -> Transaction:
@@ -108,7 +107,9 @@ def gen_tx(i: int, sk: keys.PrivateKey, to: int, chain_id) -> Transaction:
     value = 0x30000 + i * 4
     data = bytes([i] * i)
 
-    tx = Transaction(nonce, gas_price, gas, to, value, data, 0, 0, 0)
+    tx = Transaction(
+        U64(nonce), U256(gas_price), U64(gas), U160(to), U256(value), data, U64(0), U256(0), U256(0)
+    )
     tx = sign_tx(sk, tx, chain_id)
     return tx
 
@@ -146,8 +147,8 @@ def gen_valid_witness() -> Tuple[Witness, U64, int, int]:
         tx = gen_tx(i, sk, to, chain_id)
         txs.append(tx)
 
-    witness = txs2witness(txs, chain_id, MAX_TXS, MAX_CALLDATA_BYTES, r)
-    return witness, chain_id, MAX_TXS, MAX_CALLDATA_BYTES
+    witness = txs2witness(txs, U64(chain_id), MAX_TXS, MAX_CALLDATA_BYTES, r)
+    return witness, U64(chain_id), MAX_TXS, MAX_CALLDATA_BYTES
 
 
 def test_bad_keccak():
@@ -176,7 +177,7 @@ def test_bad_address():
 def test_bad_msg_hash():
     witness, chain_id, MAX_TXS, MAX_CALLDATA_BYTES = gen_valid_witness()
     sign_verifications = witness.sign_verifications
-    sign_verifications[0].msg_hash_rlc = FQ(4567)
+    sign_verifications[0].msg_hash = Word(4567)
     witness = Witness(witness.rows, witness.keccak_table, sign_verifications)
     verify(witness, MAX_TXS, MAX_CALLDATA_BYTES, chain_id, r, success=False)
 
@@ -185,7 +186,7 @@ def test_bad_addr_copy():
     witness, chain_id, MAX_TXS, MAX_CALLDATA_BYTES = gen_valid_witness()
     rows = witness.rows
     row_addr_offset = 0 * Tag.TxSignHash + Tag.CallerAddress - 1
-    rows[row_addr_offset].value = FQ(1213)
+    rows[row_addr_offset].value = WordOrValue(FQ(1213))
     witness = Witness(rows, witness.keccak_table, witness.sign_verifications)
     verify(witness, MAX_TXS, MAX_CALLDATA_BYTES, chain_id, r, success=False)
 
@@ -194,6 +195,6 @@ def test_bad_sign_hash_copy():
     witness, chain_id, MAX_TXS, MAX_CALLDATA_BYTES = gen_valid_witness()
     rows = witness.rows
     row_hash_offset = 0 * Tag.TxSignHash + Tag.TxSignHash - 1
-    rows[row_hash_offset].value = FQ(2324)
+    rows[row_hash_offset].value = WordOrValue(Word(2324))
     witness = Witness(rows, witness.keccak_table, witness.sign_verifications)
     verify(witness, MAX_TXS, MAX_CALLDATA_BYTES, chain_id, r, success=False)

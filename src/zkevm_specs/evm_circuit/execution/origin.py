@@ -1,4 +1,3 @@
-from ...util import N_BYTES_ACCOUNT_ADDRESS
 from ..instruction import Instruction, Transition
 from ..opcode import Opcode
 from ..table import CallContextFieldTag, TxContextFieldTag
@@ -10,9 +9,10 @@ def origin(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
     instruction.constrain_equal(opcode, Opcode.ORIGIN)
 
-    instruction.constrain_equal(
-        instruction.tx_context_lookup(tx_id, TxContextFieldTag.CallerAddress),
-        instruction.rlc_to_fq(instruction.stack_push(), N_BYTES_ACCOUNT_ADDRESS),
+    address = instruction.tx_context_lookup(tx_id, TxContextFieldTag.CallerAddress)
+    instruction.constrain_equal_word(
+        instruction.address_to_word(address),
+        instruction.stack_push(),
     )
 
     instruction.step_state_transition_in_same_context(

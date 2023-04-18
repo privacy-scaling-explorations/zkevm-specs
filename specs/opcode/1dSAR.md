@@ -40,7 +40,7 @@ First we could define below constants for calculating `b64s`.
 MAX_U64 = 2**64 - 1
 is_neg = is_neg(a)
 # Split `shift` into two parts `shf_lo` and `shf_hi`.
-shf_lo, shf_hi = word_to_lo_hi(shift)
+shf_lo, shf_hi = shift.to_lo_hi()
 shf_hi_is_zero = is_zero(shf_hi)
 shf_div64 = shf_lo // 64
 shf_mod64 = shf_lo % 64
@@ -48,7 +48,7 @@ p_lo = 1 << shf_mod64
 p_hi = 1 << (64 - shf_mod64)
 # The top new bits are set to 1 if `a` is negative, otherwise set to 0.
 p_top = is_neg * (MAX_U64 + 1 - p_hi)
-a64s = word_to_64s(a)
+a64s = a.to_64s()
 a64s_lo[idx] = a64s[idx] % p_lo
 a64s_hi[idx] = a64s[idx] / p_lo
 ```

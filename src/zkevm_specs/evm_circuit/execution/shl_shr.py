@@ -1,4 +1,4 @@
-from ...util import FQ, RLC
+from ...util import FQ, Word
 from ..instruction import Instruction, Transition
 from ..opcode import Opcode
 
@@ -45,35 +45,37 @@ def check_witness(
     instruction: Instruction,
     is_shl: FQ,
     shf0: FQ,
-    shift: RLC,
-    dividend: RLC,
-    divisor: RLC,
-    quotient: RLC,
-    remainder: RLC,
-    pop1: RLC,
-    pop2: RLC,
-    push: RLC,
+    shift: Word,
+    dividend: Word,
+    divisor: Word,
+    quotient: Word,
+    remainder: Word,
+    pop1: Word,
+    pop2: Word,
+    push: Word,
 ):
     is_shr = 1 - is_shl
-    shf_lt256 = instruction.is_zero(instruction.sum(shift.le_bytes[1:]))
-    divisor_is_zero = instruction.word_is_zero(divisor)
+    shift_le_bytes = shift.to_le_bytes()
+    shf_lt256 = instruction.is_zero(instruction.sum(shift_le_bytes[1:]))
+    divisor_is_zero = instruction.is_zero_word(divisor)
 
     # Constrain stack pops and pushes as:
     # - for SHL, two pops are shift and quotient, and push is dividend.
     # - for SHR, two pops are shift and dividend, and push is quotient.
-    instruction.constrain_equal(pop1.expr(), shift.expr())
-    instruction.constrain_equal(
-        pop2.expr(),
-        is_shl * quotient.expr() + is_shr * dividend.expr(),
+    instruction.constrain_equal_word(pop1, shift)
+    instruction.constrain_equal_word(
+        pop2,
+        quotient.select(is_shl) + dividend.select(is_shr),
     )
-    instruction.constrain_equal(
-        push.expr(), (is_shl * dividend.expr() + is_shr * quotient.expr()) * (1 - divisor_is_zero)
+    instruction.constrain_equal_word(
+        push, dividend.select(is_shl) + quotient.select(is_shr * (1 - divisor_is_zero))
     )
-    instruction.constrain_zero(shf0 - FQ(shift.le_bytes[0]))
+    instruction.constrain_zero(shf0 - FQ(shift_le_bytes[0]))
 
     # Constrain shift == shift.cells[0] when divisor != 0.
-    instruction.constrain_zero(
-        (1 - divisor_is_zero) * (shift.expr() - shift.le_bytes[0]),
+    instruction.constrain_equal_word(
+        shift.select(1 - divisor_is_zero),
+        Word.from_lo(shift_le_bytes[0]).select(1 - divisor_is_zero),
     )
 
     # Constrain shift < 256 when divisor != 0 or shift >= 256 when divisor == 0.
@@ -84,7 +86,7 @@ def check_witness(
     instruction.constrain_zero((1 - divisor_is_zero) * (1 - remainder_lt_divisor))
 
     # Constrain remainder == 0 for SHL.
-    remainder_is_zero = instruction.word_is_zero(remainder)
+    remainder_is_zero = instruction.is_zero_word(remainder)
     instruction.constrain_zero(is_shl * (1 - remainder_is_zero))
 
     # Constrain overflow == 0 for SHR.
@@ -93,26 +95,26 @@ def check_witness(
 
     # Constrain divisor_lo == 2^shf0 when shf0 < 128, and
     # divisor_hi == 2^(128 - shf0) otherwise.
-    divisor_lo = instruction.bytes_to_fq(divisor.le_bytes[:16])
-    divisor_hi = instruction.bytes_to_fq(divisor.le_bytes[16:])
+    divisor_lo, divisor_hi = divisor.to_lo_hi()
     if (1 - divisor_is_zero) == 1:
         instruction.pow2_lookup(shf0, divisor_lo, divisor_hi)
 
 
-def gen_witness(opcode: FQ, pop1: RLC, pop2: RLC, push: RLC):
+def gen_witness(opcode: FQ, pop1: Word, pop2: Word, push: Word):
     is_shl = Opcode.SHR - opcode
     shift = pop1
-    shf0 = shift.le_bytes[0]
-    shf_lt256 = sum(shift.le_bytes) - shf0
-    divisor = RLC(1 << shf0) if shf_lt256 == 0 else RLC(0)
+    shift_le_bytes = shift.to_le_bytes()
+    shf0 = shift_le_bytes[0]
+    shf_lt256 = sum(shift_le_bytes) - shf0
+    divisor = Word(1 << shf0.n) if shf_lt256 == 0 else Word(0)
     if is_shl.n == 1:
         dividend = push
         quotient = pop2
-        remainder = RLC(0)
+        remainder = Word(0)
     else:  # SHR
         dividend = pop2
         quotient = push
-        remainder = RLC(dividend.int_value - quotient.int_value * divisor.int_value)
+        remainder = Word(dividend.int_value() - quotient.int_value() * divisor.int_value())
 
     return (
         is_shl,

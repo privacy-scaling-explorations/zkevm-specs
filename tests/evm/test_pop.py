@@ -8,8 +8,8 @@ from zkevm_specs.evm_circuit import (
     verify_steps,
     RWDictionary,
 )
-from zkevm_specs.util import RLC, U256
-from common import rand_word, rand_fq
+from zkevm_specs.util import Word, U256
+from common import rand_word
 
 TESTING_DATA = (
     rand_word(),
@@ -20,20 +20,17 @@ TESTING_DATA = (
 
 @pytest.mark.parametrize("y", TESTING_DATA)
 def test_pop(y: U256):
-    randomness = rand_fq()
-
     bytecode = Bytecode().pop().stop()
-    bytecode_hash = RLC(bytecode.hash(), randomness)
+    bytecode_hash = Word(bytecode.hash())
 
     tables = Tables(
         block_table=set(),
         tx_table=set(),
-        bytecode_table=set(bytecode.table_assignments(randomness)),
-        rw_table=set(RWDictionary(1).stack_read(1, 1023, RLC(y, randomness)).rws),
+        bytecode_table=set(bytecode.table_assignments()),
+        rw_table=set(RWDictionary(1).stack_read(1, 1023, Word(y)).rws),
     )
 
     verify_steps(
-        randomness=randomness,
         tables=tables,
         steps=[
             StepState(

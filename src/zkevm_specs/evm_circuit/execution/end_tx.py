@@ -1,4 +1,4 @@
-from ...util import N_BYTES_GAS, MAX_REFUND_QUOTIENT_OF_GAS_USED, FQ, RLC, cast_expr
+from ...util import N_BYTES_GAS, MAX_REFUND_QUOTIENT_OF_GAS_USED, FQ
 from ..execution_state import ExecutionState
 from ..instruction import Instruction, Transition
 from ..table import BlockContextFieldTag, CallContextFieldTag, TxContextFieldTag, TxReceiptFieldTag
@@ -32,7 +32,7 @@ def end_tx(instruction: Instruction):
     instruction.add_balance(tx_caller_address, [value])
 
     # Add gas_used * effective_tip to coinbase's balance
-    base_fee = cast_expr(instruction.block_context_lookup(BlockContextFieldTag.BaseFee), RLC)
+    base_fee = instruction.block_context_lookup_word(BlockContextFieldTag.BaseFee)
     effective_tip, _ = instruction.sub_word(tx_gas_price, base_fee)
     reward, carry = instruction.mul_word_by_u64(effective_tip, gas_used)
     instruction.constrain_zero(carry)

@@ -12,7 +12,6 @@ DUMMY_STEP_STATE = StepState(ExecutionState.EndBlock, rw_counter=-1)
 
 
 def verify_steps(
-    randomness: FQ,
     tables: Tables,
     steps: List[StepState],
     begin_with_first_step: bool = False,
@@ -27,7 +26,6 @@ def verify_steps(
         try:
             verify_step(
                 Instruction(
-                    randomness=randomness,
                     tables=tables,
                     curr=curr,
                     next=next,
@@ -37,6 +35,7 @@ def verify_steps(
             )
         except AssertionError as e:
             exception = e
+            break
     if success:
         if exception:
             raise exception
