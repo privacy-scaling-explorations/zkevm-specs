@@ -4,6 +4,7 @@ import py_ecc
 from py_ecc.bn128 import FQ, multiply, add
 from .bn256 import unmarshal_field, CurvePoint, G1, gfp_to_fq
 
+U8 = NewType("U8", int)
 U64 = NewType("U64", int)
 U128 = NewType("U128", int)
 U160 = NewType("U160", int)
@@ -39,3 +40,14 @@ def point_add(a: G1, b: G1) -> G1:
     c = add((a_x, a_y), (b_x, b_y))
 
     return to_cf_form(c)
+
+
+def is_circuit_code(func):
+    """
+    A no-op decorator just to mark the function
+    """
+
+    def wrapper(*args, **kargs):
+        return func(*args, **kargs)
+
+    return wrapper

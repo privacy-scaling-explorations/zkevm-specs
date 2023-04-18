@@ -52,6 +52,7 @@ from .sar import sar
 from .sdiv_smod import sdiv_smod
 from .sha3 import sha3
 from .shl_shr import shl_shr
+from .signextend import *
 from .stop import stop
 from .return_revert import *
 from .extcodecopy import *
@@ -98,6 +99,7 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.SLOAD: sload,
     ExecutionState.SSTORE: sstore,
     ExecutionState.SELFBALANCE: selfbalance,
+    ExecutionState.SIGNEXTEND: signextend,
     ExecutionState.GASPRICE: gasprice,
     ExecutionState.EXTCODECOPY: extcodecopy,
     ExecutionState.EXTCODEHASH: extcodehash,

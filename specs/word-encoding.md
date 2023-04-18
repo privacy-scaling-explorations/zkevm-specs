@@ -60,7 +60,7 @@ word8s = [
 
 The 256 bit word is represented as a random linear combination of its 8 bit words.
 
-The commitment check should gurantee the 32 chunks in 8 bit range.
+The commitment check should guarantee the 32 chunks in 8 bit range.
 
 ## Addition
 
@@ -90,7 +90,7 @@ This checks the the relations of `a256 > b256`, `a256 < b256`, `a256 == b256`
 
 We group 8 bit chunks to 16 bit chunks to optimize the table.
 
-The `result` carries the conclusion of the comparision from the higher siganificant chunks all the way down.
+The `result` carries the conclusion of the comparison from the higher significant chunks all the way down.
 
 Example:
 
