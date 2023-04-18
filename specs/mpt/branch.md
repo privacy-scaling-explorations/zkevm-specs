@@ -33,6 +33,50 @@ Example:
 [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 16]
 [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 17]
 ```
+The witness data for branch contains 16 children which are distributed across 16 rows.
+There is an additional branch init row and two extension node rows (for cases when branch resides
+in an extension node).
+
+Branch rows:
+```
+Branch init
+Branch child 0
+...
+Branch child 15
+Extension node S
+Extension node C
+```
+
+The branch does not include raw children, it includes only a hash of each children (except
+when a child is shorter than 32 bytes, in this case the raw child is part of a branch).
+
+When non-empty node, the branch child row looks like:
+```
+160  hash(child i)
+```
+
+The value 160 is RLP specific and it means the the following RLP string is of length `128 = 160 - 32`.
+
+When empty node, the branch child row looks like:
+```
+128 0 ... 0
+```
+
+In case there is a branch child of length smaller than 32, its corresponding row looks like:
+```
+194 32 1 0 ... 0
+```
+
+The value 194 is RLP specific and it means that the following RLP list is of length
+`2 = 194 - 192`.
+
+Note [that](main.md) there are `S` and `C` parallel proofs, however
+we do not need to include the whole `C` proof in the witness as 15 out of 16 rows stay the same.
+At each trie level, there is only one branch child that has been modified and we include it
+in the branch init row.
+
+---
+
 
 Note that when `BRANCH.IS_CHILD` row presents a nil node, there is only one byte non-zero:
 128 at `s_main.bytes[0] / c_main.bytes[0]`.
