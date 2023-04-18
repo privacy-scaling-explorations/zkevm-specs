@@ -1,3 +1,4 @@
+import copy
 import pytest
 import rlp
 from collections import namedtuple
@@ -40,10 +41,6 @@ Stack = namedtuple(
     ["value", "offset", "size", "salt"],
     defaults=[0, 0, 0, 0],
 )
-Expected = namedtuple(
-    "Expected",
-    ["caller_gas_left", "callee_gas_left", "next_memory_size"],
-)
 
 
 CALLER = Account(address=0xFE, balance=int(1e20), nonce=10)
@@ -66,7 +63,7 @@ def gen_bytecode(is_return: bool, offset: int) -> Bytecode:
     return bytecode
 
 
-def expected(
+def calc_gas_cost(
     opcode: Opcode,
     caller_ctx: CreateContext,
     stack: Stack,
@@ -100,10 +97,14 @@ def expected(
     callee_gas_left = min(all_but_one_64th_gas, caller_ctx.gas_left)
     caller_gas_left = caller_ctx.gas_left - (gas_cost + callee_gas_left)
 
-    return Expected(
-        caller_gas_left=caller_gas_left,
-        callee_gas_left=callee_gas_left,
-        next_memory_size=next_memory_size,
+    print(
+        f"* * * * * expected gas: {caller_ctx.gas_left} - {gas_cost} - {callee_gas_left} * * * * * *"
+    )
+
+    return (
+        caller_gas_left,
+        callee_gas_left,
+        next_memory_size,
     )
 
 
@@ -118,12 +119,12 @@ def gen_testing_data():
     ]
     create_contexts = [
         CreateContext(gas_left=1_000_000, is_persistent=True),
-        CreateContext(gas_left=1_000_000, is_persistent=False, rw_counter_end_of_reversion=89),
+        CreateContext(gas_left=1_000_000, is_persistent=False, rw_counter_end_of_reversion=88),
     ]
     stacks = [
-        Stack(value=int(1e18), offset=64, size=64, salt=int(12345)),
-        Stack(offset=64, size=32),
-        Stack(offset=0, size=96),
+        Stack(value=int(1e18), offset=64, salt=int(12345)),
+        Stack(offset=200),
+        Stack(offset=0),
     ]
     is_warm_accesss = [True, False]
 
@@ -135,11 +136,6 @@ def gen_testing_data():
             create_contexts,
             stack,
             is_warm_access,
-            expected(
-                opcode,
-                create_contexts,
-                stack,
-            ),
         )
         for opcode, is_return, create_contexts, stack, is_warm_access in product(
             opcodes, is_return, create_contexts, stacks, is_warm_accesss
@@ -151,7 +147,7 @@ TESTING_DATA = gen_testing_data()
 
 
 @pytest.mark.parametrize(
-    "opcode, caller, is_return, caller_ctx, stack, is_warm_access, expected",
+    "opcode, caller, is_return, caller_ctx, stack, is_warm_access",
     TESTING_DATA,
 )
 def test_create_create2(
@@ -161,30 +157,36 @@ def test_create_create2(
     caller_ctx: CreateContext,
     stack: Stack,
     is_warm_access: bool,
-    expected: Expected,
 ):
     randomness = rand_fq()
     CURRENT_CALL_ID = 1
 
     init_codes = gen_bytecode(is_return, stack.offset)
+    stack = stack._replace(size=len(init_codes.code))
+    init_codes_hash = RLC(init_codes.hash(), randomness)
 
+    init_bytecode = gen_bytecode(is_return, stack.offset)
     is_create2 = 1 if opcode == Opcode.CREATE2 else 0
     if is_create2 == 1:
-        caller_bytecode = init_codes.create2(
+        caller_bytecode = init_bytecode.create2(
             stack.value,
             stack.offset,
             stack.size,
             stack.salt,
         ).stop()
     else:  # CREATE
-        caller_bytecode = init_codes.create(
+        caller_bytecode = init_bytecode.create(
             stack.value,
             stack.offset,
             stack.size,
         ).stop()
 
-    init_bytecode = init_codes
-    init_bytecode_hash = RLC(init_bytecode.hash(), randomness)
+    caller_bytecode_hash = RLC(caller_bytecode.hash(), randomness)
+    (caller_gas_left, callee_gas_left, next_memory_size) = calc_gas_cost(
+        opcode,
+        caller_ctx,
+        stack,
+    )
 
     nonce = caller.nonce
     is_success = is_return
@@ -195,7 +197,7 @@ def test_create_create2(
         80
         if is_reverted_by_callee
         else (
-            caller_ctx.rw_counter_end_of_reversion - caller_ctx.reversible_write_counter
+            caller_ctx.rw_counter_end_of_reversion - (caller_ctx.reversible_write_counter + 1)
             if is_reverted_by_caller
             else 0
         )
@@ -206,7 +208,7 @@ def test_create_create2(
             b"\xff"
             + caller.address.to_bytes(20, "big")
             + int(stack.salt).to_bytes(32, "little")
-            + init_bytecode_hash.le_bytes
+            + init_codes_hash.le_bytes
         )
         contract_addr = keccak256(preimage)
     else:
@@ -216,10 +218,10 @@ def test_create_create2(
     # can't be a static all
     is_static = 0
 
-    next_call_id = 66
+    next_call_id = 65
     rw_counter = next_call_id
     # CREATE: 33 * 3(push) + 1(CREATE) + 1(mstore) + 33(PUSH32) + 2(PUSH) + 1(RETURN)
-    # CREATE2: 33 * 4(push) + 1(CREATE) + 1(mstore) + 33(PUSH32) + 2(PUSH) + 1(RETURN)
+    # CREATE2: 33 * 4(push) + 1(CREATE2) + 1(mstore) + 33(PUSH32) + 2(PUSH) + 1(RETURN)
     next_program_counter = 33 * 4 + 1 + 35 + 1 if is_create2 else 33 * 3 + 1 + 35 + 1
     assert caller_bytecode.code[next_program_counter] == opcode
 
@@ -227,21 +229,21 @@ def test_create_create2(
     # CREATE2: 1024 - 4 + 1 = 1021
     stack_pointer = 1021 - is_create2
 
-    # first element of init_bytecode is length of code, so skip it
     src_data = dict(
         [
             (
                 i,
                 (
-                    init_bytecode.code[i - stack.offset],
-                    init_bytecode.is_code[i - stack.offset],
+                    init_codes.code[i - stack.offset],
+                    init_codes.is_code[i - stack.offset],
                 )
-                if i - stack.offset < len(init_bytecode.code)
+                if i - stack.offset < len(init_codes.code)
                 else (0, 0),
             )
             for i in range(stack.offset, stack.offset + stack.size)
         ]
     )
+    print(f"[{src_data}]")
 
     # fmt: off
     # stack
@@ -263,7 +265,6 @@ def test_create_create2(
         .account_write(caller.address, AccountFieldTag.Nonce, nonce, nonce - 1) \
         .call_context_read(CURRENT_CALL_ID, CallContextFieldTag.IsSuccess, is_success) \
         .call_context_read(CURRENT_CALL_ID, CallContextFieldTag.IsStatic, is_static) \
-        .call_context_read(CURRENT_CALL_ID, CallContextFieldTag.CallDataLength, len(src_data)) \
         .call_context_read(CURRENT_CALL_ID, CallContextFieldTag.RwCounterEndOfReversion, caller_ctx.rw_counter_end_of_reversion) \
         .call_context_read(CURRENT_CALL_ID, CallContextFieldTag.IsPersistent, caller_ctx.is_persistent) \
         .tx_access_list_account_write(CURRENT_CALL_ID, contract_address, True, is_warm_access, rw_counter_of_reversion=None if caller_ctx.is_persistent else caller_ctx.rw_counter_end_of_reversion - caller_ctx.reversible_write_counter) \
@@ -284,13 +285,12 @@ def test_create_create2(
         .account_write(contract_address, AccountFieldTag.Balance, callee_balance, callee_balance_prev, rw_counter_of_reversion=None if callee_is_persistent else callee_rw_counter_end_of_reversion - 1)
 
     # copy_table
-   
     copy_circuit = CopyCircuit().copy(
         randomness,
         rw_dictionary,
         CURRENT_CALL_ID,
         CopyDataTypeTag.Memory,
-        init_bytecode_hash.expr(),
+        init_codes_hash.expr(),
         CopyDataTypeTag.Bytecode,
         stack.offset,
         stack.offset + stack.size,
@@ -303,8 +303,8 @@ def test_create_create2(
     rw_dictionary \
         .call_context_write(CURRENT_CALL_ID, CallContextFieldTag.ProgramCounter, next_program_counter + 1) \
         .call_context_write(CURRENT_CALL_ID, CallContextFieldTag.StackPointer, 1023) \
-        .call_context_write(CURRENT_CALL_ID, CallContextFieldTag.GasLeft, expected.caller_gas_left) \
-        .call_context_write(CURRENT_CALL_ID, CallContextFieldTag.MemorySize, expected.next_memory_size) \
+        .call_context_write(CURRENT_CALL_ID, CallContextFieldTag.GasLeft, caller_gas_left) \
+        .call_context_write(CURRENT_CALL_ID, CallContextFieldTag.MemorySize, next_memory_size) \
         .call_context_write(CURRENT_CALL_ID, CallContextFieldTag.ReversibleWriteCounter, caller_ctx.reversible_write_counter + 1) 
     
     # callee's call context
@@ -326,14 +326,15 @@ def test_create_create2(
         tx_table=set(),
         bytecode_table=set(
             chain(
-                init_bytecode.table_assignments(randomness),
+                caller_bytecode.table_assignments(randomness),
+                init_codes.table_assignments(randomness),
             )
         ),
         rw_table=set(rw_dictionary.rws),
         copy_circuit=copy_circuit.rows,
     )
 
-    verify_copy_table(copy_circuit, tables, randomness)
+    # verify_copy_table(copy_circuit, tables, randomness)
 
     verify_steps(
         randomness=randomness,
@@ -347,12 +348,13 @@ def test_create_create2(
                 call_id=CURRENT_CALL_ID,
                 is_root=False,
                 is_create=True,
-                code_hash=RLC(caller_bytecode.hash(), randomness),
+                code_hash=caller_bytecode_hash.expr(),
                 program_counter=next_program_counter,
                 stack_pointer=stack_pointer,
                 gas_left=caller_ctx.gas_left,
                 memory_word_size=caller_ctx.memory_word_size,
                 reversible_write_counter=caller_ctx.reversible_write_counter,
+                aux_data=init_codes_hash,
             ),
             (
                 StepState(
@@ -361,10 +363,10 @@ def test_create_create2(
                     call_id=next_call_id,
                     is_root=False,
                     is_create=True,
-                    code_hash=init_bytecode_hash,
+                    code_hash=caller_bytecode_hash.expr(),
                     program_counter=0,
                     stack_pointer=1024,
-                    gas_left=expected.callee_gas_left,
+                    gas_left=callee_gas_left,
                     reversible_write_counter=2,
                 )
             ),

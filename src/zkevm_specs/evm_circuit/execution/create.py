@@ -41,7 +41,6 @@ def create(instruction: Instruction):
     nonce, nonce_prev = instruction.account_write(caller_address, AccountFieldTag.Nonce)
     is_success = instruction.call_context_lookup(CallContextFieldTag.IsSuccess)
     is_static = instruction.call_context_lookup(CallContextFieldTag.IsStatic)
-    init_code_len = instruction.call_context_lookup(CallContextFieldTag.CallDataLength)
     reversion_info = instruction.reversion_info()
 
     # calculate contract address
@@ -49,12 +48,15 @@ def create(instruction: Instruction):
         instruction.generate_contract_address(caller_address, nonce)
         if is_create == 1
         else instruction.generate_CREAET2_contract_address(
-            caller_address, salt_rlc.le_bytes, instruction.next.code_hash
+            caller_address, salt_rlc.le_bytes, instruction.curr.aux_data
         )
     )
 
     # verify the equality of input `size` and length of calldata
-    instruction.constrain_equal(size, init_code_len)
+    instruction.constrain_equal(
+        instruction.bytecode_length(instruction.curr.aux_data.expr()),
+        size.expr(),
+    )
 
     # verify return contract address
     instruction.constrain_equal(
@@ -127,7 +129,7 @@ def create(instruction: Instruction):
     copy_rwc_inc, _ = instruction.copy_lookup(
         instruction.curr.call_id,  # src_id
         CopyDataTypeTag.Memory,  # src_type
-        instruction.next.code_hash.expr(),  # dst_id
+        instruction.curr.aux_data.expr(),  # dst_id
         CopyDataTypeTag.Bytecode,  # dst_type
         offset,  # src_addr
         offset + size,  # src_addr_boundary
