@@ -1,4 +1,4 @@
-from ...util import FQ
+from ...util import FQ, Word
 from ..instruction import Instruction, Transition
 from ..opcode import Opcode
 
@@ -16,15 +16,8 @@ def cmp(instruction: Instruction):
     # swap a and b if the opcode is GT
     (aa, bb) = (b, a) if is_gt == 1 else (a, b)
 
-    # decode RLC to bytes for a and b
-    a8s = aa.le_bytes
-    b8s = bb.le_bytes
-    c8s = c.le_bytes
-
-    a_lo = instruction.bytes_to_fq(a8s[:16])
-    a_hi = instruction.bytes_to_fq(a8s[16:])
-    b_lo = instruction.bytes_to_fq(b8s[:16])
-    b_hi = instruction.bytes_to_fq(b8s[16:])
+    a_lo, a_hi = aa.to_lo_hi()
+    b_lo, b_hi = bb.to_lo_hi()
 
     # `a[0..16] <= b[0..16]`
     lt_lo, eq_lo = instruction.compare(a_lo, b_lo, 16)
@@ -37,9 +30,9 @@ def cmp(instruction: Instruction):
 
     result = eq if is_eq == 1 else lt
 
-    instruction.constrain_equal(
+    instruction.constrain_equal_word(
+        Word.from_lo(FQ(result)),
         c,
-        FQ(result),
     )
 
     instruction.step_state_transition_in_same_context(

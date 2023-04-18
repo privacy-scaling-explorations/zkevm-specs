@@ -1,14 +1,16 @@
-from .encoding import is_circuit_code
 from typing import NamedTuple, Tuple, List, Set, Union
 from .util import (
     FQ,
     RLC,
+    Word,
+    WordOrValue,
     U160,
     U256,
     U64,
     linear_combine_bytes,
     GAS_COST_TX_CALL_DATA_PER_NON_ZERO_BYTE,
     GAS_COST_TX_CALL_DATA_PER_ZERO_BYTE,
+    is_circuit_code,
 )
 from eth_keys import KeyAPI  # type: ignore
 import rlp  # type: ignore
@@ -24,41 +26,37 @@ class Row:
     tx_id: FQ
     tag: FQ
     index: FQ
-    value: FQ
+    value: WordOrValue
 
-    def __init__(self, tx_id: FQ, tag: FQ, index: FQ, value: FQ):
+    def __init__(self, tx_id: FQ, tag: FQ, index: FQ, value: Union[FQ, Word]):
         self.tx_id = tx_id
         self.tag = tag
         self.index = index
-        self.value = value
+        self.value = WordOrValue(value)
 
 
-# TODO: Review if the keccak table layout used here matches the final keccak
-# lookup table layout in the spec.
-# - Keccak input spec PR https://github.com/privacy-scaling-explorations/zkevm-specs/pull/147
-# - Tracking issue https://github.com/privacy-scaling-explorations/zkevm-specs/issues/158
 class KeccakTable:
-    # The columns are: (is_enabled, input_rlc, input_len, output_rlc)
-    table: Set[Tuple[FQ, FQ, FQ, FQ]]
+    # The columns are: (is_enabled, input_rlc, input_len, output)
+    table: Set[Tuple[FQ, FQ, FQ, Word]]
 
     def __init__(self):
         self.table = set()
-        self.table.add((FQ(0), FQ(0), FQ(0), FQ(0)))  # Add all 0s row
+        self.table.add((FQ(0), FQ(0), FQ(0), Word(0)))  # Add all 0s row
 
-    def add(self, input: bytes, randomness: FQ):
+    def add(self, input: bytes, keccak_randomness: FQ):
         output = keccak(input)
         self.table.add(
             (
                 FQ(1),
-                RLC(bytes(reversed(input)), randomness, n_bytes=64).expr(),
+                RLC(bytes(reversed(input)), keccak_randomness, n_bytes=64).expr(),
                 FQ(len(input)),
-                RLC(output, randomness).expr(),
+                Word(output),
             )
         )
 
-    def lookup(self, is_enabled: FQ, input_rlc: FQ, input_len: FQ, output_rlc: FQ, assert_msg: str):
-        assert (is_enabled, input_rlc, input_len, output_rlc) in self.table, (
-            f"{assert_msg}: {(is_enabled, input_rlc, input_len, output_rlc)} "
+    def lookup(self, is_enabled: FQ, input_rlc: FQ, input_len: FQ, output: Word, assert_msg: str):
+        assert (is_enabled, input_rlc, input_len, output) in self.table, (
+            f"{assert_msg}: {(is_enabled, input_rlc, input_len, output)} "
             + "not found in the lookup table"
         )
 
@@ -166,9 +164,9 @@ class SignVerifyChip:
     key corresponding to an Ethereum Address.
     """
 
-    pub_key_hash: RLC
+    pub_key_hash: bytes
     address: FQ  # Set to 0 to disable verification check
-    msg_hash_rlc: FQ
+    msg_hash: Word
     ecdsa_chip: ECDSAVerifyChip
     pub_key_x_bytes: bytes
     pub_key_y_bytes: bytes
@@ -176,14 +174,14 @@ class SignVerifyChip:
 
     def __init__(
         self,
-        pub_key_hash: RLC,
+        pub_key_hash: bytes,
         address: FQ,
-        msg_hash_rlc: FQ,
+        msg_hash: Word,
         ecdsa_chip: ECDSAVerifyChip,
     ) -> None:
         self.pub_key_hash = pub_key_hash
         self.address = address
-        self.msg_hash_rlc = msg_hash_rlc
+        self.msg_hash = msg_hash
         self.ecdsa_chip = ecdsa_chip
         self.pub_key_x_bytes = ecdsa_chip.pub_key_x_bytes
         self.pub_key_y_bytes = ecdsa_chip.pub_key_y_bytes
@@ -191,16 +189,20 @@ class SignVerifyChip:
 
     @classmethod
     def assign(
-        cls, signature: KeyAPI.Signature, pub_key: KeyAPI.PublicKey, msg_hash: bytes, randomness: FQ
+        cls,
+        signature: KeyAPI.Signature,
+        pub_key: KeyAPI.PublicKey,
+        msg_hash: bytes,
+        keccak_randomness: FQ,
     ):
         pub_key_hash = keccak(pub_key.to_bytes())
-        self_pub_key_hash = RLC(pub_key_hash, randomness)
+        self_pub_key_hash = pub_key_hash
         self_address = FQ(int.from_bytes(pub_key_hash[-20:], "big"))
-        self_msg_hash_rlc = RLC(int.from_bytes(msg_hash, "big"), randomness).expr()
+        self_msg_hash = Word(int.from_bytes(msg_hash, "big"))
         self_ecdsa_chip = ECDSAVerifyChip.assign(signature, pub_key, msg_hash)
-        return cls(self_pub_key_hash, self_address, self_msg_hash_rlc, self_ecdsa_chip)
+        return cls(self_pub_key_hash, self_address, self_msg_hash, self_ecdsa_chip)
 
-    def verify(self, keccak_table: KeccakTable, randomness: FQ, assert_msg: str):
+    def verify(self, keccak_table: KeccakTable, keccak_randomness: FQ, assert_msg: str):
         is_not_padding = FQ(1 - (self.address == 0))  # 1 - is_zero(self.address)
 
         # 0. Copy constraints between pub_key and msg_hash bytes of this chip
@@ -217,26 +219,25 @@ class SignVerifyChip:
         )
         keccak_table.lookup(
             is_not_padding,
-            is_not_padding * RLC(bytes(reversed(pub_key_bytes)), randomness, n_bytes=64).expr(),
+            is_not_padding
+            * RLC(bytes(reversed(pub_key_bytes)), keccak_randomness, n_bytes=64).expr(),
             is_not_padding * FQ(64),
-            is_not_padding * self.pub_key_hash.expr(),
+            Word(self.pub_key_hash).select(is_not_padding),
             assert_msg,
         )
 
         # 2. Verify that the first 20 bytes of the pub_key_hash equal the address
-        addr_expr = linear_combine_bytes(
-            list(reversed(self.pub_key_hash.le_bytes[-20:])), FQ(2**8)
-        )
+        addr_expr = linear_combine_bytes(list(reversed(self.pub_key_hash[-20:])), FQ(2**8))
         assert (
             addr_expr == self.address
         ), f"{assert_msg}: {hex(addr_expr.n)} != {hex(self.address.n)}"
 
         # 3. Verify that the signed message in the ecdsa_chip with RLC encoding
-        # corresponds to msg_hash_rlc
-        msg_hash_rlc_expr = is_not_padding * linear_combine_bytes(self.msg_hash_bytes, randomness)
+        # corresponds to msg_hash
+        msg_hash = Word(self.msg_hash_bytes)
         assert (
-            msg_hash_rlc_expr == self.msg_hash_rlc
-        ), f"{assert_msg}: {hex(msg_hash_rlc_expr.n)} != {hex(self.msg_hash_rlc.n)}"
+            msg_hash.select(is_not_padding) == self.msg_hash
+        ), f"{assert_msg}: {hex(msg_hash.int_value())} != {hex(self.msg_hash.int_value())}"
 
         # 4. Verify the ECDSA signature
         self.ecdsa_chip.verify(assert_msg)
@@ -253,7 +254,7 @@ def verify_circuit(
     witness: Witness,
     MAX_TXS: int,
     MAX_CALLDATA_BYTES: int,
-    randomness: FQ,
+    keccak_randomness: FQ,
 ) -> None:
     """
     Entry level circuit verification function
@@ -271,16 +272,20 @@ def verify_circuit(
         # SignVerifyChip constraint verification.  Padding txs rows contain
         # 0 in all values.  The SignVerifyChip skips the verification when
         # the caller_address == 0.
-        sign_verifications[tx_index].verify(keccak_table, randomness, assert_msg)
+        sign_verifications[tx_index].verify(keccak_table, keccak_randomness, assert_msg)
 
         # 0. Copy constraints using fixed offsets between the tx rows and the SignVerifyChip
-        assert rows[caller_addr_index].value == sign_verifications[tx_index].address, (
-            f"{assert_msg}: {hex(rows[caller_addr_index].value.n)} != "
-            + f"{hex(sign_verifications[tx_index].address.n)}"
+        assert rows[caller_addr_index].value.value() == sign_verifications[tx_index].address, (
+            f"{assert_msg}: {rows[caller_addr_index].value.value()} != "
+            + f"{sign_verifications[tx_index].address}"
         )
-        assert rows[tx_sign_hash_index].value == sign_verifications[tx_index].msg_hash_rlc, (
-            f"{assert_msg}: {hex(rows[tx_sign_hash_index].value.n)} != "
-            + f"{hex(sign_verifications[tx_index].msg_hash_rlc.n)}"
+        assert rows[tx_sign_hash_index].value.lo == sign_verifications[tx_index].msg_hash.lo, (
+            f"{assert_msg}: {rows[tx_sign_hash_index].value.lo} != "
+            + f"{sign_verifications[tx_index].msg_hash.lo}"
+        )
+        assert rows[tx_sign_hash_index].value.hi == sign_verifications[tx_index].msg_hash.hi, (
+            f"{assert_msg}: {rows[tx_sign_hash_index].value.hi} != "
+            + f"{sign_verifications[tx_index].msg_hash.hi}"
         )
 
     # Remaining rows contain CallData.  Those rows don't have any circuit constraint.
@@ -311,11 +316,11 @@ def padding_tx(tx_id: int) -> List[Row]:
     return [
         Row(FQ(tx_id), FQ(Tag.Nonce), FQ(0), FQ(0)),
         Row(FQ(tx_id), FQ(Tag.Gas), FQ(0), FQ(0)),
-        Row(FQ(tx_id), FQ(Tag.GasPrice), FQ(0), FQ(0)),
+        Row(FQ(tx_id), FQ(Tag.GasPrice), FQ(0), Word(0)),
         Row(FQ(tx_id), FQ(Tag.CallerAddress), FQ(0), FQ(0)),
         Row(FQ(tx_id), FQ(Tag.CalleeAddress), FQ(0), FQ(0)),
         Row(FQ(tx_id), FQ(Tag.IsCreate), FQ(0), FQ(0)),
-        Row(FQ(tx_id), FQ(Tag.Value), FQ(0), FQ(0)),
+        Row(FQ(tx_id), FQ(Tag.Value), FQ(0), Word(0)),
         Row(FQ(tx_id), FQ(Tag.CallDataLength), FQ(0), FQ(0)),
         Row(FQ(tx_id), FQ(Tag.CallDataGasCost), FQ(0), FQ(0)),
         Row(FQ(tx_id), FQ(Tag.TxInvalid), FQ(0), FQ(0)),
@@ -325,7 +330,7 @@ def padding_tx(tx_id: int) -> List[Row]:
 
 
 def tx2witness(
-    index: int, tx: Transaction, chain_id: U64, randomness: FQ, keccak_table: KeccakTable
+    index: int, tx: Transaction, chain_id: U64, keccak_randomness: FQ, keccak_table: KeccakTable
 ) -> Tuple[List[Row], SignVerifyChip]:
     """
     Generate the witness data for a single transaction: generate the tx table
@@ -343,11 +348,11 @@ def tx2witness(
 
     pk = sig.recover_public_key_from_msg_hash(tx_sign_hash)
     pk_bytes = pk.to_bytes()
-    keccak_table.add(pk_bytes, randomness)
+    keccak_table.add(pk_bytes, keccak_randomness)
     pk_hash = keccak(pk.to_bytes())
     addr = pk_hash[-20:]
 
-    sign_verification = SignVerifyChip.assign(sig, pk, tx_sign_hash, randomness)
+    sign_verification = SignVerifyChip.assign(sig, pk, tx_sign_hash, keccak_randomness)
 
     call_data_gas_cost = sum(
         [
@@ -374,18 +379,18 @@ def tx2witness(
     rows: List[Row] = []
     rows.append(Row(tx_id, FQ(Tag.Nonce), FQ(0), FQ(tx.nonce)))
     rows.append(Row(tx_id, FQ(Tag.Gas), FQ(0), FQ(tx.gas)))
-    rows.append(Row(tx_id, FQ(Tag.GasPrice), FQ(0), RLC(tx.gas_price, randomness).expr()))
+    rows.append(Row(tx_id, FQ(Tag.GasPrice), FQ(0), Word(tx.gas_price)))
     rows.append(Row(tx_id, FQ(Tag.CallerAddress), FQ(0), FQ(int.from_bytes(addr, "big"))))
     rows.append(Row(tx_id, FQ(Tag.CalleeAddress), FQ(0), FQ(tx.to or 0)))
     rows.append(Row(tx_id, FQ(Tag.IsCreate), FQ(0), FQ(1) if tx.to is None else FQ(0)))
-    rows.append(Row(tx_id, FQ(Tag.Value), FQ(0), RLC(tx.value, randomness).expr()))
+    rows.append(Row(tx_id, FQ(Tag.Value), FQ(0), Word(tx.value)))
     rows.append(Row(tx_id, FQ(Tag.CallDataLength), FQ(0), FQ(len(tx.data))))
     rows.append(Row(tx_id, FQ(Tag.CallDataGasCost), FQ(0), FQ(call_data_gas_cost)))
     # here these 2 invalid flags are set by prover, and checking is deferred to begin_tx.
     rows.append(Row(tx_id, FQ(Tag.TxInvalid), FQ(0), FQ(0)))
     rows.append(Row(tx_id, FQ(Tag.AccessListGasCost), FQ(0), FQ(access_list_gas_cost)))
-    tx_sign_hash_rlc = RLC(int.from_bytes(tx_sign_hash, "big"), randomness).expr()
-    rows.append(Row(tx_id, FQ(Tag.TxSignHash), FQ(0), tx_sign_hash_rlc))
+    tx_sign_hash_word = Word(int.from_bytes(tx_sign_hash, "big"))
+    rows.append(Row(tx_id, FQ(Tag.TxSignHash), FQ(0), tx_sign_hash_word))
     for byte_index, byte in enumerate(tx.data):
         rows.append(Row(tx_id, FQ(Tag.CallData), FQ(byte_index), FQ(byte)))
 
@@ -396,7 +401,7 @@ def tx2witness(
 # padding transactions.  This values have calculated using the following values:
 # secret key = 1
 # message hash = 1
-# randomness = 1
+# keccak_randomness = 1
 DUMMY_SIGNATURE = (
     0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798,
     0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81799,
@@ -409,11 +414,16 @@ DUMMY_MSG_HASH = 0x0000000000000000000000000000000000000000000000000000000000000
 
 
 def txs2witness(
-    txs: List[Transaction], chain_id: U64, MAX_TXS: int, MAX_CALLDATA_BYTES: int, randomness: FQ
+    txs: List[Transaction],
+    chain_id: U64,
+    MAX_TXS: int,
+    MAX_CALLDATA_BYTES: int,
+    keccak_randomness: FQ,
 ) -> Witness:
     """
     Generate the complete witness of the transactions for a fixed size circuit.
     """
+
     assert len(txs) <= MAX_TXS
 
     keccak_table = KeccakTable()
@@ -421,7 +431,9 @@ def txs2witness(
     tx_fixed_rows: List[Row] = []  # Accumulate fixed rows of each tx
     tx_dyn_rows: List[Row] = []  # Accumulate CallData rows of each tx
     for index, tx in enumerate(txs):
-        tx_rows, sign_verification = tx2witness(index, tx, chain_id, randomness, keccak_table)
+        tx_rows, sign_verification = tx2witness(
+            index, tx, chain_id, keccak_randomness, keccak_table
+        )
         sign_verifications.append(sign_verification)
         for row in tx_rows:
             if row.tag == Tag.CallData:
@@ -454,9 +466,9 @@ def txs2witness(
         Secp256k1ScalarField(DUMMY_MSG_HASH),
     )
     padding_sign_verification = SignVerifyChip(
-        RLC(0, randomness),
+        bytes([0] * 32),
         FQ(0),
-        FQ(0),
+        Word(0),
         dummy_ecdsa_chip,
     )
     # Fill the rest of sign_verifications with the witnessess assigned to 0s

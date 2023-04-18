@@ -1,5 +1,5 @@
 from zkevm_specs.util.param import GAS_COST_CODE_DEPOSIT, MAX_CODE_SIZE
-from ...util import EMPTY_HASH, FQ, N_BYTES_MEMORY_ADDRESS, RLC
+from ...util import EMPTY_HASH, FQ, N_BYTES_MEMORY_ADDRESS
 from ..instruction import Instruction, Transition
 from ..opcode import Opcode
 from ..table import CallContextFieldTag, CopyDataTypeTag, AccountFieldTag
@@ -16,11 +16,11 @@ def return_revert(instruction: Instruction):
     is_success = instruction.call_context_lookup(CallContextFieldTag.IsSuccess)  # rwc += 1
     instruction.constrain_equal(is_success, is_return)
 
-    return_offset_rlc = instruction.stack_pop()  # rwc += 1
-    return_length_rlc = instruction.stack_pop()  # rwc += 1
+    return_offset_word = instruction.stack_pop()  # rwc += 1
+    return_length_word = instruction.stack_pop()  # rwc += 1
 
-    return_offset = instruction.rlc_to_fq(return_offset_rlc, N_BYTES_MEMORY_ADDRESS)
-    return_length = instruction.rlc_to_fq(return_length_rlc, N_BYTES_MEMORY_ADDRESS)
+    return_offset = instruction.word_to_fq(return_offset_word, N_BYTES_MEMORY_ADDRESS)
+    return_length = instruction.word_to_fq(return_length_word, N_BYTES_MEMORY_ADDRESS)
     return_end = return_offset + return_length
 
     rwc_delta = 3
@@ -30,11 +30,11 @@ def return_revert(instruction: Instruction):
         # A. Returns the specified memory chunk as deployment code.
 
         callee_address = instruction.call_context_lookup(CallContextFieldTag.CalleeAddress)
-        code_hash, code_hash_prev = instruction.account_write(
+        code_hash, code_hash_prev = instruction.account_write_word(
             callee_address, AccountFieldTag.CodeHash
         )
-        instruction.constrain_equal(code_hash_prev, RLC(EMPTY_HASH))
-        instruction.constrain_equal(code_hash, instruction.curr.aux_data)
+        instruction.constrain_equal_word(code_hash_prev, Word(EMPTY_HASH))
+        instruction.constrain_equal_word(code_hash, instruction.curr.aux_data)
 
         # verify bytecode size less than 24,576 bytes
         instruction.range_lookup(return_length, MAX_CODE_SIZE)
@@ -76,9 +76,9 @@ def return_revert(instruction: Instruction):
         copy_length = instruction.min(return_length, caller_return_length, N_BYTES_MEMORY_ADDRESS)
         copy_rwc_inc, _ = instruction.copy_lookup(
             instruction.curr.call_id,  # src_id
-            CopyDataTypeTag.Memory,  # src_type
+            CopyDataTypeTag.Memory,  # src_tag
             instruction.next.call_id,  # dst_id
-            CopyDataTypeTag.Memory,  # dst_type
+            CopyDataTypeTag.Memory,  # dst_tag
             return_offset,  # src_addr
             return_end,  # src_addr_boundary
             caller_return_offset,  # dst_addr

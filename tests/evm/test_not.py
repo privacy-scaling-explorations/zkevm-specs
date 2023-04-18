@@ -9,8 +9,9 @@ from zkevm_specs.evm_circuit import (
     Bytecode,
     RWDictionary,
 )
-from zkevm_specs.util import RLC
-from common import rand_fq, rand_word
+from zkevm_specs.util import Word
+
+from common import rand_word
 
 NOT_TESTING_DATA = [
     0,
@@ -24,23 +25,20 @@ NOT_TESTING_DATA = [
 
 @pytest.mark.parametrize("a", NOT_TESTING_DATA)
 def test_not(a: int):
-    randomness = rand_fq()
-
-    b = RLC(a ^ ((1 << 256) - 1), randomness)
-    a = RLC(a, randomness)
+    b = Word(a ^ ((1 << 256) - 1))
+    a = Word(a)
 
     bytecode = Bytecode().not_(a).stop()
-    bytecode_hash = RLC(bytecode.hash(), randomness)
+    bytecode_hash = Word(bytecode.hash())
 
     tables = Tables(
-        block_table=set(Block().table_assignments(randomness)),
+        block_table=set(Block().table_assignments()),
         tx_table=set(),
-        bytecode_table=set(bytecode.table_assignments(randomness)),
+        bytecode_table=set(bytecode.table_assignments()),
         rw_table=set(RWDictionary(9).stack_read(1, 1023, a).stack_write(1, 1023, b).rws),
     )
 
     verify_steps(
-        randomness=randomness,
         tables=tables,
         steps=[
             StepState(

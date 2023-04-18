@@ -10,8 +10,7 @@ from zkevm_specs.evm_circuit import (
     Bytecode,
     RWDictionary,
 )
-from zkevm_specs.util import RLC
-from common import rand_fq
+from zkevm_specs.util import Word
 
 
 def gen_test_data():
@@ -28,11 +27,9 @@ def gen_test_data():
 
 @pytest.mark.parametrize("opcode, a, b, c", gen_test_data())
 def test_byte(opcode: Opcode, a: int, b: int, c: int):
-    randomness = rand_fq()
-
-    a = RLC(a, randomness)
-    b = RLC(b, randomness)
-    c = RLC(c, randomness)
+    a = Word(a)
+    b = Word(b)
+    c = Word(c)
 
     bytecode = (
         Bytecode().anD(a, b)
@@ -41,12 +38,12 @@ def test_byte(opcode: Opcode, a: int, b: int, c: int):
         if opcode == Opcode.OR
         else Bytecode().xor(a, b)
     )
-    bytecode_hash = RLC(bytecode.hash(), randomness)
+    bytecode_hash = Word(bytecode.hash())
 
     tables = Tables(
-        block_table=set(Block().table_assignments(randomness)),
+        block_table=set(Block().table_assignments()),
         tx_table=set(),
-        bytecode_table=set(bytecode.table_assignments(randomness)),
+        bytecode_table=set(bytecode.table_assignments()),
         rw_table=set(
             RWDictionary(9)
             .stack_read(1, 1022, a)
@@ -57,7 +54,6 @@ def test_byte(opcode: Opcode, a: int, b: int, c: int):
     )
 
     verify_steps(
-        randomness=randomness,
         tables=tables,
         steps=[
             StepState(

@@ -1,5 +1,5 @@
 from ..opcode import Opcode
-from ...util import N_BYTES_MEMORY_ADDRESS
+from ...util import Word, FQ
 from ..instruction import Instruction, Transition
 from ..table import CallContextFieldTag
 from ..opcode import Opcode
@@ -11,11 +11,14 @@ def returndatasize(instruction: Instruction):
 
     # check [rw_table, call_context] table for last call return data length and compare
     # against stack top after push.
-    instruction.constrain_equal(
-        instruction.call_context_lookup(CallContextFieldTag.LastCalleeReturnDataLength),
-        # NOTE: We can replace this with N_BYTES_WORD if we reuse the 32 byte RLC constraint in
-        # all places. See: https://github.com/privacy-scaling-explorations/zkevm-specs/issues/101
-        instruction.rlc_to_fq(instruction.stack_push(), N_BYTES_MEMORY_ADDRESS),
+    instruction.constrain_equal_word(
+        Word(
+            (
+                instruction.call_context_lookup(CallContextFieldTag.LastCalleeReturnDataLength),
+                FQ(0),
+            )
+        ),
+        instruction.stack_push(),
     )
 
     instruction.step_state_transition_in_same_context(

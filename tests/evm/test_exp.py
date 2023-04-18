@@ -15,9 +15,8 @@ from zkevm_specs.evm_circuit import (
 from zkevm_specs.exp_circuit import verify_exp_circuit
 from zkevm_specs.util import (
     byte_size,
-    RLC,
+    Word,
 )
-from common import rand_fq
 
 
 CALL_ID = 1
@@ -43,43 +42,40 @@ TESTING_DATA = (
 )
 
 
-@pytest.mark.parametrize("base, exponent", TESTING_DATA)
-def test_exp(base: int, exponent: int):
-    randomness = rand_fq()
+@pytest.mark.parametrize("base_int, exponent_int", TESTING_DATA)
+def test_exp(base_int: int, exponent_int: int):
+    exponentiation_int = pow(base_int, exponent_int, POW2)
 
-    exponentiation = pow(base, exponent, POW2)
+    bytecode = Bytecode().push(exponent_int, n_bytes=32).push(base_int, n_bytes=32).exp().stop()
+    bytecode_hash = Word(bytecode.hash())
 
-    bytecode = Bytecode().push(exponent, n_bytes=32).push(base, n_bytes=32).exp().stop()
-    bytecode_hash = RLC(bytecode.hash(), randomness)
-
-    base_rlc = RLC(base, randomness, n_bytes=32)
-    exponent_rlc = RLC(exponent, randomness, n_bytes=32)
-    exponentiation_rlc = RLC(exponentiation, randomness, n_bytes=32)
+    base = Word(base_int)
+    exponent = Word(exponent_int)
+    exponentiation = Word(exponentiation_int)
 
     rw_dict = (
         RWDictionary(1)
-        .stack_write(CALL_ID, 1023, exponent_rlc)
-        .stack_write(CALL_ID, 1022, base_rlc)
-        .stack_read(CALL_ID, 1022, base_rlc)
-        .stack_read(CALL_ID, 1023, exponent_rlc)
-        .stack_write(CALL_ID, 1023, exponentiation_rlc)
+        .stack_write(CALL_ID, 1023, exponent)
+        .stack_write(CALL_ID, 1022, base)
+        .stack_read(CALL_ID, 1022, base)
+        .stack_read(CALL_ID, 1023, exponent)
+        .stack_write(CALL_ID, 1023, exponentiation)
     )
 
-    exp_circuit = ExpCircuit().add_event(base, exponent, randomness, rw_dict.rw_counter)
+    exp_circuit = ExpCircuit().add_event(base.int_value(), exponent.int_value(), rw_dict.rw_counter)
 
     tables = Tables(
-        block_table=set(Block().table_assignments(randomness)),
+        block_table=set(Block().table_assignments()),
         tx_table=set(),
-        bytecode_table=set(bytecode.table_assignments(randomness)),
+        bytecode_table=set(bytecode.table_assignments()),
         rw_table=set(rw_dict.rws),
         exp_circuit=exp_circuit.rows,
     )
 
     verify_exp_circuit(exp_circuit)
 
-    gas = Opcode.EXP.constant_gas_cost() + byte_size(exponent) * GAS_COST_EXP_PER_BYTE
+    gas = Opcode.EXP.constant_gas_cost() + byte_size(exponent.int_value()) * GAS_COST_EXP_PER_BYTE
     verify_steps(
-        randomness=randomness,
         tables=tables,
         steps=[
             StepState(

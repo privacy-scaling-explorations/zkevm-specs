@@ -10,12 +10,12 @@ from zkevm_specs.evm_circuit import (
     Bytecode,
 )
 from zkevm_specs.util import (
-    RLC,
+    Word,
     get_int_abs,
     get_int_neg,
     int_is_neg,
 )
-from common import generate_nasty_tests, rand_fq, rand_word
+from common import generate_nasty_tests, rand_word
 
 TESTING_DATA = [
     (Opcode.SDIV, 0xFFFFFF, 0xABC),
@@ -62,18 +62,17 @@ def test_sdiv_smod(opcode: Opcode, a: int, b: int):
         else:
             c = a_abs % b_abs
 
-    randomness = rand_fq()
-    a = RLC(a, randomness)
-    b = RLC(b, randomness)
-    c = RLC(c, randomness)
+    a = Word(a)
+    b = Word(b)
+    c = Word(c)
 
     bytecode = Bytecode().sdiv(a, b) if opcode == Opcode.SDIV else Bytecode().smod(a, b)
-    bytecode_hash = RLC(bytecode.hash(), randomness)
+    bytecode_hash = Word(bytecode.hash())
 
     tables = Tables(
-        block_table=set(Block().table_assignments(randomness)),
+        block_table=set(Block().table_assignments()),
         tx_table=set(),
-        bytecode_table=set(bytecode.table_assignments(randomness)),
+        bytecode_table=set(bytecode.table_assignments()),
         rw_table=set(
             RWDictionary(9)
             .stack_read(1, 1022, a)
@@ -84,7 +83,6 @@ def test_sdiv_smod(opcode: Opcode, a: int, b: int):
     )
 
     verify_steps(
-        randomness=randomness,
         tables=tables,
         steps=[
             StepState(

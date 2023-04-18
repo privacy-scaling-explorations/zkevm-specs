@@ -1,7 +1,7 @@
 import pytest
 
 from itertools import chain
-from common import CallContext, rand_fq
+from common import CallContext
 from zkevm_specs.evm_circuit import (
     ExecutionState,
     StepState,
@@ -14,7 +14,7 @@ from zkevm_specs.evm_circuit import (
     RWDictionary,
     Opcode,
 )
-from zkevm_specs.util import RLC
+from zkevm_specs.util import Word
 
 
 BYTECODE = Bytecode().push1(0x40)
@@ -23,26 +23,23 @@ TESTING_DATA_IS_ROOT = ((Transaction(), BYTECODE),)
 
 @pytest.mark.parametrize("tx, bytecode", TESTING_DATA_IS_ROOT)
 def test_oog_constant_root(tx: Transaction, bytecode: Bytecode):
-    randomness = rand_fq()
-
     block = Block()
 
-    bytecode_hash = RLC(bytecode.hash(), randomness)
+    bytecode_hash = Word(bytecode.hash())
 
     tables = Tables(
-        block_table=set(block.table_assignments(randomness)),
+        block_table=set(block.table_assignments()),
         tx_table=set(
             chain(
-                tx.table_assignments(randomness),
-                Transaction(id=tx.id + 1).table_assignments(randomness),
+                tx.table_assignments(),
+                Transaction(id=tx.id + 1).table_assignments(),
             )
         ),
-        bytecode_table=set(bytecode.table_assignments(randomness)),
+        bytecode_table=set(bytecode.table_assignments()),
         rw_table=set(RWDictionary(24).call_context_read(1, CallContextFieldTag.IsSuccess, 0).rws),
     )
 
     verify_steps(
-        randomness=randomness,
         tables=tables,
         steps=[
             StepState(
@@ -72,22 +69,20 @@ TESTING_DATA_NOT_ROOT = ((CallContext(gas_left=10), BYTECODE),)
 
 @pytest.mark.parametrize("caller_ctx, callee_bytecode", TESTING_DATA_NOT_ROOT)
 def test_oog_constant_not_root(caller_ctx: CallContext, callee_bytecode: Bytecode):
-    randomness = rand_fq()
-
     caller_bytecode = Bytecode().call(0, 0xFF, 0, 0, 0, 0, 0).stop()
-    caller_bytecode_hash = RLC(caller_bytecode.hash(), randomness)
-    callee_bytecode_hash = RLC(callee_bytecode.hash(), randomness)
+    caller_bytecode_hash = Word(caller_bytecode.hash())
+    callee_bytecode_hash = Word(callee_bytecode.hash())
     # gas is insufficient
     callee_gas_left = 2
     callee_reversible_write_counter = 2
 
     tables = Tables(
-        block_table=set(Block().table_assignments(randomness)),
+        block_table=set(Block().table_assignments()),
         tx_table=set(),
         bytecode_table=set(
             chain(
-                caller_bytecode.table_assignments(randomness),
-                callee_bytecode.table_assignments(randomness),
+                caller_bytecode.table_assignments(),
+                callee_bytecode.table_assignments(),
             )
         ),
         rw_table=set(
@@ -112,7 +107,6 @@ def test_oog_constant_not_root(caller_ctx: CallContext, callee_bytecode: Bytecod
     )
 
     verify_steps(
-        randomness=randomness,
         tables=tables,
         steps=[
             StepState(

@@ -12,7 +12,7 @@ def calldatacopy(instruction: Instruction):
 
     # convert rlc to FQ
     memory_offset, length = instruction.memory_offset_and_length(memory_offset_word, length_word)
-    data_offset = instruction.rlc_to_fq(data_offset_word, N_BYTES_MEMORY_ADDRESS)
+    data_offset = instruction.word_to_fq(data_offset_word, N_BYTES_MEMORY_ADDRESS)
 
     if instruction.curr.is_root:
         src_id = instruction.call_context_lookup(CallContextFieldTag.TxId, RW.Read)
@@ -34,13 +34,13 @@ def calldatacopy(instruction: Instruction):
     )
     gas_cost = instruction.memory_copier_gas_cost(length, memory_expansion_gas_cost)
 
-    src_type = instruction.select(
+    src_tag = instruction.select(
         FQ(instruction.curr.is_root), FQ(CopyDataTypeTag.TxCalldata), FQ(CopyDataTypeTag.Memory)
     )
     if instruction.is_zero(length) == 0:
         copy_rwc_inc, _ = instruction.copy_lookup(
             src_id,
-            CopyDataTypeTag(src_type.n),
+            CopyDataTypeTag(src_tag.n),
             instruction.curr.call_id,
             CopyDataTypeTag.Memory,
             call_data_offset.expr() + data_offset.expr(),

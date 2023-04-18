@@ -1,31 +1,30 @@
 from ..instruction import Instruction, Transition
 from ...util.param import EXTRA_GAS_COST_ACCOUNT_COLD_ACCESS
-from ...util import N_BYTES_MEMORY_ADDRESS, N_BYTES_ACCOUNT_ADDRESS, FQ, RLC
+from ...util import FQ
 from ..table import AccountFieldTag, CallContextFieldTag, CopyDataTypeTag
 
 
 def extcodecopy(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
 
-    address, memory_offset_rlc, code_offset, size_rlc = (
-        instruction.rlc_to_fq(instruction.stack_pop(), N_BYTES_ACCOUNT_ADDRESS),
-        instruction.stack_pop(),
-        instruction.rlc_to_fq(instruction.stack_pop(), N_BYTES_MEMORY_ADDRESS),
-        instruction.stack_pop(),
-    )
+    address = instruction.word_to_address(instruction.stack_pop())
+    memory_offset_word = instruction.stack_pop()
+    code_offset_word = instruction.stack_pop()
+    size_word = instruction.stack_pop()
 
-    memory_offset, size = instruction.memory_offset_and_length(memory_offset_rlc, size_rlc)
+    code_offset = instruction.word_to_u64(code_offset_word)
+    memory_offset, size = instruction.memory_offset_and_length(memory_offset_word, size_word)
 
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
     is_warm = instruction.add_account_to_access_list(tx_id, address, instruction.reversion_info())
 
-    code_hash = instruction.account_read(address, AccountFieldTag.CodeHash)
+    code_hash = instruction.account_read_word(address, AccountFieldTag.CodeHash)
     # Check account existence with code_hash != 0
-    exists = FQ(1) - instruction.is_zero(code_hash)
+    exists = FQ(1) - instruction.is_zero_word(code_hash)
     if exists == 1:
-        code_size = instruction.bytecode_length(code_hash.expr())
+        code_size = instruction.bytecode_length(code_hash)
     else:
-        code_size = RLC(0)
+        code_size = FQ(0)
 
     next_memory_size, memory_expansion_gas_cost = instruction.memory_expansion_dynamic_length(
         memory_offset, size

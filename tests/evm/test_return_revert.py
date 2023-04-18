@@ -20,6 +20,8 @@ from zkevm_specs.evm_circuit.table import AccountFieldTag
 from zkevm_specs.util.arithmetic import RLC
 from zkevm_specs.util.hash import EMPTY_CODE_HASH
 from zkevm_specs.util.param import GAS_COST_CODE_DEPOSIT
+from zkevm_specs.util import Word
+
 
 CALLEE_MEMORY = [0x00] * 4 + [0x22] * 32
 
@@ -57,38 +59,35 @@ TESTING_DATA_IS_ROOT_NOT_CREATE = (
 def test_is_root_not_create(
     tx: Transaction, is_return: bool, return_offset: int, return_length: int
 ):
-    randomness = rand_fq()
-
     block = Block()
 
     bytecode = gen_bytecode(is_return, return_offset, return_length)
-    bytecode_hash = RLC(bytecode.hash(), randomness)
+    bytecode_hash = Word(bytecode.hash())
 
-    return_offset_rlc = RLC(return_offset, randomness)
-    return_length_rlc = RLC(return_length, randomness)
+    return_offset_word = Word(return_offset)
+    return_length_word = Word(return_length)
     callee_id = 1
 
     tables = Tables(
-        block_table=set(block.table_assignments(randomness)),
+        block_table=set(block.table_assignments()),
         tx_table=set(
             chain(
-                tx.table_assignments(randomness),
-                Transaction(id=tx.id + 1).table_assignments(randomness),
+                tx.table_assignments(),
+                Transaction(id=tx.id + 1).table_assignments(),
             )
         ),
-        bytecode_table=set(bytecode.table_assignments(randomness)),
+        bytecode_table=set(bytecode.table_assignments()),
         rw_table=set(
             RWDictionary(24)
             .call_context_read(callee_id, CallContextFieldTag.IsSuccess, int(is_return))
-            .stack_read(callee_id, 1022, return_offset_rlc)
-            .stack_read(callee_id, 1023, return_length_rlc)
+            .stack_read(callee_id, 1022, return_offset_word)
+            .stack_read(callee_id, 1023, return_length_word)
             .call_context_read(callee_id, CallContextFieldTag.IsPersistent, int(is_return))
             .rws
         ),
     )
 
     verify_steps(
-        randomness=randomness,
         tables=tables,
         steps=[
             StepState(
@@ -326,10 +325,10 @@ TESTING_DATA_NOT_ROOT_NOT_CREATE = (
 def test_not_root_not_create(
     caller_ctx: CallContext, is_return: bool, return_offset: int, return_length: int
 ):
-    randomness = rand_fq()
+    randomness_keccak = rand_fq()
 
-    return_offset_rlc = RLC(return_offset, randomness)
-    return_length_rlc = RLC(return_length, randomness)
+    return_offset_word = Word(return_offset)
+    return_length_word = Word(return_length)
 
     callee_bytecode = gen_bytecode(is_return, return_offset, return_length)
 
@@ -340,8 +339,8 @@ def test_not_root_not_create(
     caller_bytecode = (
         Bytecode().call(0, 0xFF, 0, 0, 0, caller_return_offset, caller_return_length).stop()
     )
-    caller_bytecode_hash = RLC(caller_bytecode.hash(), randomness)
-    callee_bytecode_hash = RLC(callee_bytecode.hash(), randomness)
+    caller_bytecode_hash = Word(caller_bytecode.hash())
+    callee_bytecode_hash = Word(callee_bytecode.hash())
     _, return_gas_cost = memory_expansion(2, return_offset + return_length)
     gas_left = 400
     callee_reversible_write_counter = 2
@@ -352,15 +351,15 @@ def test_not_root_not_create(
     rw_dict = (
         rw_dict
         .call_context_read(callee_id, CallContextFieldTag.IsSuccess, int(is_return))
-        .stack_read(callee_id, 1022, return_offset_rlc)
-        .stack_read(callee_id, 1023, return_length_rlc)
+        .stack_read(callee_id, 1022, return_offset_word)
+        .stack_read(callee_id, 1023, return_length_word)
         .call_context_read(callee_id, CallContextFieldTag.ReturnDataOffset, caller_return_offset)
         .call_context_read(callee_id, CallContextFieldTag.ReturnDataLength, caller_return_length)
     )
     src_data = dict([(i, CALLEE_MEMORY[i] if i < len(CALLEE_MEMORY) else 0) for i in range(return_offset, return_offset + return_length)])
     copy_length = min(return_length, caller_return_length)
     copy_circuit = CopyCircuit().copy(
-        randomness,
+        randomness_keccak,
         rw_dict,
         callee_id,
         CopyDataTypeTag.Memory,
@@ -391,22 +390,21 @@ def test_not_root_not_create(
     # fmt: on
 
     tables = Tables(
-        block_table=set(Block().table_assignments(randomness)),
+        block_table=set(Block().table_assignments()),
         tx_table=set(),
         bytecode_table=set(
             chain(
-                caller_bytecode.table_assignments(randomness),
-                callee_bytecode.table_assignments(randomness),
+                caller_bytecode.table_assignments(),
+                callee_bytecode.table_assignments(),
             )
         ),
         rw_table=set(rw_dict.rws),
         copy_circuit=copy_circuit.rows,
     )
 
-    verify_copy_table(copy_circuit, tables, randomness)
+    verify_copy_table(copy_circuit, tables, randomness_keccak)
 
     verify_steps(
-        randomness=randomness,
         tables=tables,
         steps=[
             StepState(

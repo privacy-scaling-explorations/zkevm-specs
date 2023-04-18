@@ -12,8 +12,7 @@ from zkevm_specs.evm_circuit import (
     Transaction,
     RWDictionary,
 )
-from zkevm_specs.util import RLC, EMPTY_CODE_HASH, MAX_REFUND_QUOTIENT_OF_GAS_USED
-from common import rand_fq
+from zkevm_specs.util import Word, EMPTY_CODE_HASH, MAX_REFUND_QUOTIENT_OF_GAS_USED
 
 
 CALLEE_ADDRESS = 0xFF
@@ -98,8 +97,6 @@ def test_end_tx(
     current_cumulative_gas_used: int,
     success: bool,
 ):
-    randomness = rand_fq()
-
     block = Block()
     effective_refund = min(refund, (tx.gas - gas_left) // MAX_REFUND_QUOTIENT_OF_GAS_USED)
     caller_balance_prev = int(1e18) - (tx.value + tx.gas * tx.gas_price)
@@ -113,8 +110,8 @@ def test_end_tx(
             .call_context_read(1, CallContextFieldTag.TxId, tx.id)
             .call_context_read(1, CallContextFieldTag.IsPersistent, 1)
             .tx_refund_read(tx.id, refund)
-            .account_write(tx.caller_address, AccountFieldTag.Balance, RLC(caller_balance, randomness), RLC(caller_balance_prev, randomness))
-            .account_write(block.coinbase, AccountFieldTag.Balance, RLC(coinbase_balance, randomness), RLC(coinbase_balance_prev, randomness))
+            .account_write(tx.caller_address, AccountFieldTag.Balance, Word(caller_balance), Word(caller_balance_prev))
+            .account_write(block.coinbase, AccountFieldTag.Balance, Word(coinbase_balance), Word(coinbase_balance_prev))
             .tx_receipt_write(tx.id, TxReceiptFieldTag.PostStateOrStatus, 1 - tx.invalid_tx)
             .tx_receipt_write(tx.id, TxReceiptFieldTag.LogLength, 0)
         # fmt: on
@@ -141,14 +138,13 @@ def test_end_tx(
         rw_dictionary.call_context_read(27 - is_first_tx, CallContextFieldTag.TxId, tx.id + 1)
 
     tables = Tables(
-        block_table=set(block.table_assignments(randomness)),
-        tx_table=set(tx.table_assignments(randomness)),
+        block_table=set(block.table_assignments()),
+        tx_table=set(tx.table_assignments()),
         bytecode_table=set(),
         rw_table=set(rw_dictionary.rws),
     )
 
     verify_steps(
-        randomness=randomness,
         tables=tables,
         steps=[
             StepState(
@@ -157,7 +153,7 @@ def test_end_tx(
                 call_id=1,
                 is_root=True,
                 is_create=False,
-                code_hash=RLC(EMPTY_CODE_HASH, randomness),
+                code_hash=Word(EMPTY_CODE_HASH),
                 program_counter=0,
                 stack_pointer=1024,
                 gas_left=gas_left,

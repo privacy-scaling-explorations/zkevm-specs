@@ -31,10 +31,10 @@ def sha3(instruction: Instruction):
     else:
         copy_rwc_inc, rlc_acc = FQ.zero(), FQ.zero()
 
-    keccak256_rlc_acc = instruction.keccak_lookup(length, rlc_acc)
-    instruction.constrain_equal(
-        keccak256_rlc_acc,
-        sha3_value.expr(),
+    keccak256_output = instruction.keccak_lookup(length, rlc_acc)
+    instruction.constrain_equal_word(
+        keccak256_output,
+        sha3_value,
     )
 
     # calculate memory expansion gas costs.

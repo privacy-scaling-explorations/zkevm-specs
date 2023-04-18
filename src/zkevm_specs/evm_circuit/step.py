@@ -1,6 +1,6 @@
 from typing import Optional, Any
 from .execution_state import ExecutionState
-from ..util import FQ, RLC
+from ..util import FQ, Word
 
 
 class StepState:
@@ -25,7 +25,7 @@ class StepState:
     # we already populate the bytecode table with the contract creation code either
     # from the tx calldata (in the case of a root call) or from the caller's memory
     # (in the case of an internal call).
-    code_hash: RLC
+    code_hash: Word
 
     # The following fields change almost every step.
     program_counter: FQ
@@ -51,7 +51,7 @@ class StepState:
         call_id: int = 0,
         is_root: bool = False,
         is_create: bool = False,
-        code_hash: RLC = RLC(0),
+        code_hash: Word = Word(0),
         program_counter: int = 0,
         stack_pointer: int = 1024,
         gas_left: int = 0,

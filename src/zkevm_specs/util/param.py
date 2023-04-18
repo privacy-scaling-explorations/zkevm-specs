@@ -115,8 +115,8 @@ MAX_CODE_SIZE = 24576
 CALL_CREATE_DEPTH = 1024
 
 # PublicInputs circuit parameters
-PUBLIC_INPUTS_BLOCK_LEN = 7 + 256  # Length of block public data
-PUBLIC_INPUTS_EXTRA_LEN = 3  # Length of fields that don't belong to any table
+PUBLIC_INPUTS_BLOCK_LEN = (7 + 256) * 2  # Length of block public data
+PUBLIC_INPUTS_EXTRA_LEN = 3 * 2  # Length of fields that don't belong to any table
 PUBLIC_INPUTS_TX_LEN = 10  # Length of tx public data (without calldata)
 
 

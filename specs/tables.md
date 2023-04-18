@@ -4,27 +4,32 @@ For the zkevm we use the following dynamic and fixed tables for lookups to the E
 
 Code spec at [table.py](../src/zkevm_specs/evm/table.py)
 
+Note: After the transition from encoding words as RLC to high and low parts,
+all the columns that used to contain word_rlc have been doubled to contain
+word_lo and word_hi.  To make this document more readable, we present words as
+a single markdown column (for example *Value{Lo,Hi}*), but they correspond
+to two circuit columns (for example *ValueLo* and *ValueHi*).
+
 ## `tx_table`
 
 Proved by the tx circuit.
-
-| 0 TxID | 1 Tag               | 2          | 3 value |
-| ---    | ---                 | ---        | ---     |
-|        | *TxContextFieldTag* |            |         |
-| $TxID  | Nonce               | 0          | $value  |
-| $TxID  | Gas                 | 0          | $value  |
-| $TxID  | GasPrice            | 0          | $value  |
-| $TxID  | CallerAddress       | 0          | $value  |
-| $TxID  | CalleeAddress       | 0          | $value  |
-| $TxID  | IsCreate            | 0          | $value  |
-| $TxID  | Value               | 0          | $value  |
-| $TxID  | CallDataLength      | 0          | $value  |
-| $TxID  | CallDataGasCost     | 0          | $value  |
-| $TxID  | TxSignHash          | 0          | $value  |
-| $TxID  | TxInvalid           | 0          | $value  |
-| $TxID  | AccessListGasCost   | 0          | $value  |
-| $TxID  | CallData            | $ByteIndex | $value  |
-| $TxID  | Pad                 | 0          | $value  |
+| 0 *TxId* | 1 *Tag*             | 2 *Index*  | *Value{Lo,Hi}* |
+| ---      | ---                 | ---        | ---            |
+|          | *TxContextFieldTag* |            |                |
+| $TxID    | Nonce               | 0          | $value,0       |
+| $TxID    | Gas                 | 0          | $value,0       |
+| $TxID    | GasPrice            | 0          | $value{Lo,Hi}  |
+| $TxID    | CallerAddress       | 0          | $value,0       |
+| $TxID    | CalleeAddress       | 0          | $value,0       |
+| $TxID    | IsCreate            | 0          | $value,0       |
+| $TxID    | Value               | 0          | $value{Lo,Hi}  |
+| $TxID    | CallDataLength      | 0          | $value,0       |
+| $TxID    | CallDataGasCost     | 0          | $value,0       |
+| $TxID    | TxSignHash          | 0          | $value{Lo,Hi}  |
+| $TxID    | TxInvalid           | 0          | $value,0       |
+| $TxID    | AccessListGasCost   | 0          | $value,0       |
+| $TxID    | CallData            | $ByteIndex | $value,0       |
+| $TxID    | Pad                 | 0          | 0,0            |
 
 NOTE:
 - `CallDataGasCost` and `TxSignHash` are values calculated by the verifier and used to reduce the circuit complexity.  They may be removed in the future.
@@ -49,7 +54,7 @@ There are 10 columns in `rw_table`.
             - **logID**: 32 bits, starts at 1 (corresponds to `logIndex + 1`), unique per tx/receipt.
             - **topicIndex, byteIndex**: 32 bits, indicates order in tx log topics or data.
     - col. 5 *FieldTag*
-        - For *Tag* **TxReceipt**: 
+        - For *Tag* **TxReceipt**:
             - **PostStateOrStatus**: 8 bits
             - **CumulativeGasUsed**: 64 bits
     - col. 6 *StorageKey* is field size and reserved for RLC encoded (Random Linear Combination) values
@@ -73,82 +78,84 @@ The correctness of the rw_table is validated in the state circuit.
 
 NOTE: `kN` means `keyN`
 
-| 0 *Rwc*  | 1 *IsWrite* | 2 *Tag* (k0)               | 3 *Id* (k1) | 4 *Address* (k2)   | 5 *FieldTag* (k3)          | 6 *StorageKey* (k4) | 7 *Value* | 8 *ValuePrev*    | 9 *Aux1*  | 10 *Aux2* |
-| -------- | ----------- | -------------------------- | --------    | --------           | -------------------------- | -----------         | --------- | ---------------- | --------  | --------  |
-|          |             | *RwTableTag*               |             |                    |                            |                     |           |                  |           |  |
-| $counter | true        | TxAccessListAccount        | $txID       | $address           |                            |                     | $value    | 0                | $aux1     | $aux2 |
-| $counter | true        | TxAccessListAccountStorage | $txID       | $address           |                            | $storageKey         | $value    | 0                | $aux1     | $aux2 |
-| $counter | $isWrite    | TxRefund                   | $txID       |                    |                            |                     | $value    | 0                | $aux1     | $aux2 |
-|          |             |                            |             |                    |                            |                     |           |                  |           |  |
-|          |             |                            |             |                    | *AccountFieldTag*          |                     |           |                  |           |  |
-| $counter | $isWrite    | Account                    |             | $address           | Nonce                      |                     | $value    | $valuePrev       | $aux1     | $aux2 |
-| $counter | $isWrite    | Account                    |             | $address           | Balance                    |                     | $value    | $valuePrev       | $aux1     | $aux2 |
-| $counter | $isWrite    | Account                    |             | $address           | CodeHash                   |                     | $value    | $valuePrev       | $aux1     | $aux2 |
-|          |             |                            |             |                    |                            |                     |           |                  |           |  |
-|          |             | *CallContext constant*     |             |                    | *CallContextFieldTag* (ro) |                     |           |                  |           |  |
-| $counter | false       | CallContext                | $callID     |                    | RwCounterEndOfReversion    |                     | $value    | 0                | $aux1     | $aux2 |
-| $counter | false       | CallContext                | $callID     |                    | CallerId                   |                     | $value    | 0                | $aux1     | $aux2 |
-| $counter | false       | CallContext                | $callID     |                    | TxId                       |                     | $value    | 0                | $aux1     | $aux2 |
-| $counter | false       | CallContext                | $callID     |                    | Depth                      |                     | $value    | 0                | $aux1     | $aux2 |
-| $counter | false       | CallContext                | $callID     |                    | CallerAddress              |                     | $value    | 0                | $aux1     | $aux2 |
-| $counter | false       | CallContext                | $callID     |                    | CalleeAddress              |                     | $value    | 0               | $aux1      | $aux2 |
-| $counter | false       | CallContext                | $callID     |                    | CallDataOffset             |                     | $value    | 0               | $aux1      | $aux2 |
-| $counter | false       | CallContext                | $callID     |                    | CallDataLength             |                     | $value    | 0               | $aux1      | $aux2 |
-| $counter | false       | CallContext                | $callID     |                    | ReturnDataOffset           |                     | $value    | 0               | $aux1      | $aux2 |
-| $counter | false       | CallContext                | $callID     |                    | ReturnDataLength           |                     | $value    | 0               | $aux1      | $aux2 |
-| $counter | false       | CallContext                | $callID     |                    | Value                      |                     | $value    | 0               | $aux1      | $aux2 |
-| $counter | false       | CallContext                | $callID     |                    | IsSuccess                  |                     | $value    | 0               | $aux1      | $aux2 |
-| $counter | false       | CallContext                | $callID     |                    | IsPersistent               |                     | $value    | 0               | $aux1      | $aux2 |
-| $counter | false       | CallContext                | $callID     |                    | IsStatic                   |                     | $value    | 0               | $aux1      | $aux2 |
-|          |             |                            |             |                    |                            |                     |            |            |                |  |
-|          |             | *CallContext last callee*  |             |                    | *CallContextFieldTag* (rw) |                     |            |            |                |  |
-| $counter | $isWrite    | CallContext                | $callID     |                    | LastCalleeId               |                     | $value     | 0               | $aux1     | $aux2 |
-| $counter | $isWrite    | CallContext                | $callID     |                    | LastCalleeReturnDataOffset |                     | $value     | 0               | $aux1     | $aux2 |
-| $counter | $isWrite    | CallContext                | $callID     |                    | LastCalleeReturnDataLength |                     | $value     | 0               | $aux1     | $aux2 |
-|          |             |                            |             |                    |                            |                     |            |            |                |  |
-|          |             | *CallContext state*        |             |                    | *CallContextFieldTag* (rw) |                     |            |            |                |  |
-| $counter | $isWrite    | CallContext                | $callID     |                    | IsRoot                     |                     | $value     | 0               | $aux1     | $aux2 |
-| $counter | $isWrite    | CallContext                | $callID     |                    | IsCreate                   |                     | $value     | 0               | $aux1     | $aux2 |
-| $counter | $isWrite    | CallContext                | $callID     |                    | CodeHash                   |                     | $value     | 0               | $aux1     | $aux2 |
-| $counter | $isWrite    | CallContext                | $callID     |                    | ProgramCounter             |                     | $value     | 0               | $aux1     | $aux2 |
-| $counter | $isWrite    | CallContext                | $callID     |                    | StackPointer               |                     | $value     | 0               | $aux1     | $aux2 |
-| $counter | $isWrite    | CallContext                | $callID     |                    | GasLeft                    |                     | $value     | 0               | $aux1     | $aux2 |
-| $counter | $isWrite    | CallContext                | $callID     |                    | MemorySize                 |                     | $value     | 0               | $aux1     | $aux2 |
-| $counter | $isWrite    | CallContext                | $callID     |                    | ReversibleWriteCounter     |                     | $value     | 0               | $aux1     | $aux2 |
-|          |             |                            |             |                    |                            |                     |            |            |                |  |
-| $counter | $isWrite    | Stack                      | $callID     | $stackPointer      |                            |                     | $value     | 0               | $aux1     | $aux2 |
-| $counter | $isWrite    | Memory                     | $callID     | $memoryAddress     |                            |                     | $value     | 0               | $aux1     | $aux2 |
-| $counter | $isWrite    | AccountStorage             | $txID       | $address           |                            | $storageKey         | $value     | $valuePrev |
-|          |             |                            |             |                    |                            |                     |            |            |                |  |
-|          |             |                            |             |                    | *TxLogTag*                 |                     |            |            |                |  |
-| $counter | true        | TxLog                      | $txID       | $logID,0           | Address                    | 0                   | $value     | 0               | $aux1     | $aux2 |
-| $counter | true        | TxLog                      | $txID       | $logID,$topicIndex | Topic                      | 0                   | $value     | 0               | $aux1     | $aux2 |
-| $counter | true        | TxLog                      | $txID       | $logID,$byteIndex  | Data                       | 0                   | $value     | 0               | $aux1     | $aux2 |
-| $counter | true        | TxLog                      | $txID       | $logID,0           | TopicLength                | 0                   | $value     | 0               | $aux1     | $aux2 |
-| $counter | true        | TxLog                      | $txID       | $logID,0           | DataLength                 | 0                   | $value     | 0               | $aux1     | $aux2 |
-|          |             |                            |             |                    |                            |                     |            |                 |           |  |
-|          |             |                            |             |                    | *TxReceiptTag*             |                     |            |                 |           |  |
-| $counter | false       | TxReceipt                  | $txID       | 0                  | PostStateOrStatus          | 0                   | $value     | 0               | $aux1     | $aux2 |
-| $counter | false       | TxReceipt                  | $txID       | 0                  | CumulativeGasUsed          | 0                   | $value     | 0               | $aux1     | $aux2 |
-| $counter | false       | TxReceipt                  | $txID       | 0                  | LogLength                  | 0                   | $value     | 0               | $aux1     | $aux2 |
+DELETEME: Review note: Removed aux1 and aux2 and instead added InitialValue which corresponds to the current usage and has a more meaningful name.
+
+| 0 *Rwc*  | 1 *IsWrite* | 2 *Tag* k0                 | 3 *Id* k1 | 4 *Address* k2     | 5 *FieldTag* k3            | 6,7 *StoKey{Lo,Hi}* k4,k5 | 7,8 *Val{Lo,Hi}* | 9,10 *ValPrev{Lo,Hi}* | 11,12 *InitVal{Lo,Hi}* |
+| -------- | ----------- | -------------------------- | --------  | --------           | -------------------------- | ------------------------- | ---------------- | --------------------- | ---------------------- |
+|          |             | *RwTableTag*               |           |                    |                            |                           |                  |                       |                        |
+| $counter | true        | TxAccessListAccount        | $txID     | $address           |                            |                           | $val,0           | $valPrev,0            |                        |
+| $counter | true        | TxAccessListAccountStorage | $txID     | $address           |                            | $storageKey{Lo,Hi}        | $val,0           | $valPrev,0            |                        |
+| $counter | $isWrite    | TxRefund                   | $txID     |                    |                            |                           | $val,0           | $valPrev,0            |                        |
+|          |             |                            |           |                    |                            |                           |                  |                       |                        |
+|          |             |                            |           |                    | *AccountFieldTag*          |                           |                  |                       |                        |
+| $counter | $isWrite    | Account                    |           | $address           | Nonce                      |                           | $val,0           | $valPrev,0            | $committedValue,0      |
+| $counter | $isWrite    | Account                    |           | $address           | Balance                    |                           | $val{Lo,Hi}      | $valPrev{Lo,Hi}       | $committedValue{Lo,Hi} |
+| $counter | $isWrite    | Account                    |           | $address           | CodeHash                   |                           | $val{Lo,Hi}      | $valPrev{Lo,Hi}       | $committedValue{Lo,Hi} |
+|          |             |                            |           |                    |                            |                           |                  |                       |                        |
+|          |             | *CallContext constant*     |           |                    | *CallContextFieldTag* (ro) |                           |                  |                       |                        |
+| $counter | false       | CallContext                | $callID   |                    | RwCounterEndOfReversion    |                           | $val,0           |                       |                        |
+| $counter | false       | CallContext                | $callID   |                    | CallerId                   |                           | $val,0           |                       |                        |
+| $counter | false       | CallContext                | $callID   |                    | TxId                       |                           | $val,0           |                       |                        |
+| $counter | false       | CallContext                | $callID   |                    | Depth                      |                           | $val,0           |                       |                        |
+| $counter | false       | CallContext                | $callID   |                    | CallerAddress              |                           | $val,0           |                       |                        |
+| $counter | false       | CallContext                | $callID   |                    | CalleeAddress              |                           | $val,0           |                       |                        |
+| $counter | false       | CallContext                | $callID   |                    | CallDataOffset             |                           | $val,0           |                       |                        |
+| $counter | false       | CallContext                | $callID   |                    | CallDataLength             |                           | $val,0           |                       |                        |
+| $counter | false       | CallContext                | $callID   |                    | ReturnDataOffset           |                           | $val,0           |                       |                        |
+| $counter | false       | CallContext                | $callID   |                    | ReturnDataLength           |                           | $val,0           |                       |                        |
+| $counter | false       | CallContext                | $callID   |                    | Value                      |                           | $val{Lo,Hi}      |                       |                        |
+| $counter | false       | CallContext                | $callID   |                    | IsSuccess                  |                           | $val,0           |                       |                        |
+| $counter | false       | CallContext                | $callID   |                    | IsPersistent               |                           | $val,0           |                       |                        |
+| $counter | false       | CallContext                | $callID   |                    | IsStatic                   |                           | $val,0           |                       |                        |
+|          |             |                            |           |                    |                            |                           |                  |                       |                        |
+|          |             | *CallContext last callee*  |           |                    | *CallContextFieldTag* (rw) |                           |                  |                       |                        |
+| $counter | $isWrite    | CallContext                | $callID   |                    | LastCalleeId               |                           | $val,0           |                       |                        |
+| $counter | $isWrite    | CallContext                | $callID   |                    | LastCalleeReturnDataOffset |                           | $val,0           |                       |                        |
+| $counter | $isWrite    | CallContext                | $callID   |                    | LastCalleeReturnDataLength |                           | $val,0           |                       |                        |
+|          |             |                            |           |                    |                            |                           |                  |                       |                        |
+|          |             | *CallContext state*        |           |                    | *CallContextFieldTag* (rw) |                           |                  |                       |                        |
+| $counter | $isWrite    | CallContext                | $callID   |                    | IsRoot                     |                           | $val,0           |                       |                        |
+| $counter | $isWrite    | CallContext                | $callID   |                    | IsCreate                   |                           | $val,0           |                       |                        |
+| $counter | $isWrite    | CallContext                | $callID   |                    | CodeHash                   |                           | $val{Lo,Hi}      |                       |                        |
+| $counter | $isWrite    | CallContext                | $callID   |                    | ProgramCounter             |                           | $val,0           |                       |                        |
+| $counter | $isWrite    | CallContext                | $callID   |                    | StackPointer               |                           | $val,0           |                       |                        |
+| $counter | $isWrite    | CallContext                | $callID   |                    | GasLeft                    |                           | $val,0           |                       |                        |
+| $counter | $isWrite    | CallContext                | $callID   |                    | MemorySize                 |                           | $val,0           |                       |                        |
+| $counter | $isWrite    | CallContext                | $callID   |                    | ReversibleWriteCounter     |                           | $val,0           |                       |                        |
+|          |             |                            |           |                    |                            |                           |                  |                       |                        |
+| $counter | $isWrite    | Stack                      | $callID   | $stackPointer      |                            |                           | $val{Lo,Hi}      |                       |                        |
+| $counter | $isWrite    | Memory                     | $callID   | $memoryAddress     |                            |                           | $val,0           |                       |                        |
+| $counter | $isWrite    | AccountStorage             | $txID     | $address           |                            | $storageKey{Lo,Hi}        | $val{Lo,Hi}      | $valPrev{Lo,Hi}       | $committedValue{Lo,Hi} |
+|          |             |                            |           |                    |                            |                           |                  |                       |                        |
+|          |             |                            |           |                    | *TxLogTag*                 |                           |                  |                       |                        |
+| $counter | true        | TxLog                      | $txID     | $logID,0           | Address                    |                           | $val,0           |                       |                        |
+| $counter | true        | TxLog                      | $txID     | $logID,$topicIndex | Topic                      |                           | $val{Lo,Hi}      |                       |                        |
+| $counter | true        | TxLog                      | $txID     | $logID,$byteIndex  | Data                       |                           | $val,0           |                       |                        |
+| $counter | true        | TxLog                      | $txID     | $logID,0           | TopicLength                |                           | $val,0           |                       |                        |
+| $counter | true        | TxLog                      | $txID     | $logID,0           | DataLength                 |                           | $val,0           |                       |                        |
+|          |             |                            |           |                    |                            |                           |                  |                       |                        |
+|          |             |                            |           |                    | *TxReceiptTag*             |                           |                  |                       |                        |
+| $counter | false       | TxReceipt                  | $txID     |                    | PostStateOrStatus          |                           | $val,0           |                       |                        |
+| $counter | false       | TxReceipt                  | $txID     |                    | CumulativeGasUsed          |                           | $val,0           |                       |                        |
+| $counter | false       | TxReceipt                  | $txID     |                    | LogLength                  |                           | $val,0           |                       |                        |
 
 ## `bytecode_table`
 
 Proved by the bytecode circuit.
 
-> - **tag**: Tag whether the row represents the bytecode length or a byte in
+> - **Tag**: Tag whether the row represents the bytecode length or a byte in
 >   the bytecode.
 
 > - **isCode**: A boolean value to specify if the value is executable opcode or
 >   the data portion of PUSH\* operations.
 
-| 0 codeHash | 1 tag              | 2 index | 3 isCode | 4 value |
-| ---        | ---                | ---     | ---      | ---     |
-|            | *BytecodeFieldTag* |         |          |         |
-| $codeHash  | Length             | 0       | 0        | $value  |
-| $codeHash  | Byte               | $index  | $isCode  | $value  |
-| ...        | ...                | ...     | ...      | ...     |
-| $codeHash  | Byte               | $index  | $isCode  | $value  |
+| 0,1 *CodeHash{Lo,Hi}* | 2 *Tag* | 3 *Index*          | 4 *IsCode* | 5 *Value* |
+| ---                   | ---     | ---                | ---        | ---       |
+|                       |         | *BytecodeFieldTag* |            |           |
+| $codeHash{Lo,Hi}      | Length  | 0                  | 0          | $value    |
+| $codeHash{Lo,Hi}      | Byte    | $index             | $isCode    | $value    |
+| ...                   | ...     | ...                | ...        | ...       |
+| $codeHash{Lo,Hi}      | Byte    | $index             | $isCode    | $value    |
 
 In the case of an account without code, it can still have a row in the bytecode circuit to represent the `BytecodeFieldTag::Length` tag, with a `value = 0` and `codeHash = EMPTY_CODE_HASH`.
 
@@ -160,17 +167,17 @@ __Note that a generalisation is done by storing the ChainId field inside the blo
 __when it should indeed live inside of the chain configuration section (which we don't have).__
 __Hence the addition inside of the block_table.__
 
-| 0 Tag                  | 1      | 2 value |
-| ---                    | ---    | ---     |
-| *BlockContextFieldTag* |        |         |
-| Coinbase               | 0      | $value  |
-| GasLimit               | 0      | $value  |
-| BlockNumber            | 0      | $value  |
-| Time                   | 0      | $value  |
-| Difficulty             | 0      | $value  |
-| BaseFee                | 0      | $value  |
-| ChainID                | 0      | $value  |
-| BlockHash              | 0..256 | $value  |
+| 0 *Tag*                | 1 *Index* | 2 *Value{Lo,Hi}* |
+| ---                    | ---       | ---              |
+| *BlockContextFieldTag* |           |                  |
+| Coinbase               | 0         | $value,0         |
+| GasLimit               | 0         | $value,0         |
+| BlockNumber            | 0         | $value,0         |
+| Time                   | 0         | $value,0         |
+| Difficulty             | 0         | $value{Lo,Hi}    |
+| BaseFee                | 0         | $value{Lo,Hi}    |
+| ChainID                | 0         | $value,0         |
+| BlockHash              | 0..256    | $value{Lo,Hi}    |
 
 ## `fixed`
 
@@ -204,66 +211,52 @@ __Hence the addition inside of the block_table.__
 
 Provided by the MPT (Merkle Patricia Trie) circuit.
 
-The current MPT circuit design exposes one big table where different targets require different lookups as described below.
-From this table, the following columns contain values using the RLC encoding:
-- Key
-- ValuePrev
-- Value
-- RootPrev
-- Root
-
 The circuit can prove that updates to account nonces, balances, or storage slots are correct, or that an account's code hash is some particular value. Note that it is not possible to change the code hash for an account without deleting it and then recreating it.
 
-| Address | MPTProofType               | Key  | ValuePrev     | Value        | RootPrev  | Root  |
-| ------- | ----------------------- | ---- | ------------- | ------------ | --------- | ----- |
-| $addr   | NonceMod                | 0    | $noncePrev    | $nonceCur    | $rootPrev | $root |
-| $addr   | BalanceMod              | 0    | $balancePrev  | $balanceCur  | $rootPrev | $root |
-| $addr   | CodeHashMod             | 0    | $codeHashPrev | $codeHashCur | $rootPrev | $root |
-| $addr   | NonExistingAccountProof | 0    | 0             | 0            | $root     | $root |
-| $addr   | AccountDeleteMod        | 0    | 0             | 0            | $rootPrev | $root |
-| $addr   | StorageMod              | $key | $valuePrev    | $value       | $rootPrev | $root |
-| $addr   | NonExistingStorageProof | $key | 0             | 0            | $root     | $root |
+| *Address* | *MPTProofType*          | *Key{Lo,Hi}* | *ValuePrev{Lo,Hi}*   | *Value{Lo,Hi}*      | *RootPrev{Lo,Hi}* | *Root{Lo,Hi}* |
+| -------   | ----------------------- | ----         | -------------        | ------------        | ---------         | -----         |
+| $addr     | NonceMod                | 0,0          | $noncePrev,0         | $nonceCur,0         | $rootPrev{Lo,Hi}  | $root{Lo,Hi}  |
+| $addr     | BalanceMod              | 0,0          | $balancePrev{Lo,Hi}  | $balanceCur{Lo,Hi}  | $rootPrev{Lo,Hi}  | $root{Lo,Hi}  |
+| $addr     | CodeHashMod             | 0,0          | $codeHashPrev{Lo,Hi} | $codeHashCur{Lo,Hi} | $rootPrev{Lo,Hi}  | $root{Lo,Hi}  |
+| $addr     | NonExistingAccountProof | 0,0          | 0,0                  | 0,0                 | $rootPrev{Lo,Hi}  | $root{Lo,Hi}  |
+| $addr     | AccountDeleteMod        | 0,0          | 0,0                  | 0,0                 | $rootPrev{Lo,Hi}  | $root{Lo,Hi}  |
+| $addr     | StorageMod              | $key{Lo,Hi}  | $valuePrev{Lo,Hi}    | $valueCur{Lo,Hi}    | $rootPrev{Lo,Hi}  | $root{Lo,Hi}  |
+| $addr     | NonExistingStorageProof | $key{Lo,Hi}  | 0,0                  | 0,0                 | $rootPrev{Lo,Hi}  | $root{Lo,Hi}  |
 
 ## `Keccak Table`
 
 See [tx.py](../src/zkevm_specs/tx.py)
 
-| IsEnabled | InputRLC   | InputLen | Output      |
-| --------- | ---------- | -------- | ----------- |
-| bool      | $input_rlc | $input_length | $output_rlc |
+| *IsEnabled* | *InputRLC* | *InputLen*    | *Output{Lo,Hi}* |
+| ---------   | ---------- | ------------- | --------------- |
+| bool        | $input_rlc | $input_length | $output{Lo,Hi}  |
 
 Column names in circuit:
 - IsEnabled: `is_final`
 - InputRLC: `data_rlc`
 - InputLen: `length`
-- Output: `hash_rlc`
+- OutputHi/Lo: `hash_hi/lo`
 
 
 ## `copy_table`
 
 Proved by the copy circuit.
 
-The copy table consists of 13 columns, described as follows:
+The copy table consists of 9 columns, described as follows:
 
-- **q_step**: a fixed column for boolean value to indicate a copy step, always alternating between 1 and 0, where 1 indicates a read op and 0 indicates a write op.
 - **is_first**: a boolean value to indicate the first row in a copy event.
-- **is_last**: a boolean value to indicate the last row in a copy event.
-- **ID**: could be `$txID`, `$callID`, `$codeHash` (RLC encoded).
-- **Type**: indicates the type of data source, including `Memory`, `Bytecode`, `TxCalldata`, `TxLog` and `RlcAcc`.
-- **Address**: indicates the address in the source data, could be memory address, byte index in the bytecode, tx call data, and tx log data. When the data type is `TxLog`, the address is the combination of byte index, `TxLogFieldTag.Data` tag, and `LogID`.
-- **AddressEnd**: indicates the address boundary of the source data. Any data read from address greater than or equal to `AddressEnd` should be 0. Note `AddressEnd` is only valid for read operations or `q_step` is 1.
-- **BytesLeft**: indicates the number of bytes left to be copied.
-- **Value**: indicates the value read or write from source or to the destination.
-- **RlcAcc**: indicates the RLC representation of an accumulator value over all write values.
-- **Pad**: indicates if the value read from the source is padded. Only valid for read operations or `q_step` is 1.
-- **IsCode**: a boolean value to indicate if the `Value` is an executable opcode or the data portion of `PUSH*` operations. Only valid when `Type` is `Bytecode`.
-- **RwCounter**: indicates the current RW counter at this row. This value will be used in the lookup to the `rw_table` when `Type` is  `Memory` or `TxLog`.
-- **RwcIncreaseLeft**: indicates how much the RW counter will increase in a copy event.
-
+- **id**: could be `$txID`, `$callID`, `$codeHash` (RLC encoded).
+- **addr**: indicates the address in the source data, could be memory address, byte index in the bytecode, tx call data, and tx log data. When the data type is `TxLog`, the address is the combination of byte index, `TxLogFieldTag.Data` tag, and `LogID`.
+- **src_addr_end**: indicates the address boundary of the source data. Any data read from address greater than or equal to `AddressEnd` should be 0. Note `AddressEnd` is only valid for read operations or `q_step` is 1.
+- **bytes_left**: indicates the number of bytes left to be copied.
+- **rlc_acc**: indicates the RLC representation of an accumulator value over all write values.
+- **rw_counter**: indicates the current RW counter at this row. This value will be used in the lookup to the `rw_table` when `Type` is  `Memory` or `TxLog`.
+- **rwc_inc_left**: indicates how much the RW counter will increase in a copy event.
+- **tag**: indicates tag which row depends as in `Bytecode`, `Memory`, `TxCalldata` or `TxLog`.
 
 Unlike other lookup tables, the copy table is a virtual table. The lookup entry is not a single row in the table, and not every row corresponds to a lookup entry.
 Instead, a lookup entry is constructed from the first two rows in each copy event as
-`(is_first, ID, Type, ID[1], Type[1], Address, AddressEnd, Address[1], BytesLeft, RlcAcc, RwCounter, RwcIncreaseLeft)`, where `is_first` is 1 and `Column[1]` indicates the next row in the corresponding column.
+`(is_first, id, addr, src_addr_end, bytes_left, rlc_acc, rw_counter, rwc_inc_left, tag)`, where `is_first` is 1 and `Column[1]` indicates the next row in the corresponding column.
 
 The table below lists all of copy pairs supported in the copy table:
 - Copy from Tx call data to memory (`CALLDATACOPY`).
@@ -273,22 +266,24 @@ The table below lists all of copy pairs supported in the copy table:
 - Copy from memory to TxLog in the `rw_table` (`LOGX`)
 - Copy from memory to RlcAcc (`SHA3`)
 
-| q_step | q_first | q_last | ID        | Type       | Address        | AddressEnd     | BytesLeft  | Value  | RlcAcc  | IsCode  | Pad | RwCounter | RwcIncreaseLeft |
-|--------|---------|--------|-----------|------------|----------------|----------------|------------|--------|---------|---------|-----|-----------|-----------------|
-| 1      | 0/1     | 0      | $txID     | TxCalldata | $byteIndex     | $cdLength      | $bytesLeft | $value | $rlcAcc | -       | 0/1 | -         | $rwcIncLeft     |
-| 0      | 0       | 0/1    | $callID   | Memory     | $memoryAddress | -              | -          | $value | $rlcAcc | -       | 0   | $counter  | $rwcIncLeft     |
-|        |         |        |           |            |                |                |            |        | $rlcAcc |         |     |           |                 |
-| 1      | 0/1     | 0      | $callID   | Memory     | $memoryAddress | $memoryAddress | $bytesLeft | $value | $rlcAcc | -       | 0/1 | $counter  | $rwcIncLeft     |
-| 0      | 0       | 0/1    | $callID   | Memory     | $memoryAddress | -              | -          | $value | $rlcAcc | -       | 0   | $counter  | $rwcIncLeft     |
-|        |         |        |           |            |                |                |            |        | $rlcAcc |         |     |           |                 |
-| 1      | 0/1     | 0      | $callID   | Memory     | $memoryAddress | $memoryAddress | $bytesLeft | $value | $rlcAcc | $isCode | 0/1 | $counter  | $rwcIncLeft     |
-| 0      | 0       | 0/1    | $codeHash | Bytecode   | $byteIndex     | -              | -          | $value | $rlcAcc | $isCode | 0   | -         | $rwcIncLeft     |
-|        |         |        |           |            |                |                |            |        | $rlcAcc |         |     |           |                 |
-| 1      | 0/1     | 0      | $codeHash | Bytecode   | $byteIndex     | $codeLength    | $bytesLeft | $value | $rlcAcc | $isCode | 0/1 | -         | $rwcIncLeft     |
-| 0      | 0       | 0/1    | $callID   | Memory     | $memoryAddress | -              | -          | $value | $rlcAcc | $isCode | 0   | $counter  | $rwcIncLeft     |
-|        |         |        |           |            |                |                |            |        | $rlcAcc |         |     |           |                 |
-| 1      | 0/1     | 0      | $callID   | Memory     | $memoryAddress | $memoryAddress | $bytesLeft | $value | $rlcAcc | -       | 0/1 | $counter  | $rwcIncLeft     |
-| 0      | 0       | 0/1    | $txID     | TxLog      | $byteIndex \|\| TxLogData \|\| $logID | - | - | $value | $rlcAcc | -       | 0   | $counter  | $rwcIncLeft     |
+| is_first   | id{Lo,Hi}        | addr             | src_addr_end     | bytes_left   | rlc_acc   | rw_counter   | rwc_inc_left   | tag          |
+| ---------- | -----------      | ---------------- | ---------------- | ------------ | --------- | ------------ | -------------- | ------------ |
+| 1          | $txID,0          | $byteIndex       | $cdLength        | $bytesLeft   | $rlcAcc   | -            | $rwcIncLeft    | TxCalldata   |
+| 0          | $callID,0        | $memoryAddress   | -                | -            | $rlcAcc   | $counter     | $rwcIncLeft    | Memory       |
+|            |                  |                  |                  |              | $rlcAcc   |              |                |              |
+| 1          | $callID,0        | $memoryAddress   | $memoryAddress   | $bytesLeft   | $rlcAcc   | $counter     | $rwcIncLeft    | Memory       |
+| 0          | $callID,0        | $memoryAddress   | -                | -            | $rlcAcc   | $counter     | $rwcIncLeft    | Memory       |
+|            |                  |                  |                  |              | $rlcAcc   |              |                |              |
+| 1          | $callID,0        | $memoryAddress   | $memoryAddress   | $bytesLeft   | $rlcAcc   | $counter     | $rwcIncLeft    | Memory       |
+| 0          | $codeHash{Lo,Hi} | $byteIndex       | -                | -            | $rlcAcc   | -            | $rwcIncLeft    | Bytecode     |
+|            |                  |                  |                  |              | $rlcAcc   |              |                |              |
+| 1          | $codeHash{Lo,Hi} | $byteIndex       | $codeLength      | $bytesLeft   | $rlcAcc   | -            | $rwcIncLeft    | Bytecode     |
+| 0          | $callID,0        | $memoryAddress   | -                | -            | $rlcAcc   | $counter     | $rwcIncLeft    | Memory       |
+|            |                  |                  |                  |              | $rlcAcc   |              |                |              |
+| 1          | $callID,0        | $memoryAddress   | $memoryAddress   | $bytesLeft   | $rlcAcc   | $counter     | $rwcIncLeft    | Memory       |
+| 0          | $txID,0          | $logAddress      | -                | -            | $rlcAcc   | $counter     | $rwcIncLeft    | TxLog        |
+
+- $logAddress = $byteIndex || TxLogData || $logID
 
 ## Exponentiation Table
 
@@ -342,13 +337,13 @@ Depending on the value of the `exponent` within the exponentiation operation, th
 
 Consider `3 ^ 13 == 1594323 (mod 2^256)`. The exponentiation table assignment looks as follows:
 
-| is_step | identifier | is_last | base_limb0 | base_limb1 | base_limb2 | base_limb3 | exponent_lo | exponent_hi | exponentiation_lo | exponentiation_hi |
-|---------|------------|---------|------------|------------|------------|------------|-------------|-------------|-------------------|-------------------|
-| 1       | $rwc       | 0       | 3          | 0          | 0          | 0          | 13          | 0           | 1594323           | 0                 |
-| 1       | $rwc       | 0       | 3          | 0          | 0          | 0          | 12          | 0           | 531441            | 0                 |
-| 1       | $rwc       | 0       | 3          | 0          | 0          | 0          | 6           | 0           | 729               | 0                 |
-| 1       | $rwc       | 0       | 3          | 0          | 0          | 0          | 3           | 0           | 27                | 0                 |
-| 1       | $rwc       | 1       | 3          | 0          | 0          | 0          | 2           | 0           | 9                 | 0                 |
+| IsStep    | Identifier   | IsLast    | BaseLimb0    | BaseLimb1    | BaseLimb2    | BaseLimb3    | Exponent{Lo,Hi} | Exponentiation{Lo,Hi} |
+| --------- | ------------ | --------- | ------------ | ------------ | ------------ | ------------ | --------------- | --------------------- |
+| 1         | $rwc         | 0         | 3            | 0            | 0            | 0            | 13,0            | 1594323,0             |
+| 1         | $rwc         | 0         | 3            | 0            | 0            | 0            | 12,0            | 531441,0              |
+| 1         | $rwc         | 0         | 3            | 0            | 0            | 0            | 6,0             | 729,0                 |
+| 1         | $rwc         | 0         | 3            | 0            | 0            | 0            | 3,0             | 27,0                  |
+| 1         | $rwc         | 1         | 3            | 0            | 0            | 0            | 2,0             | 9,0                   |
 
 For `exponent == 13`, i.e. Scenario #4 we do two lookups:
 1. Lookup to first row:
