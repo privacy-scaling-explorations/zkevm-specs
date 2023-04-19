@@ -248,7 +248,6 @@ def test_is_create(
                 stack_pointer=1022,
                 gas_left=gas_available,
                 reversible_write_counter=2,
-                aux_data=deployment_bytecode_hash,
             ),
             StepState(
                 execution_state=ExecutionState.EndTx,

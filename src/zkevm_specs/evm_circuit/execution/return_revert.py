@@ -35,7 +35,7 @@ def return_revert(instruction: Instruction):
             callee_address, AccountFieldTag.CodeHash
         )
         instruction.constrain_equal_word(code_hash_prev, Word(EMPTY_HASH))
-        instruction.constrain_equal_word(code_hash, instruction.curr.aux_data)
+        instruction.constrain_equal_word(code_hash, instruction.curr.code_hash)
 
         # verify bytecode size less than 24,576 bytes
         instruction.range_lookup(return_length, MAX_CODE_SIZE)
