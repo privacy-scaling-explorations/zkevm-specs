@@ -1,3 +1,4 @@
+from zkevm_specs.util.arithmetic import Word
 from zkevm_specs.util.param import GAS_COST_CODE_DEPOSIT, MAX_CODE_SIZE
 from ...util import EMPTY_HASH, FQ, N_BYTES_MEMORY_ADDRESS
 from ..instruction import Instruction, Transition

@@ -168,6 +168,9 @@ class Instruction:
             f"Expected value to be in {rhs}, but got {lhs}"
         )
 
+    def constrain_in_word(self, lhs: Word, rhs: List[Word]):
+        assert lhs in rhs, ConstraintUnsatFailure(f"Expected word to be in {rhs}, but got {lhs}")
+
     def constrain_bool(self, num: Expression):
         assert num.expr() in [0, 1], ConstraintUnsatFailure(
             f"Expected value to be a bool, but got {num}"
@@ -1157,11 +1160,14 @@ class Instruction:
         return FQ(int.from_bytes(contract_addr[-20:], "big"))
 
     def generate_CREAET2_contract_address(
-        self, address: Expression, salt: bytes, code_hash: RLC
+        self, address: Expression, salt: Word, code_hash: Word
     ) -> Expression:
         # keccak256(0xff + sender_address + salt + keccak256(initialisation_code))[12:]
         contract_addr = keccak(
-            b"\xff" + address.expr().n.to_bytes(20, "big") + salt + code_hash.le_bytes
+            b"\xff"
+            + address.expr().n.to_bytes(20, "big")
+            + salt.int_value().to_bytes(32, "little")
+            + code_hash.int_value().to_bytes(32, "little")
         )
         return FQ(int.from_bytes(contract_addr[-20:], "big"))
 

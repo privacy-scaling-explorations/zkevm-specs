@@ -943,7 +943,7 @@ class CopyCircuit:
                 is_pad = False
                 assert src_addr + i in src_data, f"Cannot find data at the offset {src_addr+i}"
                 value = src_data[src_addr + i]
-                if src_tag == CopyDataTypeTag.Bytecode or src_tag == CopyDataTypeTag.Bytecode:
+                if src_tag == CopyDataTypeTag.Bytecode or dst_tag == CopyDataTypeTag.Bytecode:
                     value = cast(Tuple[IntOrFQ, IntOrFQ], value)
                     value, is_code = value
                 else:
