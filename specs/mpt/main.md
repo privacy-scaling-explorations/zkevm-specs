@@ -118,3 +118,95 @@ That means we need to ensure:
 ```
 current S state trie root = previous C state trie root
 ```
+
+## Memory
+
+There are certain values that need to be accumulated when traversing through the trie nodes. For example,
+the account address RLC is being updated in each branch - the nibble that specifies which branch child is modified
+contributes to the account address RLC.
+
+To update the value in the current trie node, the value from the previous node needs to be retrieved.
+For this reason, some kind of memory is needed. The circuit 
+checks that the "memory" value is correct by executing a lookup.
+
+This is achieved as follows. The previous node stores the value (that has been checked to be correct) in the lookup table (`store` instruction in the table below).
+The current node executes the lookup (`load` instruction in the table below) with the value to check whether the "memorized" value is correct. Note that the key is used for a lookup - the key is important because at different stages (meaning different nodes) there are different correct values; the key acts as a counter and it ensures that only the value from the required stage is correct.
+
+<table role="table">
+<thead>
+<tr>
+<th>row</th>
+<th>instruction</th>
+<th>key</th>
+<th>memory_value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>store(a)</td>
+<td>0</td>
+<td></td>
+</tr>
+<tr>
+<td>1</td>
+<td></td>
+<td>1</td>
+<td>a</td>
+</tr>
+<tr>
+<td>2</td>
+<td>load(key.cur(), a)</td>
+<td>1</td>
+<td></td>
+</tr>
+<tr>
+<td>3</td>
+<td></td>
+<td>1</td>
+<td></td>
+</tr>
+<tr>
+<td>4</td>
+<td>store(b)</td>
+<td>1</td>
+<td></td>
+</tr>
+<tr>
+<td>5</td>
+<td>load(key.cur(), b)</td>
+<td>2</td>
+<td>b</td>
+</tr>
+</tbody>
+</table>
+
+The memory mechanism is used for `MainData`, `ParentData`, and `KeyData`:
+
+```
+pub(crate) struct MainData<F> {
+    pub(crate) proof_type: Cell<F>,
+    pub(crate) is_below_account: Cell<F>,
+    pub(crate) address_rlc: Cell<F>,
+    pub(crate) root_prev: Cell<F>,
+    pub(crate) root: Cell<F>,
+}
+
+pub(crate) struct ParentData<F> {
+    pub(crate) rlc: Cell<F>,
+    pub(crate) is_root: Cell<F>,
+    pub(crate) is_placeholder: Cell<F>,
+    pub(crate) drifted_parent_rlc: Cell<F>,
+}
+
+pub(crate) struct KeyData<F> {
+    pub(crate) rlc: Cell<F>,
+    pub(crate) mult: Cell<F>,
+    pub(crate) num_nibbles: Cell<F>,
+    pub(crate) is_odd: Cell<F>,
+    pub(crate) drifted_rlc: Cell<F>,
+    pub(crate) drifted_mult: Cell<F>,
+    pub(crate) drifted_num_nibbles: Cell<F>,
+    pub(crate) drifted_is_odd: Cell<F>,
+}
+```
