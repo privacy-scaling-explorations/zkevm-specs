@@ -17,7 +17,6 @@ from zkevm_specs.evm_circuit import (
 )
 from zkevm_specs.copy_circuit import verify_copy_table
 from zkevm_specs.evm_circuit.table import AccountFieldTag
-from zkevm_specs.util.arithmetic import RLC
 from zkevm_specs.util.hash import EMPTY_CODE_HASH
 from zkevm_specs.util.param import GAS_COST_CODE_DEPOSIT
 from zkevm_specs.util import Word
@@ -137,15 +136,15 @@ def test_is_create(
     block = Block()
 
     init_bytecode = gen_bytecode(is_return, return_offset, return_length)
-    deployment_bytecode_hash = RLC(init_bytecode.hash(), randomness)
+    deployment_bytecode_hash = Word(init_bytecode.hash())
 
     # gas
     _, gas_memory_expansion = memory_expansion(0, return_offset + return_length)
     gas_cost = return_length * GAS_COST_CODE_DEPOSIT
     gas_left = gas_available - gas_cost
 
-    return_offset_rlc = RLC(return_offset, randomness)
-    return_length_rlc = RLC(return_length, randomness)
+    return_offset_word = Word(return_offset)
+    return_length_word = Word(return_length)
     caller_id = 1
     rw_counter = 16 if is_root else 27
     callee_id = rw_counter
@@ -153,14 +152,14 @@ def test_is_create(
     rw_dict = (
         RWDictionary(rw_counter)
         .call_context_read(callee_id, CallContextFieldTag.IsSuccess, int(is_return))
-        .stack_read(callee_id, 1022, return_offset_rlc)
-        .stack_read(callee_id, 1023, return_length_rlc)
+        .stack_read(callee_id, 1022, return_offset_word)
+        .stack_read(callee_id, 1023, return_length_word)
         .call_context_read(callee_id, CallContextFieldTag.CalleeAddress, int(CALLEE_ADDRESS))
         .account_write(
             CALLEE_ADDRESS,
             AccountFieldTag.CodeHash,
             deployment_bytecode_hash,
-            RLC(EMPTY_CODE_HASH),
+            Word(EMPTY_CODE_HASH),
         )
     )
 
@@ -184,7 +183,7 @@ def test_is_create(
         rw_dict,
         callee_id,
         CopyDataTypeTag.Memory,
-        deployment_bytecode_hash.expr(),
+        deployment_bytecode_hash,
         CopyDataTypeTag.Bytecode,
         return_offset,
         return_offset + return_length,
@@ -221,14 +220,14 @@ def test_is_create(
         )
 
     tables = Tables(
-        block_table=set(block.table_assignments(randomness)),
+        block_table=set(block.table_assignments()),
         tx_table=set(
             chain(
-                tx.table_assignments(randomness),
-                Transaction(id=tx.id + 1).table_assignments(randomness),
+                tx.table_assignments(),
+                Transaction(id=tx.id + 1).table_assignments(),
             )
         ),
-        bytecode_table=set(init_bytecode.table_assignments(randomness)),
+        bytecode_table=set(init_bytecode.table_assignments()),
         rw_table=set(rw_dict.rws),
         copy_circuit=copy_circuit.rows,
     )
@@ -236,7 +235,6 @@ def test_is_create(
     verify_copy_table(copy_circuit, tables, randomness)
 
     verify_steps(
-        randomness=randomness,
         tables=tables,
         steps=[
             StepState(

@@ -51,7 +51,7 @@ def return_revert(instruction: Instruction):
             copy_rwc_inc, _ = instruction.copy_lookup(
                 instruction.curr.call_id,  # src_id
                 CopyDataTypeTag.Memory,  # src_type
-                code_hash.expr(),  # dst_id
+                code_hash,  # dst_id
                 CopyDataTypeTag.Bytecode,  # dst_type
                 return_offset,  # src_addr
                 return_end,  # src_addr_boundary
