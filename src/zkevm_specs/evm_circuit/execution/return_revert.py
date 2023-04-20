@@ -62,6 +62,8 @@ def return_revert(instruction: Instruction):
             instruction.constrain_equal(copy_rwc_inc, copy_length)  # rwc += copy_length
             instruction.rw_counter_offset += int(copy_rwc_inc)
             rwc_delta += int(copy_length)
+            code_size = instruction.bytecode_length(code_hash)
+            instruction.constrain_equal(code_size, copy_length)
 
     if not instruction.curr.is_root and not instruction.curr.is_create:
         # D. Returns the specified memory chunk to the caller.
