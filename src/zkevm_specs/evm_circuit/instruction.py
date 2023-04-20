@@ -1199,6 +1199,25 @@ class Instruction:
         exp_table_row = self.tables.exp_lookup(identifier, is_last, base_limbs, exponent)
         return exp_table_row.exponentiation
 
+    def bn256_lookup(
+        self,
+        id,
+        tag,
+        input0,
+        input1,
+        input2,
+        input3,
+    ) -> Tuple[Expression, Expression]:
+        bn256_table_row = self.tables.bn256_lookup(
+            id,
+            tag,
+            input0,
+            input1,
+            input2,
+            input3,
+        )
+        return bn256_table_row.output0, bn256_table_row.output1
+
     def constrain_error_state(self, rw_counter_delta: int):
         # Current call must fail.
         is_success = self.call_context_lookup(CallContextFieldTag.IsSuccess)

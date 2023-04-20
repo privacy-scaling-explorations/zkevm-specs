@@ -10,6 +10,7 @@ from zkevm_specs.evm_circuit import (
     Tables,
     CopyCircuit,
     CopyDataTypeTag,
+    Bn256Circuit,
     verify_steps,
 )
 from zkevm_specs.util import (
@@ -101,6 +102,8 @@ def test_bn256Add(
         result_size,
         result_src_data,
     )
+
+    Bn256Circuit().add()
 
     rw_dictionary = (
         # fmt: off

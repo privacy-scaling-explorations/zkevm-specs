@@ -1,7 +1,7 @@
 from enum import IntEnum, auto
 from typing import Final, Dict
 from .util import ConstraintSystem, FQ, G1, CurvePoint, point_add
-from .evm_circuit import Bn256Circuit, Bn256TableRow
+from .evm_circuit import Bn256Circuit, Bn256TableRow, Bn256OperationTag
 
 
 def verify_row(cs: ConstraintSystem, row: Bn256TableRow):
@@ -35,13 +35,6 @@ def verify_bn256_table(bn256_circuit: Bn256Circuit):
     for i, row in enumerate(bn256_table):
         verify_row(cs, row)
         verify_ops(cs, row)
-
-
-class Bn256OperationTag(IntEnum):
-    ECRECOVER = auto()
-    BN256ADD = auto()
-    BN256SCALARMUL = auto()
-    BN256PAIRING = auto()
 
 
 class Bn256OperationInfo:

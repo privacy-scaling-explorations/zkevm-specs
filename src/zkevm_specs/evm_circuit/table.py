@@ -317,6 +317,17 @@ class CopyDataTypeTag(IntEnum):
     RlcAcc = auto()
 
 
+class Bn256OperationTag(IntEnum):
+    """
+    Tag for Bn256 lookup.
+    """
+
+    ECRECOVER = auto()
+    BN256ADD = auto()
+    BN256SCALARMUL = auto()
+    BN256PAIRING = auto()
+
+
 class MPTProofType(IntEnum):
     """
     Tag for MPT lookup.
@@ -548,6 +559,7 @@ class Tables:
     copy_table: Set[CopyTableRow]
     keccak_table: Set[KeccakTableRow]
     exp_table: Set[ExpTableRow]
+    bn256_table: Set[Bn256TableRow]
 
     def __init__(
         self,
@@ -558,6 +570,7 @@ class Tables:
         copy_circuit: Optional[Sequence[CopyCircuitRow]] = None,
         keccak_table: Optional[Sequence[KeccakTableRow]] = None,
         exp_circuit: Optional[Sequence[ExpCircuitRow]] = None,
+        bn256_table: Optional[Sequence[Bn256TableRow]] = None,
     ) -> None:
         self.block_table = block_table
         self.tx_table = tx_table
@@ -572,6 +585,8 @@ class Tables:
             self.keccak_table = set(keccak_table)
         if exp_circuit is not None:
             self.exp_table = self._convert_exp_circuit_to_table(exp_circuit)
+        if bn256_table is not None:
+            self.bn256_table = set(bn256_table)
 
     def _convert_copy_circuit_to_table(self, copy_circuit: Sequence[CopyCircuitRow]):
         rows: List[CopyTableRow] = []
@@ -750,6 +765,25 @@ class Tables:
             "exponent": exponent,
         }
         return lookup(ExpTableRow, self.exp_table, query)
+
+    def bn256_lookup(
+        self,
+        id,
+        tag,
+        input0,
+        input1,
+        input2,
+        input3,
+    ):
+        query = {
+            "id": id,
+            "tag": tag,
+            "input0": input0.expr(),
+            "input1": input1.expr(),
+            "input2": input2.expr(),
+            "input3": input3.expr(),
+        }
+        return lookup(Bn256TableRow, self.bn256_table, query)
 
 
 T = TypeVar("T", bound=TableRow)

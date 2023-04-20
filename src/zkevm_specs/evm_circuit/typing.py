@@ -53,6 +53,7 @@ from .table import (
     KeccakTableRow,
     ExpCircuitRow,
     Bn256TableRow,
+    Bn256OperationTag,
 )
 from .opcode import get_push_size, Opcode
 
@@ -1067,13 +1068,50 @@ class CopyCircuit:
 
 class Bn256Circuit:
     rows: List[Bn256TableRow]
-    pad_rows: List[Bn256TableRow]
 
-    def __init__(self, pad_rows: Optional[List[Bn256TableRow]] = None) -> None:
+    def __init__(self) -> None:
         self.rows = []
-        self.pad_rows = []
-        if pad_rows is not None:
-            self.pad_rows = pad_rows
 
     def table(self) -> Sequence[Bn256TableRow]:
-        return self.rows + self.pad_rows
+        return self.rows
+
+    def add(self) -> None:
+        new_rows: List[Bn256TableRow] = []
+        self._append_row(
+            new_rows,
+            id,
+            Bn256OperationTag.BN256ADD,
+            input0,
+            input1,
+            input2,
+            input3,
+            output0,
+            output1,
+        )
+        self.rows.extend(new_rows)
+        return self
+
+    def _append_row(
+        self,
+        rows: MutableSequence[CopyCircuitRow],
+        id: Union[int, FQ, Word],
+        tag: Bn256OperationTag,
+        input0: IntOrFQ,
+        input1: IntOrFQ,
+        input2: IntOrFQ,
+        input3: IntOrFQ,
+        output0: IntOrFQ,
+        output1: IntOrFQ,
+    ) -> None:
+        rows.append(
+            Bn256TableRow(
+                id=id,
+                tag=tag,
+                input0=input0,
+                input1=input1,
+                input2=input2,
+                input3=input3,
+                output0=output0,
+                output1=output1,
+            )
+        )
