@@ -14,8 +14,10 @@ from zkevm_specs.evm_circuit import (
     Tables,
     verify_steps,
 )
-from zkevm_specs.util import RLC
-from common import CallContext, rand_fq
+from zkevm_specs.util import (
+    Word,
+)
+from common import CallContext
 
 Stack = namedtuple(
     "Stack",
@@ -126,9 +128,8 @@ def test_oog_call_root(
     has_value: bool,
     is_warm_access: bool,
 ):
-    randomness = rand_fq()
-    caller_bytecode_hash = RLC(caller_bytecode.hash(), randomness)
-    callee_bytecode_hash = RLC(callee.code_hash(), randomness)
+    caller_bytecode_hash = Word(caller_bytecode.hash())
+    callee_bytecode_hash = Word(callee.code_hash())
 
     is_success = False
     program_counter = 231 if has_value else 198
@@ -136,37 +137,36 @@ def test_oog_call_root(
     rw_dictionary = (
         RWDictionary(24)
         .call_context_read(1, CallContextFieldTag.TxId, 1)
-        .stack_read(1, 1018 - has_value, RLC(stack.gas, randomness))
-        .stack_read(1, 1019 - has_value, RLC(callee.address, randomness))
+        .stack_read(1, 1018 - has_value, Word(stack.gas))
+        .stack_read(1, 1019 - has_value, Word(callee.address))
     )
     if has_value:
-        rw_dictionary.stack_read(1, 1019, RLC(stack.value, randomness))
+        rw_dictionary.stack_read(1, 1019, Word(stack.value))
     # fmt: off
     rw_dictionary \
-        .stack_read(1, 1020, RLC(stack.cd_offset, randomness)) \
-        .stack_read(1, 1021, RLC(stack.cd_length, randomness)) \
-        .stack_read(1, 1022, RLC(stack.rd_offset, randomness)) \
-        .stack_read(1, 1023, RLC(stack.rd_length, randomness)) \
-        .stack_write(1, 1023, RLC(is_success, randomness)) \
+        .stack_read(1, 1020, Word(stack.cd_offset)) \
+        .stack_read(1, 1021, Word(stack.cd_length)) \
+        .stack_read(1, 1022, Word(stack.rd_offset)) \
+        .stack_read(1, 1023, Word(stack.rd_length)) \
+        .stack_write(1, 1023, Word(is_success)) \
         .account_read(callee.address, AccountFieldTag.CodeHash, callee_bytecode_hash) \
         .tx_access_list_account_read(1, callee.address, is_warm_access) \
         .call_context_read(1, CallContextFieldTag.IsSuccess, 0)
     # fmt: on
 
     tables = Tables(
-        block_table=set(Block().table_assignments(randomness)),
+        block_table=set(Block().table_assignments()),
         tx_table=set(),
         bytecode_table=set(
             chain(
-                caller_bytecode.table_assignments(randomness),
-                callee.code.table_assignments(randomness),
+                caller_bytecode.table_assignments(),
+                callee.code.table_assignments(),
             )
         ),
         rw_table=set(rw_dictionary.rws),
     )
 
     verify_steps(
-        randomness=randomness,
         tables=tables,
         steps=[
             StepState(
@@ -203,10 +203,8 @@ def test_oog_call_not_root(
     has_value: bool,
     is_warm_access: bool,
 ):
-    randomness = rand_fq()
-
-    caller_bytecode_hash = RLC(caller_bytecode.hash(), randomness)
-    callee_bytecode_hash = RLC(callee.code_hash(), randomness)
+    caller_bytecode_hash = Word(caller_bytecode.hash())
+    callee_bytecode_hash = Word(callee.code_hash())
     callee_reversible_write_counter = 2
 
     is_success = False
@@ -215,18 +213,18 @@ def test_oog_call_not_root(
     rw_dictionary = (
         RWDictionary(24)
         .call_context_read(2, CallContextFieldTag.TxId, 1)
-        .stack_read(2, 1018 - has_value, RLC(stack.gas, randomness))
-        .stack_read(2, 1019 - has_value, RLC(callee.address, randomness))
+        .stack_read(2, 1018 - has_value, Word(stack.gas))
+        .stack_read(2, 1019 - has_value, Word(callee.address))
     )
     if has_value:
-        rw_dictionary.stack_read(2, 1019, RLC(stack.value, randomness))
+        rw_dictionary.stack_read(2, 1019, Word(stack.value))
     # fmt: off
     rw_dictionary \
-        .stack_read(2, 1020, RLC(stack.cd_offset, randomness)) \
-        .stack_read(2, 1021, RLC(stack.cd_length, randomness)) \
-        .stack_read(2, 1022, RLC(stack.rd_offset, randomness)) \
-        .stack_read(2, 1023, RLC(stack.rd_length, randomness)) \
-        .stack_write(2, 1023, RLC(is_success, randomness)) \
+        .stack_read(2, 1020, Word(stack.cd_offset)) \
+        .stack_read(2, 1021, Word(stack.cd_length)) \
+        .stack_read(2, 1022, Word(stack.rd_offset)) \
+        .stack_read(2, 1023, Word(stack.rd_length)) \
+        .stack_write(2, 1023, Word(is_success)) \
         .account_read(callee.address, AccountFieldTag.CodeHash, callee_bytecode_hash) \
         .tx_access_list_account_read(1, callee.address, is_warm_access) \
         .call_context_read(2, CallContextFieldTag.IsSuccess, 0) \
@@ -245,19 +243,18 @@ def test_oog_call_not_root(
     # fmt: on
 
     tables = Tables(
-        block_table=set(Block().table_assignments(randomness)),
+        block_table=set(Block().table_assignments()),
         tx_table=set(),
         bytecode_table=set(
             chain(
-                caller_bytecode.table_assignments(randomness),
-                callee.code.table_assignments(randomness),
+                caller_bytecode.table_assignments(),
+                callee.code.table_assignments(),
             )
         ),
         rw_table=set(rw_dictionary.rws),
     )
 
     verify_steps(
-        randomness=randomness,
         tables=tables,
         steps=[
             StepState(

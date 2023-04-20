@@ -10,8 +10,8 @@ from zkevm_specs.evm_circuit import (
     verify_steps,
     RWDictionary,
 )
-from zkevm_specs.util import RLC, U256
-from common import rand_fq, rand_address
+from zkevm_specs.util import Word, U256
+from common import rand_address
 
 TESTING_DATA = (
     0x00,
@@ -24,27 +24,24 @@ TESTING_DATA = (
 
 @pytest.mark.parametrize("origin", TESTING_DATA)
 def test_origin(origin: U256):
-    randomness = rand_fq()
-
     tx = Transaction(caller_address=origin)
 
     bytecode = Bytecode().origin().stop()
-    bytecode_hash = RLC(bytecode.hash(), randomness)
+    bytecode_hash = Word(bytecode.hash())
 
     tables = Tables(
         block_table=set(),
-        tx_table=set(tx.table_assignments(randomness)),
-        bytecode_table=set(bytecode.table_assignments(randomness)),
+        tx_table=set(tx.table_assignments()),
+        bytecode_table=set(bytecode.table_assignments()),
         rw_table=set(
             RWDictionary(9)
             .call_context_read(1, CallContextFieldTag.TxId, tx.id)
-            .stack_write(1, 1023, RLC(origin, randomness))
+            .stack_write(1, 1023, Word(origin))
             .rws
         ),
     )
 
     verify_steps(
-        randomness=randomness,
         tables=tables,
         steps=[
             StepState(

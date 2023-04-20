@@ -13,7 +13,7 @@ from zkevm_specs.evm_circuit import (
     verify_steps,
 )
 from zkevm_specs.util import (
-    RLC,
+    Word,
     FQ,
 )
 from zkevm_specs.copy_circuit import verify_copy_table
@@ -61,7 +61,7 @@ def test_bn256Add(
         )
         .stop()
     )
-    code_hash = RLC(code.hash(), randomness)
+    code_hash = Word(code.hash())
 
     rw_dictionary = (
         # fmt: off
@@ -147,7 +147,7 @@ def test_bn256Add(
     tables = Tables(
         block_table=set(),
         tx_table=set(),
-        bytecode_table=set(code.table_assignments(randomness)),
+        bytecode_table=set(code.table_assignments()),
         rw_table=set(rw_dictionary.rws),
         copy_circuit=copy_circuit.rows,
     )
@@ -155,7 +155,6 @@ def test_bn256Add(
     verify_copy_table(copy_circuit, tables, randomness)
 
     verify_steps(
-        randomness,
-        tables,
-        steps,
+        tables=tables,
+        steps=steps,
     )

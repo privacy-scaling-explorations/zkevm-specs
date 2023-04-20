@@ -1,4 +1,4 @@
-from ...util.param import N_BYTES_ACCOUNT_ADDRESS, N_BYTES_U64
+from ...util import Word
 from ..instruction import Instruction, Transition
 from ..table import BlockContextFieldTag
 from ..opcode import Opcode
@@ -10,28 +10,28 @@ def blockctx(instruction: Instruction):
     # get block context op element
     if opcode == Opcode.COINBASE:
         op = BlockContextFieldTag.Coinbase
-        ctx_expr = instruction.rlc_to_fq(instruction.stack_push(), N_BYTES_ACCOUNT_ADDRESS)
+        ctx_word = instruction.address_to_word(instruction.block_context_lookup(op))
     elif opcode == Opcode.TIMESTAMP:
         op = BlockContextFieldTag.Timestamp
-        ctx_expr = instruction.rlc_to_fq(instruction.stack_push(), N_BYTES_U64)
+        ctx_word = Word.from_lo(instruction.block_context_lookup(op))
     elif opcode == Opcode.NUMBER:
         op = BlockContextFieldTag.Number
-        ctx_expr = instruction.rlc_to_fq(instruction.stack_push(), N_BYTES_U64)
+        ctx_word = Word.from_lo(instruction.block_context_lookup(op))
     elif opcode == Opcode.GASLIMIT:
         op = BlockContextFieldTag.GasLimit
-        ctx_expr = instruction.rlc_to_fq(instruction.stack_push(), N_BYTES_U64)
+        ctx_word = Word.from_lo(instruction.block_context_lookup(op))
     elif opcode == Opcode.DIFFICULTY:
         op = BlockContextFieldTag.Difficulty
-        ctx_expr = instruction.stack_push().expr()
+        ctx_word = instruction.block_context_lookup_word(op)
     elif opcode == Opcode.BASEFEE:
         op = BlockContextFieldTag.BaseFee
-        ctx_expr = instruction.stack_push().expr()
+        ctx_word = instruction.block_context_lookup_word(op)
     elif opcode == Opcode.CHAINID:
         op = BlockContextFieldTag.ChainId
-        ctx_expr = instruction.stack_push().expr()
+        ctx_word = Word.from_lo(instruction.block_context_lookup(op))
 
     # check block table for corresponding op data
-    instruction.constrain_equal(instruction.block_context_lookup(op), ctx_expr)
+    instruction.constrain_equal_word(ctx_word, instruction.stack_push())
 
     instruction.step_state_transition_in_same_context(
         opcode,

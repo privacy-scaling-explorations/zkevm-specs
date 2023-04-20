@@ -1,4 +1,4 @@
-from ...util import N_BYTES_U64
+from ...util import Word
 from ..instruction import Instruction, Transition
 from ..opcode import Opcode
 
@@ -9,10 +9,7 @@ def codesize(instruction: Instruction):
 
     code_size = instruction.bytecode_length(instruction.curr.code_hash)
 
-    instruction.constrain_equal(
-        instruction.rlc_to_fq(instruction.stack_push(), N_BYTES_U64),
-        code_size.expr(),
-    )
+    instruction.constrain_equal_word(Word.from_lo(code_size), instruction.stack_push())
 
     instruction.step_state_transition_in_same_context(
         opcode,

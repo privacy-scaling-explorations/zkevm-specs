@@ -10,8 +10,8 @@ from zkevm_specs.evm_circuit import (
     Bytecode,
     RWDictionary,
 )
-from zkevm_specs.util import RLC
-from common import rand_fq, rand_word
+from zkevm_specs.util import Word
+from common import rand_word
 
 
 RAND_1 = rand_word()
@@ -186,19 +186,17 @@ TESTING_DATA = (
 
 @pytest.mark.parametrize("opcode, a, b, res", TESTING_DATA)
 def test_slt_sgt(opcode: Opcode, a: int, b: int, res: int):
-    randomness = rand_fq()
-
-    a = RLC(a, randomness)
-    b = RLC(b, randomness)
-    res = RLC(res, randomness)
+    a = Word(a)
+    b = Word(b)
+    res = Word(res)
 
     bytecode = Bytecode().slt(a, b) if opcode == Opcode.SLT else Bytecode().sgt(a, b)
-    bytecode_hash = RLC(bytecode.hash(), randomness)
+    bytecode_hash = Word(bytecode.hash())
 
     tables = Tables(
-        block_table=set(Block().table_assignments(randomness)),
+        block_table=set(Block().table_assignments()),
         tx_table=set(),
-        bytecode_table=set(bytecode.table_assignments(randomness)),
+        bytecode_table=set(bytecode.table_assignments()),
         rw_table=set(
             RWDictionary(9)
             .stack_read(1, 1022, a)
@@ -209,7 +207,6 @@ def test_slt_sgt(opcode: Opcode, a: int, b: int, res: int):
     )
 
     verify_steps(
-        randomness=randomness,
         tables=tables,
         steps=[
             StepState(

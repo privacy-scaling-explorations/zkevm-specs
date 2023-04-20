@@ -9,13 +9,19 @@ def signextend(instruction: Instruction):
     value = instruction.stack_pop()
     result = instruction.stack_push()
 
+    index_le_bytes = index.to_le_bytes()
+    value_le_bytes = value.to_le_bytes()
+    result_le_bytes = result.to_le_bytes()
+
     # Any index value >= 256 always returns the same value
-    is_msb_sum_zero = instruction.is_zero(FQ(sum(index.le_bytes[1:32])))
+    is_msb_sum_zero = instruction.is_zero(FQ(sum(index_le_bytes[1:32])))
     sign_byte = (
-        FQ((value.le_bytes[index.le_bytes[0]] >> 7) * 0xFF) if index.le_bytes[0] < 31 else FQ(0)
+        FQ((value_le_bytes[index_le_bytes[0].n].n >> 7) * 0xFF)
+        if index_le_bytes[0].n < 31
+        else FQ(0)
     )
-    selectors = [FQ(index.expr().n >= i) for i in range(31)]
-    is_byte_selected = [FQ(index.le_bytes[0] == i) for i in range(31)]
+    selectors = [FQ(index_le_bytes[0].n >= i) for i in range(31)]
+    is_byte_selected = [FQ(index_le_bytes[0].n == i) for i in range(31)]
 
     # Check byte per byte to see if the byte was selected.
     # We're only directly checking the LSB byte
@@ -26,7 +32,7 @@ def signextend(instruction: Instruction):
     selected_byte = FQ(0)
     for i in range(31):
         is_selected = is_byte_selected[i] * is_msb_sum_zero
-        selected_byte += value.le_bytes[i] * is_selected
+        selected_byte += value_le_bytes[i] * is_selected
         # Verify the selector
         instruction.is_equal(is_selected + (selectors[i - 1] if i > 0 else FQ(0)), selectors[i])
 
@@ -39,11 +45,11 @@ def signextend(instruction: Instruction):
     # (hence the `selectors[i-1]`).
     for idx in range(32):
         if idx == 0:
-            instruction.is_equal(FQ(result.le_bytes[idx]), FQ(value.le_bytes[idx]))
+            instruction.is_equal(FQ(result_le_bytes[idx]), FQ(value_le_bytes[idx]))
         else:
             instruction.is_equal(
-                FQ(result.le_bytes[idx]),
-                sign_byte if selectors[idx - 1] == FQ(1) else FQ(value.le_bytes[idx]),
+                FQ(result_le_bytes[idx]),
+                sign_byte if selectors[idx - 1] == FQ(1) else FQ(value_le_bytes[idx]),
             )
 
     instruction.step_state_transition_in_same_context(
