@@ -16,6 +16,9 @@ from zkevm_specs.evm_circuit import (
     CopyDataTypeTag,
 )
 from zkevm_specs.copy_circuit import verify_copy_table
+from zkevm_specs.evm_circuit.table import AccountFieldTag
+from zkevm_specs.util.hash import EMPTY_CODE_HASH
+from zkevm_specs.util.param import GAS_COST_CODE_DEPOSIT
 from zkevm_specs.util import Word
 
 
@@ -107,8 +110,172 @@ def test_is_root_not_create(
     )
 
 
-# TODO: test_return_is_root_is_create
-# TODO: test_return_not_root_is_create
+TESTING_DATA_IS_CREATE = (
+    (Transaction(), 1_000_000, True, True, 4, 10),  # RETURN, ROOT
+    (Transaction(), 1_000_000, True, False, 4, 10),  # REVERT, ROOT
+    (Transaction(), 1_000_000, False, True, 4, 10),  # RETURN, not ROOT
+    (Transaction(), 1_000_000, False, False, 4, 10),  # REVERT, not ROOT
+)
+
+
+@pytest.mark.parametrize(
+    "tx, gas_available, is_root, is_return, return_offset, return_length",
+    TESTING_DATA_IS_CREATE,
+)
+def test_is_create(
+    tx: Transaction,
+    gas_available: int,
+    is_root: bool,
+    is_return: bool,
+    return_offset: int,
+    return_length: int,
+):
+    randomness = rand_fq()
+    CALLEE_ADDRESS = 0xFE
+
+    block = Block()
+
+    init_bytecode = gen_bytecode(is_return, return_offset, return_length)
+    deployment_bytecode_hash = Word(init_bytecode.hash())
+    bytecode_length = len(init_bytecode.code)
+
+    # gas
+    _, gas_memory_expansion = memory_expansion(0, return_offset + bytecode_length)
+    gas_cost = bytecode_length * GAS_COST_CODE_DEPOSIT
+    gas_left = gas_available - gas_cost
+
+    return_offset_word = Word(return_offset)
+    return_length_word = Word(bytecode_length)
+    caller_id = 1
+    rw_counter = 16 if is_root else 27
+    callee_id = rw_counter
+
+    rw_dict = (
+        RWDictionary(rw_counter)
+        .call_context_read(callee_id, CallContextFieldTag.IsSuccess, int(is_return))
+        .stack_read(callee_id, 1022, return_offset_word)
+        .stack_read(callee_id, 1023, return_length_word)
+        .call_context_read(callee_id, CallContextFieldTag.CalleeAddress, int(CALLEE_ADDRESS))
+        .account_write(
+            CALLEE_ADDRESS,
+            AccountFieldTag.CodeHash,
+            deployment_bytecode_hash,
+            Word(EMPTY_CODE_HASH),
+        )
+    )
+
+    # copy_table
+    src_data = dict(
+        [
+            (
+                i,
+                (
+                    init_bytecode.code[i - return_offset],
+                    init_bytecode.is_code[i - return_offset],
+                )
+                if i - return_offset < len(init_bytecode.code)
+                else (0, 0),
+            )
+            for i in range(return_offset, return_offset + bytecode_length)
+        ]
+    )
+    copy_circuit = CopyCircuit().copy(
+        randomness,
+        rw_dict,
+        callee_id,
+        CopyDataTypeTag.Memory,
+        deployment_bytecode_hash,
+        CopyDataTypeTag.Bytecode,
+        return_offset,
+        return_offset + bytecode_length,
+        0,
+        bytecode_length,
+        src_data,
+    )
+
+    if is_root:
+        rw_dict.call_context_read(callee_id, CallContextFieldTag.IsPersistent, int(is_return))
+    else:
+        memory_word_size = (
+            0 if bytecode_length == 0 else (return_offset + bytecode_length + 31) // 32
+        )
+        rw_dict = (
+            rw_dict.call_context_read(callee_id, CallContextFieldTag.CallerId, caller_id)
+            .call_context_read(caller_id, CallContextFieldTag.IsRoot, is_root)
+            .call_context_read(caller_id, CallContextFieldTag.IsCreate, True)
+            .call_context_read(caller_id, CallContextFieldTag.CodeHash, deployment_bytecode_hash)
+            .call_context_read(caller_id, CallContextFieldTag.ProgramCounter, 40)
+            .call_context_read(caller_id, CallContextFieldTag.StackPointer, 1022)
+            .call_context_read(caller_id, CallContextFieldTag.GasLeft, 0)
+            .call_context_read(caller_id, CallContextFieldTag.MemorySize, memory_word_size)
+            .call_context_read(
+                caller_id,
+                CallContextFieldTag.ReversibleWriteCounter,
+                len(rw_dict.rws),
+            )
+            .call_context_write(caller_id, CallContextFieldTag.LastCalleeId, callee_id)
+            .call_context_write(
+                caller_id, CallContextFieldTag.LastCalleeReturnDataOffset, return_offset
+            )
+            .call_context_write(
+                caller_id, CallContextFieldTag.LastCalleeReturnDataLength, bytecode_length
+            )
+        )
+
+    tables = Tables(
+        block_table=set(block.table_assignments()),
+        tx_table=set(
+            chain(
+                tx.table_assignments(),
+                Transaction(id=tx.id + 1).table_assignments(),
+            )
+        ),
+        bytecode_table=set(init_bytecode.table_assignments()),
+        rw_table=set(rw_dict.rws),
+        copy_circuit=copy_circuit.rows,
+    )
+
+    verify_copy_table(copy_circuit, tables, randomness)
+
+    verify_steps(
+        tables=tables,
+        steps=[
+            StepState(
+                execution_state=ExecutionState.RETURN,
+                rw_counter=rw_counter,
+                call_id=callee_id,
+                is_root=is_root,
+                is_create=True,
+                code_hash=deployment_bytecode_hash,
+                program_counter=40,
+                stack_pointer=1022,
+                gas_left=gas_available,
+                reversible_write_counter=2,
+            ),
+            StepState(
+                execution_state=ExecutionState.EndTx,
+                gas_left=gas_left,
+                rw_counter=len(rw_dict.rws) + 14,
+                call_id=callee_id,
+            )
+            if is_root
+            else StepState(
+                execution_state=ExecutionState.STOP,
+                # 12 comes from `step_state_transition_to_restored_context`
+                rw_counter=len(rw_dict.rws) + 14 + 12 - 1,
+                call_id=caller_id,
+                is_root=False,
+                is_create=True,
+                code_hash=deployment_bytecode_hash,
+                program_counter=40,
+                stack_pointer=1022,
+                gas_left=gas_left - gas_memory_expansion,
+                memory_word_size=memory_word_size,
+                reversible_write_counter=len(rw_dict.rws) - 2,
+            ),
+        ],
+    )
+
 
 TESTING_DATA_NOT_ROOT_NOT_CREATE = (
     (

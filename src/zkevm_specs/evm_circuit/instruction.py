@@ -2,6 +2,11 @@ from __future__ import annotations
 from enum import IntEnum, auto
 from typing import Optional, Sequence, Tuple, Union, List, cast
 
+from eth_utils import (
+    keccak,
+)
+import rlp  # type: ignore
+
 from ..util import (
     FQ,
     IntOrFQ,
@@ -163,6 +168,9 @@ class Instruction:
             f"Expected value to be in {rhs}, but got {lhs}"
         )
 
+    def constrain_in_word(self, lhs: Word, rhs: List[Word]):
+        assert lhs in rhs, ConstraintUnsatFailure(f"Expected word to be in {rhs}, but got {lhs}")
+
     def constrain_bool(self, num: Expression):
         assert num.expr() in [0, 1], ConstraintUnsatFailure(
             f"Expected value to be a bool, but got {num}"
@@ -268,7 +276,7 @@ class Instruction:
             gas_left=gas_left,
             reversible_write_counter=reversible_write_counter,
             log_id=log_id,
-            # Initailization unconditionally
+            # Initialization unconditionally
             program_counter=Transition.to(0),
             stack_pointer=Transition.to(1024),
             memory_word_size=Transition.to(0),
@@ -762,12 +770,7 @@ class Instruction:
         return self.opcode_lookup_at(index, is_code)
 
     def opcode_lookup_at(self, index: FQ, is_code: bool) -> FQ:
-        if self.curr.is_root and self.curr.is_create:
-            raise NotImplementedError(
-                "The opcode source when is_root and is_create (root creation call) is not determined yet"
-            )
-        else:
-            return self.bytecode_lookup(self.curr.code_hash, index, FQ(is_code)).expr()
+        return self.bytecode_lookup(self.curr.code_hash, index, FQ(is_code)).expr()
 
     def rw_lookup(
         self,
@@ -1151,6 +1154,22 @@ class Instruction:
         gas_cost = word_size * gas_cost_copy + memory_expansion_gas_cost
         self.range_check(gas_cost, N_BYTES_GAS)
         return gas_cost
+
+    def generate_contract_address(self, address: Expression, nonce: Expression) -> Expression:
+        contract_addr = keccak(rlp.encode([address.expr().n.to_bytes(20, "big"), nonce.expr().n]))
+        return FQ(int.from_bytes(contract_addr[-20:], "big"))
+
+    def generate_CREAET2_contract_address(
+        self, address: Expression, salt: Word, code_hash: Word
+    ) -> Expression:
+        # keccak256(0xff + sender_address + salt + keccak256(initialisation_code))[12:]
+        contract_addr = keccak(
+            b"\xff"
+            + address.expr().n.to_bytes(20, "big")
+            + salt.int_value().to_bytes(32, "little")
+            + code_hash.int_value().to_bytes(32, "little")
+        )
+        return FQ(int.from_bytes(contract_addr[-20:], "big"))
 
     def pow2_lookup(self, value: Expression, pow_lo128: Expression, pow_hi128: Expression):
         self.fixed_lookup(FixedTableTag.Pow2, value, pow_lo128, pow_hi128)
