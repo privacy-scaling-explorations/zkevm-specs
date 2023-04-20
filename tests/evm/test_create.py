@@ -237,7 +237,6 @@ def test_create_create2(
             for i in range(stack.offset, stack.offset + stack.size)
         ]
     )
-    print(f"[{src_data}]")
 
     # fmt: off
     # stack
