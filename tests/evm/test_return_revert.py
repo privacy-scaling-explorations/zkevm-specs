@@ -137,14 +137,15 @@ def test_is_create(
 
     init_bytecode = gen_bytecode(is_return, return_offset, return_length)
     deployment_bytecode_hash = Word(init_bytecode.hash())
+    bytecode_length = len(init_bytecode.code)
 
     # gas
-    _, gas_memory_expansion = memory_expansion(0, return_offset + return_length)
-    gas_cost = return_length * GAS_COST_CODE_DEPOSIT
+    _, gas_memory_expansion = memory_expansion(0, return_offset + bytecode_length)
+    gas_cost = bytecode_length * GAS_COST_CODE_DEPOSIT
     gas_left = gas_available - gas_cost
 
     return_offset_word = Word(return_offset)
-    return_length_word = Word(return_length)
+    return_length_word = Word(bytecode_length)
     caller_id = 1
     rw_counter = 16 if is_root else 27
     callee_id = rw_counter
@@ -175,7 +176,7 @@ def test_is_create(
                 if i - return_offset < len(init_bytecode.code)
                 else (0, 0),
             )
-            for i in range(return_offset, return_offset + return_length)
+            for i in range(return_offset, return_offset + bytecode_length)
         ]
     )
     copy_circuit = CopyCircuit().copy(
@@ -186,16 +187,18 @@ def test_is_create(
         deployment_bytecode_hash,
         CopyDataTypeTag.Bytecode,
         return_offset,
-        return_offset + return_length,
+        return_offset + bytecode_length,
         0,
-        return_length,
+        bytecode_length,
         src_data,
     )
 
     if is_root:
         rw_dict.call_context_read(callee_id, CallContextFieldTag.IsPersistent, int(is_return))
     else:
-        memory_word_size = 0 if return_length == 0 else (return_offset + return_length + 31) // 32
+        memory_word_size = (
+            0 if bytecode_length == 0 else (return_offset + bytecode_length + 31) // 32
+        )
         rw_dict = (
             rw_dict.call_context_read(callee_id, CallContextFieldTag.CallerId, caller_id)
             .call_context_read(caller_id, CallContextFieldTag.IsRoot, is_root)
@@ -215,7 +218,7 @@ def test_is_create(
                 caller_id, CallContextFieldTag.LastCalleeReturnDataOffset, return_offset
             )
             .call_context_write(
-                caller_id, CallContextFieldTag.LastCalleeReturnDataLength, return_length
+                caller_id, CallContextFieldTag.LastCalleeReturnDataLength, bytecode_length
             )
         )
 
