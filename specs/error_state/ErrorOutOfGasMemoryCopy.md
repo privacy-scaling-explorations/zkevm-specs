@@ -58,11 +58,12 @@ else:
 
 ### Constraints
 
-1. Constrain `gas_left < gas_cost`.
-2. Current call must fail.
-3. If it's a root call, it transits to `EndTx`.
-4. If it isn't a root call, it restores caller's context by reading to `rw_table`, then does step state transition to it.
-5. Constrain `rw_counter_end_of_reversion = rw_counter_end_of_step + reversible_counter`.
+1. Current opcode is one of:  `CALLDATACOPY`, `CODECOPY`, `EXTCODECOPY` and `RETURNDATACOPY`.
+2. Constrain `gas_left < gas_cost`.
+3. Current call must fail.
+4. If it's a root call, it transits to `EndTx`.
+5. If it isn't a root call, it restores caller's context by reading to `rw_table`, then does step state transition to it.
+6. Constrain `rw_counter_end_of_reversion = rw_counter_end_of_step + reversible_counter`.
 
 ### Lookups
 
