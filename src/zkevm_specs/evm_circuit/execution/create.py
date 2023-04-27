@@ -101,7 +101,10 @@ def create(instruction: Instruction):
     instruction.transfer(caller_address, contract_address, value_word, callee_reversion_info)
 
     # gas cost of memory expansion
-    (next_memory_size, memory_expansion_gas_cost,) = instruction.memory_expansion(
+    (
+        next_memory_size,
+        memory_expansion_gas_cost,
+    ) = instruction.memory_expansion(
         offset,
         size,
     )
