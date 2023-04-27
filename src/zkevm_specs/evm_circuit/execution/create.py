@@ -44,18 +44,20 @@ def create(instruction: Instruction):
     is_static = instruction.call_context_lookup(CallContextFieldTag.IsStatic)
     reversion_info = instruction.reversion_info()
 
+    has_init_code = size != FQ(0)
+
     # calculate contract address
+    code_hash = instruction.next.code_hash if has_init_code else Word(EMPTY_CODE_HASH)
     contract_address = (
         instruction.generate_contract_address(caller_address, nonce)
         if is_create == 1
-        else instruction.generate_CREAET2_contract_address(
-            caller_address, salt_word, instruction.next.code_hash
-        )
+        else instruction.generate_CREAET2_contract_address(caller_address, salt_word, code_hash)
     )
 
-    # verify the equality of input `size` and length of calldata
-    code_size = instruction.bytecode_length(instruction.next.code_hash)
-    instruction.constrain_equal(code_size, size)
+    if has_init_code:
+        # verify the equality of input `size` and length of calldata
+        code_size = instruction.bytecode_length(instruction.next.code_hash)
+        instruction.constrain_equal(code_size, size)
 
     # verify return contract address
     instruction.constrain_equal(
@@ -99,10 +101,7 @@ def create(instruction: Instruction):
     instruction.transfer(caller_address, contract_address, value_word, callee_reversion_info)
 
     # gas cost of memory expansion
-    (
-        next_memory_size,
-        memory_expansion_gas_cost,
-    ) = instruction.memory_expansion(
+    (next_memory_size, memory_expansion_gas_cost,) = instruction.memory_expansion(
         offset,
         size,
     )
@@ -130,71 +129,99 @@ def create(instruction: Instruction):
         all_but_one_64th_gas,
     )
 
-    # copy init_code from memory to bytecode
-    copy_rwc_inc, _ = instruction.copy_lookup(
-        instruction.curr.call_id,  # src_id
-        CopyDataTypeTag.Memory,  # src_type
-        instruction.next.code_hash,  # dst_id
-        CopyDataTypeTag.Bytecode,  # dst_type
-        offset,  # src_addr
-        offset + size,  # src_addr_boundary
-        FQ(0),  # dst_addr
-        size,  # length
-        instruction.curr.rw_counter + instruction.rw_counter_offset,
-    )
-    instruction.rw_counter_offset += int(copy_rwc_inc)
+    if has_init_code:
+        # copy init_code from memory to bytecode
+        copy_rwc_inc, _ = instruction.copy_lookup(
+            instruction.curr.call_id,  # src_id
+            CopyDataTypeTag.Memory,  # src_type
+            instruction.next.code_hash,  # dst_id
+            CopyDataTypeTag.Bytecode,  # dst_type
+            offset,  # src_addr
+            offset + size,  # src_addr_boundary
+            FQ(0),  # dst_addr
+            size,  # length
+            instruction.curr.rw_counter + instruction.rw_counter_offset,
+        )
+        instruction.rw_counter_offset += int(copy_rwc_inc)
 
     # CREATE:  3 pops and 1 push, stack delta = 2
     # CREATE2: 4 pops and 1 push, stack delta = 3
     stack_pointer_delta = 2 + is_create2
-    # Save caller's call state
-    for field_tag, expected_value in [
-        (CallContextFieldTag.ProgramCounter, instruction.curr.program_counter + 1),
-        (
-            CallContextFieldTag.StackPointer,
-            instruction.curr.stack_pointer + stack_pointer_delta,
-        ),
-        (CallContextFieldTag.GasLeft, gas_left - gas_cost - callee_gas_left),
-        (CallContextFieldTag.MemorySize, next_memory_size),
-        (
-            CallContextFieldTag.ReversibleWriteCounter,
-            instruction.curr.reversible_write_counter + 1,
-        ),
-    ]:
-        instruction.constrain_equal(
-            instruction.call_context_lookup(field_tag, RW.Write),
-            expected_value,
+
+    if has_init_code:
+        # Save caller's call state
+        for field_tag, expected_value in [
+            (CallContextFieldTag.ProgramCounter, instruction.curr.program_counter + 1),
+            (
+                CallContextFieldTag.StackPointer,
+                instruction.curr.stack_pointer + stack_pointer_delta,
+            ),
+            (CallContextFieldTag.GasLeft, gas_left - gas_cost - callee_gas_left),
+            (CallContextFieldTag.MemorySize, next_memory_size),
+            (
+                CallContextFieldTag.ReversibleWriteCounter,
+                instruction.curr.reversible_write_counter + 1,
+            ),
+        ]:
+            instruction.constrain_equal(
+                instruction.call_context_lookup(field_tag, RW.Write),
+                expected_value,
+            )
+        # Setup next call's context.
+        for field_tag, expected_value in [
+            (CallContextFieldTag.CallerId, instruction.curr.call_id),
+            (CallContextFieldTag.TxId, tx_id),
+            (CallContextFieldTag.Depth, depth + 1),
+            (CallContextFieldTag.CallerAddress, caller_address),
+            (CallContextFieldTag.CalleeAddress, contract_address),
+            (CallContextFieldTag.IsSuccess, is_success),
+            (CallContextFieldTag.IsStatic, FQ(False)),
+            (CallContextFieldTag.IsRoot, FQ(False)),
+            (CallContextFieldTag.IsCreate, FQ(True)),
+        ]:
+            instruction.constrain_equal(
+                instruction.call_context_lookup(field_tag, call_id=callee_call_id),
+                expected_value,
+            )
+        instruction.constrain_equal_word(
+            instruction.call_context_lookup_word(
+                CallContextFieldTag.CodeHash, call_id=callee_call_id
+            ),
+            code_hash,
         )
 
-    # Setup next call's context.
-    for field_tag, expected_value in [
-        (CallContextFieldTag.CallerId, instruction.curr.call_id),
-        (CallContextFieldTag.TxId, tx_id),
-        (CallContextFieldTag.Depth, depth + 1),
-        (CallContextFieldTag.CallerAddress, caller_address),
-        (CallContextFieldTag.CalleeAddress, contract_address),
-        (CallContextFieldTag.IsSuccess, is_success),
-        (CallContextFieldTag.IsStatic, FQ(False)),
-        (CallContextFieldTag.IsRoot, FQ(False)),
-        (CallContextFieldTag.IsCreate, FQ(True)),
-    ]:
-        instruction.constrain_equal(
-            instruction.call_context_lookup(field_tag, call_id=callee_call_id),
-            expected_value,
+        instruction.step_state_transition_to_new_context(
+            rw_counter=Transition.delta(instruction.rw_counter_offset),
+            call_id=Transition.to(callee_call_id),
+            is_root=Transition.to(False),
+            is_create=Transition.to(True),
+            code_hash=Transition.to_word(instruction.next.code_hash),
+            gas_left=Transition.to(callee_gas_left),
+            # `transfer` includes two balance updates
+            reversible_write_counter=Transition.to(2),
+            log_id=Transition.same(),
         )
-    instruction.constrain_equal_word(
-        instruction.call_context_lookup_word(CallContextFieldTag.CodeHash, call_id=callee_call_id),
-        code_hash,
-    )
+    else:
+        for field_tag, expected_value in [
+            (CallContextFieldTag.LastCalleeId, FQ(0)),
+            (CallContextFieldTag.LastCalleeReturnDataOffset, FQ(0)),
+            (CallContextFieldTag.LastCalleeReturnDataLength, FQ(0)),
+        ]:
+            instruction.constrain_equal(
+                instruction.call_context_lookup(field_tag, RW.Write),
+                expected_value,
+            )
 
-    instruction.step_state_transition_to_new_context(
-        rw_counter=Transition.delta(instruction.rw_counter_offset),
-        call_id=Transition.to(callee_call_id),
-        is_root=Transition.to(False),
-        is_create=Transition.to(True),
-        code_hash=Transition.to_word(instruction.next.code_hash),
-        gas_left=Transition.to(callee_gas_left),
-        # `transfer` includes two balance updates
-        reversible_write_counter=Transition.to(2),
-        log_id=Transition.same(),
-    )
+        instruction.constrain_step_state_transition(
+            rw_counter=Transition.delta(instruction.rw_counter_offset),
+            program_counter=Transition.delta(1),
+            stack_pointer=Transition.delta(stack_pointer_delta),
+            gas_left=Transition.delta(-gas_cost),
+            reversible_write_counter=Transition.delta(3),
+            # Always stay same
+            memory_word_size=Transition.same(),
+            call_id=Transition.same(),
+            is_root=Transition.same(),
+            is_create=Transition.same(),
+            code_hash=Transition.same_word(),
+        )
