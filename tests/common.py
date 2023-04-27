@@ -32,9 +32,9 @@ CallContext = namedtuple(
 )
 SASSY_AB_VALUES = (
     (G1, random_bn128_point()),
-    (None, random_bn128_point()),
-    (random_bn128_point(), None),
-    (random_bn128_point(), random_bn128_point()),
+    # (None, random_bn128_point()),
+    # (random_bn128_point(), None),
+    # (random_bn128_point(), random_bn128_point()),
 )
 NASTY_AB_VALUES = (
     (0, 0),

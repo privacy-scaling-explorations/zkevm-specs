@@ -22,6 +22,7 @@ from ..util import (
     U160,
     U256,
     FQ,
+    G1,
     IntOrFQ,
     RLC,
     WordOrValue,
@@ -33,6 +34,7 @@ from ..util import (
     GAS_COST_TX_CALL_DATA_PER_NON_ZERO_BYTE,
     GAS_COST_TX_CALL_DATA_PER_ZERO_BYTE,
     EMPTY_CODE_HASH,
+    gfp_to_fq,
 )
 from .table import (
     RW,
@@ -1075,18 +1077,24 @@ class Bn256Circuit:
     def table(self) -> Sequence[Bn256TableRow]:
         return self.rows
 
-    def add(self) -> None:
+    def add(self, id: Union[int, FQ, Word], input: bytes, result: bytes) -> None:
         new_rows: List[Bn256TableRow] = []
+        curve_bytes = 64
+        point_a = point_b = point_c = G1()
+        point_a.unmarshal(input[:curve_bytes])
+        point_b.unmarshal(input[curve_bytes:])
+        point_c.unmarshal(result[:curve_bytes])
+
         self._append_row(
             new_rows,
             id,
             Bn256OperationTag.BN256ADD,
-            input0,
-            input1,
-            input2,
-            input3,
-            output0,
-            output1,
+            gfp_to_fq(point_a.p.x),
+            gfp_to_fq(point_a.p.y),
+            gfp_to_fq(point_b.p.x),
+            gfp_to_fq(point_b.p.y),
+            gfp_to_fq(point_c.p.x),
+            gfp_to_fq(point_c.p.y),
         )
         self.rows.extend(new_rows)
         return self
@@ -1105,13 +1113,13 @@ class Bn256Circuit:
     ) -> None:
         rows.append(
             Bn256TableRow(
-                id=id,
-                tag=tag,
-                input0=input0,
-                input1=input1,
-                input2=input2,
-                input3=input3,
-                output0=output0,
-                output1=output1,
+                id=FQ(id),
+                tag=FQ(tag),
+                input0=FQ(input0),
+                input1=FQ(input1),
+                input2=FQ(input2),
+                input3=FQ(input3),
+                output0=FQ(output0),
+                output1=FQ(output1),
             )
         )

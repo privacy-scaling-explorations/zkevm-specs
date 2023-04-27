@@ -1,12 +1,21 @@
+from common import rand_fq
 from py_ecc.bn128 import add
 from py_ecc.bn128 import G1 as generator
-from zkevm_specs.util import r, curve_gen, G1, new_gfp, to_cf_form, point_add
+from zkevm_specs.util import r, curve_gen, G1, new_gfp, to_cf_form, point_add, fq_to_gfp, gfp_to_fq
 
 
 def test_new_gfp():
     one = new_gfp(1)
 
     assert r == one
+
+
+def test_field_onversion():
+    for _ in range(0, 1000):
+        a = rand_fq()
+        gfp_a = fq_to_gfp(a)
+        b = gfp_to_fq(gfp_a)
+        assert a == b
 
 
 def test_marshal_and_unmarshal():

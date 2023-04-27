@@ -34,10 +34,18 @@ def new_gfp(x: int) -> gfP:
     return mont_encode(out)
 
 
+def fq_to_gfp(a: FQ) -> gfP:
+    e = [0, 0, 0, 0]
+    for w in range(0, 4):
+        l = a.n >> (64 * w)
+        e[w] = l % 2**64
+    return (e[0], e[1], e[2], e[3])
+
+
 def gfp_to_fq(a: gfP) -> FQ:
     n = 0
     for i, limb in enumerate(a):
-        n += limb >> (i * 64)
+        n += limb << (i * 64)
     return FQ(n)
 
 

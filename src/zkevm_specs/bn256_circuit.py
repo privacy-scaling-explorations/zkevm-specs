@@ -1,30 +1,45 @@
-from enum import IntEnum, auto
 from typing import Final, Dict
-from .util import ConstraintSystem, FQ, G1, CurvePoint, point_add
-from .evm_circuit import Bn256Circuit, Bn256TableRow, Bn256OperationTag
+from .util import (
+    ConstraintSystem,
+    FQ,
+    G1,
+    CurvePoint,
+    point_add,
+    N_BYTES_WORD,
+    gfp_to_fq,
+    fq_to_gfp,
+)
+from .evm_circuit import Bn256Circuit, Bn256TableRow, Bn256OperationTag, lt_word
 
 
 def verify_row(cs: ConstraintSystem, row: Bn256TableRow):
     # tag is in range
-    cs.range_check(row.tag, 3)
+    cs.range_check(FQ(row.tag), 3)
     # for BN256ADD operation
-    with cs.constrain_equal(row.tag, Bn256OperationTag.BN256ADD) as cs:
-        cs.range_check(row.input0, FQ.field_modulus)
-        cs.range_check(row.input1, FQ.field_modulus)
-        cs.range_check(row.input2, FQ.field_modulus)
-        cs.range_check(row.input3, FQ.field_modulus)
-        cs.range_check(row.output0, FQ.field_modulus)
-        cs.range_check(row.output1, FQ.field_modulus)
+    with cs.condition(1 - (row.tag - Bn256OperationTag.BN256ADD)) as cs:
+        field_modulus = FQ(FQ.field_modulus - 1)
+        cs.constrain_equal(FQ(1), lt_word(row.input0, field_modulus, N_BYTES_WORD))
+        cs.constrain_equal(FQ(1), lt_word(row.input1, field_modulus, N_BYTES_WORD))
+        cs.constrain_equal(FQ(1), lt_word(row.input2, field_modulus, N_BYTES_WORD))
+        cs.constrain_equal(FQ(1), lt_word(row.input3, field_modulus, N_BYTES_WORD))
+        cs.constrain_equal(FQ(1), lt_word(row.output0, field_modulus, N_BYTES_WORD))
+        cs.constrain_equal(FQ(1), lt_word(row.output1, field_modulus, N_BYTES_WORD))
 
 
 def verify_ops(cs: ConstraintSystem, row: Bn256TableRow):
     # for BN256ADD operation
-    with cs.constrain_equal(row.tag, Bn256OperationTag.BN256ADD) as cs:
-        point_a = G1(CurvePoint(row.input0, row.input1))
-        point_b = G1(CurvePoint(row.input2, row.input3))
+    with cs.condition(1 - (row.tag - Bn256OperationTag.BN256ADD)) as cs:
+        point_a = point_b = G1(CurvePoint())
+        point_a.p.x = fq_to_gfp(row.input0)
+        point_a.p.y = fq_to_gfp(row.input1)
+        point_a.p.x = fq_to_gfp(row.input2)
+        point_a.p.y = fq_to_gfp(row.input3)
+        # perform bn256 addition
         point_c = point_add(point_a, point_b)
-        cs.constrain_equal(row.output0, point_c.p.x)
-        cs.constrain_equal(row.output1, point_c.p.y)
+        x = gfp_to_fq(point_c.p.x)
+        y = gfp_to_fq(point_c.p.y)
+        cs.constrain_equal(row.output0, x)
+        cs.constrain_equal(row.output1, y)
 
 
 def verify_bn256_table(bn256_circuit: Bn256Circuit):

@@ -18,6 +18,7 @@ from zkevm_specs.util import (
     FQ,
 )
 from zkevm_specs.copy_circuit import verify_copy_table
+from zkevm_specs.bn256_circuit import verify_bn256_table
 from common import CallContext
 
 CALLER_ID = 1
@@ -103,7 +104,7 @@ def test_bn256Add(
         result_src_data,
     )
 
-    Bn256Circuit().add()
+    bn256_circuit = Bn256Circuit().add(call_id, input, result)
 
     rw_dictionary = (
         # fmt: off
@@ -153,6 +154,7 @@ def test_bn256Add(
         bytecode_table=set(code.table_assignments()),
         rw_table=set(rw_dictionary.rws),
         copy_circuit=copy_circuit.rows,
+        bn256_table=bn256_circuit.rows,
     )
 
     verify_copy_table(copy_circuit, tables, randomness)
@@ -161,3 +163,5 @@ def test_bn256Add(
         tables=tables,
         steps=steps,
     )
+
+    verify_bn256_table(bn256_circuit)
