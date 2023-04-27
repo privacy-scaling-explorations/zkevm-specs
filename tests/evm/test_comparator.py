@@ -10,8 +10,7 @@ from zkevm_specs.evm_circuit import (
     Bytecode,
     RWDictionary,
 )
-from zkevm_specs.util import RLC
-from common import rand_fq
+from zkevm_specs.util import Word
 
 TESTING_DATA = (
     # a < b
@@ -74,13 +73,11 @@ TESTING_DATA = (
 )
 
 
-@pytest.mark.parametrize("opcode, a, b, res", TESTING_DATA)
-def test_lt_gt_eq(opcode: Opcode, a: int, b: int, res: int):
-    randomness = rand_fq()
-
-    a = RLC(a, randomness)
-    b = RLC(b, randomness)
-    res = RLC(res, randomness)
+@pytest.mark.parametrize("opcode, a_int, b_int, res_int", TESTING_DATA)
+def test_lt_gt_eq(opcode: Opcode, a_int: int, b_int: int, res_int: int):
+    a = Word(a_int)
+    b = Word(b_int)
+    res = Word(res_int)
 
     bytecode = (
         Bytecode().lt(a, b).stop()
@@ -89,12 +86,12 @@ def test_lt_gt_eq(opcode: Opcode, a: int, b: int, res: int):
         if opcode == Opcode.GT
         else Bytecode().eq(a, b).stop()
     )
-    bytecode_hash = RLC(bytecode.hash(), randomness)
+    bytecode_hash = Word(bytecode.hash())
 
     tables = Tables(
-        block_table=set(Block().table_assignments(randomness)),
+        block_table=set(Block().table_assignments()),
         tx_table=set(),
-        bytecode_table=set(bytecode.table_assignments(randomness)),
+        bytecode_table=set(bytecode.table_assignments()),
         rw_table=set(
             RWDictionary(9)
             .stack_read(1, 1022, a)
@@ -105,7 +102,6 @@ def test_lt_gt_eq(opcode: Opcode, a: int, b: int, res: int):
     )
 
     verify_steps(
-        randomness=randomness,
         tables=tables,
         steps=[
             StepState(

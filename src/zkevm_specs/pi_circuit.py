@@ -3,6 +3,8 @@ from typing import Tuple, List, Union, Set
 
 from .util import (
     FQ,
+    Word,
+    WordOrValue,
     U64,
     U160,
     U256,
@@ -13,8 +15,8 @@ from .util import (
     GAS_COST_TX_CALL_DATA_PER_NON_ZERO_BYTE,
     GAS_COST_TX_CALL_DATA_PER_ZERO_BYTE,
     Expression,
+    is_circuit_code,
 )
-from .encoding import is_circuit_code
 from .tx_circuit import Tag as TxTag
 from .evm_circuit import (
     BlockContextFieldTag as BlockTag,
@@ -24,7 +26,7 @@ from .evm_circuit.table import lookup, TableRow
 
 @dataclass
 class BlockTableRow:
-    value: FQ
+    value: WordOrValue
 
 
 @dataclass
@@ -32,7 +34,7 @@ class TxTableRow:
     tx_id: FQ
     tag: FQ  # Fixed Column
     index: FQ
-    value: FQ
+    value: WordOrValue
 
 
 @dataclass(frozen=True)
@@ -60,7 +62,7 @@ class Row:
     tx_table: TxTableRow
     tx_id_inv: FQ  # (tx_tag - CallDataLength)^(-1) when q_tx_table = 1
     # tx_id^(-1) when q_tx_calldata = 1
-    tx_value_inv: FQ
+    tx_value_lo_inv: FQ
     tx_id_diff_inv: FQ
     calldata_gas_cost: FQ
     is_final: FQ
@@ -81,22 +83,25 @@ class PublicInputs:
     rpi_rlc: FQ  # raw_public_inputs RLC encoded
 
     chain_id: FQ
-    state_root: FQ
-    state_root_prev: FQ
+    state_root: Word
+    state_root_prev: Word
 
 
 @is_circuit_code
 def check_row(
     row: Row,
     row_next: Row,
+    row_offset_block_table_value_hi: Row,
     row_offset_tx_table_tx_id: Row,
     row_offset_tx_table_index: Row,
-    row_offset_tx_table_value: Row,
+    row_offset_tx_table_value_lo: Row,
+    row_offset_tx_table_value_hi: Row,
     table: Set[TxCallDataGasCostAccRow],
     fixed_u16_table: Set[FixedU16Row],
 ):
     q_not_end = row.q_not_end
     q_end = row.q_end
+    row_offset_block_table_value_lo = row
 
     # 0.0 rpi_rlc_acc[0] == RLC(raw_public_inputs, rand_rpi)
     assert q_not_end * row.rpi_rlc_acc == q_not_end * (
@@ -109,7 +114,14 @@ def check_row(
     assert q_not_end * row.rand_rpi == q_not_end * row_next.rand_rpi
 
     # 0.2 Block table -> value column match with raw_public_inputs at expected offset
-    assert row.q_block_table * row.block_table.value == row.q_block_table * row.raw_public_inputs
+    assert (
+        row.q_block_table * row.block_table.value.lo.expr()
+        == row.q_block_table * row_offset_block_table_value_lo.raw_public_inputs
+    )
+    assert (
+        row.q_block_table * row.block_table.value.hi.expr()
+        == row.q_block_table * row_offset_block_table_value_hi.raw_public_inputs
+    )
 
     # 0.3 Tx table -> {tx_id, index, value} column match with raw_public_inputs at expected offset
     assert (
@@ -121,19 +133,31 @@ def check_row(
         == row.q_tx_table * row_offset_tx_table_index.raw_public_inputs
     )
     assert (
-        row.q_tx_table * row.tx_table.value
-        == row.q_tx_table * row_offset_tx_table_value.raw_public_inputs
+        row.q_tx_table * row.tx_table.value.lo.expr()
+        == row.q_tx_table * row_offset_tx_table_value_lo.raw_public_inputs
     )
     assert (
-        row.q_tx_calldata * row.tx_table.value
-        == row.q_tx_calldata * row_offset_tx_table_value.raw_public_inputs
+        row.q_tx_table * row.tx_table.value.hi.expr()
+        == row.q_tx_table * row_offset_tx_table_value_hi.raw_public_inputs
+    )
+    assert (
+        row.q_tx_calldata * row.tx_table.value.lo.expr()
+        == row.q_tx_calldata * row_offset_tx_table_value_lo.raw_public_inputs
+    )
+    assert (
+        row.q_tx_calldata * row.tx_table.value.hi.expr()
+        == row.q_tx_calldata * row_offset_tx_table_value_hi.raw_public_inputs
     )
 
     zero = FQ(0)
     one = FQ(1)
     if row.q_tx_calldata != zero:
         assert row.tx_table.tx_id * (one - row.tx_id_inv * row.tx_table.tx_id) == zero
-        assert row.tx_table.value * (one - row.tx_value_inv * row.tx_table.value) == zero
+        assert (
+            row.tx_table.value.lo.expr()
+            * (one - row.tx_value_lo_inv * row.tx_table.value.lo.expr())
+            == zero
+        )
         assert (row_next.tx_table.tx_id - row.tx_table.tx_id) * (
             one - row.tx_id_diff_inv * (row_next.tx_table.tx_id - row.tx_table.tx_id)
         ) == zero
@@ -146,8 +170,8 @@ def check_row(
         ) * row.tx_id_diff_inv
         tx_id_equal_to_next = one - tx_id_not_equal_to_next
 
-        is_byte_nonzero = row.tx_table.value * row.tx_value_inv
-        is_byte_next_nonzero = row_next.tx_table.value * row_next.tx_value_inv
+        is_byte_nonzero = row.tx_table.value.lo.expr() * row.tx_value_lo_inv
+        is_byte_next_nonzero = row_next.tx_table.value.lo.expr() * row_next.tx_value_lo_inv
         is_byte_zero = one - is_byte_nonzero
         is_byte_next_zero = one - is_byte_next_nonzero
 
@@ -217,13 +241,17 @@ def check_row(
     if row.q_tx_table != zero:
         row_is_cdl = row.tx_table.tag - FQ(TxTag.CallDataLength)
         assert row_is_cdl * (one - row.tx_id_inv * row_is_cdl) == zero
-        assert row.tx_table.value * (one - row.tx_value_inv * row.tx_table.value) == zero
+        assert (
+            row.tx_table.value.lo.expr()
+            * (one - row.tx_value_lo_inv * row.tx_table.value.lo.expr())
+            == zero
+        )
 
         is_calldata_length_row = one - row_is_cdl * row.tx_id_inv
-        is_calldata_length_nonzero = row.tx_table.value * row.tx_value_inv
+        is_calldata_length_nonzero = row.tx_table.value.lo.expr() * row.tx_value_lo_inv
         is_calldata_length_zero = one - is_calldata_length_nonzero
 
-        calldata_cost = row_next.tx_table.value
+        calldata_cost = row_next.tx_table.value.lo.expr()
 
         assert is_calldata_length_row * is_calldata_length_zero * calldata_cost == zero
         query_condition = is_calldata_length_row * is_calldata_length_nonzero
@@ -265,32 +293,48 @@ def verify_circuit(
     assert rows[BlockTag.ChainId].raw_public_inputs == witness.public_inputs.chain_id
 
     # 1.3 state_root copy constraint from public input to raw_public_inputs
-    assert rows[BLOCK_LEN + 2].raw_public_inputs == witness.public_inputs.state_root
+    offset_extra = BLOCK_LEN + 2
+    assert rows[offset_extra + 2].raw_public_inputs == witness.public_inputs.state_root.lo.expr()
+    assert rows[offset_extra + 3].raw_public_inputs == witness.public_inputs.state_root.hi.expr()
 
     # 1.4 state_root_prev copy constraint from public input to raw_public_inputs
-    assert rows[BLOCK_LEN + 3].raw_public_inputs == witness.public_inputs.state_root_prev
+    assert (
+        rows[offset_extra + 4].raw_public_inputs == witness.public_inputs.state_root_prev.lo.expr()
+    )
+    assert (
+        rows[offset_extra + 5].raw_public_inputs == witness.public_inputs.state_root_prev.hi.expr()
+    )
 
     fixed_u16_table = set([FixedU16Row(FQ(i)) for i in range(1 << 16)])
     for i in range(len(rows)):
+        print("DBG", i)
         row = rows[i]
         row_next = rows[(i + 1) % len(rows)]
+        # Offset in raw_public_inputs with block_table -> value.hi column
+        tx_table_offset = BLOCK_LEN // 2 + 1
+        row_offset_block_table_value_hi = rows[(i + tx_table_offset) % len(rows)]
         # Offset in raw_public_inputs with tx_table -> tx_id column
-        tx_table_offset = BLOCK_LEN + 1 + EXTRA_LEN
+        tx_table_offset = BLOCK_LEN + 2 + EXTRA_LEN
         row_offset_tx_table_tx_id = rows[(i + tx_table_offset) % len(rows)]
         # Offset in raw_public_inputs with tx_table -> index column
         tx_table_len = TX_LEN * MAX_TXS + 1
         tx_table_offset += tx_table_len
         row_offset_tx_table_index = rows[(i + tx_table_offset) % len(rows)]
-        # Offset in raw_public_inputs with tx_table -> value column
+        # Offset in raw_public_inputs with tx_table -> value.lo column
         tx_table_offset += tx_table_len
-        row_offset_tx_table_value = rows[(i + tx_table_offset) % len(rows)]
+        row_offset_tx_table_value_lo = rows[(i + tx_table_offset) % len(rows)]
+        # Offset in raw_public_inputs with tx_table -> value.hi column
+        tx_table_offset += tx_table_len + MAX_CALLDATA_BYTES
+        row_offset_tx_table_value_hi = rows[(i + tx_table_offset) % len(rows)]
 
         check_row(
             row,
             row_next,
+            row_offset_block_table_value_hi,
             row_offset_tx_table_tx_id,
             row_offset_tx_table_index,
-            row_offset_tx_table_value,
+            row_offset_tx_table_value_lo,
+            row_offset_tx_table_value_hi,
             table,
             fixed_u16_table,
         )
@@ -334,17 +378,17 @@ class Transaction:
     def default(cls):
         return Transaction(U64(0), U256(0), U64(0), U160(0), U160(0), U256(0), bytes([]), U256(0))
 
-    def tx_table_value_column(self) -> List[FQ]:
+    def tx_table_value_column(self) -> List[WordOrValue]:
         """Return the tx table value column corresponding to this tx.  Contains fields and no calldata"""
         column = []
-        column.append(FQ(self.nonce))  # Nonce
-        column.append(FQ(self.gas))  # Gas
-        column.append(FQ(self.gas_price))  # GasPrice
-        column.append(FQ(self.from_addr))  # CallerAddress
-        column.append(FQ(self.to_addr or 0))  # CalleeAddress
-        column.append(FQ(1 if self.to_addr is None else 0))  # IsCreate
-        column.append(FQ(self.value))  # Value
-        column.append(FQ(len(self.data)))  # CallDataLength
+        column.append(WordOrValue(FQ(self.nonce)))  # Nonce
+        column.append(WordOrValue(FQ(self.gas)))  # Gas
+        column.append(WordOrValue(Word(self.gas_price)))  # GasPrice
+        column.append(WordOrValue(FQ(self.from_addr)))  # CallerAddress
+        column.append(WordOrValue(FQ(self.to_addr or 0)))  # CalleeAddress
+        column.append(WordOrValue(FQ(1 if self.to_addr is None else 0)))  # IsCreate
+        column.append(WordOrValue(Word(self.value)))  # Value
+        column.append(WordOrValue(FQ(len(self.data))))  # CallDataLength
         call_data_gas_cost = sum(
             [
                 (
@@ -355,11 +399,11 @@ class Transaction:
                 for byte in self.data
             ]
         )
-        column.append(FQ(call_data_gas_cost))  # CallDataCost
-        column.append(FQ(self.tx_sign_hash))  # TxSignHash
+        column.append(WordOrValue(FQ(call_data_gas_cost)))  # CallDataCost
+        column.append(WordOrValue(FQ(self.tx_sign_hash)))  # TxSignHash
         return column
 
-    def tx_table_tx_fields(self, index: int) -> Tuple[List[FQ], List[FQ], List[FQ]]:
+    def tx_table_tx_fields(self, index: int) -> Tuple[List[FQ], List[FQ], List[WordOrValue]]:
         """Return the tx table contents corresponding to this tx.  Contains fields and no calldata"""
         tx_id_col = [FQ(index + 1)] * TX_LEN
         index_col = [FQ(0)] * TX_LEN
@@ -375,23 +419,23 @@ class PublicData:
     block_hashes: List[U256]  # 256 previous block hashes
     txs: List[Transaction]
 
-    def block_table_value_column(self) -> List[FQ]:
+    def block_table_value_column(self) -> List[WordOrValue]:
         """Return the block table value column including the first 0 row"""
         column = []
-        column.append(FQ(0))  # offset = 0
-        column.append(FQ(self.block.coinbase))
-        column.append(FQ(self.block.gas_limit))
-        column.append(FQ(self.block.number))
-        column.append(FQ(self.block.time))
-        column.append(FQ(self.block.difficulty))
-        column.append(FQ(self.block.base_fee))
-        column.append(FQ(self.chain_id))
+        column.append(WordOrValue(FQ(0)))  # offset = 0
+        column.append(WordOrValue(FQ(self.block.coinbase)))
+        column.append(WordOrValue(FQ(self.block.gas_limit)))
+        column.append(WordOrValue(FQ(self.block.number)))
+        column.append(WordOrValue(FQ(self.block.time)))
+        column.append(WordOrValue(Word(self.block.difficulty)))
+        column.append(WordOrValue(Word(self.block.base_fee)))
+        column.append(WordOrValue(FQ(self.chain_id)))
         assert len(self.block_hashes) == 256
         for block_hash in self.block_hashes:
-            column.append(FQ(block_hash))  # offset = 8
+            column.append(WordOrValue(Word(block_hash)))  # offset = 8
         return column
 
-    def tx_table_tx_fields(self, MAX_TXS: int) -> Tuple[List[FQ], List[FQ], List[FQ]]:
+    def tx_table_tx_fields(self, MAX_TXS: int) -> Tuple[List[FQ], List[FQ], List[WordOrValue]]:
         """Return the tx table, static section with tx fields (no calldata)"""
         tx_id_col = []
         index_col = []
@@ -412,7 +456,7 @@ class PublicData:
 
     def tx_table_tx_calldata(
         self, MAX_CALLDATA_BYTES: int
-    ) -> Tuple[List[FQ], List[FQ], List[FQ], List[FQ], List[FQ]]:
+    ) -> Tuple[List[FQ], List[FQ], List[WordOrValue], List[FQ], List[FQ]]:
         """Return the tx table, dynamic section with calldata"""
         tx_id_col = []
         index_col = []
@@ -424,7 +468,7 @@ class PublicData:
             for byte_index, byte in enumerate(tx.data):
                 tx_id_col.append(FQ(i + 1))
                 index_col.append(FQ(byte_index))
-                value_col.append(FQ(byte))
+                value_col.append(WordOrValue(FQ(byte)))
                 if byte == 0:
                     gas_cost_acc += GAS_COST_TX_CALL_DATA_PER_ZERO_BYTE
                 else:
@@ -440,7 +484,7 @@ class PublicData:
         calldata_padding = [FQ(0)] * (MAX_CALLDATA_BYTES - len(value_col))
         tx_id_col.extend(calldata_padding)
         index_col.extend(calldata_padding)
-        value_col.extend(calldata_padding)
+        value_col.extend([WordOrValue(v) for v in calldata_padding])
         gas_cost_col.extend(calldata_padding)
         is_final_col.extend(calldata_padding)
 
@@ -448,32 +492,55 @@ class PublicData:
 
     def tx_table(
         self, MAX_TXS: int, MAX_CALLDATA_BYTES: int
-    ) -> Tuple[List[FQ], List[FQ], List[FQ]]:
+    ) -> Tuple[List[FQ], List[FQ], List[WordOrValue]]:
         """Return the complete tx table including the initial 0 row"""
         tx_fields = self.tx_table_tx_fields(MAX_TXS)
         tx_calldata = self.tx_table_tx_calldata(MAX_CALLDATA_BYTES)
         return (
             [FQ(0)] + tx_fields[0] + tx_calldata[0],
             [FQ(0)] + tx_fields[1] + tx_calldata[1],
-            [FQ(0)] + tx_fields[2] + tx_calldata[2],
+            [WordOrValue(FQ(0))] + tx_fields[2] + tx_calldata[2],
         )
 
 
 def public_data2witness(
     public_data: PublicData, MAX_TXS: int, MAX_CALLDATA_BYTES: int, rand_rpi: FQ
 ) -> Witness:
+    # Layout of raw_public_inputs:
+    #   # Block Table
+    #   [0] + [block_table.value.lo] # BLOCK_LEN//2 + 1
+    #   [0] + [block_table.value.hi] # BLOCK_LEN//2 + 1
+    #   # Extra Fields
+    #   [hash.lo, hash.hi] # 2
+    #   [state_root.lo, state_root.hi] # 2
+    #   [state_root_prev.lo, state_root_prev.hi] # 2
+    #   # Tx Table
+    #   [0] + [tx_table.id] # TX_LEN * MAX_TXS + 1
+    #   [0] + [tx_table.index] # TX_LEN * MAX_TXS + 1
+    #   [0] + [tx_table.value.lo] # TX_LEN * MAX_TXS + 1
+    #   [tx_table.calldata.lo] # MAX_CALLDATA_BYTES
+    #   [0] + [tx_table.value.hi] # TX_LEN * MAX_TXS + 1
+    #   [tx_table.calldata.hi] # MAX_CALLDATA_BYTES
+
     # NOTE: Begin rlc calculation of raw_public_inputs.  This logic must be
     # implemented by the verifier.
     raw_public_inputs = []
 
     # Block table
     block_table_value_col = public_data.block_table_value_column()
-    raw_public_inputs.extend(block_table_value_col)  # start offset = 0
+    raw_public_inputs.extend([w.lo.expr() for w in block_table_value_col])  # start offset = 0
+    raw_public_inputs.extend([w.hi.expr() for w in block_table_value_col])
 
     # Extra fields
-    raw_public_inputs.append(FQ(public_data.block.hash))  # start offset = BLOCK_LEN + 1 (for 0 row)
-    raw_public_inputs.append(FQ(public_data.block.state_root))
-    raw_public_inputs.append(FQ(public_data.state_root_prev))
+    hash = Word(public_data.block.hash)
+    raw_public_inputs.append(hash.lo.expr())  # start offset = BLOCK_LEN + 1 (for 0 row)
+    raw_public_inputs.append(hash.hi.expr())
+    state_root = Word(public_data.block.state_root)
+    raw_public_inputs.append(state_root.lo.expr())
+    raw_public_inputs.append(state_root.hi.expr())
+    state_root_prev = Word(public_data.state_root_prev)
+    raw_public_inputs.append(state_root_prev.lo.expr())
+    raw_public_inputs.append(state_root_prev.hi.expr())
 
     # Tx Table
     tx_table = public_data.tx_table(MAX_TXS, MAX_CALLDATA_BYTES)
@@ -481,18 +548,26 @@ def public_data2witness(
     tx_table_tx_calldata = public_data.tx_table_tx_calldata(MAX_CALLDATA_BYTES)
     raw_public_inputs.extend(
         [FQ(0)] + tx_table_tx_fields[0]
-    )  # start offset = BLOCK_LEN + 1 + EXTRA_LEN
+    )  # start offset = BLOCK_LEN + 2 + EXTRA_LEN
     raw_public_inputs.extend(
         [FQ(0)] + tx_table_tx_fields[1]
     )  # start offset += (TX_LEN * MAX_TXS + 1)
     raw_public_inputs.extend(
-        [FQ(0)] + tx_table_tx_fields[2]
+        [FQ(0)] + [w.lo.expr() for w in tx_table_tx_fields[2]]
     )  # start offset += (TX_LEN * MAX_TXS + 1)
-    raw_public_inputs.extend(tx_table_tx_calldata[2])  # start offset += (TX_LEN * MAX_TXS + 1)
+    raw_public_inputs.extend(
+        [w.lo.expr() for w in tx_table_tx_calldata[2]]
+    )  # start offset += (TX_LEN * MAX_TXS + 1)
+    raw_public_inputs.extend(
+        [FQ(0)] + [w.hi.expr() for w in tx_table_tx_fields[2]]
+    )  # start offset += (TX_LEN * MAX_TXS)
+    raw_public_inputs.extend(
+        [w.hi.expr() for w in tx_table_tx_calldata[2]]
+    )  # start offset += MAX_CALLDATA_BYTES
 
     assert (
         len(raw_public_inputs)
-        == BLOCK_LEN + 1 + EXTRA_LEN + 3 * (TX_LEN * MAX_TXS + 1) + MAX_CALLDATA_BYTES
+        == BLOCK_LEN + 2 + EXTRA_LEN + 4 * (TX_LEN * MAX_TXS + 1) + 2 * MAX_CALLDATA_BYTES
     )
     rpi_rlc = linear_combine_bytes(raw_public_inputs, rand_rpi, range_check=False)
     # NOTE: End rlc calculation of raw_public_inputs.
@@ -507,22 +582,23 @@ def public_data2witness(
     for i in range(len(raw_public_inputs)):
         q_end = FQ(1) if i == len(raw_public_inputs) - 1 else FQ(0)
         q_not_end = FQ(1) - q_end
-        block_row = BlockTableRow(FQ(0))
+        block_row = BlockTableRow(WordOrValue(FQ(0)))
 
         q_block_table = FQ(0)
-        if i < BLOCK_LEN + 1:
+        if i < BLOCK_LEN // 2 + 1:
             q_block_table = FQ(1)
+            assert i < len(block_table_value_col)
             block_row = BlockTableRow(block_table_value_col[i])
 
         q_tx_table = FQ(0)
         q_tx_calldata = FQ(0)
         q_tx_calldata_start = FQ(0)
         tx_id_inv = FQ(0)
-        tx_value_inv = FQ(0)
+        tx_value_lo_inv = FQ(0)
         tx_id_diff_inv = FQ(0)
         calldata_gas_cost = FQ(0)
         is_final = FQ(0)
-        tx_row = TxTableRow(FQ(0), FQ(0), FQ(0), FQ(0))
+        tx_row = TxTableRow(FQ(0), FQ(0), FQ(0), WordOrValue(FQ(0)))
         tx_table_len = TX_LEN * MAX_TXS + 1
         if i < tx_table_len + MAX_CALLDATA_BYTES:
             tx_id = tx_table[0][i]
@@ -539,12 +615,12 @@ def public_data2witness(
             if i < tx_table_len:
                 q_tx_table = FQ(1)
                 tx_id_inv = (tag - FQ(TxTag.CallDataLength)).inv()
-                tx_value_inv = value.inv()
+                tx_value_lo_inv = value.lo.expr().inv()
 
             if i >= tx_table_len:
                 q_tx_calldata = FQ(1)
                 tx_id_inv = tx_id.inv()
-                tx_value_inv = value.inv()
+                tx_value_lo_inv = value.lo.expr().inv()
                 tx_id_next = FQ(0)
                 if i < tx_table_len + MAX_CALLDATA_BYTES - 1:
                     tx_id_next = tx_table[0][i + 1]
@@ -567,7 +643,7 @@ def public_data2witness(
             q_tx_calldata_start,
             tx_row,
             tx_id_inv,
-            tx_value_inv,
+            tx_value_lo_inv,
             tx_id_diff_inv,
             calldata_gas_cost,
             is_final,
@@ -583,7 +659,7 @@ def public_data2witness(
         rand_rpi,
         rpi_rlc,
         FQ(public_data.chain_id),
-        FQ(public_data.block.state_root),
-        FQ(public_data.state_root_prev),
+        Word(public_data.block.state_root),
+        Word(public_data.state_root_prev),
     )
     return Witness(rows, public_inputs, set(calldata_gas_cost_table))

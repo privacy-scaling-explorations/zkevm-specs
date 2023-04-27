@@ -11,8 +11,8 @@ def log(instruction: Instruction):
     instruction.range_lookup(opcode - Opcode.LOG0, 5)
 
     # pop `mstart`, `msize` from stack
-    mstart = instruction.rlc_to_fq(instruction.stack_pop(), 8)
-    msize = instruction.rlc_to_fq(instruction.stack_pop(), 8)
+    mstart = instruction.word_to_fq(instruction.stack_pop(), 8)
+    msize = instruction.word_to_fq(instruction.stack_pop(), 8)
 
     # read tx id
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
@@ -42,14 +42,14 @@ def log(instruction: Instruction):
             topic_selectors[i] = 1
             topic = instruction.stack_pop()
             if instruction.is_zero(is_persistent) == 0:
-                instruction.constrain_equal(
-                    topic.expr(),
-                    instruction.tx_log_lookup(
+                instruction.constrain_equal_word(
+                    topic,
+                    instruction.tx_log_lookup_word(
                         tx_id=tx_id,
                         log_id=instruction.curr.log_id + 1,
                         field_tag=TxLogFieldTag.Topic,
                         index=i,
-                    ).expr(),
+                    ),
                 )
 
     # TOPIC_COUNT == Non zero topic selector count

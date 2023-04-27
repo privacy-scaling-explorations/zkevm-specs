@@ -1,18 +1,34 @@
-from typing import Sequence, Tuple, Set, NamedTuple
-from collections import namedtuple
-from .util import keccak256, EMPTY_HASH, FQ, RLC
-from .evm_circuit import get_push_size, BytecodeFieldTag, BytecodeTableRow
-from .encoding import is_circuit_code
-
-# Row in the circuit
-Row = namedtuple(
-    "Row",
-    "q_first q_last hash tag index value is_code push_data_left value_rlc length push_data_size",
+from dataclasses import dataclass
+from typing import Sequence, Tuple, Set, List
+from .util import EMPTY_HASH, FQ, Word, is_circuit_code
+from .evm_circuit import (
+    get_push_size,
+    BytecodeFieldTag,
+    BytecodeTableRow,
+    KeccakTableRow,
+    KeccakCircuit,
 )
 
 
+# Row in the circuit
+@dataclass
+class Row:
+    q_first: FQ
+    q_last: FQ
+    hash: Word
+    tag: FQ
+    index: FQ
+    value: FQ
+    is_code: FQ
+    push_data_left: FQ
+    value_rlc: FQ
+    length: FQ
+    push_data_size: FQ
+
+
 # Unrolled bytecode
-class UnrolledBytecode(NamedTuple):
+@dataclass
+class UnrolledBytecode:
     bytes: bytes
     rows: Sequence[BytecodeTableRow]
 
@@ -23,11 +39,8 @@ def check_bytecode_row(
     next: Row,
     push_table: Set[Tuple[int, int]],
     keccak_table: Set[Tuple[int, int, int]],
-    randomness: int,
+    keccak_randomness: int,
 ):
-    cur = Row(*[v if isinstance(v, RLC) else FQ(v) for v in cur])
-    next = Row(*[v if isinstance(v, RLC) else FQ(v) for v in next])
-
     if cur.q_first == 1:
         assert cur.tag == BytecodeFieldTag.Header
 
@@ -38,20 +51,20 @@ def check_bytecode_row(
             if next.tag == BytecodeFieldTag.Byte:
                 check_bytecode_row_header_to_byte(cur, next)
             if next.tag == BytecodeFieldTag.Header:
-                check_bytecode_row_header_to_header(cur, randomness)
+                check_bytecode_row_header_to_header(cur)
 
         if cur.tag == BytecodeFieldTag.Byte:
             assert (cur.value, cur.push_data_size) in push_table
-            assert cur.is_code == (cur.push_data_left == 0)
+            assert cur.is_code == FQ(cur.push_data_left == 0)
 
             if next.tag == BytecodeFieldTag.Byte:
-                check_bytecode_row_byte_to_byte(cur, next, randomness)
+                check_bytecode_row_byte_to_byte(cur, next, keccak_randomness)
             if next.tag == BytecodeFieldTag.Header:
                 check_bytecode_row_byte_to_header(cur, keccak_table)
 
     if cur.q_last == 1:
         assert cur.tag == BytecodeFieldTag.Header
-        check_bytecode_row_header_to_header(cur, randomness)
+        check_bytecode_row_header_to_header(cur)
 
 
 @is_circuit_code
@@ -64,9 +77,9 @@ def check_bytecode_row_header_to_byte(cur: Row, next: Row):
 
 
 @is_circuit_code
-def check_bytecode_row_header_to_header(cur: Row, randomness: int):
+def check_bytecode_row_header_to_header(cur: Row):
     assert cur.length == 0
-    assert cur.hash == RLC(EMPTY_HASH, FQ(randomness)).expr()
+    assert cur.hash == Word(EMPTY_HASH), f"{cur.hash} == {Word(EMPTY_HASH)}"
 
 
 @is_circuit_code
@@ -82,13 +95,15 @@ def check_bytecode_row_byte_to_byte(cur: Row, next: Row, r: int):
 
 
 @is_circuit_code
-def check_bytecode_row_byte_to_header(cur: Row, keccak_table: Set[Tuple[int, int, int]]):
+def check_bytecode_row_byte_to_header(cur: Row, keccak_table: Set[KeccakTableRow]):
     assert cur.index + 1 == cur.length
-    assert (cur.value_rlc, cur.length, cur.hash) in keccak_table
+    assert KeccakTableRow(FQ(2), cur.value_rlc, cur.length, cur.hash) in keccak_table
 
 
 # Populate the circuit matrix
-def assign_bytecode_circuit(k: int, bytecodes: Sequence[UnrolledBytecode], randomness: int):
+def assign_bytecode_circuit(
+    k: int, bytecodes: Sequence[UnrolledBytecode], keccak_randomness: FQ
+) -> List[Row]:
     # All rows are usable in this emulation
     last_row_offset = 2**k - 1
 
@@ -107,22 +122,22 @@ def assign_bytecode_circuit(k: int, bytecodes: Sequence[UnrolledBytecode], rando
                 push_data_size = get_push_size(row.value)
                 next_push_data_left = push_data_size if is_code else push_data_left - 1
                 # Add the byte to the accumulator
-                value_rlc = value_rlc * randomness + row.value
+                value_rlc = value_rlc * keccak_randomness + row.value
 
             # Set the data for this row
             rows.append(
                 Row(
-                    q_first=offset == 0,
-                    q_last=offset == last_row_offset,
+                    q_first=FQ(offset == 0),
+                    q_last=FQ(offset == last_row_offset),
                     hash=row.bytecode_hash,
-                    tag=row.field_tag,
-                    index=row.index,
-                    value=row.value,
-                    is_code=row.is_code,
-                    push_data_left=push_data_left,
-                    value_rlc=value_rlc,
-                    length=len(bytecode.bytes),
-                    push_data_size=push_data_size,
+                    tag=row.field_tag.expr(),
+                    index=row.index.expr(),
+                    value=row.value.expr(),
+                    is_code=row.is_code.expr(),
+                    push_data_left=FQ(push_data_left),
+                    value_rlc=FQ(value_rlc),
+                    length=FQ(len(bytecode.bytes)),
+                    push_data_size=FQ(push_data_size),
                 )
             )
 
@@ -135,47 +150,37 @@ def assign_bytecode_circuit(k: int, bytecodes: Sequence[UnrolledBytecode], rando
     for idx in range(offset, 2**k):
         rows.append(
             Row(
-                q_first=idx == 0,
-                q_last=idx == last_row_offset,
-                hash=RLC(EMPTY_HASH, FQ(randomness)).expr(),
-                tag=BytecodeFieldTag.Header,
-                index=0,
-                value=0,
-                is_code=False,
-                push_data_left=0,
-                value_rlc=0,
-                length=0,
-                push_data_size=0,
+                q_first=FQ(idx == 0),
+                q_last=FQ(idx == last_row_offset),
+                hash=Word(EMPTY_HASH),
+                tag=FQ(BytecodeFieldTag.Header),
+                index=FQ(0),
+                value=FQ(0),
+                is_code=FQ(False),
+                push_data_left=FQ(0),
+                value_rlc=FQ(0),
+                length=FQ(0),
+                push_data_size=FQ(0),
             )
         )
 
     return rows
 
 
-# Convert the elements in the table to be either RLC or FQ
-def _convert_table(table):
-    converted = []
-    for row in table:
-        converted.append(tuple([v if isinstance(v, RLC) else FQ(v) for v in row]))
-    return converted
-
-
 # Generate the push table: BYTE -> NUM_PUSHED:
 # [0, OpcodeId::PUSH1] -> 0
 # [OpcodeId::PUSH1, OpcodeId::PUSH32] -> [1..32]
 # [OpcodeId::PUSH32, 256] -> 0
-def assign_push_table():
+def assign_push_table() -> List[Tuple[FQ, FQ]]:
     push_table = []
     for i in range(256):
-        push_table.append((i, get_push_size(i)))
-    return _convert_table(push_table)
+        push_table.append((FQ(i), FQ(get_push_size(i))))
+    return push_table
 
 
-# Generate keccak table
-def assign_keccak_table(bytecodes: Sequence[bytes], randomness: FQ):
-    keccak_table = []
+# Generate keccak table with row = [input_rlc, input_len, output]
+def assign_keccak_table(bytecodes: Sequence[bytes], keccak_randomness: FQ) -> Set[KeccakTableRow]:
+    keccak_circuit = KeccakCircuit()
     for bytecode in bytecodes:
-        hash = RLC(bytes(reversed(keccak256(bytecode))), randomness)
-        rlc = RLC(bytes(reversed(bytecode)), randomness, len(bytecode))
-        keccak_table.append((rlc.expr(), len(bytecode), hash.expr()))
-    return _convert_table(keccak_table)
+        keccak_circuit.add(bytecode, keccak_randomness)
+    return set(keccak_circuit.rows)

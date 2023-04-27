@@ -11,8 +11,8 @@ from zkevm_specs.evm_circuit import (
     AccountFieldTag,
     RWDictionary,
 )
-from zkevm_specs.util import RLC, U256, U160
-from common import rand_address, rand_word, rand_fq
+from zkevm_specs.util import Word, U256, U160
+from common import rand_address, rand_word
 
 
 TESTING_DATA = [(0, 0), (0, 10), (rand_address(), rand_word())]
@@ -20,26 +20,23 @@ TESTING_DATA = [(0, 0), (0, 10), (rand_address(), rand_word())]
 
 @pytest.mark.parametrize("callee_address, balance", TESTING_DATA)
 def test_selfbalance(callee_address: U160, balance: U256):
-    randomness = rand_fq()
-
     bytecode = Bytecode().selfbalance()
-    bytecode_hash = RLC(bytecode.hash(), randomness)
+    bytecode_hash = Word(bytecode.hash())
 
     tables = Tables(
         block_table=Block(),
         tx_table=set(),
-        bytecode_table=set(bytecode.table_assignments(randomness)),
+        bytecode_table=set(bytecode.table_assignments()),
         rw_table=set(
             RWDictionary(9)
             .call_context_read(1, CallContextFieldTag.CalleeAddress, callee_address)
-            .account_read(callee_address, AccountFieldTag.Balance, RLC(balance, randomness))
-            .stack_write(1, 1023, RLC(balance, randomness))
+            .account_read(callee_address, AccountFieldTag.Balance, Word(balance))
+            .stack_write(1, 1023, Word(balance))
             .rws
         ),
     )
 
     verify_steps(
-        randomness=randomness,
         tables=tables,
         steps=[
             StepState(

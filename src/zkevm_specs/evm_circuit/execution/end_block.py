@@ -69,7 +69,7 @@ def end_block(instruction: Instruction):
                 tx_row
                 for tx_row in instruction.tables.tx_table
                 if tx_row.field_tag == TxContextFieldTag.CallerAddress
-                and tx_row.value.expr() != FQ(0)
+                and tx_row.value.value().expr() != FQ(0)
             ]
         )
     )
@@ -80,7 +80,8 @@ def end_block(instruction: Instruction):
             [
                 tx_row
                 for tx_row in instruction.tables.tx_table
-                if tx_row.field_tag == TxContextFieldTag.TxInvalid and tx_row.value.expr() == FQ(1)
+                if tx_row.field_tag == TxContextFieldTag.TxInvalid
+                and tx_row.value.value().expr() == FQ(1)
             ]
         )
     )

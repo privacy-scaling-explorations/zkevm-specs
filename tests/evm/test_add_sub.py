@@ -10,8 +10,8 @@ from zkevm_specs.evm_circuit import (
     Bytecode,
     RWDictionary,
 )
-from zkevm_specs.util import RLC
-from common import generate_nasty_tests, rand_fq, rand_word
+from zkevm_specs.util import Word
+from common import generate_nasty_tests, rand_word
 
 
 TESTING_DATA = [
@@ -26,19 +26,17 @@ generate_nasty_tests(TESTING_DATA, (Opcode.ADD, Opcode.SUB))
 
 @pytest.mark.parametrize("opcode, a, b", TESTING_DATA)
 def test_add_sub(opcode: Opcode, a: int, b: int):
-    randomness = rand_fq()
-
-    c = RLC((a + b if opcode == Opcode.ADD else a - b) % 2**256, randomness)
-    a = RLC(a, randomness)
-    b = RLC(b, randomness)
+    c = Word((a + b if opcode == Opcode.ADD else a - b) % 2**256)
+    a = Word(a)
+    b = Word(b)
 
     bytecode = Bytecode().add(a, b).stop() if opcode == Opcode.ADD else Bytecode().sub(a, b).stop()
-    bytecode_hash = RLC(bytecode.hash(), randomness)
+    bytecode_hash = Word(bytecode.hash())
 
     tables = Tables(
-        block_table=set(Block().table_assignments(randomness)),
+        block_table=set(Block().table_assignments()),
         tx_table=set(),
-        bytecode_table=set(bytecode.table_assignments(randomness)),
+        bytecode_table=set(bytecode.table_assignments()),
         rw_table=set(
             RWDictionary(9)
             .stack_read(1, 1022, a)
@@ -49,7 +47,6 @@ def test_add_sub(opcode: Opcode, a: int, b: int):
     )
 
     verify_steps(
-        randomness=randomness,
         tables=tables,
         steps=[
             StepState(

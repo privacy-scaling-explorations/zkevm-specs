@@ -1,4 +1,11 @@
-from ...util import GAS_COST_TX, GAS_COST_CREATION_TX, EMPTY_CODE_HASH, FQ, RLC, cast_expr
+from ...util import (
+    GAS_COST_TX,
+    GAS_COST_CREATION_TX,
+    EMPTY_CODE_HASH,
+    FQ,
+    Word,
+    WordOrValue,
+)
 from ..execution_state import ExecutionState
 from ..instruction import Instruction, Transition
 from ..precompile import Precompile
@@ -21,7 +28,7 @@ def begin_tx(instruction: Instruction):
     tx_caller_address = instruction.tx_context_lookup(tx_id, TxContextFieldTag.CallerAddress)
     tx_callee_address = instruction.tx_context_lookup(tx_id, TxContextFieldTag.CalleeAddress)
     tx_is_create = instruction.tx_context_lookup(tx_id, TxContextFieldTag.IsCreate)
-    tx_value = cast_expr(instruction.tx_context_lookup(tx_id, TxContextFieldTag.Value), RLC)
+    tx_value = instruction.tx_context_lookup_word(tx_id, TxContextFieldTag.Value)
     tx_call_data_length = instruction.tx_context_lookup(tx_id, TxContextFieldTag.CallDataLength)
 
     # CallerAddress != 0 (not a padding tx)
@@ -66,14 +73,15 @@ def begin_tx(instruction: Instruction):
     sender_balance_pair, _ = instruction.transfer_with_gas_fee(
         tx_caller_address,
         tx_callee_address,
-        RLC(0) if (is_tx_invalid.expr() == 1) else tx_value,
-        RLC(0) if (is_tx_invalid.expr() == 1) else gas_fee,
+        Word(0) if (is_tx_invalid.expr() == 1) else tx_value,
+        Word(0) if (is_tx_invalid.expr() == 1) else gas_fee,
         reversion_info,
     )
     sender_balance_prev = sender_balance_pair[1]
     balance_not_enough, _ = instruction.compare(
-        instruction.rlc_to_fq(sender_balance_prev, MAX_N_BYTES),
-        instruction.rlc_to_fq(tx_value, MAX_N_BYTES) + instruction.rlc_to_fq(gas_fee, MAX_N_BYTES),
+        instruction.word_to_fq(sender_balance_prev, MAX_N_BYTES),
+        instruction.word_to_fq(tx_value, MAX_N_BYTES)
+        + instruction.word_to_fq(gas_fee, MAX_N_BYTES),
         MAX_N_BYTES,
     )
     invalid_tx = 1 - (1 - balance_not_enough) * (1 - gas_not_enough) * (is_nonce_valid)
@@ -91,10 +99,8 @@ def begin_tx(instruction: Instruction):
         # TODO: Handle precompile
         raise NotImplementedError
     else:
-        code_hash = instruction.account_read(tx_callee_address, AccountFieldTag.CodeHash)
-        is_empty_code_hash = instruction.is_equal(
-            code_hash, RLC(EMPTY_CODE_HASH, instruction.randomness)
-        )
+        code_hash = instruction.account_read_word(tx_callee_address, AccountFieldTag.CodeHash)
+        is_empty_code_hash = instruction.is_equal_word(code_hash, Word(EMPTY_CODE_HASH))
 
         if is_empty_code_hash == FQ(1) or is_tx_invalid == FQ(1):
             # Make sure tx is persistent
@@ -112,7 +118,7 @@ def begin_tx(instruction: Instruction):
             #   should never be used in root call, so unnecessary to be checked
             # - TxId is checked from previous step or constraint to 1 if is_first_step
             # - IsSuccess, IsPersistent will be verified in the end of tx
-            for tag, value in [
+            for tag, word_or_value in [
                 (CallContextFieldTag.Depth, FQ(1)),
                 (CallContextFieldTag.CallerAddress, tx_caller_address),
                 (CallContextFieldTag.CalleeAddress, tx_callee_address),
@@ -127,8 +133,9 @@ def begin_tx(instruction: Instruction):
                 (CallContextFieldTag.IsCreate, FQ(False)),
                 (CallContextFieldTag.CodeHash, code_hash),
             ]:
-                instruction.constrain_equal(
-                    instruction.call_context_lookup(tag, call_id=call_id), value
+                instruction.constrain_equal_word(
+                    instruction.call_context_lookup_word(tag, call_id=call_id),
+                    WordOrValue(word_or_value),
                 )
 
             instruction.step_state_transition_to_new_context(
@@ -136,7 +143,7 @@ def begin_tx(instruction: Instruction):
                 call_id=Transition.to(call_id),
                 is_root=Transition.to(True),
                 is_create=Transition.to(False),
-                code_hash=Transition.to(code_hash),
+                code_hash=Transition.to_word(code_hash),
                 gas_left=Transition.to(gas_left),
                 reversible_write_counter=Transition.to(2),
                 log_id=Transition.to(0),

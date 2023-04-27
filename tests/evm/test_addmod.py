@@ -9,8 +9,7 @@ from zkevm_specs.evm_circuit import (
     Bytecode,
     RWDictionary,
 )
-from zkevm_specs.util import RLC
-from common import rand_fq
+from zkevm_specs.util import Word
 
 MAXU256 = (2**256) - 1
 
@@ -29,24 +28,22 @@ TESTING_DATA = [
 
 @pytest.mark.parametrize("a, b, n", TESTING_DATA)
 def test_addmod(a: int, b: int, n: int):
-    randomness = rand_fq()
-
     if n == 0:
-        r = RLC(0, randomness)
+        r = Word(0)
     else:
-        r = RLC((a + b) % n, randomness)
+        r = Word((a + b) % n)
 
-    a = RLC(a, randomness)
-    b = RLC(b, randomness)
-    n = RLC(n, randomness)
+    a = Word(a)
+    b = Word(b)
+    n = Word(n)
 
     bytecode = Bytecode().addmod(a, b, n).stop()
-    bytecode_hash = RLC(bytecode.hash(), randomness)
+    bytecode_hash = Word(bytecode.hash())
 
     tables = Tables(
-        block_table=set(Block().table_assignments(randomness)),
+        block_table=set(Block().table_assignments()),
         tx_table=set(),
-        bytecode_table=set(bytecode.table_assignments(randomness)),
+        bytecode_table=set(bytecode.table_assignments()),
         rw_table=set(
             RWDictionary(9)
             .stack_read(1, 1021, a)
@@ -58,7 +55,6 @@ def test_addmod(a: int, b: int, n: int):
     )
 
     verify_steps(
-        randomness=randomness,
         tables=tables,
         steps=[
             StepState(

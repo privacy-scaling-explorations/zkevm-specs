@@ -9,9 +9,9 @@ from zkevm_specs.evm_circuit import (
     Bytecode,
     RWDictionary,
 )
-from zkevm_specs.util import RLC, U64, U160, U256
+from zkevm_specs.util import Word, U64, U160, U256
 from typing import Union
-from common import rand_address, rand_fq, rand_range
+from common import rand_address, rand_range
 
 
 TESTING_DATA_U160 = (0x030201, rand_address())
@@ -101,8 +101,8 @@ def test_basefee(basefee: U256):
     )
 
 
-@pytest.mark.parametrize("chainid", TESTING_DATA_U256)
-def test_chainid(chainid: U256):
+@pytest.mark.parametrize("chainid", TESTING_DATA_U64)
+def test_chainid(chainid: U64):
     block = Block(chainid=chainid)
 
     bytecode = Bytecode().chainid()
@@ -119,19 +119,16 @@ def verify_block_ctx(
     bytecode: Bytecode,
     op: Union[U64, U160, U256],
 ):
-    randomness = rand_fq()
-
-    bytecode_hash = RLC(bytecode.hash(), randomness)
+    bytecode_hash = Word(bytecode.hash())
 
     tables = Tables(
-        block_table=set(block.table_assignments(randomness)),
+        block_table=set(block.table_assignments()),
         tx_table=set(),
-        bytecode_table=set(bytecode.table_assignments(randomness)),
-        rw_table=set(RWDictionary(9).stack_write(1, 1023, RLC(op, randomness)).rws),
+        bytecode_table=set(bytecode.table_assignments()),
+        rw_table=set(RWDictionary(9).stack_write(1, 1023, Word(op)).rws),
     )
 
     verify_steps(
-        randomness=randomness,
         tables=tables,
         steps=[
             StepState(
