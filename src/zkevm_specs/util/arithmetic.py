@@ -3,7 +3,7 @@ from typing import runtime_checkable, List, Protocol, Sequence, Tuple, Type, Typ
 from py_ecc import bn128
 from py_ecc.utils import prime_field_inv
 from .param import MAX_N_BYTES
-from .typing import U256
+from .typing import U256, gfP, G1, CurvePoint
 
 
 def linear_combine_bytes(seq: Sequence[Union[int, FQ]], base: FQ, range_check: bool = True) -> FQ:
@@ -42,6 +42,53 @@ class FQ(bn128.FQ):
 
     def __repr__(self) -> str:
         return f"{hex(self.n)}"
+
+
+def fq_to_gfp(a: FQ) -> gfP:
+    e = [0, 0, 0, 0]
+    for w in range(0, 4):
+        l = a.n >> (64 * w)
+        e[w] = l % 2**64
+    return (e[0], e[1], e[2], e[3])
+
+
+def gfp_to_fq(a: gfP) -> FQ:
+    n = 0
+    for i, limb in enumerate(a):
+        n += limb << (i * 64)
+    return FQ(n)
+
+
+def point_add(a: G1, b: G1) -> G1:
+    a_x = gfp_to_fq(a.p.x) if a.p is not None else FQ(0)
+    a_y = gfp_to_fq(a.p.y) if a.p is not None else FQ(0)
+    b_x = gfp_to_fq(b.p.x) if b.p is not None else FQ(0)
+    b_y = gfp_to_fq(b.p.y) if b.p is not None else FQ(0)
+    c = bn128.add((a_x, a_y), (b_x, b_y))
+
+    return to_cf_form(c)
+
+
+def unmarshal_field(m: bytes) -> gfP:
+    e = [0, 0, 0, 0]
+    for w in range(0, 4):
+        for b in range(0, 8):
+            e[3 - w] += m[8 * w + b] << (56 - 8 * b)
+
+    return (e[0], e[1], e[2], e[3])
+
+
+def to_cf_form(e: BN128Point) -> G1:
+    if e is None:
+        return G1(None)
+    point = CurvePoint()
+    (x, y) = e
+    gfp_x = unmarshal_field(x.n.to_bytes(32, "big"))
+    gfp_y = unmarshal_field(y.n.to_bytes(32, "big"))
+    point.Set(gfp_x, gfp_y)
+    cf_point = G1(point)
+
+    return cf_point
 
 
 IntOrFQ = Union[int, FQ]

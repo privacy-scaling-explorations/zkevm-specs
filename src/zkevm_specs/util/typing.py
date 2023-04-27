@@ -1,7 +1,7 @@
 from typing import NewType, Tuple, Optional
 import random
 import py_ecc
-from py_ecc.bn128 import FQ, multiply, add
+from py_ecc.bn128 import FQ, multiply
 
 U8 = NewType("U8", int)
 U64 = NewType("U64", int)
@@ -32,21 +32,6 @@ def new_gfp(x: int) -> gfP:
         out = gfp_neg(out)
 
     return mont_encode(out)
-
-
-def fq_to_gfp(a: FQ) -> gfP:
-    e = [0, 0, 0, 0]
-    for w in range(0, 4):
-        l = a.n >> (64 * w)
-        e[w] = l % 2**64
-    return (e[0], e[1], e[2], e[3])
-
-
-def gfp_to_fq(a: gfP) -> FQ:
-    n = 0
-    for i, limb in enumerate(a):
-        n += limb << (i * 64)
-    return FQ(n)
 
 
 def gfp_neg(a: gfP) -> gfP:
@@ -231,29 +216,6 @@ class G1:
 def random_bn128_point() -> BN128Point:
     arb_field_a = random.randint(0, BN128_MODULUS)
     return multiply(py_ecc.bn128.G1, arb_field_a)
-
-
-def to_cf_form(e: BN128Point) -> G1:
-    if e is None:
-        return G1(None)
-    point = CurvePoint()
-    (x, y) = e
-    gfp_x = unmarshal_field(x.n.to_bytes(32, "big"))
-    gfp_y = unmarshal_field(y.n.to_bytes(32, "big"))
-    point.Set(gfp_x, gfp_y)
-    cf_point = G1(point)
-
-    return cf_point
-
-
-def point_add(a: G1, b: G1) -> G1:
-    a_x = gfp_to_fq(a.p.x) if a.p is not None else FQ(0)
-    a_y = gfp_to_fq(a.p.y) if a.p is not None else FQ(0)
-    b_x = gfp_to_fq(b.p.x) if b.p is not None else FQ(0)
-    b_y = gfp_to_fq(b.p.y) if b.p is not None else FQ(0)
-    c = add((a_x, a_y), (b_x, b_y))
-
-    return to_cf_form(c)
 
 
 def is_circuit_code(func):
