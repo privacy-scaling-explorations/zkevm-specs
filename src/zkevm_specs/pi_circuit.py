@@ -21,7 +21,8 @@ from .tx_circuit import Tag as TxTag
 from .evm_circuit import (
     BlockContextFieldTag as BlockTag,
 )
-from .evm_circuit.table import lookup, TableRow
+from eth_utils import keccak
+from .evm_circuit.table import KeccakTableRow, lookup, TableRow
 
 
 @dataclass
@@ -49,48 +50,80 @@ class FixedU16Row(TableRow):
     value: FQ
 
 
+class KeccakTable:
+    # The columns are: (is_enabled, input_rlc, input_len, output)
+    table: Set[Tuple[FQ, FQ, FQ, Word]]
+
+    def __init__(self):
+        self.table = set()
+        self.table.add((FQ(0), FQ(0), FQ(0), Word(0)))  # Add all 0s row
+
+    def add(self, input: bytes, keccak_randomness: FQ):
+        output = keccak(input)
+        self.table.add(
+            (
+                FQ(1),
+                RLC(bytes(reversed(input)), keccak_randomness, n_bytes=64).expr(),
+                FQ(len(input)),
+                Word(output),
+            )
+        )
+
+    def lookup(self, is_enabled: FQ, input_rlc: FQ, input_len: FQ, output: Word, assert_msg: str):
+        assert (is_enabled, input_rlc, input_len, output) in self.table, (
+            f"{assert_msg}: {(is_enabled, input_rlc, input_len, output)} "
+            + "not found in the lookup table"
+        )
+
+
 @dataclass
 class Row:
     """PublicInputs circuit row"""
 
-    q_block_table: FQ  # Fixed Column
-    block_table: BlockTableRow
+    q_block_table: FQ
+    q_tx_table: FQ
 
-    q_tx_table: FQ  # Fixed Column
-    q_tx_calldata: FQ  # Fixed Column
-    q_tx_calldata_start: FQ  # Fixed Column
-    tx_table: TxTableRow
+    q_digest_last: FQ
+    q_bytes_last: FQ
+    q_tx_table: FQ
+    q_tx_calldata: FQ
+    q_tx_calldata_start: FQ
+    q_rpi_keccak_lookup: FQ
+    q_rpi_value_start: FQ # Fixed Column
+    q_digest_value_start: FQ # Fixed Column
+
     tx_id_inv: FQ  # (tx_tag - CallDataLength)^(-1) when q_tx_table = 1
     # tx_id^(-1) when q_tx_calldata = 1
     tx_value_lo_inv: FQ
     tx_id_diff_inv: FQ
     calldata_gas_cost: FQ
     is_final: FQ
+    is_value_rlc: FQ
 
-    raw_public_inputs: FQ
-    rpi_rlc_acc: FQ  # raw_public_inputs accumulated RLC from bottom to top
-    rand_rpi: FQ
+    rpi_bytes: FQ
+    rpi_bytes_keccakrlc: FQ
+    rpi_value_rlc: FQ
+    rpi_digest_bytes: FQ
+    rpi_digest_bytes_rlc: FQ
+    rpi_digest_bytes_lc: FQ
 
-    q_end: FQ  # Fixed Column
-    q_not_end: FQ  # Fixed Column
+    q_rpi_byte_enable: FQ
+    q_digest_byte_enable: FQ
 
+    block_table: BlockTableRow
+    tx_table: TxTableRow
+    keccak_table: KeccakTableRow
 
 @dataclass
 class PublicInputs:
     """Public Inputs of the PublicInputs circuit"""
-
-    rand_rpi: FQ  # randomness used in the RLC of the raw_public_inputs
-    rpi_rlc: FQ  # raw_public_inputs RLC encoded
-
-    chain_id: FQ
-    state_root: Word
-    state_root_prev: Word
-
+    pi_keccak: WordOrValue
 
 @is_circuit_code
 def check_row(
     row: Row,
     row_next: Row,
+    # TODO challenge API
     row_offset_block_table_value_hi: Row,
     row_offset_tx_table_tx_id: Row,
     row_offset_tx_table_index: Row,
@@ -99,55 +132,101 @@ def check_row(
     table: Set[TxCallDataGasCostAccRow],
     fixed_u16_table: Set[FixedU16Row],
 ):
-    q_not_end = row.q_not_end
-    q_end = row.q_end
+    # TODO fix me
+    byte_pow_base, evm_rand = FQ(256), FQ(256)
+    q_bytes_last = row.q_bytes_last
+    q_rpi_byte_enable = row.q_rpi_byte_enable
+    # q_end = row.q_end
     row_offset_block_table_value_lo = row
 
-    # 0.0 rpi_rlc_acc[0] == RLC(raw_public_inputs, rand_rpi)
-    assert q_not_end * row.rpi_rlc_acc == q_not_end * (
-        row_next.rpi_rlc_acc * row.rand_rpi + row.raw_public_inputs
+    # gate 1 and gate 2 are compensation branch
+    # 1: rpi_bytes_keccakrlc[last] = rpi_bytes[last]
+    assert q_rpi_byte_enable * q_bytes_last * (row.rpi_bytes_keccakrlc - row.rpi_bytes) == FQ(0)
+
+    # 2: rpi_bytes_keccakrlc[i] = keccak_rand * rpi_bytes_keccakrlc[i+1] + rpi_bytes[i]"
+    # TODO how to represent NOT(selector) elegantly?
+    assert q_rpi_byte_enable * (FQ(1) - q_bytes_last) * (row.rpi_bytes_keccakrlc - row_next.rpi_bytes_keccakrlc - row.rpi_bytes)
+
+    # gate 3 and gate 4 are compensation branch
+    # 3: rpi_value_rlc[i] = rpi_value_rlc[i+1] * (is_value_rlc[i] ? evm_rand : byte_pow_base )
+    # + rpi_bytes[i]
+    assert row.is_value_rlc in [0, 1]
+    r = evm_rand if row.is_value_rlc == FQ(1) else byte_pow_base
+    assert row.q_rpi_byte_enable*(FQ(1) -row.q_rpi_value_start)*(
+        row.rpi_value_rlc - row_next.rpi_value_rlc * r - row.rpi_bytes
+        ) == FQ(0)
+
+    # 4. rpi_value_rlc[i] = rpi_bytes[i]
+    assert row.q_rpi_byte_enable * row.q_rpi_value_start * (row.rpi_value_rlc - row.rpi_bytes) == FQ(0)
+
+    # gate 5 and gate 6 are compensation branch
+    # 5. rpi_digest_bytes_rlc[last] = rpi_digest_bytes[last]
+    assert row.q_digest_byte_enable * row.q_digest_last * (row.rpi_digest_bytes_rlc - row.rpi_digest_bytes) == FQ(0)
+
+    # 6. rpi_digest_bytes_rlc[i] = rpi_digest_bytes_rlc[i+1] * r + rpi_digest_bytes[i]
+    assert row.q_digest_byte_enable * (FQ(1) - row.q_digest_last) * (
+        row.rpi_digest_bytes_rlc - row_next.rpi_digest_bytes_rlc * evm_rand - row.rpi_digest_bytes_rlc
+    ) == FQ(0)
+
+    # gate 7 and gate 8 are compensation branch
+    # 7. rpi_digest_bytes_lc[i] = rpi_digest_bytes[i]
+    assert row.q_digest_byte_enable * (row.q_digest_value_start) * (
+        row.rpi_digest_bytes_lc - row.rpi_digest_bytes
+    ) == FQ(0)
+
+    # 8. rpi_digest_bytes_lc[i] = rpi_digest_bytes_lc[i+1] * BYTE_POW_BASE + rpi_digest_bytes[i]
+    assert row.q_digest_byte_enable * (FQ(1) - row.q_digest_value_start) * (
+        row.rpi_digest_bytes_lc - row_next.rpi_digest_bytes_lc * byte_pow_base - row.rpi_digest_bytes
     )
 
-    assert q_end * row.rpi_rlc_acc == q_end * row.raw_public_inputs
+    # 9. lookup rpi_bytes_keccakrlc against rpi_digest_bytes_rlc
+    assert
 
-    # 0.1 rand_rpi[i] == rand_rpi[j]
-    assert q_not_end * row.rand_rpi == q_not_end * row_next.rand_rpi
+    # NONEED 0.1 rand_rpi[i] == rand_rpi[j]
+    ## assert q_not_end * row.rand_rpi == q_not_end * row_next.rand_rpi
 
+    ## TODO how to represent block/tx table copy constraint?
     # 0.2 Block table -> value column match with raw_public_inputs at expected offset
-    assert (
-        row.q_block_table * row.block_table.value.lo.expr()
-        == row.q_block_table * row_offset_block_table_value_lo.raw_public_inputs
-    )
-    assert (
-        row.q_block_table * row.block_table.value.hi.expr()
-        == row.q_block_table * row_offset_block_table_value_hi.raw_public_inputs
-    )
+    # assert (
+    #     row.q_block_table * row.block_table.value.lo.expr()
+    #     == row.q_block_table * row_offset_block_table_value_lo.raw_public_inputs
+    # )
+    # assert (
+    #     row.q_block_table * row.block_table.value.hi.expr()
+    #     == row.q_block_table * row_offset_block_table_value_hi.raw_public_inputs
+    # )
 
     # 0.3 Tx table -> {tx_id, index, value} column match with raw_public_inputs at expected offset
-    assert (
-        row.q_tx_table * row.tx_table.tx_id
-        == row.q_tx_table * row_offset_tx_table_tx_id.raw_public_inputs
-    )
-    assert (
-        row.q_tx_table * row.tx_table.index
-        == row.q_tx_table * row_offset_tx_table_index.raw_public_inputs
-    )
-    assert (
-        row.q_tx_table * row.tx_table.value.lo.expr()
-        == row.q_tx_table * row_offset_tx_table_value_lo.raw_public_inputs
-    )
-    assert (
-        row.q_tx_table * row.tx_table.value.hi.expr()
-        == row.q_tx_table * row_offset_tx_table_value_hi.raw_public_inputs
-    )
-    assert (
-        row.q_tx_calldata * row.tx_table.value.lo.expr()
-        == row.q_tx_calldata * row_offset_tx_table_value_lo.raw_public_inputs
-    )
-    assert (
-        row.q_tx_calldata * row.tx_table.value.hi.expr()
-        == row.q_tx_calldata * row_offset_tx_table_value_hi.raw_public_inputs
-    )
+    # id
+    # assert (
+    #     row.q_tx_table * row.tx_table.tx_id
+    #     == row.q_tx_table * row_offset_tx_table_tx_id.raw_public_inputs
+    # )
+    # index
+    # assert (
+    #     row.q_tx_table * row.tx_table.index
+    #     == row.q_tx_table * row_offset_tx_table_index.raw_public_inputs
+    # )
+    # value lo
+    # assert (
+    #     row.q_tx_table * row.tx_table.value.lo.expr()
+    #     == row.q_tx_table * row_offset_tx_table_value_lo.raw_public_inputs
+    # )
+    # value hi
+    # assert (
+    #     row.q_tx_table * row.tx_table.value.hi.expr()
+    #     == row.q_tx_table * row_offset_tx_table_value_hi.raw_public_inputs
+    # )
+    # call data lo
+    # assert (
+    #     row.q_tx_calldata * row.tx_table.value.lo.expr()
+    #     == row.q_tx_calldata * row_offset_tx_table_value_lo.raw_public_inputs
+    # )
+    # call data hi
+    # assert (
+    #     row.q_tx_calldata * row.tx_table.value.hi.expr()
+    #     == row.q_tx_calldata * row_offset_tx_table_value_hi.raw_public_inputs
+    # )
 
     zero = FQ(0)
     one = FQ(1)
