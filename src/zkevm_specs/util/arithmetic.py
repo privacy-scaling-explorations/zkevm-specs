@@ -169,6 +169,9 @@ class WordOrValue(Word):
         assert not self.is_word
         return self.lo
 
+    def is_word(self) -> bool:
+        return self.is_word
+
     def __repr__(self) -> str:
         if self.is_word:
             return super().__repr__()

@@ -1,10 +1,13 @@
 from dataclasses import dataclass
-from typing import Tuple, List, Union, Set
+from typing import NewType, Tuple, List, Union, Set
+
+from zkevm_specs.util.param import N_BYTES_WORD
 
 from .util import (
     FQ,
     Word,
     WordOrValue,
+    U8,
     U64,
     U160,
     U256,
@@ -80,8 +83,7 @@ class KeccakTable:
 class Row:
     """PublicInputs circuit row"""
 
-    q_block_table: FQ
-    q_tx_table: FQ
+    # q_block_table: FQ
 
     q_digest_last: FQ
     q_bytes_last: FQ
@@ -98,11 +100,10 @@ class Row:
     tx_id_diff_inv: FQ
     calldata_gas_cost: FQ
     is_final: FQ
-    is_value_rlc: FQ
 
     rpi_bytes: FQ
     rpi_bytes_keccakrlc: FQ
-    rpi_value_rlc: FQ
+    rpi_value_lc: FQ
     rpi_digest_bytes: FQ
     rpi_digest_bytes_rlc: FQ
     rpi_digest_bytes_lc: FQ
@@ -110,8 +111,6 @@ class Row:
     q_rpi_byte_enable: FQ
     q_digest_byte_enable: FQ
 
-    block_table: BlockTableRow
-    tx_table: TxTableRow
     keccak_table: KeccakTableRow
 
 @dataclass
@@ -123,19 +122,21 @@ class PublicInputs:
 def check_row(
     row: Row,
     row_next: Row,
-    # TODO challenge API
-    row_offset_block_table_value_hi: Row,
-    row_offset_tx_table_tx_id: Row,
-    row_offset_tx_table_index: Row,
-    row_offset_tx_table_value_lo: Row,
-    row_offset_tx_table_value_hi: Row,
-    table: Set[TxCallDataGasCostAccRow],
+    # row_offset_block_table_value_hi: Row,
+    # row_offset_tx_table_tx_id: Row,
+    # row_offset_tx_table_index: Row,
+    # row_offset_tx_table_value_lo: Row,
+    # row_offset_tx_table_value_hi: Row,
+    calldata_gas_cost_table: Set[TxCallDataGasCostAccRow],
     fixed_u16_table: Set[FixedU16Row],
+    keccak_table: KeccakTable,
+    circuit_len: FQ,
 ):
-    # TODO fix me
-    byte_pow_base, evm_rand = FQ(256), FQ(256)
+    # TODO how to represent NOT(selector) elegantly?
+
     q_bytes_last = row.q_bytes_last
     q_rpi_byte_enable = row.q_rpi_byte_enable
+
     # q_end = row.q_end
     row_offset_block_table_value_lo = row
 
@@ -144,20 +145,16 @@ def check_row(
     assert q_rpi_byte_enable * q_bytes_last * (row.rpi_bytes_keccakrlc - row.rpi_bytes) == FQ(0)
 
     # 2: rpi_bytes_keccakrlc[i] = keccak_rand * rpi_bytes_keccakrlc[i+1] + rpi_bytes[i]"
-    # TODO how to represent NOT(selector) elegantly?
-    assert q_rpi_byte_enable * (FQ(1) - q_bytes_last) * (row.rpi_bytes_keccakrlc - row_next.rpi_bytes_keccakrlc - row.rpi_bytes)
+    assert q_rpi_byte_enable * (FQ(1) - q_bytes_last) * (row.rpi_bytes_keccakrlc - row_next.rpi_bytes_keccakrlc*keccak_rand - row.rpi_bytes)
 
     # gate 3 and gate 4 are compensation branch
-    # 3: rpi_value_rlc[i] = rpi_value_rlc[i+1] * (is_value_rlc[i] ? evm_rand : byte_pow_base )
-    # + rpi_bytes[i]
-    assert row.is_value_rlc in [0, 1]
-    r = evm_rand if row.is_value_rlc == FQ(1) else byte_pow_base
+    # 3: rpi_value_lc[i] = rpi_value_lc[i+1] * byte_pow_base + rpi_bytes[i]
     assert row.q_rpi_byte_enable*(FQ(1) -row.q_rpi_value_start)*(
-        row.rpi_value_rlc - row_next.rpi_value_rlc * r - row.rpi_bytes
+        row.rpi_value_lc - row_next.rpi_value_lc * byte_pow_base - row.rpi_bytes
         ) == FQ(0)
 
-    # 4. rpi_value_rlc[i] = rpi_bytes[i]
-    assert row.q_rpi_byte_enable * row.q_rpi_value_start * (row.rpi_value_rlc - row.rpi_bytes) == FQ(0)
+    # 4. rpi_value_lc[i] = rpi_bytes[i]
+    assert row.q_rpi_byte_enable * row.q_rpi_value_start * (row.rpi_value_lc - row.rpi_bytes) == FQ(0)
 
     # gate 5 and gate 6 are compensation branch
     # 5. rpi_digest_bytes_rlc[last] = rpi_digest_bytes[last]
@@ -177,10 +174,23 @@ def check_row(
     # 8. rpi_digest_bytes_lc[i] = rpi_digest_bytes_lc[i+1] * BYTE_POW_BASE + rpi_digest_bytes[i]
     assert row.q_digest_byte_enable * (FQ(1) - row.q_digest_value_start) * (
         row.rpi_digest_bytes_lc - row_next.rpi_digest_bytes_lc * byte_pow_base - row.rpi_digest_bytes
-    )
+    ) == FQ(0)
 
     # 9. lookup rpi_bytes_keccakrlc against rpi_digest_bytes_rlc
-    assert
+                    #     (q_rpi_keccak_lookup.expr() * 1.expr(), is_enabled),
+                    # (
+                    #     q_rpi_keccak_lookup.expr() * rpi_bytes_keccakrlc_cur,
+                    #     input_rlc,
+                    # ),
+                    # (q_rpi_keccak_lookup.expr() * circuit_len, input_len),
+                    # (q_rpi_keccak_lookup * rpi_digest_bytes_rlc_cur, output_rlc),
+    keccak_table.lookup(
+        row.q_rpi_keccak_lookup,
+        row.q_rpi_keccak_lookup * row.rpi_bytes_keccakrlc,
+        row.q_rpi_keccak_lookup * circuit_len,
+        row.q_rpi_keccak_lookup * row.rpi_digest_bytes_rlc,
+        "lookup not found",
+    )
 
     # NONEED 0.1 rand_rpi[i] == rand_rpi[j]
     ## assert q_not_end * row.rand_rpi == q_not_end * row_next.rand_rpi
@@ -339,7 +349,7 @@ def check_row(
             "is_final": one * query_condition,
             "gas_cost_acc": calldata_cost * query_condition,
         }
-        lookup(TxCallDataGasCostAccRow, table, query)
+        lookup(TxCallDataGasCostAccRow, calldata_gas_cost_table, query)
 
 
 @dataclass
@@ -347,7 +357,7 @@ class Witness:
     rows: List[Row]  # PublicInputs rows
     public_inputs: PublicInputs  # Public Inputs of the PublicInputs circuit
     calldata_gas_cost_table: Set[TxCallDataGasCostAccRow]
-
+    keccak_table: KeccakTable
 
 @is_circuit_code
 def verify_circuit(
@@ -360,63 +370,46 @@ def verify_circuit(
     """
 
     rows = witness.rows
-    table = witness.calldata_gas_cost_table
-
-    # 1.0 rand_rpi copy constraint from public input to advice column
-    assert rows[0].rand_rpi == witness.public_inputs.rand_rpi
-
-    # 1.1 rpi_rlc copy constraint from public input to advice column
-    assert rows[0].rpi_rlc_acc == witness.public_inputs.rpi_rlc
-
-    # 1.2 chain_id copy constraint from public input to raw_public_inputs
-    assert rows[BlockTag.ChainId].raw_public_inputs == witness.public_inputs.chain_id
-
-    # 1.3 state_root copy constraint from public input to raw_public_inputs
-    offset_extra = BLOCK_LEN + 2
-    assert rows[offset_extra + 2].raw_public_inputs == witness.public_inputs.state_root.lo.expr()
-    assert rows[offset_extra + 3].raw_public_inputs == witness.public_inputs.state_root.hi.expr()
-
-    # 1.4 state_root_prev copy constraint from public input to raw_public_inputs
-    assert (
-        rows[offset_extra + 4].raw_public_inputs == witness.public_inputs.state_root_prev.lo.expr()
-    )
-    assert (
-        rows[offset_extra + 5].raw_public_inputs == witness.public_inputs.state_root_prev.hi.expr()
-    )
+    calldata_gas_cost_table = witness.calldata_gas_cost_table
+    keccak_table = witness.keccak_table
 
     fixed_u16_table = set([FixedU16Row(FQ(i)) for i in range(1 << 16)])
+    # check rows
     for i in range(len(rows)):
         print("DBG", i)
         row = rows[i]
         row_next = rows[(i + 1) % len(rows)]
         # Offset in raw_public_inputs with block_table -> value.hi column
-        tx_table_offset = BLOCK_LEN // 2 + 1
-        row_offset_block_table_value_hi = rows[(i + tx_table_offset) % len(rows)]
+        # tx_table_offset = BLOCK_LEN // 2 + 1
+        # row_offset_block_table_value_hi = rows[(i + tx_table_offset) % len(rows)]
         # Offset in raw_public_inputs with tx_table -> tx_id column
-        tx_table_offset = BLOCK_LEN + 2 + EXTRA_LEN
-        row_offset_tx_table_tx_id = rows[(i + tx_table_offset) % len(rows)]
+        # tx_table_offset = BLOCK_LEN + 2 + EXTRA_LEN
+        # row_offset_tx_table_tx_id = rows[(i + tx_table_offset) % len(rows)]
         # Offset in raw_public_inputs with tx_table -> index column
-        tx_table_len = TX_LEN * MAX_TXS + 1
-        tx_table_offset += tx_table_len
-        row_offset_tx_table_index = rows[(i + tx_table_offset) % len(rows)]
+        # tx_table_len = TX_LEN * MAX_TXS + 1
+        # tx_table_offset += tx_table_len
+        # row_offset_tx_table_index = rows[(i + tx_table_offset) % len(rows)]
         # Offset in raw_public_inputs with tx_table -> value.lo column
-        tx_table_offset += tx_table_len
-        row_offset_tx_table_value_lo = rows[(i + tx_table_offset) % len(rows)]
+        # tx_table_offset += tx_table_len
+        # row_offset_tx_table_value_lo = rows[(i + tx_table_offset) % len(rows)]
         # Offset in raw_public_inputs with tx_table -> value.hi column
-        tx_table_offset += tx_table_len + MAX_CALLDATA_BYTES
-        row_offset_tx_table_value_hi = rows[(i + tx_table_offset) % len(rows)]
+        # tx_table_offset += tx_table_len + MAX_CALLDATA_BYTES
+        # row_offset_tx_table_value_hi = rows[(i + tx_table_offset) % len(rows)]
 
         check_row(
             row,
             row_next,
-            row_offset_block_table_value_hi,
-            row_offset_tx_table_tx_id,
-            row_offset_tx_table_index,
-            row_offset_tx_table_value_lo,
-            row_offset_tx_table_value_hi,
-            table,
+            # row_offset_block_table_value_hi,
+            # row_offset_tx_table_tx_id,
+            # row_offset_tx_table_index,
+            # row_offset_tx_table_value_lo,
+            # row_offset_tx_table_value_hi,
+            calldata_gas_cost_table,
             fixed_u16_table,
+            keccak_table,
         )
+
+    # check copy/permutation constraints
 
 
 @dataclass
@@ -482,11 +475,47 @@ class Transaction:
         column.append(WordOrValue(FQ(self.tx_sign_hash)))  # TxSignHash
         return column
 
-    def tx_table_tx_fields(self, index: int) -> Tuple[List[FQ], List[FQ], List[WordOrValue]]:
+    def tx_table_raw_bytes_group(self, txid: int) -> List[List[int]]:
+        raw_bytes_group = []
+        self.append_raw_byte_with_id_index(raw_bytes_group, txid, self.nonce.to_bytes(8, 'little')) # Nonce
+        self.append_raw_byte_with_id_index(raw_bytes_group, txid, self.gas.to_bytes(8, 'little')) # Gas Limit
+
+        gas_price_lo, gas_price_hi = Word(self.gas_price).to_lo_hi()
+        self.append_raw_byte_with_id_index(raw_bytes_group, txid, gas_price_lo.n.to_bytes(16, 'little'), gas_price_hi.n.to_bytes(16, 'little')) # GasPrice
+        self.append_raw_byte_with_id_index(raw_bytes_group, txid, self.from_addr.to_bytes(20, 'little')) # CallerAddress
+        self.append_raw_byte_with_id_index(raw_bytes_group, txid, (self.to_addr or U160(0)).to_bytes(20, 'little')) # CalleeAddress
+        self.append_raw_byte_with_id_index(raw_bytes_group, txid, (U64(1) if self.to_addr is None else U64(0)).to_bytes(8, 'little'))  # IsCreate
+        value_lo, value_hi = Word(self.value).to_lo_hi()
+        self.append_raw_byte_with_id_index(raw_bytes_group, txid, value_lo.n.to_bytes(16, 'little'), value_hi.n.to_bytes(16, 'little')) # Value
+        self.append_raw_byte_with_id_index(raw_bytes_group, txid, U64(len(self.data)).to_bytes(8, 'little')) # CallDataLength
+        call_data_gas_cost = sum(
+            [
+                (
+                    GAS_COST_TX_CALL_DATA_PER_ZERO_BYTE
+                    if byte == 0
+                    else GAS_COST_TX_CALL_DATA_PER_NON_ZERO_BYTE
+                )
+                for byte in self.data
+            ]
+        )
+        self.append_raw_byte_with_id_index(raw_bytes_group, txid, U64(call_data_gas_cost).to_bytes(8, 'little')) # CallDataCost
+        tx_sign_hash_lo, tx_sign_hash_hi = Word(self.tx_sign_hash).to_lo_hi()
+        self.append_raw_byte_with_id_index(raw_bytes_group, txid, tx_sign_hash_lo.n.to_bytes(16, 'little'), tx_sign_hash_hi.n.to_bytes(16, 'little')) # TxSignHash
+        return raw_bytes_group
+
+    def append_raw_byte_with_id_index(self, raw_byte_value_col: List[int], txid: int, value_lo: bytes, value_hi: bytes = None):
+        raw_byte_value_col.append(U64(txid).to_bytes(8, 'little'))
+        raw_byte_value_col.append(U64(0).to_bytes(8, 'little'))
+        raw_byte_value_col.append(value_lo)
+        if value_hi:
+            raw_byte_value_col.append(value_hi)
+
+    def tx_table_tx_fields(self, txid: int) -> Tuple[List[FQ], List[FQ], List[WordOrValue]]:
         """Return the tx table contents corresponding to this tx.  Contains fields and no calldata"""
-        tx_id_col = [FQ(index + 1)] * TX_LEN
+        tx_id_col = [FQ(txid + 1)] * TX_LEN
         index_col = [FQ(0)] * TX_LEN
         value_col = self.tx_table_value_column()
+        assert len(value_col) == TX_LEN
         return (tx_id_col, index_col, value_col)
 
 
@@ -513,6 +542,54 @@ class PublicData:
         for block_hash in self.block_hashes:
             column.append(WordOrValue(Word(block_hash)))  # offset = 8
         return column
+
+    def block_table_raw_bytes(self) -> List[int]:
+        """Return the block table bytes, including first 0 row"""
+        raw_block_value = []
+
+        raw_block_value.append(U8(0).to_bytes(1, 'little')) # offset = 0
+        raw_block_value.append(self.block.coinbase.to_bytes(20, 'little'))
+        raw_block_value.append(self.block.gas_limit.to_bytes(8, 'little'))
+        raw_block_value.append(self.block.number.to_bytes(8, 'little'))
+        raw_block_value.append(self.block.time.to_bytes(8, 'little'))
+        raw_block_value.append(self.block.difficulty.to_bytes(32, 'little'))
+        raw_block_value.append(self.block.base_fee.to_bytes(32, 'little'))
+        raw_block_value.append(self.chain_id.to_bytes(8, 'little'))
+        assert len(self.block_hashes) == 256
+        for block_hash in self.block_hashes:
+            raw_block_value.append(block_hash.to_bytes(32, 'little'))
+        return raw_block_value
+
+
+    def tx_table_raw_bytes_group(self, MAX_TXS: int) -> List[List[int]]:
+        """Return the tx table bytes, traverse in row oriented and including first 0 row"""
+        raw_bytes_group = []
+        assert len(self.txs) <= MAX_TXS
+        raw_bytes_group.append(U64(0).to_bytes(8, 'little')) # empty id
+        raw_bytes_group.append(U64(0).to_bytes(8, 'little')) # empty index
+        raw_bytes_group.append(U8(0).to_bytes(1, 'little')) # empty value
+        for i in range(MAX_TXS):
+            tx = Transaction.default()
+            if i < len(self.txs):
+                tx = self.txs[i]
+            raw_bytes_group.extend([group for group in tx.tx_table_raw_bytes_group(i)])
+        return raw_bytes_group
+
+    def tx_table_calldata_raw_bytes_group(self, MAX_CALLDATA_BYTES: int) -> List[List[int]]:
+        raw_bytes_group = []
+        calldata_count = 0
+        for i, tx in enumerate(self.txs):
+            for byte_index, byte in enumerate(tx.data):
+                raw_bytes_group.append(U8(byte).to_bytes(1, 'little'))
+                calldata_count += 1
+
+        assert calldata_count <= MAX_CALLDATA_BYTES
+
+        for _ in range(MAX_CALLDATA_BYTES - calldata_count):
+            raw_bytes_group.append(U8(0).to_bytes(1, 'little'))
+
+        return raw_bytes_group
+
 
     def tx_table_tx_fields(self, MAX_TXS: int) -> Tuple[List[FQ], List[FQ], List[WordOrValue]]:
         """Return the tx table, static section with tx fields (no calldata)"""
@@ -581,6 +658,14 @@ class PublicData:
             [WordOrValue(FQ(0))] + tx_fields[2] + tx_calldata[2],
         )
 
+N_BYTES_ONE = 1
+N_BYTES_U64 = 8
+N_BYTES_TX = 176
+N_BYTES_BLOCK = 8308
+N_BYTES_EXTRA_VALUE = N_BYTES_WORD + N_BYTES_WORD
+byte_pow_base = FQ(255)
+evm_rand= FQ(255)
+keccak_rand= FQ(255)
 
 def public_data2witness(
     public_data: PublicData, MAX_TXS: int, MAX_CALLDATA_BYTES: int, rand_rpi: FQ
@@ -603,142 +688,201 @@ def public_data2witness(
 
     # NOTE: Begin rlc calculation of raw_public_inputs.  This logic must be
     # implemented by the verifier.
-    raw_public_inputs = []
+    rpi_bytes_group = []
 
     # Block table
     block_table_value_col = public_data.block_table_value_column()
-    raw_public_inputs.extend([w.lo.expr() for w in block_table_value_col])  # start offset = 0
-    raw_public_inputs.extend([w.hi.expr() for w in block_table_value_col])
+    block_table_block_value = public_data.block_table_raw_bytes()
+    rpi_bytes_group.extend(block_table_block_value)
 
     # Extra fields
-    hash = Word(public_data.block.hash)
-    raw_public_inputs.append(hash.lo.expr())  # start offset = BLOCK_LEN + 1 (for 0 row)
-    raw_public_inputs.append(hash.hi.expr())
-    state_root = Word(public_data.block.state_root)
-    raw_public_inputs.append(state_root.lo.expr())
-    raw_public_inputs.append(state_root.hi.expr())
-    state_root_prev = Word(public_data.state_root_prev)
-    raw_public_inputs.append(state_root_prev.lo.expr())
-    raw_public_inputs.append(state_root_prev.hi.expr())
+    # rpi_bytes.extend(public_data.block.hash.to_bytes(32, 'little'))  # FIXME
+    rpi_bytes_group.append(public_data.block.state_root.to_bytes(32, 'little'))
+    rpi_bytes_group.append(public_data.state_root_prev.to_bytes(32, 'little'))
+    assert flattern_len(rpi_bytes_group) == N_BYTES_ONE + N_BYTES_BLOCK + N_BYTES_EXTRA_VALUE
 
     # Tx Table
     tx_table = public_data.tx_table(MAX_TXS, MAX_CALLDATA_BYTES)
+    (tx_id_col, tx_index_col, tx_value_col) = tx_table
     tx_table_tx_fields = public_data.tx_table_tx_fields(MAX_TXS)
     tx_table_tx_calldata = public_data.tx_table_tx_calldata(MAX_CALLDATA_BYTES)
-    raw_public_inputs.extend(
-        [FQ(0)] + tx_table_tx_fields[0]
-    )  # start offset = BLOCK_LEN + 2 + EXTRA_LEN
-    raw_public_inputs.extend(
-        [FQ(0)] + tx_table_tx_fields[1]
-    )  # start offset += (TX_LEN * MAX_TXS + 1)
-    raw_public_inputs.extend(
-        [FQ(0)] + [w.lo.expr() for w in tx_table_tx_fields[2]]
-    )  # start offset += (TX_LEN * MAX_TXS + 1)
-    raw_public_inputs.extend(
-        [w.lo.expr() for w in tx_table_tx_calldata[2]]
-    )  # start offset += (TX_LEN * MAX_TXS + 1)
-    raw_public_inputs.extend(
-        [FQ(0)] + [w.hi.expr() for w in tx_table_tx_fields[2]]
-    )  # start offset += (TX_LEN * MAX_TXS)
-    raw_public_inputs.extend(
-        [w.hi.expr() for w in tx_table_tx_calldata[2]]
-    )  # start offset += MAX_CALLDATA_BYTES
 
-    assert (
-        len(raw_public_inputs)
-        == BLOCK_LEN + 2 + EXTRA_LEN + 4 * (TX_LEN * MAX_TXS + 1) + 2 * MAX_CALLDATA_BYTES
+    # traverse column tuple in row order
+    tx_table_raw_bytes_group = public_data.tx_table_raw_bytes_group(MAX_TXS)
+    rpi_bytes_group.extend(tx_table_raw_bytes_group)
+
+    keccak_table = KeccakTable()
+    assert flattern_len(rpi_bytes_group) == (
+        N_BYTES_ONE # empty block row
+        + N_BYTES_BLOCK # block
+        + N_BYTES_EXTRA_VALUE # extra value
+        + N_BYTES_U64 * TX_LEN * MAX_TXS + N_BYTES_U64 # txid + first empty
+        + N_BYTES_U64 * TX_LEN * MAX_TXS + N_BYTES_U64 # txindex + first empty
+        + N_BYTES_TX * MAX_TXS + N_BYTES_ONE # tx value
     )
-    rpi_rlc = linear_combine_bytes(raw_public_inputs, rand_rpi, range_check=False)
-    # NOTE: End rlc calculation of raw_public_inputs.
 
-    rpi_rlc_acc_col = [raw_public_inputs[-1]]
-    for i in reversed(range(len(raw_public_inputs) - 1)):
-        rpi_rlc_acc_col.append(rpi_rlc_acc_col[-1] * rand_rpi + raw_public_inputs[i])
-    rpi_rlc_acc_col = list(reversed(rpi_rlc_acc_col))
+    # Tx Calldata
+    tx_table_calldata_raw_bytes_group = public_data.tx_table_calldata_raw_bytes_group(MAX_CALLDATA_BYTES)
+    rpi_bytes_group.extend(tx_table_calldata_raw_bytes_group)
 
-    rows = []
+    circuit_len = (N_BYTES_ONE # empty block row
+        + N_BYTES_BLOCK # block
+        + N_BYTES_EXTRA_VALUE # extra value
+        + N_BYTES_U64 * TX_LEN * MAX_TXS + N_BYTES_U64 # txid + first empty
+        + N_BYTES_U64 * TX_LEN * MAX_TXS + N_BYTES_U64 # txindex + first empty
+        + N_BYTES_TX * MAX_TXS + N_BYTES_ONE # tx value
+        + MAX_CALLDATA_BYTES
+    )
+    assert flattern_len(rpi_bytes_group) == circuit_len
+
+    # rpi_rlc_acc_col = [rpi_bytes_group[-1]]
+    # for i in reversed(range(len(rpi_bytes_group) - 1)):
+    #     rpi_rlc_acc_col.append(rpi_rlc_acc_col[-1] * rand_rpi + rpi_bytes_group[i])
+    # rpi_rlc_acc_col = list(reversed(rpi_rlc_acc_col))
+
+    rows: List[Row] = []
     calldata_gas_cost_table = [TxCallDataGasCostAccRow(FQ(0), FQ(0), FQ(0))]
-    for i in range(len(raw_public_inputs)):
-        q_end = FQ(1) if i == len(raw_public_inputs) - 1 else FQ(0)
-        q_not_end = FQ(1) - q_end
-        block_row = BlockTableRow(WordOrValue(FQ(0)))
+    i = circuit_len - 1
+    rpi_bytes_keccakrlc = []
+    rpi_value_lc = []
+    rpi_bytes = []
+    for group in reversed(rpi_bytes_group): # acc from big endian
+        for byte_index, byte in enumerate(reversed(group)):
 
-        q_block_table = FQ(0)
-        if i < BLOCK_LEN // 2 + 1:
-            q_block_table = FQ(1)
-            assert i < len(block_table_value_col)
-            block_row = BlockTableRow(block_table_value_col[i])
+            rpi_bytes.append(byte)
 
-        q_tx_table = FQ(0)
-        q_tx_calldata = FQ(0)
-        q_tx_calldata_start = FQ(0)
-        tx_id_inv = FQ(0)
-        tx_value_lo_inv = FQ(0)
-        tx_id_diff_inv = FQ(0)
-        calldata_gas_cost = FQ(0)
-        is_final = FQ(0)
-        tx_row = TxTableRow(FQ(0), FQ(0), FQ(0), WordOrValue(FQ(0)))
-        tx_table_len = TX_LEN * MAX_TXS + 1
-        if i < tx_table_len + MAX_CALLDATA_BYTES:
-            tx_id = tx_table[0][i]
-            index = tx_table[1][i]
-            value = tx_table[2][i]
-            tag = FQ(TxTag.CallData)
-            if i == 0:
-                tag = FQ(0)
-            elif i < tx_table_len:
-                # Iterate over TxTag values (until TxTag.TxSignHash) in a cycle
-                tag = FQ((i % TX_LEN))
-                if i % TX_LEN == 0:
-                    tag = FQ(TX_LEN)
-            if i < tx_table_len:
-                q_tx_table = FQ(1)
-                tx_id_inv = (tag - FQ(TxTag.CallDataLength)).inv()
-                tx_value_lo_inv = value.lo.expr().inv()
+            q_rpi_byte_enable = FQ(1)
+            q_digest_byte_enable = FQ(1) if i < 32 else FQ(0)
+            q_digest_last = FQ(1) if i == 31 else FQ(0)
+            q_bytes_last = FQ(1) if len(rpi_bytes) == 1 else FQ(0)
+            q_rpi_keccak_lookup = FQ(1) if i == 0 else FQ(0) # keccak lookup happened in first row
+            q_rpi_value_start = FQ(0)
 
-            if i >= tx_table_len:
-                q_tx_calldata = FQ(1)
-                tx_id_inv = tx_id.inv()
-                tx_value_lo_inv = value.lo.expr().inv()
-                tx_id_next = FQ(0)
-                if i < tx_table_len + MAX_CALLDATA_BYTES - 1:
-                    tx_id_next = tx_table[0][i + 1]
-                tx_id_diff_inv = (tx_id_next - tx_id).inv()
-                calldata_gas_cost = tx_table_tx_calldata[3][i - tx_table_len]
-                is_final = tx_table_tx_calldata[4][i - tx_table_len]
-                calldata_gas_cost_table.append(
-                    TxCallDataGasCostAccRow(tx_id, is_final, calldata_gas_cost)
-                )
+            if i == circuit_len - 1:
+                rpi_bytes_keccakrlc = [FQ(byte)]
+            else:
+                rpi_bytes_keccakrlc.append(FQ(rpi_bytes_keccakrlc[-1] * keccak_rand + byte))
 
-            if i == tx_table_len:
-                q_tx_calldata_start = FQ(1)
-            tx_row = TxTableRow(tx_id, tag, index, value)
 
-        row = Row(
-            q_block_table,
-            block_row,
-            q_tx_table,
-            q_tx_calldata,
-            q_tx_calldata_start,
-            tx_row,
-            tx_id_inv,
-            tx_value_lo_inv,
-            tx_id_diff_inv,
-            calldata_gas_cost,
-            is_final,
-            raw_public_inputs[i],
-            rpi_rlc_acc_col[i],
-            rand_rpi,
-            q_end,
-            q_not_end,
-        )
-        rows.append(row)
+            if byte_index == 0:
+                q_rpi_value_start = FQ(1)
+                rpi_value_lc.append(FQ(byte))
+            else:
+                rpi_value_lc.append(FQ(rpi_value_lc[-1] * byte_pow_base + byte))
+
+            # block_row = BlockTableRow(WordOrValue(FQ(0)))
+
+            # q_block_table = FQ(0)
+            # if i < BLOCK_LEN // 2 + 1:
+            #    q_block_table = FQ(1)
+            #    assert i < len(block_table_value_col)
+            #    block_row = BlockTableRow(block_table_value_col[i])
+
+            q_tx_table = FQ(0)
+            q_tx_calldata = FQ(0)
+            q_tx_calldata_start = FQ(0)
+
+            q_digest_value_start = FQ(0)
+
+            tx_id_inv = FQ(0)
+            tx_value_lo_inv = FQ(0)
+            tx_id_diff_inv = FQ(0)
+            calldata_gas_cost = FQ(0)
+            is_final = FQ(0)
+            tx_row = TxTableRow(FQ(0), FQ(0), FQ(0), WordOrValue(FQ(0)))
+            tx_table_len = TX_LEN * MAX_TXS + 1
+            if i < tx_table_len + MAX_CALLDATA_BYTES:
+                tx_id = tx_table[0][i]
+                index = tx_table[1][i]
+                value = tx_table[2][i]
+                tag = FQ(TxTag.CallData)
+                if i == 0:
+                    tag = FQ(0)
+                elif i < tx_table_len:
+                    # Iterate over TxTag values (until TxTag.TxSignHash) in a cycle
+                    tag = FQ((i % TX_LEN))
+                    if i % TX_LEN == 0:
+                        tag = FQ(TX_LEN)
+                if i < tx_table_len:
+                    q_tx_table = FQ(1)
+                    tx_id_inv = (tag - FQ(TxTag.CallDataLength)).inv()
+                    tx_value_lo_inv = value.lo.expr().inv()
+
+                if i >= tx_table_len:
+                    q_tx_calldata = FQ(1)
+                    tx_id_inv = tx_id.inv()
+                    tx_value_lo_inv = value.lo.expr().inv()
+                    tx_id_next = FQ(0)
+                    if i < tx_table_len + MAX_CALLDATA_BYTES - 1:
+                        tx_id_next = tx_table[0][i + 1]
+                    tx_id_diff_inv = (tx_id_next - tx_id).inv()
+                    calldata_gas_cost = tx_table_tx_calldata[3][i - tx_table_len]
+                    is_final = tx_table_tx_calldata[4][i - tx_table_len]
+                    calldata_gas_cost_table.append(
+                        TxCallDataGasCostAccRow(tx_id, is_final, calldata_gas_cost)
+                    )
+
+                if i == tx_table_len:
+                    q_tx_calldata_start = FQ(1)
+                tx_row = TxTableRow(tx_id, tag, index, value)
+
+            row = Row(
+                q_digest_last,
+                q_bytes_last,
+                q_tx_table,
+                q_tx_calldata,
+                q_tx_calldata_start,
+                q_rpi_keccak_lookup,
+                q_rpi_value_start,
+                q_digest_value_start,
+
+                tx_id_inv,
+                tx_value_lo_inv,
+                tx_id_diff_inv,
+                calldata_gas_cost,
+                is_final,
+
+                rpi_bytes[-1],
+                rpi_bytes_keccakrlc[-1],
+                rpi_value_lc[-1],
+                FQ(0), # rpi_digest_bytes
+                FQ(0), # rpi_digest_bytes_rlc
+                FQ(0), # rpi_digest_bytes_lc
+
+                q_rpi_byte_enable,
+                FQ(0), # q_digest_byte_enable
+                keccak_table,
+            )
+            rows.append(row)
+            i -= 1
+    rows.reverse()
+    output_digest = keccak(bytes(rpi_bytes))
+    assert len(output_digest) == 32
+
+    rpi_digest_bytes_rlc = []
+    rpi_digest_bytes_lc = []
+    for i in range(31, -1, -1):
+        row = rows[i]
+        row.rpi_digest_bytes = FQ(output_digest[i])
+
+        if i == 31:
+            rpi_digest_bytes_rlc.append(FQ(output_digest[i]))
+        else:
+            rpi_digest_bytes_rlc.append(rpi_digest_bytes_rlc[-1] * evm_rand + FQ(output_digest[i]))
+
+        row.rpi_digest_bytes_rlc = rpi_digest_bytes_rlc[-1]
+        if i == 31 or i == 15:
+            row.q_digest_value_start = FQ(1)
+            rpi_digest_bytes_lc.append(FQ(output_digest[i]))
+        else:
+            rpi_digest_bytes_lc.append(rpi_digest_bytes_lc[-1] * byte_pow_base + FQ(output_digest[i]))
+
+        row.q_digest_byte_enable = FQ(1)
 
     public_inputs = PublicInputs(
-        rand_rpi,
-        rpi_rlc,
-        FQ(public_data.chain_id),
-        Word(public_data.block.state_root),
-        Word(public_data.state_root_prev),
+        pi_keccak=WordOrValue(Word(output_digest))
     )
-    return Witness(rows, public_inputs, set(calldata_gas_cost_table))
+    return Witness(rows, public_inputs, set(calldata_gas_cost_table), keccak_table)
+
+def flattern_len(a: List[List]):
+    return len([c for b in a for c in b])
