@@ -1,9 +1,8 @@
 from dataclasses import dataclass
 from typing import NewType, Tuple, List, Union, Set
-from tests.common import rand_fq
 from zkevm_specs.util.arithmetic import bytes_to_fq
 
-from zkevm_specs.util.param import N_BYTES_HALF_WORD, N_BYTES_WORD
+from zkevm_specs.util.param import N_BYTES_WORD
 
 from .util import (
     FQ,
@@ -32,9 +31,14 @@ from .evm_circuit.table import KeccakTableRow, lookup, TableRow
 
 
 @dataclass
-class BlockTableRow:
-    value: WordOrValue
+class BlockTable:
+    table: List[WordOrValue]
 
+    def __init__(self):
+        self.table = []
+
+    def add(self, value: WordOrValue):
+        self.table.append(value)
 
 @dataclass
 class TxTableRow:
@@ -42,6 +46,22 @@ class TxTableRow:
     tag: FQ  # Fixed Column
     index: FQ
     value: WordOrValue
+
+@dataclass
+class TxTable:
+    table: List[Tuple[FQ, FQ, FQ, WordOrValue]]
+
+    def __init__(self):
+        self.table = []
+
+    def add(self, txid: FQ, tag: FQ, index: FQ, value: WordOrValue):
+        self.table.append((
+            txid,
+            tag,
+            index,
+            value
+        ))
+
 
 
 @dataclass(frozen=True)
@@ -118,12 +138,15 @@ class Row:
 
     keccak_table: KeccakTableRow
     tx_table: TxTableRow
-    block_table: BlockTableRow
 
 @dataclass
 class PublicInputs:
     """Public Inputs of the PublicInputs circuit"""
     pi_keccak: Word
+
+    # FIXME temporarily put state_root and pre_state_root here, since no table refer to those
+    state_root: Word
+    state_root_prev: Word
 
 @is_circuit_code
 def check_row(
@@ -318,7 +341,10 @@ class Witness:
     public_inputs: PublicInputs  # Public Inputs of the PublicInputs circuit
     calldata_gas_cost_table: Set[TxCallDataGasCostAccRow]
     keccak_table: KeccakTable
+    block_table: BlockTable
+    tx_table: TxTable
     circuit_len: int
+    copy_constrains: List[List[int]]
 
 @is_circuit_code
 def verify_circuit(
@@ -332,12 +358,69 @@ def verify_circuit(
 
     rows = witness.rows
     calldata_gas_cost_table = witness.calldata_gas_cost_table
+    public_inputs = witness.public_inputs
     keccak_table = witness.keccak_table
+    block_table = witness.block_table
+    tx_table = witness.tx_table
+    copy_constrains = witness.copy_constrains
 
     fixed_u16_table = set([FixedU16Row(FQ(i)) for i in range(1 << 16)])
 
     # copy constraint from public input to advice column
-    assert rows[0].rpi_digest_word == witness.public_inputs.pi_keccak
+    assert rows[0].rpi_digest_word == public_inputs.pi_keccak
+
+    # block constrains
+    for i in range(BLOCK_LEN//2 + 1):
+        block_row = block_table.table[i]
+        if block_row.is_word:
+            lo = copy_constrains.pop(0)
+            hi = copy_constrains.pop(0)
+            assert block_row.lo.expr() == bytes_to_fq(lo)
+            assert block_row.hi.expr() == bytes_to_fq(hi)
+        else:
+            lo = copy_constrains.pop(0)
+            assert block_row.value() == bytes_to_fq(lo)
+
+    lo = copy_constrains.pop(0)
+    hi = copy_constrains.pop(0)
+    assert public_inputs.state_root.lo.expr() == bytes_to_fq(lo)
+    assert public_inputs.state_root.hi.expr() == bytes_to_fq(hi)
+
+    lo = copy_constrains.pop(0)
+    hi = copy_constrains.pop(0)
+    assert public_inputs.state_root_prev.lo.expr() == bytes_to_fq(lo)
+    assert public_inputs.state_root_prev.hi.expr() == bytes_to_fq(hi)
+
+    # tx constrains
+    tx_len = TX_LEN * MAX_TXS + 1
+    for i in range(tx_len):
+        (txid, _, index, value) = tx_table.table[i]
+        lo = copy_constrains.pop(0)
+        assert txid == bytes_to_fq(lo)
+        lo = copy_constrains.pop(0)
+        assert index == bytes_to_fq(lo)
+
+        if value.is_word:
+            lo = copy_constrains.pop(0)
+            high = copy_constrains.pop(0)
+            assert value.lo.expr() == bytes_to_fq(lo)
+            assert value.hi.expr() == bytes_to_fq(high)
+        else:
+            lo = copy_constrains.pop(0)
+            assert value.value() == bytes_to_fq(lo)
+
+    # tx calldata constrains
+    calldata_len = MAX_CALLDATA_BYTES
+    for i in range(calldata_len):
+        (_, _, _, value) = tx_table.table[tx_len + i]
+        if value.is_word:
+            lo = copy_constrains.pop(0)
+            high = copy_constrains.pop(0)
+            assert value.lo.expr() == bytes_to_fq(lo)
+            assert value.hi.expr() == bytes_to_fq(high)
+        else:
+            lo = copy_constrains.pop(0)
+            assert value.value() == bytes_to_fq(lo)
 
     # check rows
     for i in range(len(rows)):
@@ -443,7 +526,6 @@ class Transaction:
         )
         self.append_raw_byte_with_id_index(raw_bytes_group, txid, U64(call_data_gas_cost).to_bytes(8, 'little')) # CallDataCost
         tx_sign_hash_lo, tx_sign_hash_hi = Word(self.tx_sign_hash).to_lo_hi()
-        print("self.tx_sign_hash", Word(self.tx_sign_hash))
         self.append_raw_byte_with_id_index(raw_bytes_group, txid, tx_sign_hash_lo.n.to_bytes(16, 'little'), tx_sign_hash_hi.n.to_bytes(16, 'little')) # TxSignHash
         return raw_bytes_group
 
@@ -615,14 +697,13 @@ N_BYTES_TX = 176
 N_BYTES_BLOCK = 8308
 N_BYTES_EXTRA_VALUE = N_BYTES_WORD + N_BYTES_WORD
 byte_pow_base = FQ(255)
-evm_rand= rand_fq()
-keccak_rand= rand_fq()
+evm_rand= FQ(255)
+keccak_rand= FQ(255)
 
 def public_data2witness(
     public_data: PublicData, MAX_TXS: int, MAX_CALLDATA_BYTES: int, rand_rpi: FQ
 ) -> Witness:
-    print("MAX_CALLDATA_BYTES", MAX_CALLDATA_BYTES)
-    # Layout of raw_public_inputs:
+    # TODO Layout of raw_public_inputs:
     #   # Block Table
     #   [0] + [block_table.value.lo] # BLOCK_LEN//2 + 1
     #   [0] + [block_table.value.hi] # BLOCK_LEN//2 + 1
@@ -658,20 +739,18 @@ def public_data2witness(
     assert flattern_len(rpi_bytes_group) == N_BYTES_ONE + N_BYTES_BLOCK + N_BYTES_EXTRA_VALUE
 
     # Tx Table
-    tx_table = public_data.tx_table(MAX_TXS, MAX_CALLDATA_BYTES)
-    (tx_id_col, tx_index_col, tx_value_col) = tx_table
+    tx_table_col_oriented = public_data.tx_table(MAX_TXS, MAX_CALLDATA_BYTES)
+    (tx_id_col, tx_index_col, tx_value_col) = tx_table_col_oriented
     tx_table_tx_fields = public_data.tx_table_tx_fields(MAX_TXS)
     tx_table_tx_calldata = public_data.tx_table_tx_calldata(MAX_CALLDATA_BYTES)
 
     # traverse column tuple in row order
     tx_table_raw_bytes_group = public_data.tx_table_raw_bytes_group(MAX_TXS)
-    # print("len of rpi_bytes_group", len(rpi_bytes_group))
-    # print("end of rpi_bytes_group", [bytes_to_fq(i) for i in rpi_bytes_group[-5:]])
     rpi_bytes_group.extend(tx_table_raw_bytes_group)
-    # print("begin of tx_table_raw_bytes_group", [bytes_to_fq(i) for i in tx_table_raw_bytes_group[0:5]])
-    # print("after len of rpi_bytes_group", len(rpi_bytes_group))
 
     keccak_table = KeccakTable()
+    block_table = BlockTable()
+    tx_table = TxTable()
     assert flattern_len(rpi_bytes_group) == (
         N_BYTES_ONE # empty block row
         + N_BYTES_BLOCK # block
@@ -702,8 +781,6 @@ def public_data2witness(
     rpi_value_lc = []
     rpi_bytes = []
 
-    block_table_copy_constraints: List[WordOrValue] = []
-    tx_table_copy_constraints: List[WordOrValue] = []
     for group in reversed(rpi_bytes_group): # acc from big endian
         for byte_index, byte in enumerate(reversed(group)):
 
@@ -726,20 +803,19 @@ def public_data2witness(
             else:
                 rpi_value_lc.append(FQ(rpi_value_lc[-1] * byte_pow_base + byte))
 
-            block_row = BlockTableRow(WordOrValue(FQ(0)))
-
             # q_block_table = FQ(0)
             if i < BLOCK_LEN // 2 + 1:
                 # q_block_table = FQ(1)
                 assert i < len(block_table_value_col)
-                block_row = BlockTableRow(block_table_value_col[i])
-                block_table_copy_constraints.append(block_table_value_col[i])
+                # block_row = BlockTableRow(block_table_value_col[i])
+                block_table.add(block_table_value_col[i])
+                # block_table_copy_constraints.append(block_table_value_col[i])
 
             # FIXME: extra value not used in any place. Here add 2 copy constraint in block table just for aligment
             if i == BLOCK_LEN // 2 + 1:
-                block_table_copy_constraints.append(WordOrValue(Word(public_data.block.state_root)))
+                block_table.add(WordOrValue(Word(public_data.block.state_root)))
             if i == BLOCK_LEN // 2 + 2:
-                block_table_copy_constraints.append(WordOrValue(Word(public_data.state_root_prev)))
+                block_table.add(WordOrValue(Word(public_data.state_root_prev)))
 
             q_tx_table = FQ(0)
             q_tx_calldata = FQ(0)
@@ -753,9 +829,9 @@ def public_data2witness(
             tx_row = TxTableRow(FQ(0), FQ(0), FQ(0), WordOrValue(FQ(0)))
             tx_table_len = TX_LEN * MAX_TXS + 1
             if i < tx_table_len + MAX_CALLDATA_BYTES:
-                tx_id = tx_table[0][i]
-                index = tx_table[1][i]
-                value = tx_table[2][i]
+                tx_id = tx_table_col_oriented[0][i]
+                index = tx_table_col_oriented[1][i]
+                value = tx_table_col_oriented[2][i]
                 tag = FQ(TxTag.CallData)
                 if i == 0:
                     tag = FQ(0)
@@ -775,7 +851,7 @@ def public_data2witness(
                     tx_value_lo_inv = value.lo.expr().inv()
                     tx_id_next = FQ(0)
                     if i < tx_table_len + MAX_CALLDATA_BYTES - 1:
-                        tx_id_next = tx_table[0][i + 1]
+                        tx_id_next = tx_table_col_oriented[0][i + 1]
                     tx_id_diff_inv = (tx_id_next - tx_id).inv()
                     calldata_gas_cost = tx_table_tx_calldata[3][i - tx_table_len]
                     is_final = tx_table_tx_calldata[4][i - tx_table_len]
@@ -786,13 +862,7 @@ def public_data2witness(
                 if i == tx_table_len:
                     q_tx_calldata_start = FQ(1)
                 tx_row = TxTableRow(tx_id, tag, index, value)
-                if i < tx_table_len:
-                    tx_table_copy_constraints.append(value)
-                    tx_table_copy_constraints.append(WordOrValue(index))
-                    tx_table_copy_constraints.append(WordOrValue(tx_id))
-                else: # for calldata, only record value
-                    # TODO should we copy constraints on tx_id, index as well?
-                    tx_table_copy_constraints.append(value)
+                tx_table.add(tx_id, tag, index, value)
 
             row = Row(
                 q_bytes_last,
@@ -816,7 +886,6 @@ def public_data2witness(
                 q_rpi_byte_enable,
                 keccak_table,
                 tx_row,
-                block_row,
             )
             rows.append(row)
             i -= 1
@@ -827,28 +896,16 @@ def public_data2witness(
     # keccak lookup happened on 0 row
     rows[0].rpi_digest_word = Word(output_digest)
 
-    # generate copy constraints
-    block_table_copy_constraints.reverse()
-    tx_table_copy_constraints.reverse()
-    table_copy_constraints = block_table_copy_constraints + tx_table_copy_constraints
-
     public_inputs = PublicInputs(
-        pi_keccak=Word(output_digest)
+        pi_keccak=Word(output_digest),
+        state_root=Word(public_data.block.state_root),
+        state_root_prev=Word(public_data.state_root_prev),
     )
     keccak_table.add(bytes(rpi_bytes), keccak_rand)
 
-    # Verify copy constraints during witness assignment
-    for i, constraint in enumerate(table_copy_constraints):
-        if constraint.is_word:
-            lo = rpi_bytes_group.pop(0)
-            high = rpi_bytes_group.pop(0)
-            assert constraint.lo.expr() == bytes_to_fq(lo)
-            assert constraint.hi.expr() == bytes_to_fq(high)
-        else:
-            lo = rpi_bytes_group.pop(0)
-            assert constraint.value() == bytes_to_fq(lo)
-
-    return Witness(rows, public_inputs, set(calldata_gas_cost_table), keccak_table, circuit_len)
+    block_table.table.reverse()
+    tx_table.table.reverse()
+    return Witness(rows, public_inputs, set(calldata_gas_cost_table), keccak_table, block_table, tx_table, circuit_len, copy_constrains=rpi_bytes_group)
 
 def flattern_len(a: List[List]):
     return len([c for b in a for c in b])
