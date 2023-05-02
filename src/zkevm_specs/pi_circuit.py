@@ -6,6 +6,7 @@ from zkevm_specs.util.param import N_BYTES_WORD
 from .util import (
     FQ,
     Word,
+    RLC,
     WordOrValue,
     U8,
     U64,
@@ -66,7 +67,7 @@ class KeccakTable:
         self.table.add(
             (
                 FQ(1),
-                RLC(bytes(reversed(input)), keccak_randomness, n_bytes=64).expr(),
+                RLC(bytes(reversed(input)), keccak_randomness, n_bytes=len(input)).expr(),
                 FQ(len(input)),
                 Word(output),
             )
@@ -85,14 +86,14 @@ class Row:
 
     # q_block_table: FQ
 
-    q_digest_last: FQ
+    # q_digest_last: FQ
     q_bytes_last: FQ
     q_tx_table: FQ
     q_tx_calldata: FQ
     q_tx_calldata_start: FQ
     q_rpi_keccak_lookup: FQ
     q_rpi_value_start: FQ # Fixed Column
-    q_digest_value_start: FQ # Fixed Column
+    # q_digest_value_start: FQ # Fixed Column
 
     tx_id_inv: FQ  # (tx_tag - CallDataLength)^(-1) when q_tx_table = 1
     # tx_id^(-1) when q_tx_calldata = 1
@@ -104,19 +105,23 @@ class Row:
     rpi_bytes: FQ
     rpi_bytes_keccakrlc: FQ
     rpi_value_lc: FQ
-    rpi_digest_bytes: FQ
-    rpi_digest_bytes_rlc: FQ
-    rpi_digest_bytes_lc: FQ
+    # rpi_digest_bytes: FQ
+    # rpi_digest_bytes_rlc: FQ
+    # rpi_digest_bytes_lc: FQ
+    rpi_digest_word: Word
+    # rpi_digest_lo: FQ
 
     q_rpi_byte_enable: FQ
-    q_digest_byte_enable: FQ
+    # q_digest_byte_enable: FQ
 
     keccak_table: KeccakTableRow
+    tx_table: TxTableRow
+    block_table: BlockTableRow
 
 @dataclass
 class PublicInputs:
     """Public Inputs of the PublicInputs circuit"""
-    pi_keccak: WordOrValue
+    pi_keccak: Word
 
 @is_circuit_code
 def check_row(
@@ -132,13 +137,12 @@ def check_row(
     keccak_table: KeccakTable,
     circuit_len: FQ,
 ):
-    # TODO how to represent NOT(selector) elegantly?
 
     q_bytes_last = row.q_bytes_last
     q_rpi_byte_enable = row.q_rpi_byte_enable
-
-    # q_end = row.q_end
-    row_offset_block_table_value_lo = row
+    # q_digest_byte_enable = row.q_digest_byte_enable
+    # q_digest_value_start = row.q_digest_value_start
+    # q_digest_last = row.q_digest_last
 
     # gate 1 and gate 2 are compensation branch
     # 1: rpi_bytes_keccakrlc[last] = rpi_bytes[last]
@@ -156,25 +160,25 @@ def check_row(
     # 4. rpi_value_lc[i] = rpi_bytes[i]
     assert row.q_rpi_byte_enable * row.q_rpi_value_start * (row.rpi_value_lc - row.rpi_bytes) == FQ(0)
 
-    # gate 5 and gate 6 are compensation branch
-    # 5. rpi_digest_bytes_rlc[last] = rpi_digest_bytes[last]
-    assert row.q_digest_byte_enable * row.q_digest_last * (row.rpi_digest_bytes_rlc - row.rpi_digest_bytes) == FQ(0)
+    # # gate 5 and gate 6 are compensation branch
+    # # 5. rpi_digest_bytes_rlc[last] = rpi_digest_bytes[last]
+    # assert q_digest_byte_enable * q_digest_last * (row.rpi_digest_bytes_rlc - row.rpi_digest_bytes) == FQ(0)
 
-    # 6. rpi_digest_bytes_rlc[i] = rpi_digest_bytes_rlc[i+1] * r + rpi_digest_bytes[i]
-    assert row.q_digest_byte_enable * (FQ(1) - row.q_digest_last) * (
-        row.rpi_digest_bytes_rlc - row_next.rpi_digest_bytes_rlc * evm_rand - row.rpi_digest_bytes_rlc
-    ) == FQ(0)
+    # # 6. rpi_digest_bytes_rlc[i] = rpi_digest_bytes_rlc[i+1] * r + rpi_digest_bytes[i]
+    # assert q_digest_byte_enable * (FQ(1) - q_digest_last) * (
+    #     row.rpi_digest_bytes_rlc - row_next.rpi_digest_bytes_rlc * evm_rand - row.rpi_digest_bytes
+    # ) == FQ(0)
 
-    # gate 7 and gate 8 are compensation branch
-    # 7. rpi_digest_bytes_lc[i] = rpi_digest_bytes[i]
-    assert row.q_digest_byte_enable * (row.q_digest_value_start) * (
-        row.rpi_digest_bytes_lc - row.rpi_digest_bytes
-    ) == FQ(0)
+    # # gate 7 and gate 8 are compensation branch
+    # # 7. rpi_digest_bytes_lc[i] = rpi_digest_bytes[i]
+    # assert q_digest_byte_enable * (q_digest_value_start) * (
+    #     row.rpi_digest_bytes_lc - row.rpi_digest_bytes
+    # ) == FQ(0)
 
-    # 8. rpi_digest_bytes_lc[i] = rpi_digest_bytes_lc[i+1] * BYTE_POW_BASE + rpi_digest_bytes[i]
-    assert row.q_digest_byte_enable * (FQ(1) - row.q_digest_value_start) * (
-        row.rpi_digest_bytes_lc - row_next.rpi_digest_bytes_lc * byte_pow_base - row.rpi_digest_bytes
-    ) == FQ(0)
+    # # 8. rpi_digest_bytes_lc[i] = rpi_digest_bytes_lc[i+1] * BYTE_POW_BASE + rpi_digest_bytes[i]
+    # assert q_digest_byte_enable * (FQ(1) - q_digest_value_start) * (
+    #     row.rpi_digest_bytes_lc - row_next.rpi_digest_bytes_lc * byte_pow_base - row.rpi_digest_bytes
+    # ) == FQ(0)
 
     # 9. lookup rpi_bytes_keccakrlc against rpi_digest_bytes_rlc
                     #     (q_rpi_keccak_lookup.expr() * 1.expr(), is_enabled),
@@ -188,7 +192,7 @@ def check_row(
         row.q_rpi_keccak_lookup,
         row.q_rpi_keccak_lookup * row.rpi_bytes_keccakrlc,
         row.q_rpi_keccak_lookup * circuit_len,
-        row.q_rpi_keccak_lookup * row.rpi_digest_bytes_rlc,
+        row.rpi_digest_word.select(row.q_rpi_keccak_lookup),
         "lookup not found",
     )
 
@@ -358,6 +362,7 @@ class Witness:
     public_inputs: PublicInputs  # Public Inputs of the PublicInputs circuit
     calldata_gas_cost_table: Set[TxCallDataGasCostAccRow]
     keccak_table: KeccakTable
+    circuit_len: int
 
 @is_circuit_code
 def verify_circuit(
@@ -370,6 +375,7 @@ def verify_circuit(
     """
 
     rows = witness.rows
+    # TODO public_input = witness.public_inputs
     calldata_gas_cost_table = witness.calldata_gas_cost_table
     keccak_table = witness.keccak_table
 
@@ -407,6 +413,7 @@ def verify_circuit(
             calldata_gas_cost_table,
             fixed_u16_table,
             keccak_table,
+            witness.circuit_len,
         )
 
     # check copy/permutation constraints
@@ -752,8 +759,6 @@ def public_data2witness(
             rpi_bytes.append(byte)
 
             q_rpi_byte_enable = FQ(1)
-            q_digest_byte_enable = FQ(1) if i < 32 else FQ(0)
-            q_digest_last = FQ(1) if i == 31 else FQ(0)
             q_bytes_last = FQ(1) if len(rpi_bytes) == 1 else FQ(0)
             q_rpi_keccak_lookup = FQ(1) if i == 0 else FQ(0) # keccak lookup happened in first row
             q_rpi_value_start = FQ(0)
@@ -770,19 +775,19 @@ def public_data2witness(
             else:
                 rpi_value_lc.append(FQ(rpi_value_lc[-1] * byte_pow_base + byte))
 
-            # block_row = BlockTableRow(WordOrValue(FQ(0)))
+            block_row = BlockTableRow(WordOrValue(FQ(0)))
 
             # q_block_table = FQ(0)
-            # if i < BLOCK_LEN // 2 + 1:
-            #    q_block_table = FQ(1)
-            #    assert i < len(block_table_value_col)
-            #    block_row = BlockTableRow(block_table_value_col[i])
+            if i < BLOCK_LEN // 2 + 1:
+                q_block_table = FQ(1)
+                assert i < len(block_table_value_col)
+                block_row = BlockTableRow(block_table_value_col[i])
 
             q_tx_table = FQ(0)
             q_tx_calldata = FQ(0)
             q_tx_calldata_start = FQ(0)
 
-            q_digest_value_start = FQ(0)
+            # q_digest_value_start = FQ(0)
 
             tx_id_inv = FQ(0)
             tx_value_lo_inv = FQ(0)
@@ -827,14 +832,12 @@ def public_data2witness(
                 tx_row = TxTableRow(tx_id, tag, index, value)
 
             row = Row(
-                q_digest_last,
                 q_bytes_last,
                 q_tx_table,
                 q_tx_calldata,
                 q_tx_calldata_start,
                 q_rpi_keccak_lookup,
                 q_rpi_value_start,
-                q_digest_value_start,
 
                 tx_id_inv,
                 tx_value_lo_inv,
@@ -845,13 +848,16 @@ def public_data2witness(
                 rpi_bytes[-1],
                 rpi_bytes_keccakrlc[-1],
                 rpi_value_lc[-1],
-                FQ(0), # rpi_digest_bytes
-                FQ(0), # rpi_digest_bytes_rlc
-                FQ(0), # rpi_digest_bytes_lc
+                Word(0), # rpi_digest_word
+                # FQ(0), # rpi_digest_bytes
+                # FQ(0), # rpi_digest_bytes_rlc
+                # FQ(0), # rpi_digest_bytes_lc
 
                 q_rpi_byte_enable,
-                FQ(0), # q_digest_byte_enable
+                # FQ(0), # q_digest_byte_enable
                 keccak_table,
+                tx_row,
+                block_row,
             )
             rows.append(row)
             i -= 1
@@ -859,30 +865,37 @@ def public_data2witness(
     output_digest = keccak(bytes(rpi_bytes))
     assert len(output_digest) == 32
 
-    rpi_digest_bytes_rlc = []
-    rpi_digest_bytes_lc = []
-    for i in range(31, -1, -1):
-        row = rows[i]
-        row.rpi_digest_bytes = FQ(output_digest[i])
+    # keccak lookup happened on 0 row
+    rows[0].rpi_digest_word = Word(output_digest)
 
-        if i == 31:
-            rpi_digest_bytes_rlc.append(FQ(output_digest[i]))
-        else:
-            rpi_digest_bytes_rlc.append(rpi_digest_bytes_rlc[-1] * evm_rand + FQ(output_digest[i]))
+    # rpi_digest_bytes_rlc = []
+    # rpi_digest_bytes_lc = []
+    # for i in range(31, -1, -1):
+    #     row = rows[i]
+    #     row.rpi_digest_bytes = FQ(output_digest[i])
 
-        row.rpi_digest_bytes_rlc = rpi_digest_bytes_rlc[-1]
-        if i == 31 or i == 15:
-            row.q_digest_value_start = FQ(1)
-            rpi_digest_bytes_lc.append(FQ(output_digest[i]))
-        else:
-            rpi_digest_bytes_lc.append(rpi_digest_bytes_lc[-1] * byte_pow_base + FQ(output_digest[i]))
+    #     if i == 31:
+    #         row.q_digest_last = FQ(1)
+    #         rpi_digest_bytes_rlc.append(FQ(output_digest[i]))
+    #     else:
+    #         rpi_digest_bytes_rlc.append(rpi_digest_bytes_rlc[-1] * evm_rand + FQ(output_digest[i]))
 
-        row.q_digest_byte_enable = FQ(1)
+    #     row.rpi_digest_bytes_rlc = rpi_digest_bytes_rlc[-1]
+    #     if i == 31 or i == 15:
+    #         row.q_digest_value_start = FQ(1)
+    #         rpi_digest_bytes_lc.append(FQ(output_digest[i]))
+    #     else:
+    #         rpi_digest_bytes_lc.append(rpi_digest_bytes_lc[-1] * byte_pow_base + FQ(output_digest[i]))
+
+    #     row.rpi_digest_bytes_lc = rpi_digest_bytes_lc[-1]
+    #     row.rpi_digest_bytes_rlc = rpi_digest_bytes_rlc[-1]
+    #     row.q_digest_byte_enable = FQ(1)
 
     public_inputs = PublicInputs(
-        pi_keccak=WordOrValue(Word(output_digest))
+        pi_keccak=Word(output_digest)
     )
-    return Witness(rows, public_inputs, set(calldata_gas_cost_table), keccak_table)
+    keccak_table.add(bytes(rpi_bytes), keccak_rand)
+    return Witness(rows, public_inputs, set(calldata_gas_cost_table), keccak_table, circuit_len)
 
 def flattern_len(a: List[List]):
     return len([c for b in a for c in b])
