@@ -1,7 +1,9 @@
 from dataclasses import dataclass
 from typing import NewType, Tuple, List, Union, Set
+from tests.common import rand_fq
+from zkevm_specs.util.arithmetic import bytes_to_fq
 
-from zkevm_specs.util.param import N_BYTES_WORD
+from zkevm_specs.util.param import N_BYTES_HALF_WORD, N_BYTES_WORD
 
 from .util import (
     FQ,
@@ -196,52 +198,6 @@ def check_row(
         "lookup not found",
     )
 
-    # NONEED 0.1 rand_rpi[i] == rand_rpi[j]
-    ## assert q_not_end * row.rand_rpi == q_not_end * row_next.rand_rpi
-
-    ## TODO how to represent block/tx table copy constraint?
-    # 0.2 Block table -> value column match with raw_public_inputs at expected offset
-    # assert (
-    #     row.q_block_table * row.block_table.value.lo.expr()
-    #     == row.q_block_table * row_offset_block_table_value_lo.raw_public_inputs
-    # )
-    # assert (
-    #     row.q_block_table * row.block_table.value.hi.expr()
-    #     == row.q_block_table * row_offset_block_table_value_hi.raw_public_inputs
-    # )
-
-    # 0.3 Tx table -> {tx_id, index, value} column match with raw_public_inputs at expected offset
-    # id
-    # assert (
-    #     row.q_tx_table * row.tx_table.tx_id
-    #     == row.q_tx_table * row_offset_tx_table_tx_id.raw_public_inputs
-    # )
-    # index
-    # assert (
-    #     row.q_tx_table * row.tx_table.index
-    #     == row.q_tx_table * row_offset_tx_table_index.raw_public_inputs
-    # )
-    # value lo
-    # assert (
-    #     row.q_tx_table * row.tx_table.value.lo.expr()
-    #     == row.q_tx_table * row_offset_tx_table_value_lo.raw_public_inputs
-    # )
-    # value hi
-    # assert (
-    #     row.q_tx_table * row.tx_table.value.hi.expr()
-    #     == row.q_tx_table * row_offset_tx_table_value_hi.raw_public_inputs
-    # )
-    # call data lo
-    # assert (
-    #     row.q_tx_calldata * row.tx_table.value.lo.expr()
-    #     == row.q_tx_calldata * row_offset_tx_table_value_lo.raw_public_inputs
-    # )
-    # call data hi
-    # assert (
-    #     row.q_tx_calldata * row.tx_table.value.hi.expr()
-    #     == row.q_tx_calldata * row_offset_tx_table_value_hi.raw_public_inputs
-    # )
-
     zero = FQ(0)
     one = FQ(1)
     if row.q_tx_calldata != zero:
@@ -375,41 +331,21 @@ def verify_circuit(
     """
 
     rows = witness.rows
-    # TODO public_input = witness.public_inputs
     calldata_gas_cost_table = witness.calldata_gas_cost_table
     keccak_table = witness.keccak_table
 
     fixed_u16_table = set([FixedU16Row(FQ(i)) for i in range(1 << 16)])
+
+    # copy constraint from public input to advice column
+    assert rows[0].rpi_digest_word == witness.public_inputs.pi_keccak
+
     # check rows
     for i in range(len(rows)):
-        print("DBG", i)
         row = rows[i]
         row_next = rows[(i + 1) % len(rows)]
-        # Offset in raw_public_inputs with block_table -> value.hi column
-        # tx_table_offset = BLOCK_LEN // 2 + 1
-        # row_offset_block_table_value_hi = rows[(i + tx_table_offset) % len(rows)]
-        # Offset in raw_public_inputs with tx_table -> tx_id column
-        # tx_table_offset = BLOCK_LEN + 2 + EXTRA_LEN
-        # row_offset_tx_table_tx_id = rows[(i + tx_table_offset) % len(rows)]
-        # Offset in raw_public_inputs with tx_table -> index column
-        # tx_table_len = TX_LEN * MAX_TXS + 1
-        # tx_table_offset += tx_table_len
-        # row_offset_tx_table_index = rows[(i + tx_table_offset) % len(rows)]
-        # Offset in raw_public_inputs with tx_table -> value.lo column
-        # tx_table_offset += tx_table_len
-        # row_offset_tx_table_value_lo = rows[(i + tx_table_offset) % len(rows)]
-        # Offset in raw_public_inputs with tx_table -> value.hi column
-        # tx_table_offset += tx_table_len + MAX_CALLDATA_BYTES
-        # row_offset_tx_table_value_hi = rows[(i + tx_table_offset) % len(rows)]
-
         check_row(
             row,
             row_next,
-            # row_offset_block_table_value_hi,
-            # row_offset_tx_table_tx_id,
-            # row_offset_tx_table_index,
-            # row_offset_tx_table_value_lo,
-            # row_offset_tx_table_value_hi,
             calldata_gas_cost_table,
             fixed_u16_table,
             keccak_table,
@@ -479,7 +415,7 @@ class Transaction:
             ]
         )
         column.append(WordOrValue(FQ(call_data_gas_cost)))  # CallDataCost
-        column.append(WordOrValue(FQ(self.tx_sign_hash)))  # TxSignHash
+        column.append(WordOrValue(Word(self.tx_sign_hash)))  # TxSignHash
         return column
 
     def tx_table_raw_bytes_group(self, txid: int) -> List[List[int]]:
@@ -507,6 +443,7 @@ class Transaction:
         )
         self.append_raw_byte_with_id_index(raw_bytes_group, txid, U64(call_data_gas_cost).to_bytes(8, 'little')) # CallDataCost
         tx_sign_hash_lo, tx_sign_hash_hi = Word(self.tx_sign_hash).to_lo_hi()
+        print("self.tx_sign_hash", Word(self.tx_sign_hash))
         self.append_raw_byte_with_id_index(raw_bytes_group, txid, tx_sign_hash_lo.n.to_bytes(16, 'little'), tx_sign_hash_hi.n.to_bytes(16, 'little')) # TxSignHash
         return raw_bytes_group
 
@@ -559,27 +496,34 @@ class PublicData:
         raw_block_value.append(self.block.gas_limit.to_bytes(8, 'little'))
         raw_block_value.append(self.block.number.to_bytes(8, 'little'))
         raw_block_value.append(self.block.time.to_bytes(8, 'little'))
-        raw_block_value.append(self.block.difficulty.to_bytes(32, 'little'))
-        raw_block_value.append(self.block.base_fee.to_bytes(32, 'little'))
+        difficulty_lo, difficulty_hi = Word(self.block.difficulty).to_lo_hi()
+        raw_block_value.append(difficulty_lo.n.to_bytes(16, 'little'))
+        raw_block_value.append(difficulty_hi.n.to_bytes(16, 'little'))
+        base_fee_lo, base_fee_hi = Word(self.block.base_fee).to_lo_hi()
+        raw_block_value.append(base_fee_lo.n.to_bytes(16, 'little'))
+        raw_block_value.append(base_fee_hi.n.to_bytes(16, 'little'))
         raw_block_value.append(self.chain_id.to_bytes(8, 'little'))
         assert len(self.block_hashes) == 256
         for block_hash in self.block_hashes:
-            raw_block_value.append(block_hash.to_bytes(32, 'little'))
+            block_hash_lo, block_hash_hi = Word(block_hash).to_lo_hi()
+            raw_block_value.append(block_hash_lo.n.to_bytes(16, 'little'))
+            raw_block_value.append(block_hash_hi.n.to_bytes(16, 'little'))
         return raw_block_value
 
 
     def tx_table_raw_bytes_group(self, MAX_TXS: int) -> List[List[int]]:
         """Return the tx table bytes, traverse in row oriented and including first 0 row"""
         raw_bytes_group = []
+        assert len(self.txs) > 0
         assert len(self.txs) <= MAX_TXS
         raw_bytes_group.append(U64(0).to_bytes(8, 'little')) # empty id
         raw_bytes_group.append(U64(0).to_bytes(8, 'little')) # empty index
-        raw_bytes_group.append(U8(0).to_bytes(1, 'little')) # empty value
+        raw_bytes_group.append(U8(0).to_bytes(1, 'little')) # empty value lo
         for i in range(MAX_TXS):
             tx = Transaction.default()
             if i < len(self.txs):
                 tx = self.txs[i]
-            raw_bytes_group.extend([group for group in tx.tx_table_raw_bytes_group(i)])
+            raw_bytes_group.extend([group for group in tx.tx_table_raw_bytes_group(i + 1)])
         return raw_bytes_group
 
     def tx_table_calldata_raw_bytes_group(self, MAX_CALLDATA_BYTES: int) -> List[List[int]]:
@@ -671,12 +615,13 @@ N_BYTES_TX = 176
 N_BYTES_BLOCK = 8308
 N_BYTES_EXTRA_VALUE = N_BYTES_WORD + N_BYTES_WORD
 byte_pow_base = FQ(255)
-evm_rand= FQ(255)
-keccak_rand= FQ(255)
+evm_rand= rand_fq()
+keccak_rand= rand_fq()
 
 def public_data2witness(
     public_data: PublicData, MAX_TXS: int, MAX_CALLDATA_BYTES: int, rand_rpi: FQ
 ) -> Witness:
+    print("MAX_CALLDATA_BYTES", MAX_CALLDATA_BYTES)
     # Layout of raw_public_inputs:
     #   # Block Table
     #   [0] + [block_table.value.lo] # BLOCK_LEN//2 + 1
@@ -704,8 +649,12 @@ def public_data2witness(
 
     # Extra fields
     # rpi_bytes.extend(public_data.block.hash.to_bytes(32, 'little'))  # FIXME
-    rpi_bytes_group.append(public_data.block.state_root.to_bytes(32, 'little'))
-    rpi_bytes_group.append(public_data.state_root_prev.to_bytes(32, 'little'))
+    state_root_lo, state_root_hi= Word(public_data.block.state_root).to_lo_hi()
+    rpi_bytes_group.append(state_root_lo.n.to_bytes(16, 'little'))
+    rpi_bytes_group.append(state_root_hi.n.to_bytes(16, 'little'))
+    state_root_prev_lo, state_root_prev_hi= Word(public_data.state_root_prev).to_lo_hi()
+    rpi_bytes_group.append(state_root_prev_lo.n.to_bytes(16, 'little'))
+    rpi_bytes_group.append(state_root_prev_hi.n.to_bytes(16, 'little'))
     assert flattern_len(rpi_bytes_group) == N_BYTES_ONE + N_BYTES_BLOCK + N_BYTES_EXTRA_VALUE
 
     # Tx Table
@@ -716,7 +665,11 @@ def public_data2witness(
 
     # traverse column tuple in row order
     tx_table_raw_bytes_group = public_data.tx_table_raw_bytes_group(MAX_TXS)
+    # print("len of rpi_bytes_group", len(rpi_bytes_group))
+    # print("end of rpi_bytes_group", [bytes_to_fq(i) for i in rpi_bytes_group[-5:]])
     rpi_bytes_group.extend(tx_table_raw_bytes_group)
+    # print("begin of tx_table_raw_bytes_group", [bytes_to_fq(i) for i in tx_table_raw_bytes_group[0:5]])
+    # print("after len of rpi_bytes_group", len(rpi_bytes_group))
 
     keccak_table = KeccakTable()
     assert flattern_len(rpi_bytes_group) == (
@@ -742,17 +695,15 @@ def public_data2witness(
     )
     assert flattern_len(rpi_bytes_group) == circuit_len
 
-    # rpi_rlc_acc_col = [rpi_bytes_group[-1]]
-    # for i in reversed(range(len(rpi_bytes_group) - 1)):
-    #     rpi_rlc_acc_col.append(rpi_rlc_acc_col[-1] * rand_rpi + rpi_bytes_group[i])
-    # rpi_rlc_acc_col = list(reversed(rpi_rlc_acc_col))
-
     rows: List[Row] = []
     calldata_gas_cost_table = [TxCallDataGasCostAccRow(FQ(0), FQ(0), FQ(0))]
     i = circuit_len - 1
     rpi_bytes_keccakrlc = []
     rpi_value_lc = []
     rpi_bytes = []
+
+    block_table_copy_constraints: List[WordOrValue] = []
+    tx_table_copy_constraints: List[WordOrValue] = []
     for group in reversed(rpi_bytes_group): # acc from big endian
         for byte_index, byte in enumerate(reversed(group)):
 
@@ -779,15 +730,20 @@ def public_data2witness(
 
             # q_block_table = FQ(0)
             if i < BLOCK_LEN // 2 + 1:
-                q_block_table = FQ(1)
+                # q_block_table = FQ(1)
                 assert i < len(block_table_value_col)
                 block_row = BlockTableRow(block_table_value_col[i])
+                block_table_copy_constraints.append(block_table_value_col[i])
+
+            # FIXME: extra value not used in any place. Here add 2 copy constraint in block table just for aligment
+            if i == BLOCK_LEN // 2 + 1:
+                block_table_copy_constraints.append(WordOrValue(Word(public_data.block.state_root)))
+            if i == BLOCK_LEN // 2 + 2:
+                block_table_copy_constraints.append(WordOrValue(Word(public_data.state_root_prev)))
 
             q_tx_table = FQ(0)
             q_tx_calldata = FQ(0)
             q_tx_calldata_start = FQ(0)
-
-            # q_digest_value_start = FQ(0)
 
             tx_id_inv = FQ(0)
             tx_value_lo_inv = FQ(0)
@@ -830,6 +786,13 @@ def public_data2witness(
                 if i == tx_table_len:
                     q_tx_calldata_start = FQ(1)
                 tx_row = TxTableRow(tx_id, tag, index, value)
+                if i < tx_table_len:
+                    tx_table_copy_constraints.append(value)
+                    tx_table_copy_constraints.append(WordOrValue(index))
+                    tx_table_copy_constraints.append(WordOrValue(tx_id))
+                else: # for calldata, only record value
+                    # TODO should we copy constraints on tx_id, index as well?
+                    tx_table_copy_constraints.append(value)
 
             row = Row(
                 q_bytes_last,
@@ -849,12 +812,8 @@ def public_data2witness(
                 rpi_bytes_keccakrlc[-1],
                 rpi_value_lc[-1],
                 Word(0), # rpi_digest_word
-                # FQ(0), # rpi_digest_bytes
-                # FQ(0), # rpi_digest_bytes_rlc
-                # FQ(0), # rpi_digest_bytes_lc
 
                 q_rpi_byte_enable,
-                # FQ(0), # q_digest_byte_enable
                 keccak_table,
                 tx_row,
                 block_row,
@@ -868,33 +827,27 @@ def public_data2witness(
     # keccak lookup happened on 0 row
     rows[0].rpi_digest_word = Word(output_digest)
 
-    # rpi_digest_bytes_rlc = []
-    # rpi_digest_bytes_lc = []
-    # for i in range(31, -1, -1):
-    #     row = rows[i]
-    #     row.rpi_digest_bytes = FQ(output_digest[i])
-
-    #     if i == 31:
-    #         row.q_digest_last = FQ(1)
-    #         rpi_digest_bytes_rlc.append(FQ(output_digest[i]))
-    #     else:
-    #         rpi_digest_bytes_rlc.append(rpi_digest_bytes_rlc[-1] * evm_rand + FQ(output_digest[i]))
-
-    #     row.rpi_digest_bytes_rlc = rpi_digest_bytes_rlc[-1]
-    #     if i == 31 or i == 15:
-    #         row.q_digest_value_start = FQ(1)
-    #         rpi_digest_bytes_lc.append(FQ(output_digest[i]))
-    #     else:
-    #         rpi_digest_bytes_lc.append(rpi_digest_bytes_lc[-1] * byte_pow_base + FQ(output_digest[i]))
-
-    #     row.rpi_digest_bytes_lc = rpi_digest_bytes_lc[-1]
-    #     row.rpi_digest_bytes_rlc = rpi_digest_bytes_rlc[-1]
-    #     row.q_digest_byte_enable = FQ(1)
+    # generate copy constraints
+    block_table_copy_constraints.reverse()
+    tx_table_copy_constraints.reverse()
+    table_copy_constraints = block_table_copy_constraints + tx_table_copy_constraints
 
     public_inputs = PublicInputs(
         pi_keccak=Word(output_digest)
     )
     keccak_table.add(bytes(rpi_bytes), keccak_rand)
+
+    # Verify copy constraints during witness assignment
+    for i, constraint in enumerate(table_copy_constraints):
+        if constraint.is_word:
+            lo = rpi_bytes_group.pop(0)
+            high = rpi_bytes_group.pop(0)
+            assert constraint.lo.expr() == bytes_to_fq(lo)
+            assert constraint.hi.expr() == bytes_to_fq(high)
+        else:
+            lo = rpi_bytes_group.pop(0)
+            assert constraint.value() == bytes_to_fq(lo)
+
     return Witness(rows, public_inputs, set(calldata_gas_cost_table), keccak_table, circuit_len)
 
 def flattern_len(a: List[List]):
