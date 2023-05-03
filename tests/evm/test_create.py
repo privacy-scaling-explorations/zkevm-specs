@@ -117,20 +117,29 @@ def gen_testing_data():
     ]
     create_contexts = [
         CreateContext(gas_left=1_000_000, is_persistent=True),
-        CreateContext(gas_left=1_000_000, is_persistent=False, rw_counter_end_of_reversion=88),
+        CreateContext(gas_left=1_000_000, is_persistent=False, rw_counter_end_of_reversion=80),
     ]
     stacks = [
         Stack(value=int(1e18), offset=64, salt=int(12345)),
-        Stack(offset=200),
-        Stack(offset=0),
+        Stack(value=int(1e25), offset=64),
     ]
+    stack_depth = [1, 1024, 1025]
     is_warm_accesss = [True, False]
     has_init_code = [True, False]
 
     return [
-        (opcode, CALLER, is_return, create_contexts, stack, is_warm_access, has_init_code)
-        for opcode, is_return, create_contexts, stack, is_warm_access, has_init_code in product(
-            opcodes, is_return, create_contexts, stacks, is_warm_accesss, has_init_code
+        (
+            opcode,
+            CALLER,
+            is_return,
+            create_contexts,
+            stack,
+            stack_depth,
+            is_warm_access,
+            has_init_code,
+        )
+        for opcode, is_return, create_contexts, stack, stack_depth, is_warm_access, has_init_code in product(
+            opcodes, is_return, create_contexts, stacks, stack_depth, is_warm_accesss, has_init_code
         )
     ]
 
@@ -139,7 +148,7 @@ TESTING_DATA = gen_testing_data()
 
 
 @pytest.mark.parametrize(
-    "opcode, caller, is_return, caller_ctx, stack, is_warm_access, has_init_code",
+    "opcode, caller, is_return, caller_ctx, stack, stack_depth, is_warm_access, has_init_code",
     TESTING_DATA,
 )
 def test_create_create2(
@@ -148,6 +157,7 @@ def test_create_create2(
     is_return: bool,
     caller_ctx: CreateContext,
     stack: Stack,
+    stack_depth: int,
     is_warm_access: bool,
     has_init_code: bool,
 ):
@@ -211,7 +221,7 @@ def test_create_create2(
     # can't be a static all
     is_static = 0
 
-    next_call_id = 65
+    next_call_id = 66
     rw_counter = next_call_id
 
     # CREATE: 33 * 3(push) + 1(CREATE) + 1(mstore) + 33(PUSH32) + 2(PUSH) + 1(RETURN)
@@ -226,6 +236,16 @@ def test_create_create2(
     # CREATE: 1024 - 3 + 1 = 1022
     # CREATE2: 1024 - 4 + 1 = 1021
     stack_pointer = 1021 - is_create2
+
+    # caller and callee balance
+    caller_balance_prev = caller.balance
+    callee_balance_prev = 0
+    caller_balance = caller_balance_prev - stack.value
+    callee_balance = callee_balance_prev + stack.value
+
+    is_precheck_ok = (
+        (caller_balance >= stack.value) and (nonce > nonce - 1) and (stack_depth <= 1024)
+    )
 
     src_data = dict(
         [
@@ -256,34 +276,32 @@ def test_create_create2(
 
     # caller's call context
     rw_dictionary \
-        .call_context_read(CURRENT_CALL_ID, CallContextFieldTag.Depth, 1) \
+        .call_context_read(CURRENT_CALL_ID, CallContextFieldTag.Depth, stack_depth) \
         .call_context_read(CURRENT_CALL_ID, CallContextFieldTag.TxId, 1) \
         .call_context_read(CURRENT_CALL_ID, CallContextFieldTag.CallerAddress, caller.address) \
         .account_write(caller.address, AccountFieldTag.Nonce, nonce, nonce - 1) \
+        .account_write(caller.address, AccountFieldTag.Balance, caller_balance, caller_balance_prev) \
         .call_context_read(CURRENT_CALL_ID, CallContextFieldTag.IsSuccess, is_success) \
         .call_context_read(CURRENT_CALL_ID, CallContextFieldTag.IsStatic, is_static) \
         .call_context_read(CURRENT_CALL_ID, CallContextFieldTag.RwCounterEndOfReversion, caller_ctx.rw_counter_end_of_reversion) \
-        .call_context_read(CURRENT_CALL_ID, CallContextFieldTag.IsPersistent, caller_ctx.is_persistent) \
-        .tx_access_list_account_write(CURRENT_CALL_ID, contract_address, True, is_warm_access, rw_counter_of_reversion=None if caller_ctx.is_persistent else caller_ctx.rw_counter_end_of_reversion - caller_ctx.reversible_write_counter) \
-        .account_write(contract_address, AccountFieldTag.CodeHash, Word(EMPTY_CODE_HASH), 0) \
-    
-    # callee's reversion_info
-    rw_dictionary \
-        .call_context_read(next_call_id, CallContextFieldTag.RwCounterEndOfReversion, callee_rw_counter_end_of_reversion) \
-        .call_context_read(next_call_id, CallContextFieldTag.IsPersistent, callee_is_persistent)
+        .call_context_read(CURRENT_CALL_ID, CallContextFieldTag.IsPersistent, caller_ctx.is_persistent)
+        
+    if is_precheck_ok:
+        rw_dictionary \
+            .tx_access_list_account_write(CURRENT_CALL_ID, contract_address, True, is_warm_access, rw_counter_of_reversion=None if caller_ctx.is_persistent else caller_ctx.rw_counter_end_of_reversion - caller_ctx.reversible_write_counter) \
+            .account_write(contract_address, AccountFieldTag.CodeHash, Word(EMPTY_CODE_HASH), 0)
 
-    # For `transfer` invocation.
-    caller_balance_prev = Word(caller.balance)
-    callee_balance_prev = Word(0)
-    caller_balance = Word(caller.balance - stack.value)
-    callee_balance = Word(stack.value)
-    rw_dictionary \
-        .account_write(caller.address, AccountFieldTag.Balance, caller_balance, caller_balance_prev, rw_counter_of_reversion=None if callee_is_persistent else callee_rw_counter_end_of_reversion) \
-        .account_write(contract_address, AccountFieldTag.Balance, callee_balance, callee_balance_prev, rw_counter_of_reversion=None if callee_is_persistent else callee_rw_counter_end_of_reversion - 1)
+        # callee's reversion_info
+        rw_dictionary \
+            .call_context_read(next_call_id, CallContextFieldTag.RwCounterEndOfReversion, callee_rw_counter_end_of_reversion) \
+            .call_context_read(next_call_id, CallContextFieldTag.IsPersistent, callee_is_persistent)
 
- 
+        # For `transfer` invocation.
+        rw_dictionary \
+            .account_write(caller.address, AccountFieldTag.Balance, Word(caller_balance), Word(caller_balance_prev), rw_counter_of_reversion=None if callee_is_persistent else callee_rw_counter_end_of_reversion) \
+            .account_write(contract_address, AccountFieldTag.Balance, Word(callee_balance), Word(callee_balance_prev), rw_counter_of_reversion=None if callee_is_persistent else callee_rw_counter_end_of_reversion - 1)
       
-    if has_init_code:
+    if has_init_code and is_precheck_ok:
          # copy_table
         copy_circuit = CopyCircuit().copy(
             randomness_keccak,
@@ -311,7 +329,7 @@ def test_create_create2(
         rw_dictionary \
             .call_context_read(next_call_id, CallContextFieldTag.CallerId, CURRENT_CALL_ID) \
             .call_context_read(next_call_id, CallContextFieldTag.TxId, 1) \
-            .call_context_read(next_call_id, CallContextFieldTag.Depth, 2) \
+            .call_context_read(next_call_id, CallContextFieldTag.Depth, stack_depth+1) \
             .call_context_read(next_call_id, CallContextFieldTag.CallerAddress, caller.address) \
             .call_context_read(next_call_id, CallContextFieldTag.CalleeAddress, contract_address) \
             .call_context_read(next_call_id, CallContextFieldTag.IsSuccess, is_success) \
@@ -354,6 +372,7 @@ def test_create_create2(
             rw_table=set(rw_dictionary.rws),)
     # fmt: on
 
+    reversible_write_counter = caller_ctx.reversible_write_counter + (3 if is_precheck_ok else 1)
     verify_steps(
         tables=tables,
         steps=[
@@ -385,7 +404,7 @@ def test_create_create2(
                     gas_left=callee_gas_left,
                     reversible_write_counter=2,
                 )
-                if has_init_code
+                if has_init_code and is_precheck_ok
                 else StepState(
                     execution_state=ExecutionState.PUSH,
                     rw_counter=rw_dictionary.rw_counter,
@@ -396,7 +415,7 @@ def test_create_create2(
                     program_counter=next_program_counter,
                     stack_pointer=1023,
                     gas_left=caller_ctx.gas_left - gas_cost,
-                    reversible_write_counter=caller_ctx.reversible_write_counter + 3,
+                    reversible_write_counter=reversible_write_counter,
                 )
             ),
         ],
