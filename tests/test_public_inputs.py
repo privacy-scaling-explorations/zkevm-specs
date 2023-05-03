@@ -140,6 +140,7 @@ def override_not_success(override: Callable[[Witness], None]):
     override(witness)
     verify(witness, MAX_TXS, MAX_CALLDATA_BYTES, rand_rpi, success=False)
 
+
 def test_bad_block_table():
     def override(witness):
         witness.block_table.table[5] = word(123)
@@ -149,35 +150,31 @@ def test_bad_block_table():
 
 def test_bad_tx_table_tx_id():
     def override(witness):
-        row = list(witness.tx_table.table[5])
-        row[0] = FQ(123)
-        witness.tx_table.table[5] = row
+        witness.tx_table.table[5].tx_id = FQ(123)
 
     override_not_success(override)
 
 
 def test_bad_tx_table_index():
     def override(witness):
-        row = list(witness.tx_table.table[5])
-        row[2] = FQ(123)
-        witness.tx_table.table[5] = row
+        witness.tx_table.table[5].index = FQ(123)
 
     override_not_success(override)
 
 
 def test_bad_tx_table_value():
     def override(witness):
-        row = list(witness.tx_table.table[5])
-        row[3] = word(123)
-        witness.tx_table.table[5] = row
+        witness.tx_table.table[5].value = word(123)
 
     override_not_success(override)
+
 
 def test_bad_keccak_digest():
     def override(witness):
         witness.public_inputs.pi_keccak = Word(123)
 
     override_not_success(override)
+
 
 def test_bad_rand_rpi_state_root_pub():
     def override(witness):
