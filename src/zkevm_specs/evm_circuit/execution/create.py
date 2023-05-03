@@ -81,7 +81,7 @@ def create(instruction: Instruction):
         all_but_one_64th_gas,
     )
 
-    ### Do depth, nonce and balance pre-check
+    ### Do stack depth, nonce and balance pre-check
     # ErrDepth constraint
     is_error_depth, _ = instruction.compare(FQ(CALL_CREATE_DEPTH), depth, N_BYTES_STACK)
     # ErrNonceUintOverflow constraint
@@ -94,7 +94,9 @@ def create(instruction: Instruction):
         is_error_depth == FQ(0) and is_nonce_overflow == FQ(0) and is_insufficient_balance == FQ(0)
     )
 
-    if is_precheck_ok == False:
+    # error cases, should end this call and return
+    # is_static should be false
+    if not is_precheck_ok or is_static.expr() == FQ(1):
         for field_tag, expected_value in [
             (CallContextFieldTag.LastCalleeId, FQ(0)),
             (CallContextFieldTag.LastCalleeReturnDataOffset, FQ(0)),
@@ -158,9 +160,6 @@ def create(instruction: Instruction):
             callee_reversion_info.is_persistent,
             reversion_info.is_persistent * is_success.expr(),
         )
-
-        # can't be a STATICCALL
-        instruction.is_zero(is_static)
 
         # transfer value from caller to contract address
         instruction.transfer(caller_address, contract_address, value_word, callee_reversion_info)

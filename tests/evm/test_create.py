@@ -121,11 +121,12 @@ def gen_testing_data():
     ]
     stacks = [
         Stack(value=int(1e18), offset=64, salt=int(12345)),
-        Stack(value=int(1e25), offset=64),
+        Stack(value=int(1e25), offset=64),  # insufficient balance
     ]
     stack_depth = [1, 1024, 1025]
-    is_warm_accesss = [True, False]
+    is_warm_access = [True, False]
     has_init_code = [True, False]
+    is_static = [True, False]
 
     return [
         (
@@ -137,9 +138,17 @@ def gen_testing_data():
             stack_depth,
             is_warm_access,
             has_init_code,
+            is_static,
         )
-        for opcode, is_return, create_contexts, stack, stack_depth, is_warm_access, has_init_code in product(
-            opcodes, is_return, create_contexts, stacks, stack_depth, is_warm_accesss, has_init_code
+        for opcode, is_return, create_contexts, stack, stack_depth, is_warm_access, has_init_code, is_static in product(
+            opcodes,
+            is_return,
+            create_contexts,
+            stacks,
+            stack_depth,
+            is_warm_access,
+            has_init_code,
+            is_static,
         )
     ]
 
@@ -148,7 +157,7 @@ TESTING_DATA = gen_testing_data()
 
 
 @pytest.mark.parametrize(
-    "opcode, caller, is_return, caller_ctx, stack, stack_depth, is_warm_access, has_init_code",
+    "opcode, caller, is_return, caller_ctx, stack, stack_depth, is_warm_access, has_init_code, is_static",
     TESTING_DATA,
 )
 def test_create_create2(
@@ -160,6 +169,7 @@ def test_create_create2(
     stack_depth: int,
     is_warm_access: bool,
     has_init_code: bool,
+    is_static: bool,
 ):
     randomness_keccak = rand_fq()
     CURRENT_CALL_ID = 1
@@ -218,9 +228,6 @@ def test_create_create2(
         contract_addr = keccak256(rlp.encode([caller.address.to_bytes(20, "big"), caller.nonce]))
     contract_address = int.from_bytes(contract_addr[-20:], "big")
 
-    # can't be a static all
-    is_static = 0
-
     next_call_id = 66
     rw_counter = next_call_id
 
@@ -246,6 +253,7 @@ def test_create_create2(
     is_precheck_ok = (
         (caller_balance >= stack.value) and (nonce > nonce - 1) and (stack_depth <= 1024)
     )
+    should_move_to_next_context = is_precheck_ok and not is_static
 
     src_data = dict(
         [
@@ -286,7 +294,7 @@ def test_create_create2(
         .call_context_read(CURRENT_CALL_ID, CallContextFieldTag.RwCounterEndOfReversion, caller_ctx.rw_counter_end_of_reversion) \
         .call_context_read(CURRENT_CALL_ID, CallContextFieldTag.IsPersistent, caller_ctx.is_persistent)
         
-    if is_precheck_ok:
+    if should_move_to_next_context:
         rw_dictionary \
             .tx_access_list_account_write(CURRENT_CALL_ID, contract_address, True, is_warm_access, rw_counter_of_reversion=None if caller_ctx.is_persistent else caller_ctx.rw_counter_end_of_reversion - caller_ctx.reversible_write_counter) \
             .account_write(contract_address, AccountFieldTag.CodeHash, Word(EMPTY_CODE_HASH), 0)
@@ -301,7 +309,7 @@ def test_create_create2(
             .account_write(caller.address, AccountFieldTag.Balance, Word(caller_balance), Word(caller_balance_prev), rw_counter_of_reversion=None if callee_is_persistent else callee_rw_counter_end_of_reversion) \
             .account_write(contract_address, AccountFieldTag.Balance, Word(callee_balance), Word(callee_balance_prev), rw_counter_of_reversion=None if callee_is_persistent else callee_rw_counter_end_of_reversion - 1)
       
-    if has_init_code and is_precheck_ok:
+    if has_init_code and should_move_to_next_context:
          # copy_table
         copy_circuit = CopyCircuit().copy(
             randomness_keccak,
@@ -372,7 +380,9 @@ def test_create_create2(
             rw_table=set(rw_dictionary.rws),)
     # fmt: on
 
-    reversible_write_counter = caller_ctx.reversible_write_counter + (3 if is_precheck_ok else 1)
+    reversible_write_counter = caller_ctx.reversible_write_counter + (
+        3 if should_move_to_next_context else 1
+    )
     verify_steps(
         tables=tables,
         steps=[
@@ -404,7 +414,7 @@ def test_create_create2(
                     gas_left=callee_gas_left,
                     reversible_write_counter=2,
                 )
-                if has_init_code and is_precheck_ok
+                if has_init_code and should_move_to_next_context
                 else StepState(
                     execution_state=ExecutionState.PUSH,
                     rw_counter=rw_dictionary.rw_counter,
