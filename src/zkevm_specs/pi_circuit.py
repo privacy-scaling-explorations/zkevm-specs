@@ -1,28 +1,19 @@
 from dataclasses import dataclass
-from typing import Tuple, List, Union, Set
-from zkevm_specs.util.arithmetic import bytes_to_fq
+from typing import List, Set, Tuple, Union
 
+from eth_utils import keccak
+
+from zkevm_specs.util.arithmetic import bytes_to_fq
 from zkevm_specs.util.param import N_BYTES_WORD
 
-from .util import (
-    FQ,
-    Word,
-    RLC,
-    WordOrValue,
-    U8,
-    U64,
-    U160,
-    U256,
-    PUBLIC_INPUTS_BLOCK_LEN as BLOCK_LEN,
-    PUBLIC_INPUTS_TX_LEN as TX_LEN,
-    GAS_COST_TX_CALL_DATA_PER_NON_ZERO_BYTE,
-    GAS_COST_TX_CALL_DATA_PER_ZERO_BYTE,
-    Expression,
-    is_circuit_code,
-)
+from .evm_circuit.table import KeccakTableRow, TableRow, lookup
 from .tx_circuit import Tag as TxTag
-from eth_utils import keccak
-from .evm_circuit.table import KeccakTableRow, lookup, TableRow
+from .util import (FQ, GAS_COST_TX_CALL_DATA_PER_NON_ZERO_BYTE,
+                   GAS_COST_TX_CALL_DATA_PER_ZERO_BYTE)
+from .util import PUBLIC_INPUTS_BLOCK_LEN as BLOCK_LEN
+from .util import PUBLIC_INPUTS_TX_LEN as TX_LEN
+from .util import (RLC, U8, U64, U160, U256, Expression, Word, WordOrValue,
+                   is_circuit_code)
 
 
 @dataclass
@@ -128,7 +119,9 @@ class PublicInputs:
 
     pi_keccak: Word
 
-    # FIXME temporarily put state_root and pre_state_root here, since no table refer to those
+    # FIXME temporarily put block_hash state_root and pre_state_root here, since no table refer to those
+    # just temporarily place to carry data for copy constraints
+    block_hash: Word
     state_root: Word
     state_root_prev: Word
 
@@ -156,7 +149,16 @@ def check_row(
         * (row.rpi_bytes_keccakrlc - row_next.rpi_bytes_keccakrlc * keccak_rand - row.rpi_bytes)
     )
 
-    # gate 3 and gate 4 are compensation branch
+    ## gate 3 and gate 4 are compensation branch
+    # | q_rpi_value_start | rpi_bytes | rpi_value_lc       | gate       |
+    # | ----------------- | --------- | ------------------ |------------|
+    # | ...               | .....     | ...     ...        |            |
+    # |                   | ee        | ddee               |gate 3      |
+    # | 1                 | dd        | dd                 |gate 4      |
+    # |                   | cc        | aabbcc             |gate 3      |
+    # |                   | bb        | aabb               |gate 3      |
+    # | 1                 | aa        | aa                 |gate 4      |
+
     # 3: rpi_value_lc[i] = rpi_value_lc[i+1] * byte_pow_base + rpi_bytes[i]
     assert row.q_rpi_byte_enable * (FQ(1) - row.q_rpi_value_start) * (
         row.rpi_value_lc - row_next.rpi_value_lc * byte_pow_base - row.rpi_bytes
@@ -337,6 +339,12 @@ def verify_circuit(
             lo = copy_constrains.pop(0)
             assert block_row.value() == bytes_to_fq(lo)
 
+    # extra values constrains
+    lo = copy_constrains.pop(0)
+    hi = copy_constrains.pop(0)
+    assert public_inputs.block_hash.lo.expr() == bytes_to_fq(lo)
+    assert public_inputs.block_hash.hi.expr() == bytes_to_fq(hi)
+
     lo = copy_constrains.pop(0)
     hi = copy_constrains.pop(0)
     assert public_inputs.state_root.lo.expr() == bytes_to_fq(lo)
@@ -391,8 +399,6 @@ def verify_circuit(
             keccak_table,
             witness.circuit_len,
         )
-
-    # check copy/permutation constraints
 
 
 @dataclass
@@ -684,7 +690,7 @@ N_BYTES_ONE = 1
 N_BYTES_U64 = 8
 N_BYTES_TX = 176
 N_BYTES_BLOCK = 8308
-N_BYTES_EXTRA_VALUE = N_BYTES_WORD + N_BYTES_WORD
+N_BYTES_EXTRA_VALUE = N_BYTES_WORD * 3
 byte_pow_base = FQ(255)
 evm_rand = FQ(255)
 keccak_rand = FQ(255)
@@ -693,21 +699,16 @@ keccak_rand = FQ(255)
 def public_data2witness(
     public_data: PublicData, MAX_TXS: int, MAX_CALLDATA_BYTES: int, rand_rpi: FQ
 ) -> Witness:
-    # TODO Layout of raw_public_inputs:
-    #   # Block Table
-    #   [0] + [block_table.value.lo] # BLOCK_LEN//2 + 1
-    #   [0] + [block_table.value.hi] # BLOCK_LEN//2 + 1
+    # Layout of raw_public_inputs:
+    #   # Block Table. `value.hi` is optional dependes on the original value bits size.
+    #   [0] + [block_table.value.lo, (block_table.value.hi)]...
     #   # Extra Fields
-    #   [hash.lo, hash.hi] # 2
     #   [state_root.lo, state_root.hi] # 2
     #   [state_root_prev.lo, state_root_prev.hi] # 2
-    #   # Tx Table
-    #   [0] + [tx_table.id] # TX_LEN * MAX_TXS + 1
-    #   [0] + [tx_table.index] # TX_LEN * MAX_TXS + 1
-    #   [0] + [tx_table.value.lo] # TX_LEN * MAX_TXS + 1
+    #   # Tx Table, `value.hi` is optional dependes on the original value bits size.
+    #   [0, 0, 0] // empty row
+    #   + [tx_table.id, tx_table.index, tx_table.value.lo, (tx_table.value.hi)]... # TX_LEN * MAX_TXS + 1
     #   [tx_table.calldata.lo] # MAX_CALLDATA_BYTES
-    #   [0] + [tx_table.value.hi] # TX_LEN * MAX_TXS + 1
-    #   [tx_table.calldata.hi] # MAX_CALLDATA_BYTES
 
     rpi_bytes_group = []
 
@@ -717,7 +718,9 @@ def public_data2witness(
     rpi_bytes_group.extend(block_table_block_value)
 
     # Extra fields
-    # rpi_bytes.extend(public_data.block.hash.to_bytes(32, 'little'))  # FIXME
+    hash_lo, hash_hi = Word(public_data.block.hash).to_lo_hi()
+    rpi_bytes_group.append(hash_lo.n.to_bytes(16, "little"))
+    rpi_bytes_group.append(hash_hi.n.to_bytes(16, "little"))
     state_root_lo, state_root_hi = Word(public_data.block.state_root).to_lo_hi()
     rpi_bytes_group.append(state_root_lo.n.to_bytes(16, "little"))
     rpi_bytes_group.append(state_root_hi.n.to_bytes(16, "little"))
@@ -728,7 +731,6 @@ def public_data2witness(
 
     # Tx Table
     tx_table_col_oriented = public_data.tx_table(MAX_TXS, MAX_CALLDATA_BYTES)
-    (tx_id_col, tx_index_col, tx_value_col) = tx_table_col_oriented
     tx_table_tx_fields = public_data.tx_table_tx_fields(MAX_TXS)
     tx_table_tx_calldata = public_data.tx_table_tx_calldata(MAX_CALLDATA_BYTES)
 
@@ -886,6 +888,7 @@ def public_data2witness(
 
     public_inputs = PublicInputs(
         pi_keccak=Word(output_digest),
+        block_hash=Word(public_data.block.hash),
         state_root=Word(public_data.block.state_root),
         state_root_prev=Word(public_data.state_root_prev),
     )
