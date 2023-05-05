@@ -425,6 +425,7 @@ def test_create_create2(
                     program_counter=next_program_counter,
                     stack_pointer=1023,
                     gas_left=caller_ctx.gas_left - gas_cost,
+                    memory_word_size=next_memory_size,
                     reversible_write_counter=reversible_write_counter,
                 )
             ),

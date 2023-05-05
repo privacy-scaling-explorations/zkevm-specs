@@ -4,6 +4,7 @@ from zkevm_specs.util.hash import EMPTY_CODE_HASH
 from zkevm_specs.util.param import (
     GAS_COST_COPY_SHA3,
     GAS_COST_CREATE,
+    MAX_U64,
     N_BYTES_ACCOUNT_ADDRESS,
     N_BYTES_GAS,
     N_BYTES_MEMORY_ADDRESS,
@@ -40,13 +41,16 @@ def create(instruction: Instruction):
     depth = instruction.call_context_lookup(CallContextFieldTag.Depth)
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
     caller_address = instruction.call_context_lookup(CallContextFieldTag.CallerAddress)
-    nonce, nonce_prev = instruction.account_write(caller_address, AccountFieldTag.Nonce)
+    nonce, _ = instruction.account_write(caller_address, AccountFieldTag.Nonce)
     _, balance_prev = instruction.account_write(caller_address, AccountFieldTag.Balance)
     is_success = instruction.call_context_lookup(CallContextFieldTag.IsSuccess)
     is_static = instruction.call_context_lookup(CallContextFieldTag.IsStatic)
     reversion_info = instruction.reversion_info()
 
     has_init_code = size != FQ(0)
+
+    # can't be a STATICCALL
+    instruction.is_zero(is_static)
 
     ### Gas cost calculation
     # gas cost of memory expansion
@@ -85,7 +89,7 @@ def create(instruction: Instruction):
     # ErrDepth constraint
     is_error_depth, _ = instruction.compare(FQ(CALL_CREATE_DEPTH), depth, N_BYTES_STACK)
     # ErrNonceUintOverflow constraint
-    is_nonce_overflow, _ = instruction.compare(nonce, nonce_prev, N_BYTES_U64)
+    is_nonce_overflow, _ = instruction.compare(FQ(MAX_U64), nonce, N_BYTES_U64)
     # ErrInsufficientBalance constraint
     is_insufficient_balance, _ = instruction.compare_word(Word(balance_prev.expr().n), value_word)
 
@@ -113,8 +117,8 @@ def create(instruction: Instruction):
             stack_pointer=Transition.delta(2 + is_create2),
             reversible_write_counter=Transition.delta(1),
             gas_left=Transition.delta(-gas_cost),
+            memory_word_size=Transition.to(next_memory_size),
             # Always stay same
-            memory_word_size=Transition.same(),
             call_id=Transition.same(),
             is_root=Transition.same(),
             is_create=Transition.same(),
@@ -252,8 +256,8 @@ def create(instruction: Instruction):
                 stack_pointer=Transition.delta(stack_pointer_delta),
                 gas_left=Transition.delta(-gas_cost),
                 reversible_write_counter=Transition.delta(3),
+                memory_word_size=Transition.to(next_memory_size),
                 # Always stay same
-                memory_word_size=Transition.same(),
                 call_id=Transition.same(),
                 is_root=Transition.same(),
                 is_create=Transition.same(),
