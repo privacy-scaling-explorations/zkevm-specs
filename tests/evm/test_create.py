@@ -126,7 +126,6 @@ def gen_testing_data():
     stack_depth = [1, 1024, 1025]
     is_warm_access = [True, False]
     has_init_code = [True, False]
-    is_static = [True, False]
 
     return [
         (
@@ -138,9 +137,8 @@ def gen_testing_data():
             stack_depth,
             is_warm_access,
             has_init_code,
-            is_static,
         )
-        for opcode, is_return, create_contexts, stack, stack_depth, is_warm_access, has_init_code, is_static in product(
+        for opcode, is_return, create_contexts, stack, stack_depth, is_warm_access, has_init_code in product(
             opcodes,
             is_return,
             create_contexts,
@@ -148,7 +146,6 @@ def gen_testing_data():
             stack_depth,
             is_warm_access,
             has_init_code,
-            is_static,
         )
     ]
 
@@ -157,7 +154,7 @@ TESTING_DATA = gen_testing_data()
 
 
 @pytest.mark.parametrize(
-    "opcode, caller, is_return, caller_ctx, stack, stack_depth, is_warm_access, has_init_code, is_static",
+    "opcode, caller, is_return, caller_ctx, stack, stack_depth, is_warm_access, has_init_code",
     TESTING_DATA,
 )
 def test_create_create2(
@@ -169,10 +166,11 @@ def test_create_create2(
     stack_depth: int,
     is_warm_access: bool,
     has_init_code: bool,
-    is_static: bool,
 ):
     randomness_keccak = rand_fq()
     CURRENT_CALL_ID = 1
+    # can't be a static all
+    is_static = 0
 
     init_codes = gen_bytecode(is_return, stack.offset, has_init_code)
     stack = stack._replace(size=len(init_codes.code))

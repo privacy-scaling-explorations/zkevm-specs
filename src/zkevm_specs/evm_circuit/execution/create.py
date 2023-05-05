@@ -41,7 +41,7 @@ def create(instruction: Instruction):
     depth = instruction.call_context_lookup(CallContextFieldTag.Depth)
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
     caller_address = instruction.call_context_lookup(CallContextFieldTag.CallerAddress)
-    nonce, _ = instruction.account_write(caller_address, AccountFieldTag.Nonce)
+    nonce, nonce_prev = instruction.account_write(caller_address, AccountFieldTag.Nonce)
     _, balance_prev = instruction.account_write(caller_address, AccountFieldTag.Balance)
     is_success = instruction.call_context_lookup(CallContextFieldTag.IsSuccess)
     is_static = instruction.call_context_lookup(CallContextFieldTag.IsStatic)
@@ -88,19 +88,19 @@ def create(instruction: Instruction):
     ### Do stack depth, nonce and balance pre-check
     # ErrDepth constraint
     is_error_depth, _ = instruction.compare(FQ(CALL_CREATE_DEPTH), depth, N_BYTES_STACK)
-    # ErrNonceUintOverflow constraint
-    is_nonce_overflow, _ = instruction.compare(FQ(MAX_U64), nonce, N_BYTES_U64)
     # ErrInsufficientBalance constraint
     is_insufficient_balance, _ = instruction.compare_word(Word(balance_prev.expr().n), value_word)
+    # ErrNonceUintOverflow constraint
+    is_nonce_in_range, _ = instruction.compare(nonce_prev, FQ(MAX_U64), N_BYTES_U64)
 
     # pass the pre-check if none of above errors happen
     is_precheck_ok = (
-        is_error_depth == FQ(0) and is_nonce_overflow == FQ(0) and is_insufficient_balance == FQ(0)
+        is_error_depth == FQ(0) and is_insufficient_balance == FQ(0) and is_nonce_in_range == FQ(1)
     )
 
     # error cases, should end this call and return
     # is_static should be false
-    if not is_precheck_ok or is_static.expr() == FQ(1):
+    if not is_precheck_ok:
         for field_tag, expected_value in [
             (CallContextFieldTag.LastCalleeId, FQ(0)),
             (CallContextFieldTag.LastCalleeReturnDataOffset, FQ(0)),
