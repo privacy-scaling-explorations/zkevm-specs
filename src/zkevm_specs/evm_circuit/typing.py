@@ -783,23 +783,21 @@ class KeccakCircuit:
 
 class ExpCircuit:
     rows: List[ExpCircuitRow]
-    pad_rows: List[ExpCircuitRow]
+    max_exp_steps: int
+    OFFSET_INCREMENT = 7
 
-    def __init__(self, pad_rows: Optional[List[ExpCircuitRow]] = None) -> None:
+    def __init__(self, max_exp_steps: int = 100) -> None:
         self.rows = []
-        self.pad_rows = []
-        if pad_rows is not None:
-            self.pad_rows = pad_rows
+        self.max_exp_steps = max_exp_steps
 
     def table(self) -> Sequence[ExpCircuitRow]:
-        return self.rows + self.pad_rows
+        return self.rows
 
     def add_event(self, base: int, exponent: int, identifier: IntOrFQ):
         steps: List[Tuple[int, int, int]] = []
         exponentiation = self._exp_by_squaring(base, exponent, steps)
         steps.reverse()
         self._append_steps(base, exponent, exponentiation, steps, identifier)
-        self._append_padding_row(identifier)
         return self
 
     def _exp_by_squaring(self, base: int, exponent: int, steps: List[Tuple[int, int, int]]):
@@ -856,24 +854,28 @@ class ExpCircuit:
                 # exponent is odd
                 exponent = exponent - 1
 
-    def _append_padding_row(self, identifier: IntOrFQ):
-        self.rows.append(
-            ExpCircuitRow(
-                q_usable=FQ.zero(),
-                is_step=FQ.zero(),
-                identifier=FQ(identifier),
-                is_last=FQ.zero(),
-                base=Word(0),
-                exponent=Word(0),
-                exponentiation=Word(0),
-                a=Word(0),
-                b=Word(0),
-                c=Word(0),
-                d=Word(0),
-                q=Word(0),
-                r=FQ(0),
+    def fill_dummy_events(self):
+        max_exp_rows = self.max_exp_steps * self.OFFSET_INCREMENT
+        rows_left = max_exp_rows - len(self.rows)
+        for i in range(rows_left):
+            self.rows.append(
+                ExpCircuitRow(
+                    q_usable=FQ.one(),
+                    is_step=FQ.zero(),
+                    identifier=FQ.zero(),
+                    is_last=FQ.zero(),
+                    base=Word(1),
+                    exponent=Word(1),
+                    exponentiation=Word(1),
+                    a=Word(1),
+                    b=Word(1),
+                    c=Word(0),
+                    d=Word(1),
+                    q=Word(0),
+                    r=FQ(1),
+                )
             )
-        )
+        return self
 
     def _append_step(
         self,
