@@ -231,11 +231,9 @@ def test_create_create2(
 
     # CREATE: 33 * 3(push) + 1(CREATE) + 1(mstore) + 33(PUSH32) + 2(PUSH) + 1(RETURN)
     # CREATE2: 33 * 4(push) + 1(CREATE2) + 1(mstore) + 33(PUSH32) + 2(PUSH) + 1(RETURN)
-    pc = 33 * 4 + 1 if is_create2 else 33 * 3 + 1
+    next_program_counter = 33 * 4 + 1 if is_create2 else 33 * 3 + 1
     if has_init_code:
-        next_program_counter = pc + 1 + 35 + 1 if is_create2 else pc + 1 + 35 + 1
-    else:
-        next_program_counter = pc
+        next_program_counter += 1 + 35 + 1
     assert caller_bytecode.code[next_program_counter - 1] == opcode
 
     # CREATE: 1024 - 3 + 1 = 1022
