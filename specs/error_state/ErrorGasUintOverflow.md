@@ -6,13 +6,23 @@ This type of error occurs when mathematical operation detects overflow during ca
 
 ### EVM behavior
 
-`ErrorGasUintOverflow` happends following situations.
+`ErrorGasUintOverflow` happens when gas or memory calculation overflows in the following situations.
 
-- [poped stack data exceeds uint64](https://github.com/ethereum/go-ethereum/blob/793f0f9ec860f6f51e0cec943a268c10863097c7/core/vm/gas_table.go#L73)
-- [eip2028 gas check fails](https://github.com/ethereum/go-ethereum/blob/793f0f9ec860f6f51e0cec943a268c10863097c7/core/state_transition.go#L146)
-- copy gas cost exceeds uint64
-- sum of memory expanding gas cost and copy gas cost exceeds uint64
-- call, log, keccak256 and create, create2 gas cost exceeds uint64
+- [IntrinsicGas](https://github.com/ethereum/go-ethereum/blob/b946b7a13b749c99979e312c83dce34cac8dd7b1/core/state_transition.go#L67)
+- for running interpreter: [Run](https://github.com/ethereum/go-ethereum/blob/b946b7a13b749c99979e312c83dce34cac8dd7b1/core/vm/interpreter.go#L105)
+- for CALLDATACOPY,CODECOPY,EXTCODECOPY,RETURNDATACOPY: [memoryCopierGas](https://github.com/ethereum/go-ethereum/blob/b946b7a13b749c99979e312c83dce34cac8dd7b1/core/vm/gas_table.go#L65)
+- for LOG0~LOG4: [makeGasLog](https://github.com/ethereum/go-ethereum/blob/b946b7a13b749c99979e312c83dce34cac8dd7b1/core/vm/gas_table.go#L223)
+- for KECCAK256: [gasKeccak256](https://github.com/ethereum/go-ethereum/blob/b946b7a13b749c99979e312c83dce34cac8dd7b1/core/vm/gas_table.go#L253)
+- for CREATE2: [gasCreate2](https://github.com/ethereum/go-ethereum/blob/b946b7a13b749c99979e312c83dce34cac8dd7b1/core/vm/gas_table.go#L287)
+- for CREATE: [gasCreateEip3860](https://github.com/ethereum/go-ethereum/blob/b946b7a13b749c99979e312c83dce34cac8dd7b1/core/vm/gas_table.go#L305)
+- for CREATE2: [gasCreate2Eip3860](https://github.com/ethereum/go-ethereum/blob/b946b7a13b749c99979e312c83dce34cac8dd7b1/core/vm/gas_table.go#L321)
+- for EXP: [gasExpFrontier](https://github.com/ethereum/go-ethereum/blob/b946b7a13b749c99979e312c83dce34cac8dd7b1/core/vm/gas_table.go#L338)
+- for EXP: [gasExpEIP158](https://github.com/ethereum/go-ethereum/blob/b946b7a13b749c99979e312c83dce34cac8dd7b1/core/vm/gas_table.go#L351)
+- for CALL: [gasCall](https://github.com/ethereum/go-ethereum/blob/b946b7a13b749c99979e312c83dce34cac8dd7b1/core/vm/gas_table.go#L364)
+- for CALLCODE: [gasCallCode](https://github.com/ethereum/go-ethereum/blob/b946b7a13b749c99979e312c83dce34cac8dd7b1/core/vm/gas_table.go#L399)
+- for DELEGATECALL: [gasDelegateCall](https://github.com/ethereum/go-ethereum/blob/b946b7a13b749c99979e312c83dce34cac8dd7b1/core/vm/gas_table.go#L424)
+- for STATICCALL: [gasStaticCall](https://github.com/ethereum/go-ethereum/blob/b946b7a13b749c99979e312c83dce34cac8dd7b1/core/vm/gas_table.go#L440)
+- for CALL, CALLCODE, DELEGATECALL, STATICCALL: [callGas](https://github.com/ethereum/go-ethereum/blob/b946b7a13b749c99979e312c83dce34cac8dd7b1/core/vm/gas.go#L37)
 
 ### Constraints
 
