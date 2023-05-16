@@ -62,21 +62,20 @@ def error_gas_uint_overflow(instruction: Instruction):
         # eip 2028
         nz = len([byte for byte in data if byte != 0])
         gas = TxGasContractCreation if is_create == FQ(1) else TxGas
-        non_zero_gas = TxDataNonZeroGasEIP2028
         is_eip2028_overflow, _ = instruction.compare(
-            FQ(((MAX_U64 - gas) // non_zero_gas)), FQ(nz), N_BYTES_U64
+            FQ(((MAX_U64 - gas) // TxDataNonZeroGasEIP2028)), FQ(nz), N_BYTES_U64
         )
-        gas += nz * non_zero_gas
+        gas += nz * TxDataNonZeroGasEIP2028
 
         # tx data zero gas overflow
         z = dataLen - nz
-        zero_gas = TxDataZeroGas
         is_non_zero_gas_overflow, _ = instruction.compare(
-            FQ(((MAX_U64 - gas) // zero_gas)), FQ(z), N_BYTES_U64
+            FQ(((MAX_U64 - gas) // TxDataZeroGas)), FQ(z), N_BYTES_U64
         )
-        gas += z * zero_gas
 
         # TODO: eip 3860
+        # https://github.com/privacy-scaling-explorations/zkevm-specs/issues/421
+        # gas += z * TxDataZeroGas
         # if is_create:
         #     lenWords = dataLen // 32
         #     is_eip3860_overflow, _ = instruction.compare(
