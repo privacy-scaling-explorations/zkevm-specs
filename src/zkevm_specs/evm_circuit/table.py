@@ -461,7 +461,7 @@ class CopyCircuitRow(TableRow):
     value: FQ
     rlc_acc: FQ
     is_code: FQ
-    is_pad: FQ
+    is_pad: FQ # Whether the byte to read is out-of-bound and defaults to zero.
     rw_counter: FQ
     rwc_inc_left: FQ
     is_memory: FQ
@@ -469,6 +469,10 @@ class CopyCircuitRow(TableRow):
     is_tx_calldata: FQ
     is_tx_log: FQ
     is_rlc_acc: FQ
+    # For WordIterator
+    position_in_word: FQ
+    is_word_start: FQ
+    is_word_end: FQ
 
 
 @dataclass(frozen=True)

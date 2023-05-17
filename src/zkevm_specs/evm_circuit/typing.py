@@ -1042,6 +1042,9 @@ class CopyCircuit:
             assert is_write
             rw_dict.tx_log_write(id.value().expr(), log_id, TxLogFieldTag.Data, addr, value)
             addr += (int(TxLogFieldTag.Data) << 32) + (log_id << 48)
+
+        position_in_word = ((addr % 32) + 1) if (is_memory or is_tx_log) else 0
+
         rows.append(
             CopyCircuitRow(
                 q_step=FQ(not is_write),
@@ -1063,5 +1066,8 @@ class CopyCircuit:
                 is_tx_calldata=FQ(is_tx_calldata),
                 is_tx_log=FQ(is_tx_log),
                 is_rlc_acc=FQ(is_rlc_acc),
+                position_in_word=FQ(position_in_word),
+                is_word_start=FQ(position_in_word == 1),
+                is_word_end=FQ(position_in_word == 32),
             )
         )
