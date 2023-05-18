@@ -1,4 +1,4 @@
-# ErrorOutOfGasStaticMemoryExpansion state
+# ErrorOOGStaticMemoryExpansion state
 
 ## Procedure
 

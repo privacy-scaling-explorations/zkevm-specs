@@ -1,4 +1,4 @@
-# ErrorOutOfGasDynamicMemoryExpansion state
+# ErrorOOGDynamicMemoryExpansion state
 
 ## Procedure
 
@@ -21,7 +21,7 @@ else:
     constant_gas = 0
 ```
 
-They are also same for dynamic gas calculation. The dynamic gas is calculated as:
+The dynamic gas is calculated as:
 
 ```
 dynamic_gas = memory_expansion_cost
