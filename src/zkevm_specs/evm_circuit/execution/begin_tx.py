@@ -25,9 +25,13 @@ def begin_tx(instruction: Instruction):
     if instruction.is_first_step:
         instruction.constrain_equal(tx_id, FQ(1))
 
-    tx_caller_address_word = instruction.tx_context_lookup_word(tx_id, TxContextFieldTag.CallerAddress)
+    tx_caller_address_word = instruction.tx_context_lookup_word(
+        tx_id, TxContextFieldTag.CallerAddress
+    )
     tx_caller_address = instruction.word_to_address(tx_caller_address_word)
-    tx_callee_address_word = instruction.tx_context_lookup_word(tx_id, TxContextFieldTag.CalleeAddress)
+    tx_callee_address_word = instruction.tx_context_lookup_word(
+        tx_id, TxContextFieldTag.CalleeAddress
+    )
     tx_callee_address = instruction.word_to_address(tx_callee_address_word)
     tx_is_create = instruction.tx_context_lookup(tx_id, TxContextFieldTag.IsCreate)
     tx_value = instruction.tx_context_lookup_word(tx_id, TxContextFieldTag.Value)

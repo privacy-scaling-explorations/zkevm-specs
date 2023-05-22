@@ -28,7 +28,9 @@ def end_tx(instruction: Instruction):
         tx_gas_price, instruction.curr.gas_left + effective_refund
     )
     instruction.constrain_zero(carry)
-    tx_caller_address_word = instruction.tx_context_lookup_word(tx_id, TxContextFieldTag.CallerAddress)
+    tx_caller_address_word = instruction.tx_context_lookup_word(
+        tx_id, TxContextFieldTag.CallerAddress
+    )
     tx_caller_address = instruction.word_to_address(tx_caller_address_word)
     instruction.add_balance(tx_caller_address, [value])
 

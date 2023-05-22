@@ -30,7 +30,9 @@ def return_revert(instruction: Instruction):
     if instruction.curr.is_create and is_success:
         # A. Returns the specified memory chunk as deployment code.
 
-        callee_address_word = instruction.call_context_lookup_word(CallContextFieldTag.CalleeAddress)
+        callee_address_word = instruction.call_context_lookup_word(
+            CallContextFieldTag.CalleeAddress
+        )
         callee_address = instruction.word_to_address(callee_address_word)
         code_hash, code_hash_prev = instruction.account_write_word(
             callee_address, AccountFieldTag.CodeHash

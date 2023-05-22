@@ -117,7 +117,9 @@ def end_block(instruction: Instruction):
             # showing that the Tx following the last processed one has
             # CallerAddress = 0x0 (which means padding tx).
             instruction.constrain_equal_word(
-                instruction.tx_context_lookup_word(FQ(total_txs + 1), TxContextFieldTag.CallerAddress),
+                instruction.tx_context_lookup_word(
+                    FQ(total_txs + 1), TxContextFieldTag.CallerAddress
+                ),
                 Word(0),
             )
             # Since every tx lookup done in the EVM circuit must succeed and

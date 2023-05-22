@@ -18,7 +18,9 @@ def callop(instruction: Instruction):
 
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
     reversion_info = instruction.reversion_info()
-    ctx_caller_address_word = instruction.call_context_lookup_word(CallContextFieldTag.CalleeAddress)
+    ctx_caller_address_word = instruction.call_context_lookup_word(
+        CallContextFieldTag.CalleeAddress
+    )
     ctx_caller_address = instruction.word_to_address(ctx_caller_address_word)
     is_static = instruction.select(
         is_staticcall, FQ(1), instruction.call_context_lookup(CallContextFieldTag.IsStatic)
@@ -49,7 +51,9 @@ def callop(instruction: Instruction):
         is_callcode + is_delegatecall, ctx_caller_address, call.callee_address
     )
     callee_address_word = instruction.address_to_word(callee_address)
-    caller_address_word = instruction.select(is_delegatecall, parent_caller_address_word, ctx_caller_address_word)
+    caller_address_word = instruction.select(
+        is_delegatecall, parent_caller_address_word, ctx_caller_address_word
+    )
     caller_address = instruction.word_to_address(caller_address_word)
 
     # Add `callee_address` to access list

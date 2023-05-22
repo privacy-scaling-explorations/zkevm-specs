@@ -454,7 +454,12 @@ class RWDictionary:
         if isinstance(value, int):
             value = FQ(value)
         # Sanity checks
-        if field_tag in [CallContextFieldTag.CallerAddress, CallContextFieldTag.CalleeAddress, CallContextFieldTag.Value, CallContextFieldTag.CodeHash]:
+        if field_tag in [
+            CallContextFieldTag.CallerAddress,
+            CallContextFieldTag.CalleeAddress,
+            CallContextFieldTag.Value,
+            CallContextFieldTag.CodeHash,
+        ]:
             assert isinstance(value, Word)
         else:
             assert isinstance(value, FQ)
@@ -468,7 +473,12 @@ class RWDictionary:
         if isinstance(value, int):
             value = FQ(value)
         # Sanity checks
-        if field_tag in [CallContextFieldTag.CallerAddress, CallContextFieldTag.CalleeAddress, CallContextFieldTag.Value, CallContextFieldTag.CodeHash]:
+        if field_tag in [
+            CallContextFieldTag.CallerAddress,
+            CallContextFieldTag.CalleeAddress,
+            CallContextFieldTag.Value,
+            CallContextFieldTag.CodeHash,
+        ]:
             assert isinstance(value, Word)
         else:
             assert isinstance(value, FQ)
