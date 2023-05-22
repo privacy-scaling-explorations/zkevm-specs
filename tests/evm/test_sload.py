@@ -66,7 +66,7 @@ def test_sload(tx: Transaction, storage_key_be_bytes: bytes, warm: bool, is_pers
             .call_context_read(1, CallContextFieldTag.TxId, tx.id)
             .call_context_read(1, CallContextFieldTag.RwCounterEndOfReversion, 0 if is_persistent else rw_counter_end_of_reversion)
             .call_context_read(1, CallContextFieldTag.IsPersistent, is_persistent)
-            .call_context_read(1, CallContextFieldTag.CalleeAddress, tx.callee_address)
+            .call_context_read(1, CallContextFieldTag.CalleeAddress, Word(tx.callee_address))
             .stack_read(1, 1023, storage_key)
             .account_storage_read(tx.callee_address, storage_key, value, tx.id, value_committed)
             .stack_write(1, 1023, value)

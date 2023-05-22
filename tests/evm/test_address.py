@@ -25,6 +25,7 @@ TESTING_DATA = (
 def test_address(address: U160):
     bytecode = Bytecode().address()
     bytecode_hash = Word(bytecode.hash())
+    address_word = Word(address)
 
     tables = Tables(
         block_table=set(),
@@ -32,8 +33,8 @@ def test_address(address: U160):
         bytecode_table=set(bytecode.table_assignments()),
         rw_table=set(
             RWDictionary(9)
-            .call_context_read(1, CallContextFieldTag.CalleeAddress, address)
-            .stack_write(1, 1023, Word(address))
+            .call_context_read(1, CallContextFieldTag.CalleeAddress, address_word)
+            .stack_write(1, 1023, address_word)
             .rws
         ),
     )

@@ -123,12 +123,12 @@ def make_log(
         .stack_read(CALL_ID, stack_pointer + 1, Word(msize))
         .call_context_read(CALL_ID, CallContextFieldTag.TxId, TX_ID)
         .call_context_read(CALL_ID, CallContextFieldTag.IsStatic, 0)
-        .call_context_read(CALL_ID, CallContextFieldTag.CalleeAddress, FQ(CALLEE_ADDRESS))
+        .call_context_read(CALL_ID, CallContextFieldTag.CalleeAddress, Word(CALLEE_ADDRESS))
         .call_context_read(CALL_ID, CallContextFieldTag.IsPersistent, is_persistent)
     )
 
     if is_persistent:
-        rw_dictionary.tx_log_write(TX_ID, log_id, TxLogFieldTag.Address, 0, FQ(CALLEE_ADDRESS))
+        rw_dictionary.tx_log_write(TX_ID, log_id, TxLogFieldTag.Address, 0, Word(CALLEE_ADDRESS))
 
     # append topic rows
     construct_topic_rws(rw_dictionary, log_id, stack_pointer + 2, topics, is_persistent)

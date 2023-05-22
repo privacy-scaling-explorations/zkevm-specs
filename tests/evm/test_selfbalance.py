@@ -22,6 +22,7 @@ TESTING_DATA = [(0, 0), (0, 10), (rand_address(), rand_word())]
 def test_selfbalance(callee_address: U160, balance: U256):
     bytecode = Bytecode().selfbalance()
     bytecode_hash = Word(bytecode.hash())
+    callee_address_word = Word(callee_address)
 
     tables = Tables(
         block_table=Block(),
@@ -29,7 +30,7 @@ def test_selfbalance(callee_address: U160, balance: U256):
         bytecode_table=set(bytecode.table_assignments()),
         rw_table=set(
             RWDictionary(9)
-            .call_context_read(1, CallContextFieldTag.CalleeAddress, callee_address)
+            .call_context_read(1, CallContextFieldTag.CalleeAddress, callee_address_word)
             .account_read(callee_address, AccountFieldTag.Balance, Word(balance))
             .stack_write(1, 1023, Word(balance))
             .rws

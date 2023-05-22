@@ -40,7 +40,8 @@ def create(instruction: Instruction):
 
     depth = instruction.call_context_lookup(CallContextFieldTag.Depth)
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
-    caller_address = instruction.call_context_lookup(CallContextFieldTag.CallerAddress)
+    caller_address_word = instruction.call_context_lookup_word(CallContextFieldTag.CallerAddress)
+    caller_address = instruction.word_to_address(caller_address_word)
     nonce, nonce_prev = instruction.account_write(caller_address, AccountFieldTag.Nonce)
     _, balance_prev = instruction.account_write(caller_address, AccountFieldTag.Balance)
     is_success = instruction.call_context_lookup(CallContextFieldTag.IsSuccess)
@@ -132,6 +133,7 @@ def create(instruction: Instruction):
             if is_create == 1
             else instruction.generate_CREAET2_contract_address(caller_address, salt_word, code_hash)
         )
+        contract_address_word = instruction.address_to_word(contract_address)
         # add contract address to access list
         instruction.add_account_to_access_list(tx_id, contract_address)
 
@@ -206,20 +208,20 @@ def create(instruction: Instruction):
                     expected_value,
                 )
             # Setup next call's context.
-            for field_tag, expected_value in [
+            for field_tag, expected_word_or_value in [
                 (CallContextFieldTag.CallerId, instruction.curr.call_id),
                 (CallContextFieldTag.TxId, tx_id),
                 (CallContextFieldTag.Depth, depth + 1),
-                (CallContextFieldTag.CallerAddress, caller_address),
-                (CallContextFieldTag.CalleeAddress, contract_address),
+                (CallContextFieldTag.CallerAddress, caller_address_word),
+                (CallContextFieldTag.CalleeAddress, contract_address_word),
                 (CallContextFieldTag.IsSuccess, is_success),
                 (CallContextFieldTag.IsStatic, FQ(False)),
                 (CallContextFieldTag.IsRoot, FQ(False)),
                 (CallContextFieldTag.IsCreate, FQ(True)),
             ]:
-                instruction.constrain_equal(
-                    instruction.call_context_lookup(field_tag, call_id=callee_call_id),
-                    expected_value,
+                instruction.constrain_equal_word(
+                    instruction.call_context_lookup_word(field_tag, call_id=callee_call_id),
+                    WordOrValue(expected_word_or_value),
                 )
             instruction.constrain_equal_word(
                 instruction.call_context_lookup_word(
