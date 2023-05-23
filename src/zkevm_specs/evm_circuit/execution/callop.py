@@ -51,7 +51,7 @@ def callop(instruction: Instruction):
         is_callcode + is_delegatecall, ctx_caller_address, call.callee_address
     )
     callee_address_word = instruction.address_to_word(callee_address)
-    caller_address_word = instruction.select(
+    caller_address_word = instruction.select_word(
         is_delegatecall, parent_caller_address_word, ctx_caller_address_word
     )
     caller_address = instruction.word_to_address(caller_address_word)

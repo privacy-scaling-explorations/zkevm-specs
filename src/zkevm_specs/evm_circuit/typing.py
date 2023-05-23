@@ -110,7 +110,7 @@ class Block:
         value = lambda v: WordOrValue(FQ(v))
         word = lambda w: WordOrValue(Word(w))
         return [
-            BlockTableRow(FQ(BlockContextFieldTag.Coinbase), FQ(0), value(self.coinbase)),
+            BlockTableRow(FQ(BlockContextFieldTag.Coinbase), FQ(0), word(self.coinbase)),
             BlockTableRow(FQ(BlockContextFieldTag.GasLimit), FQ(0), value(self.gas_limit)),
             BlockTableRow(FQ(BlockContextFieldTag.Number), FQ(0), value(self.number)),
             BlockTableRow(FQ(BlockContextFieldTag.Timestamp), FQ(0), value(self.timestamp)),

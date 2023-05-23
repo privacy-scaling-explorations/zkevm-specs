@@ -170,7 +170,7 @@ __Hence the addition inside of the block_table.__
 | 0 *Tag*                | 1 *Index* | 2 *Value{Lo,Hi}* |
 | ---                    | ---       | ---              |
 | *BlockContextFieldTag* |           |                  |
-| Coinbase               | 0         | $value,0         |
+| Coinbase               | 0         | $value{Lo,Hi}    |
 | GasLimit               | 0         | $value,0         |
 | BlockNumber            | 0         | $value,0         |
 | Time                   | 0         | $value,0         |
