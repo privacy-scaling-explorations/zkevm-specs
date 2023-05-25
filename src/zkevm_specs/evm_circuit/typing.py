@@ -940,6 +940,7 @@ class CopyCircuit:
     ):
         new_rows: List[CopyCircuitRow] = []
         rlc_acc = FQ.zero()
+        rlc_acc_update = FQ.zero()
         for i in range(int(copy_length)):
             if int(src_addr + i) < int(src_addr_end):
                 is_pad = False
@@ -970,6 +971,7 @@ class CopyCircuit:
                 src_addr + i,
                 value,
                 FQ.zero(),  # rlc_acc will be updated later
+                FQ.zero(),  # rlc_acc_update will be updated later
                 is_code,
                 is_pad,
                 src_addr_end=src_addr_end,
@@ -989,7 +991,8 @@ class CopyCircuit:
                 dst_tag,
                 dst_addr + i,
                 rlc_acc if dst_tag == CopyDataTypeTag.RlcAcc else value,
-                FQ.zero(),
+                FQ.zero(), # TODO: rlc_acc.
+                rlc_acc_update, # TODO: rlc_acc_update.
                 is_code,
                 False,
                 log_id=log_id,
@@ -1018,6 +1021,7 @@ class CopyCircuit:
         addr: IntOrFQ,
         value: IntOrFQ,
         rlc_acc: IntOrFQ,
+        rlc_acc_update: IntOrFQ,
         is_code: IntOrFQ,
         is_pad: bool,
         src_addr_end: IntOrFQ = FQ(0),
@@ -1057,6 +1061,7 @@ class CopyCircuit:
                 bytes_left=FQ(bytes_left),
                 value=FQ(value),
                 rlc_acc=FQ(rlc_acc),
+                rlc_acc_update=FQ(rlc_acc_update),
                 is_code=FQ(is_code),
                 is_pad=FQ(is_pad),
                 rw_counter=FQ(rw_counter),

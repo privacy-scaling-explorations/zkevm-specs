@@ -28,6 +28,8 @@ def select(condition: Expression, when_true: Expression, when_false: Expression)
 # The WordIterator gadget guarantees that a word is processed in full. If the iterator is seen enabled at *any* step within a word,
 # then it must be enabled for a full block of 32 steps. There are markers for the start and the end of a word.
 class WordIterator:
+    LENGTH = 32
+
     is_enabled: Expression
     position_in_word: FQ
     is_word_start: FQ
@@ -49,7 +51,7 @@ def verify_step_word_iterator(cs: ConstraintSystem, curr: WordIterator, next: Wo
 
     # Detect the first and last byte of the word.
     cs.constrain_equal(curr.is_word_start, cs.is_equal(curr.position_in_word, FQ(1)))
-    cs.constrain_equal(curr.is_word_end, cs.is_equal(curr.position_in_word, FQ(32)))
+    cs.constrain_equal(curr.is_word_end, cs.is_equal(curr.position_in_word, FQ(WordIterator.LENGTH)))
     # TODO: is_word_start and is_word_end can be the same column with a rotation of 31.
     # TODO: maybe not necessary to be a witnessed boolean.
 
@@ -68,19 +70,42 @@ def verify_step_word_iterator(cs: ConstraintSystem, curr: WordIterator, next: Wo
 
 class WordRlcGadget:
     word_iter: WordIterator
-    rlc_acc: Expression
+    rlc_acc: FQ
 
-    def __init__(self, word_iter: WordIterator):
+    def __init__(self, word_iter: WordIterator, rlc_acc: FQ):
         self.word_iter = word_iter
-        # TODO
-        self.rlc_acc = FQ(0)
+        self.rlc_acc = rlc_acc
+    
+    # Return the final RLC value for the word. Only valid when is_word_start=1.
+    def get_final_rlc(self, rand: FQ) -> FQ:
+        # Shift the result of the reversed Horner’s rule, which has computed negative powers of rand (from -31 to 0), into the final result with normal powers (from 0 to 31).
+        # At the final step (i=31), having processed all 32 bytes, `final_rlc = rand**31 * final_acc`.
+        return rand**(WordIterator.LENGTH - 1) * self.rlc_acc
 
 
-# Verify that the state `curr` includes the input byte.
+# Verify that the accumulator `curr` includes the current input byte.
 # `curr` is either the start of a word, or a continuation after `prev`.
-def verify_step_word_rlc(cs: ConstraintSystem, prev: WordRlcGadget, curr: WordRlcGadget, in_byte: Expression):
-    # TODO
-    pass
+def verify_step_word_rlc(cs: ConstraintSystem, rand: FQ, prev: WordRlcGadget, curr: WordRlcGadget, curr_byte: Expression):
+    # The accumulator starts at 0 at the start of a word, or is copied from the previous row.
+    prev_acc = select(curr.word_iter.is_word_start, FQ(0), prev.rlc_acc).expr()
+    
+    # This is Horner’s rule, but in reverse. This accumulates the values in order of increasing powers of rand, from negative power -31 to power 0.
+    #
+    # We want to compute, for i in [0, 32):
+    #   final_rlc = ∑ byte[i] * rand**i
+    #
+    # Rewrite it in terms of the accumulator that we actually compute:
+    #   final_rlc = rand**31 * final_acc
+    #   final_acc = ∑ byte[i] * rand**(i - 31)
+    #
+    # Reverse the processing order, that is rewrite with `X = rand**-1` and `j = 31 - i`:
+    #   final_acc = ∑ byte[i] * X**j
+    #
+    # Then apply Horner’s rule, going from the highest power (j=31, i=0) to the lowest power (j=0, i=31):
+    #   acc[-1] = 0
+    #   acc[i] = acc[i-1] * X + byte[i]
+    #   (acc[i] - byte[i]) * rand = acc[i-1]
+    cs.constrain_equal((curr.rlc_acc - curr_byte.expr()) * rand, prev_acc)
 
 
 # The CopyRangeGadget tracks whether the current row is within the copy range.
@@ -151,7 +176,7 @@ def verify_tag_decoding(cs: ConstraintSystem, row: CopyCircuitRow):
     # TODO: constrain read-only and write-only data types?
 
 
-def verify_row(cs: ConstraintSystem, tables: Tables, rows: Sequence[CopyCircuitRow]):
+def verify_row(cs: ConstraintSystem, tables: Tables, rows: Sequence[CopyCircuitRow], rand: FQ):
     # Decode the tag into boolean indicators for each data type.
     verify_tag_decoding(cs, rows[0])
 
@@ -181,11 +206,11 @@ def verify_row(cs: ConstraintSystem, tables: Tables, rows: Sequence[CopyCircuitR
         cs.constrain_equal(rows[0].addr + 1, rows[2].addr)
 
     # Word RLC accumulators that read memory. This applies to both reader and writer rows.
-    rlc_reader_0 = WordRlcGadget(word_iter_0)
-    rlc_reader_2 = WordRlcGadget(word_iter_2)
+    rlc_reader_0 = WordRlcGadget(word_iter_0, rows[0].rlc_acc)
+    rlc_reader_2 = WordRlcGadget(word_iter_2, rows[2].rlc_acc)
     # The RLC of a step (at rows[2]) must include the byte of that step, on top of the previous accumulator value (at rows[0]).
     read_byte_2 = rows[2].value
-    verify_step_word_rlc(cs, rlc_reader_0, rlc_reader_2, read_byte_2)
+    verify_step_word_rlc(cs, rand, rlc_reader_0, rlc_reader_2, read_byte_2)
 
     # What is the updated byte on rows[2]?
     # On a writer row inside of the copy range, copy a byte from the source ([1]) to the destination ([2]).
@@ -195,10 +220,10 @@ def verify_row(cs: ConstraintSystem, tables: Tables, rows: Sequence[CopyCircuitR
     updated_byte_2 = select(is_source_to_dest_2, source_byte_1, read_byte_2)
 
     # The word RLC accumulator that updates memory.
-    rlc_updater_0 = WordRlcGadget(word_iter_0)
-    rlc_updater_2 = WordRlcGadget(word_iter_2)
+    rlc_updater_0 = WordRlcGadget(word_iter_0, rows[0].rlc_acc_update)
+    rlc_updater_2 = WordRlcGadget(word_iter_2, rows[2].rlc_acc_update)
     # The RLC of a step (at rows[2]) must include the byte of that step, on top of the previous accumulator value (at rows[0]).
-    verify_step_word_rlc(cs, rlc_updater_0, rlc_updater_2, updated_byte_2)
+    verify_step_word_rlc(cs, rand, rlc_updater_0, rlc_updater_2, updated_byte_2)
 
     # Whether an RW operation is performed on this row 0.
     rw_diff_0 = word_iter_0.is_word_end
@@ -219,8 +244,8 @@ def verify_row(cs: ConstraintSystem, tables: Tables, rows: Sequence[CopyCircuitR
             tag=tag,
             id=rows[0].id,
             address=slot_addr,
-            value=rlc_updater_0.rlc_acc,
-            value_prev=rlc_reader_0.rlc_acc,
+            value=rlc_updater_0.get_final_rlc(rand),
+            value_prev=rlc_reader_0.get_final_rlc(rand),
         )
 
     # Check the end condition that the counter of RW operations is fully consumed, that is rwc_inc_left goes to zero.
@@ -301,7 +326,7 @@ def verify_copy_table(copy_circuit: CopyCircuit, tables: Tables, r: FQ):
             copy_table[(i + 2) % n],
         ]
         # constrain on each row and step
-        verify_row(cs, tables, rows)
+        verify_row(cs, tables, rows, r)
         verify_step(cs, rows, r)
 
         # lookup into tables

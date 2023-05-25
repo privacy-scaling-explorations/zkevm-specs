@@ -460,6 +460,7 @@ class CopyCircuitRow(TableRow):
     bytes_left: FQ
     value: FQ
     rlc_acc: FQ
+    rlc_acc_update: FQ
     is_code: FQ
     is_pad: FQ # Whether the byte to read is out-of-bound and defaults to zero.
     rw_counter: FQ
