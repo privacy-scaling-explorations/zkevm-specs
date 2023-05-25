@@ -42,7 +42,7 @@ There are 14 columns in `rw_table`.
  - col. 0 (*Rwc*) is the read-write counter. 32 bits, starts at 1.
  - col. 1 (*IsWrite*) specify this row is for `read` or `write`.
  - col. 2 (*Tag*) is a tag for different contexts. The content for different *Tag*s are in col. 3 ~ col. 13.
- - col. 3 ~ 12 are the content for different *`Tag`* specified in col. 2 accordingly.
+ - col. 3 ~ 13 are the content for different *`Tag`* specified in col. 2 accordingly.
     - col. 3 *Id*
         - **txID**: 32 bits, starts at 1 (corresponds to `txIndex + 1`).
         - **callID**: 32 bits, starts at 1 (corresponds to `rw_counter` when the call begins).
