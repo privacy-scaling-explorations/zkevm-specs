@@ -935,7 +935,7 @@ class Instruction:
     def account_read(
         self, account_address: Expression, account_field_tag: AccountFieldTag
     ) -> Expression:
-        self.account_read_word(account_address, account_field_tag).value()
+        return self.account_read_word(account_address, account_field_tag).value()
 
     def account_read_word(
         self, account_address: Expression, account_field_tag: AccountFieldTag
