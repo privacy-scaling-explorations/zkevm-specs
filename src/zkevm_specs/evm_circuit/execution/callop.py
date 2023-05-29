@@ -18,19 +18,23 @@ def callop(instruction: Instruction):
 
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
     reversion_info = instruction.reversion_info()
-    caller_address = instruction.call_context_lookup(CallContextFieldTag.CalleeAddress)
+    ctx_caller_address_word = instruction.call_context_lookup_word(
+        CallContextFieldTag.CalleeAddress
+    )
+    ctx_caller_address = instruction.word_to_address(ctx_caller_address_word)
     is_static = instruction.select(
         is_staticcall, FQ(1), instruction.call_context_lookup(CallContextFieldTag.IsStatic)
     )
     depth = instruction.call_context_lookup(CallContextFieldTag.Depth)
-    parent_caller_address, parent_call_value = (
+    parent_caller_address_word, parent_call_value = (
         (
-            instruction.call_context_lookup(CallContextFieldTag.CallerAddress),
+            instruction.call_context_lookup_word(CallContextFieldTag.CallerAddress),
             instruction.call_context_lookup_word(CallContextFieldTag.Value),
         )
         if is_delegatecall == 1
-        else (FQ(0), Word(0))
+        else (Word(0), Word(0))
     )
+    parent_caller_address = instruction.word_to_address(parent_caller_address_word)
 
     # Verify depth is less than 1024
     instruction.range_lookup(depth, 1024)
@@ -44,9 +48,13 @@ def callop(instruction: Instruction):
     # - caller_address = parent_caller_address
     #
     callee_address = instruction.select(
-        is_callcode + is_delegatecall, caller_address, call.callee_address
+        is_callcode + is_delegatecall, ctx_caller_address, call.callee_address
     )
-    caller_address = instruction.select(is_delegatecall, parent_caller_address, caller_address)
+    callee_address_word = instruction.address_to_word(callee_address)
+    caller_address_word = instruction.select_word(
+        is_delegatecall, parent_caller_address_word, ctx_caller_address_word
+    )
+    caller_address = instruction.word_to_address(caller_address_word)
 
     # Add `callee_address` to access list
     is_warm_access = instruction.add_account_to_access_list(
@@ -183,8 +191,8 @@ def callop(instruction: Instruction):
             (CallContextFieldTag.CallerId, instruction.curr.call_id),
             (CallContextFieldTag.TxId, tx_id.expr()),
             (CallContextFieldTag.Depth, depth.expr() + 1),
-            (CallContextFieldTag.CallerAddress, caller_address.expr()),
-            (CallContextFieldTag.CalleeAddress, callee_address.expr()),
+            (CallContextFieldTag.CallerAddress, caller_address_word),
+            (CallContextFieldTag.CalleeAddress, callee_address_word),
             (CallContextFieldTag.CallDataOffset, call.cd_offset),
             (CallContextFieldTag.CallDataLength, call.cd_length),
             (CallContextFieldTag.ReturnDataOffset, call.rd_offset),

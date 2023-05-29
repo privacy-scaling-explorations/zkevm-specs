@@ -25,8 +25,14 @@ def begin_tx(instruction: Instruction):
     if instruction.is_first_step:
         instruction.constrain_equal(tx_id, FQ(1))
 
-    tx_caller_address = instruction.tx_context_lookup(tx_id, TxContextFieldTag.CallerAddress)
-    tx_callee_address = instruction.tx_context_lookup(tx_id, TxContextFieldTag.CalleeAddress)
+    tx_caller_address_word = instruction.tx_context_lookup_word(
+        tx_id, TxContextFieldTag.CallerAddress
+    )
+    tx_caller_address = instruction.word_to_address(tx_caller_address_word)
+    tx_callee_address_word = instruction.tx_context_lookup_word(
+        tx_id, TxContextFieldTag.CalleeAddress
+    )
+    tx_callee_address = instruction.word_to_address(tx_callee_address_word)
     tx_is_create = instruction.tx_context_lookup(tx_id, TxContextFieldTag.IsCreate)
     tx_value = instruction.tx_context_lookup_word(tx_id, TxContextFieldTag.Value)
     tx_call_data_length = instruction.tx_context_lookup(tx_id, TxContextFieldTag.CallDataLength)
@@ -120,8 +126,8 @@ def begin_tx(instruction: Instruction):
             # - IsSuccess, IsPersistent will be verified in the end of tx
             for tag, word_or_value in [
                 (CallContextFieldTag.Depth, FQ(1)),
-                (CallContextFieldTag.CallerAddress, tx_caller_address),
-                (CallContextFieldTag.CalleeAddress, tx_callee_address),
+                (CallContextFieldTag.CallerAddress, tx_caller_address_word),
+                (CallContextFieldTag.CalleeAddress, tx_callee_address_word),
                 (CallContextFieldTag.CallDataOffset, FQ(0)),
                 (CallContextFieldTag.CallDataLength, tx_call_data_length),
                 (CallContextFieldTag.Value, tx_value),

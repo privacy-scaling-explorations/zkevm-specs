@@ -189,8 +189,8 @@ def test_begin_tx(tx: Transaction, callee: Account, is_success: bool):
     if callee.code_hash() != EMPTY_CODE_HASH and is_tx_valid == 1:
         rw_dictionary \
         .call_context_read(1, CallContextFieldTag.Depth, 1) \
-        .call_context_read(1, CallContextFieldTag.CallerAddress, tx.caller_address) \
-        .call_context_read(1, CallContextFieldTag.CalleeAddress, tx.callee_address) \
+        .call_context_read(1, CallContextFieldTag.CallerAddress, Word(tx.caller_address)) \
+        .call_context_read(1, CallContextFieldTag.CalleeAddress, Word(tx.callee_address)) \
         .call_context_read(1, CallContextFieldTag.CallDataOffset, 0) \
         .call_context_read(1, CallContextFieldTag.CallDataLength, len(tx.call_data)) \
         .call_context_read(1, CallContextFieldTag.Value, Word(tx.value)) \

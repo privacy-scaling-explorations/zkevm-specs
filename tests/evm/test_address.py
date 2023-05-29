@@ -32,7 +32,7 @@ def test_address(address: U160):
         bytecode_table=set(bytecode.table_assignments()),
         rw_table=set(
             RWDictionary(9)
-            .call_context_read(1, CallContextFieldTag.CalleeAddress, address)
+            .call_context_read(1, CallContextFieldTag.CalleeAddress, Word(address))
             .stack_write(1, 1023, Word(address))
             .rws
         ),

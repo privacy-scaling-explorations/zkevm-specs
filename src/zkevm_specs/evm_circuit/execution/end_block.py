@@ -1,4 +1,4 @@
-from ...util import FQ, N_BYTES_GAS
+from ...util import FQ, N_BYTES_GAS, Word
 from ..instruction import Instruction, Transition
 from ..table import (
     CallContextFieldTag,
@@ -69,7 +69,7 @@ def end_block(instruction: Instruction):
                 tx_row
                 for tx_row in instruction.tables.tx_table
                 if tx_row.field_tag == TxContextFieldTag.CallerAddress
-                and tx_row.value.value().expr() != FQ(0)
+                and (tx_row.value.lo.expr(), tx_row.value.hi.expr()) != (FQ(0), FQ(0))
             ]
         )
     )
@@ -116,9 +116,11 @@ def end_block(instruction: Instruction):
             # Verify that there are at most total_txs meaningful txs in the tx_table, by
             # showing that the Tx following the last processed one has
             # CallerAddress = 0x0 (which means padding tx).
-            instruction.constrain_equal(
-                instruction.tx_context_lookup(FQ(total_txs + 1), TxContextFieldTag.CallerAddress),
-                FQ(0),
+            instruction.constrain_equal_word(
+                instruction.tx_context_lookup_word(
+                    FQ(total_txs + 1), TxContextFieldTag.CallerAddress
+                ),
+                Word(0),
             )
             # Since every tx lookup done in the EVM circuit must succeed and
             # uses a unique tx_id, we know that at least there are total_tx

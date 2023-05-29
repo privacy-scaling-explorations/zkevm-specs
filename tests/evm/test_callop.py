@@ -286,13 +286,13 @@ def test_callop(
         .call_context_read(1, CallContextFieldTag.TxId, 1)
         .call_context_read(1, CallContextFieldTag.RwCounterEndOfReversion, caller_ctx.rw_counter_end_of_reversion)
         .call_context_read(1, CallContextFieldTag.IsPersistent, caller_ctx.is_persistent)
-        .call_context_read(1, CallContextFieldTag.CalleeAddress, caller.address)
+        .call_context_read(1, CallContextFieldTag.CalleeAddress, Word(caller.address))
         .call_context_read(1, CallContextFieldTag.IsStatic, is_static)
         .call_context_read(1, CallContextFieldTag.Depth, 1)
     )
     if is_delegatecall == 1:
         rw_dictionary \
-        .call_context_read(1, CallContextFieldTag.CallerAddress, parent_caller.address) \
+        .call_context_read(1, CallContextFieldTag.CallerAddress, Word(parent_caller.address)) \
         .call_context_read(1, CallContextFieldTag.Value, Word(parent_value))
     if is_call + is_callcode == 1:
         rw_dictionary \
@@ -359,8 +359,8 @@ def test_callop(
         .call_context_read(call_id, CallContextFieldTag.CallerId, 1) \
         .call_context_read(call_id, CallContextFieldTag.TxId, 1) \
         .call_context_read(call_id, CallContextFieldTag.Depth, 2) \
-        .call_context_read(call_id, CallContextFieldTag.CallerAddress, caller.address) \
-        .call_context_read(call_id, CallContextFieldTag.CalleeAddress, callee.address) \
+        .call_context_read(call_id, CallContextFieldTag.CallerAddress, Word(caller.address)) \
+        .call_context_read(call_id, CallContextFieldTag.CalleeAddress, Word(callee.address)) \
         .call_context_read(call_id, CallContextFieldTag.CallDataOffset, stack.cd_offset if stack.cd_length != 0 else 0) \
         .call_context_read(call_id, CallContextFieldTag.CallDataLength, stack.cd_length) \
         .call_context_read(call_id, CallContextFieldTag.ReturnDataOffset, stack.rd_offset if stack.rd_length != 0 else 0) \

@@ -18,7 +18,8 @@ def sload(instruction: Instruction):
 
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
     reversion_info = instruction.reversion_info()
-    callee_address = instruction.call_context_lookup(CallContextFieldTag.CalleeAddress)
+    callee_address_word = instruction.call_context_lookup_word(CallContextFieldTag.CalleeAddress)
+    callee_address = instruction.word_to_address(callee_address_word)
 
     storage_key = instruction.stack_pop()
 
@@ -57,7 +58,8 @@ def sstore(instruction: Instruction):
     )
 
     reversion_info = instruction.reversion_info()
-    callee_address = instruction.call_context_lookup(CallContextFieldTag.CalleeAddress)
+    callee_address_word = instruction.call_context_lookup_word(CallContextFieldTag.CalleeAddress)
+    callee_address = instruction.word_to_address(callee_address_word)
 
     storage_key = instruction.stack_pop()
     storage_value = instruction.stack_pop()

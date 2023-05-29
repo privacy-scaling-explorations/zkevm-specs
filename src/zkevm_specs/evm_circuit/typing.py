@@ -110,7 +110,7 @@ class Block:
         value = lambda v: WordOrValue(FQ(v))
         word = lambda w: WordOrValue(Word(w))
         return [
-            BlockTableRow(FQ(BlockContextFieldTag.Coinbase), FQ(0), value(self.coinbase)),
+            BlockTableRow(FQ(BlockContextFieldTag.Coinbase), FQ(0), word(self.coinbase)),
             BlockTableRow(FQ(BlockContextFieldTag.GasLimit), FQ(0), value(self.gas_limit)),
             BlockTableRow(FQ(BlockContextFieldTag.Number), FQ(0), value(self.number)),
             BlockTableRow(FQ(BlockContextFieldTag.Timestamp), FQ(0), value(self.timestamp)),
@@ -209,13 +209,13 @@ class Transaction:
                 word(self.gas_price),
             ),
             TxTableRow(
-                FQ(self.id), FQ(TxContextFieldTag.CallerAddress), FQ(0), value(self.caller_address)
+                FQ(self.id), FQ(TxContextFieldTag.CallerAddress), FQ(0), word(self.caller_address)
             ),
             TxTableRow(
                 FQ(self.id),
                 FQ(TxContextFieldTag.CalleeAddress),
                 FQ(0),
-                value(0 if self.callee_address is None else self.callee_address),
+                word(0 if self.callee_address is None else self.callee_address),
             ),
             TxTableRow(
                 FQ(self.id),
@@ -453,6 +453,16 @@ class RWDictionary:
     ) -> RWDictionary:
         if isinstance(value, int):
             value = FQ(value)
+        # Sanity checks
+        if field_tag in [
+            CallContextFieldTag.CallerAddress,
+            CallContextFieldTag.CalleeAddress,
+            CallContextFieldTag.Value,
+            CallContextFieldTag.CodeHash,
+        ]:
+            assert isinstance(value, Word)
+        else:
+            assert isinstance(value, FQ)
         return self._append(
             RW.Read, RWTableTag.CallContext, id=FQ(call_id), address=FQ(field_tag), value=value
         )
@@ -462,6 +472,16 @@ class RWDictionary:
     ) -> RWDictionary:
         if isinstance(value, int):
             value = FQ(value)
+        # Sanity checks
+        if field_tag in [
+            CallContextFieldTag.CallerAddress,
+            CallContextFieldTag.CalleeAddress,
+            CallContextFieldTag.Value,
+            CallContextFieldTag.CodeHash,
+        ]:
+            assert isinstance(value, Word)
+        else:
+            assert isinstance(value, FQ)
         return self._append(
             RW.Write, RWTableTag.CallContext, id=FQ(call_id), address=FQ(field_tag), value=value
         )
@@ -476,6 +496,11 @@ class RWDictionary:
     ) -> RWDictionary:
         if isinstance(value, int):
             value = FQ(value)
+        # Sanity checks
+        if field_tag in [TxLogFieldTag.Address, TxLogFieldTag.Topic]:
+            assert isinstance(value, Word)
+        else:
+            assert isinstance(value, FQ)
         return self._append(
             RW.Write,
             RWTableTag.TxLog,

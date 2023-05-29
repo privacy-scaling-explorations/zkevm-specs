@@ -70,7 +70,7 @@ def test_dataCopy(
     rw_dictionary = (
         # fmt: off
         RWDictionary(1)
-        .call_context_read(precompile_id, CallContextFieldTag.CalleeAddress, DATACOPY_PRECOMPILE_ADDRESS)
+        .call_context_read(precompile_id, CallContextFieldTag.CalleeAddress, Word(DATACOPY_PRECOMPILE_ADDRESS))
         .call_context_read(precompile_id, CallContextFieldTag.CallerId, call_id)
         .call_context_read(precompile_id, CallContextFieldTag.CallDataOffset, call_data_offset)
         .call_context_read(precompile_id, CallContextFieldTag.CallDataLength, call_data_length)

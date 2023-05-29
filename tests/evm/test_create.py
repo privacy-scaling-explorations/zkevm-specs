@@ -282,7 +282,7 @@ def test_create_create2(
     rw_dictionary \
         .call_context_read(CURRENT_CALL_ID, CallContextFieldTag.Depth, stack_depth) \
         .call_context_read(CURRENT_CALL_ID, CallContextFieldTag.TxId, 1) \
-        .call_context_read(CURRENT_CALL_ID, CallContextFieldTag.CallerAddress, caller.address) \
+        .call_context_read(CURRENT_CALL_ID, CallContextFieldTag.CallerAddress, Word(caller.address)) \
         .account_write(caller.address, AccountFieldTag.Nonce, nonce, nonce - 1) \
         .account_write(caller.address, AccountFieldTag.Balance, caller_balance, caller_balance_prev) \
         .call_context_read(CURRENT_CALL_ID, CallContextFieldTag.IsSuccess, is_success) \
@@ -334,8 +334,8 @@ def test_create_create2(
             .call_context_read(next_call_id, CallContextFieldTag.CallerId, CURRENT_CALL_ID) \
             .call_context_read(next_call_id, CallContextFieldTag.TxId, 1) \
             .call_context_read(next_call_id, CallContextFieldTag.Depth, stack_depth+1) \
-            .call_context_read(next_call_id, CallContextFieldTag.CallerAddress, caller.address) \
-            .call_context_read(next_call_id, CallContextFieldTag.CalleeAddress, contract_address) \
+            .call_context_read(next_call_id, CallContextFieldTag.CallerAddress, Word(caller.address)) \
+            .call_context_read(next_call_id, CallContextFieldTag.CalleeAddress, Word(contract_address)) \
             .call_context_read(next_call_id, CallContextFieldTag.IsSuccess, is_success) \
             .call_context_read(next_call_id, CallContextFieldTag.IsStatic, is_static) \
             .call_context_read(next_call_id, CallContextFieldTag.IsRoot, False) \

@@ -155,7 +155,7 @@ def test_is_create(
         .call_context_read(callee_id, CallContextFieldTag.IsSuccess, int(is_return))
         .stack_read(callee_id, 1022, return_offset_word)
         .stack_read(callee_id, 1023, return_length_word)
-        .call_context_read(callee_id, CallContextFieldTag.CalleeAddress, int(CALLEE_ADDRESS))
+        .call_context_read(callee_id, CallContextFieldTag.CalleeAddress, Word(CALLEE_ADDRESS))
         .account_write(
             CALLEE_ADDRESS,
             AccountFieldTag.CodeHash,
