@@ -9,7 +9,7 @@ from ...util import (
     TxDataZeroGas,
 )
 from ..instruction import Instruction, Transition
-from ..table import CallContextFieldTag
+from ..table import CallContextFieldTag, RW
 from ..opcode import Opcode
 
 
@@ -23,6 +23,22 @@ def error_gas_uint_overflow(instruction: Instruction):
         is_staticcall,
         is_create_flag,
         is_create2_flag,
+        is_calldatacopy,
+        is_codecopy,
+        is_extcodecopy,
+        is_returndatacopy,
+        is_log0,
+        is_log1,
+        is_log2,
+        is_log3,
+        is_log4,
+        is_sha3,
+        is_exp,
+        is_mload,
+        is_mstore,
+        is_mstore8,
+        is_return,
+        is_revert,
     ) = instruction.multiple_select(
         opcode,
         (
@@ -32,24 +48,28 @@ def error_gas_uint_overflow(instruction: Instruction):
             Opcode.STATICCALL,
             Opcode.CREATE,
             Opcode.CREATE2,
+            Opcode.CALLDATACOPY,
+            Opcode.CODECOPY,
+            Opcode.EXTCODECOPY,
+            Opcode.RETURNDATACOPY,
+            Opcode.LOG0,
+            Opcode.LOG1,
+            Opcode.LOG2,
+            Opcode.LOG3,
+            Opcode.LOG4,
+            Opcode.SHA3,
+            Opcode.EXP,
+            Opcode.MLOAD,
+            Opcode.MSTORE,
+            Opcode.MSTORE8,
+            Opcode.RETURN,
+            Opcode.REVERT,
         ),
     )
     is_create = is_create_flag + is_create2_flag
 
-    # init overflow flag
-    is_call_gas_cost_overflow = (
-        is_eip2028_overflow
-    ) = is_non_zero_gas_overflow = is_eip3860_overflow = FQ(0)
-
-    # call gas_cost overflow flag.
-    # seems never overflow because of checking range inside of CallGadget
-    tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
-    call = CallGadget(instruction, FQ(0), is_call, is_callcode, is_delegatecall)
-    is_warm_access = instruction.read_account_to_access_list(tx_id, call.callee_address)
-    gas_cost = call.gas_cost(instruction, is_warm_access)
-    is_call_gas_cost_overflow = is_call * instruction.is_u64_overflow(gas_cost)
-
-    # intrinsic gas flag.
+    # IntrinsicGas
+    # https://github.com/ethereum/go-ethereum/blob/b946b7a13b749c99979e312c83dce34cac8dd7b1/core/state_transition.go#L67
     calldata_offset = instruction.call_context_lookup(CallContextFieldTag.CallDataOffset)
     calldata_length = instruction.call_context_lookup(CallContextFieldTag.CallDataLength)
     data = [
@@ -83,6 +103,82 @@ def error_gas_uint_overflow(instruction: Instruction):
         #     )
 
     instruction.condition(FQ(dataLen > 0), non_zero_gas_constraints)
+
+    # Run
+    # https://github.com/ethereum/go-ethereum/blob/b946b7a13b749c99979e312c83dce34cac8dd7b1/core/vm/interpreter.go#L105
+    is_dynamic_gas = opcode.has_dynamic_gas()
+    is_memory_size = (
+        is_calldatacopy
+        + is_codecopy
+        + is_extcodecopy
+        + is_returndatacopy
+        + is_sha3
+        + is_call
+        + is_delegatecall
+        + is_staticcall
+        + is_create_flag
+        + is_create2_flag
+        + is_log0
+        + is_log1
+        + is_log2
+        + is_log3
+        + is_log4
+        + is_mload
+        + is_mstore
+        + is_mstore8
+        + is_return
+        + is_revert
+    )
+
+    def calc_mem_size64(off: Word, l: Word) -> Tuple[Word, bool]:
+        if instruction.is_u64_overflow(l) == FQ(0):
+            return (Word(), True)
+        return calc_mem_size64_with_uint(off, l)
+
+    def calc_mem_size64_with_uint(off: Word, length64: Word) -> Tuple[Word, bool]:
+        if length64 == Word():
+            return (Word(), False)
+
+    def memory_size_constraints():
+        (memSize, overflow) = (
+            (
+                instruction.stack_lookup(RW.Read, stack_pointer_offset),
+                instruction.stack_lookup(RW.Read, stack_pointer_offset - 1),
+            )
+            if is_sha3
+            else (
+                instruction.stack_lookup(RW.Read, stack_pointer_offset),
+                instruction.stack_lookup(RW.Read, stack_pointer_offset - 2),
+            )
+            if is_calldatacopy or is_returndatacopy or is_codecopy
+            else (
+                instruction.stack_lookup(RW.Read, stack_pointer_offset),
+                instruction.stack_lookup(RW.Read, stack_pointer_offset - 3),
+            )
+            if is_extcodecopy
+            else (
+                instruction.stack_lookup(RW.Read, stack_pointer_offset - 1),
+                instruction.stack_lookup(RW.Read, stack_pointer_offset - 2),
+            )
+            # if is_create
+        )
+
+    instruction.condition(
+        FQ(dataLen > 0),
+    )
+
+    # init overflow flag
+    is_call_gas_cost_overflow = (
+        is_eip2028_overflow
+    ) = is_non_zero_gas_overflow = is_eip3860_overflow = FQ(0)
+
+    # call gas_cost overflow flag.
+    # seems never overflow because of checking range inside of CallGadget
+    tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
+    call = CallGadget(instruction, FQ(0), is_call, is_callcode, is_delegatecall)
+    is_warm_access = instruction.read_account_to_access_list(tx_id, call.callee_address)
+    gas_cost = call.gas_cost(instruction, is_warm_access)
+    is_call_gas_cost_overflow = is_call * instruction.is_u64_overflow(gas_cost)
 
     # verify gas uint overflow.
     is_overflow = (
