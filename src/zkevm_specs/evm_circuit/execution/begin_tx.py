@@ -139,6 +139,7 @@ def begin_tx(instruction: Instruction):
                 (CallContextFieldTag.IsCreate, FQ(False)),
                 (CallContextFieldTag.CodeHash, code_hash),
             ]:
+                assert isinstance(word_or_value, FQ) or isinstance(word_or_value, Word)
                 instruction.constrain_equal_word(
                     instruction.call_context_lookup_word(tag, call_id=call_id),
                     WordOrValue(word_or_value),
