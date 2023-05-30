@@ -180,7 +180,7 @@ class RW(IntEnum):
     Write = 1
 
 
-class RWTableTag(IntEnum):
+class Target(IntEnum):
     """
     Tag for RWTable lookup, where the RWTable an advice-column table built by
     prover, which will be part of State circuit and each unit read-write data
@@ -206,11 +206,11 @@ class RWTableTag(IntEnum):
     # to write them with reversion when the write might fail.
     def write_with_reversion(self) -> bool:
         return self in [
-            RWTableTag.TxAccessListAccount,
-            RWTableTag.TxAccessListAccountStorage,
-            RWTableTag.Account,
-            RWTableTag.AccountStorage,
-            RWTableTag.TxRefund,
+            Target.TxAccessListAccount,
+            Target.TxAccessListAccountStorage,
+            Target.Account,
+            Target.AccountStorage,
+            Target.TxRefund,
         ]
 
 
@@ -263,7 +263,7 @@ class CallContextFieldTag(IntEnum):
     # CallState in the end by callee.
     # Note that stack and memory could also be included here, but since they
     # need extra constraints on their data format, so we separate them to be
-    # different kinds of RWTableTag.
+    # different kinds of Target.
     ProgramCounter = auto()
     StackPointer = auto()
     GasLeft = auto()
@@ -427,7 +427,7 @@ class BytecodeTableRow(TableRow):
 class RWTableRow(TableRow):
     rw_counter: Expression
     rw: Expression
-    key0: Expression  # RWTableTag
+    key0: Expression  # Target
     id: Expression = field(default=FQ(0))
     address: Expression = field(default=FQ(0))
     field_tag: Expression = field(default=FQ(0))
