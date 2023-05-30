@@ -1071,6 +1071,7 @@ class CopyCircuit:
                 is_tx_calldata=FQ(is_tx_calldata),
                 is_tx_log=FQ(is_tx_log),
                 is_rlc_acc=FQ(is_rlc_acc),
+                is_in_word=FQ(position_in_word != 0),
                 position_in_word=FQ(position_in_word),
                 is_word_start=FQ(position_in_word == 1),
                 is_word_end=FQ(position_in_word == 32),

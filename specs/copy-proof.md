@@ -25,6 +25,22 @@ In addition to the columns in the copy table, copy circuit adds a few auxiliary 
 
 *Note*: We use `IsZero` gadget in the specs for simplicity. In the actual circuit implementation, we make use of `BinaryGadget`.
 
+
+## Requirements
+
+- If there is an entry in the Copy table with `is_first = 1` and the destination `Memory` or `TxLog`, the circuit will verify that the appropriate memory or log write operations exist in the RW table.
+
+- If there is an entry with `is_first = 1` and the tag is `rlc_acc`, then the RLC value in the entry will be verified.
+
+- The data written or RLC’d will be verified to exist in the source tables (RW, Bytecode, or Calldata).
+
+- The RW operations happen in a deterministic order with consecutive RW counter values, starting with the `rw_counter` given in the entry.
+
+- All RW operations happen, based on the `rwc_inc_left` counter in the entry.
+
+- The user of the Copy table *should* calculate `rwc_inc_left` independently and deterministically, for defense-in-depth.
+
+
 ## Circuit Constraints
 
 The constraints are divided into four groups.

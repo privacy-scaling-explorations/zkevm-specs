@@ -25,33 +25,71 @@ def select(condition: Expression, when_true: Expression, when_false: Expression)
     return condition.expr() * when_true.expr() + (1 - condition.expr()) * when_false.expr()
 
 
-# The WordIterator gadget guarantees that a word is processed in full. If the iterator is seen enabled at *any* step within a word,
-# then it must be enabled for a full block of 32 steps. There are markers for the start and the end of a word.
+def expr_or(a: Expression, b: Expression) -> Expression:
+    return a.expr() + b.expr() - a.expr() * b.expr()
+
+
+# The WordIterator gadget guarantees that a word is processed in full.
+#
+# This gadget takes an input `must_run`. If `must_run = 1` at *any* step, then the iterator must be enabled for a full word of `LENGTH` steps, including steps before, at, or after the `must_run` command. Nondeterminism: an iterator is allowed to run even if it does not have to (`must_run = 0` on all row).
+#
+# The gadget provides markers for the start and the end of a word.
 class WordIterator:
     LENGTH = 32
 
-    is_enabled: Expression
+    _is_in_word: FQ
     position_in_word: FQ
-    is_word_start: FQ
-    is_word_end: FQ
+    _is_word_start: FQ
+    _is_word_end: FQ
 
     def __init__(self, row: CopyCircuitRow):
-        self.is_enabled = row.is_memory + row.is_tx_log
+        self._is_in_word = row.is_in_word
         self.position_in_word = row.position_in_word
-        self.is_word_start = row.is_word_start
-        self.is_word_end = row.is_word_end
+        self._is_word_start = row.is_word_start
+        self._is_word_end = row.is_word_end
+
+    def is_in_word(self) -> Expression:
+        return self._is_in_word
+
+    def is_word_start(self) -> Expression:
+        return self._is_word_start
+
+    def is_word_end(self) -> Expression:
+        return self._is_word_end
+
+    # Whether both this step and the next step are part of a word.
+    def is_continue(self) -> Expression:
+        return self.is_in_word() * (FQ(1) - self.is_word_end())
+    
+    # Whether both this step and the previous step are part of a word.
+    def is_continue_backwards(self) -> Expression:
+        return self.is_in_word() * (FQ(1) - self.is_word_start())
+
+    def is_continue_bidir(self) -> Expression:
+        return self.is_in_word() * (FQ(1) - self.is_word_start()) * (FQ(1) - self.is_word_end())
+
+    def address_at_start(address_at_end: Expression) -> Expression:
+        return address_at_end - FQ(WordIterator.LENGTH - 1)
 
 
 # Verify the transition between two steps within a word.
 # Return an expression of whether the transition happen (i.e. `curr` and `next` are both inside of the same word).
-def verify_step_word_iterator(cs: ConstraintSystem, curr: WordIterator, next: WordIterator) -> Expression:
+def verify_step_word_iterator(cs: ConstraintSystem, curr: WordIterator, next: WordIterator, can_start: Expression, must_run: Expression) -> Expression:
+
+    # If must_run, then enabled is 1. Otherwise, enabled can be 0 or 1.
+    with cs.condition(must_run.expr()):
+        cs.constrain_equal(curr.is_in_word(), FQ(1))
+
+    # The iterator can only start if allowed by `can_start`.
+    with cs.condition(curr.is_word_start()):
+        cs.constrain_equal(can_start.expr(), FQ(1))
 
     # The gadget is enabled when the position_in_word is not zero.
-    cs.constrain_equal(curr.is_enabled.expr(), 1 - cs.is_zero(curr.position_in_word))
+    cs.constrain_equal(curr.is_in_word(), 1 - cs.is_zero(curr.position_in_word))
 
     # Detect the first and last byte of the word.
-    cs.constrain_equal(curr.is_word_start, cs.is_equal(curr.position_in_word, FQ(1)))
-    cs.constrain_equal(curr.is_word_end, cs.is_equal(curr.position_in_word, FQ(WordIterator.LENGTH)))
+    cs.constrain_equal(curr.is_word_start(), cs.is_equal(curr.position_in_word, FQ(1)))
+    cs.constrain_equal(curr.is_word_end(), cs.is_equal(curr.position_in_word, FQ(WordIterator.LENGTH)))
     # TODO: is_word_start and is_word_end can be the same column with a rotation of 31.
     # TODO: maybe not necessary to be a witnessed boolean.
 
@@ -59,7 +97,7 @@ def verify_step_word_iterator(cs: ConstraintSystem, curr: WordIterator, next: Wo
     # is enforced if:
     # - this row is enabled but it is not the last row (forwards),
     # - or the next row is enabled but it is not the first row (backwards).
-    word_continue = curr.is_enabled.expr() * (1 - curr.is_word_end) + next.is_enabled.expr() * (1 - next.is_word_start)
+    word_continue = expr_or(curr.is_continue(), next.is_continue_backwards())
 
     # Enforce the transition.
     with cs.condition(word_continue):
@@ -87,7 +125,7 @@ class WordRlcGadget:
 # `curr` is either the start of a word, or a continuation after `prev`.
 def verify_step_word_rlc(cs: ConstraintSystem, rand: FQ, prev: WordRlcGadget, curr: WordRlcGadget, curr_byte: Expression):
     # The accumulator starts at 0 at the start of a word, or is copied from the previous row.
-    prev_acc = select(curr.word_iter.is_word_start, FQ(0), prev.rlc_acc).expr()
+    prev_acc = select(curr.word_iter.is_word_start(), FQ(0), prev.rlc_acc).expr()
     
     # This is Horner’s rule, but in reverse. This accumulates the values in order of increasing powers of rand, from negative power -31 to power 0.
     #
@@ -125,6 +163,10 @@ class CopyRangeGadget:
         self.is_first = row.is_first
         self.is_last = row.is_last
         self.q_step = row.q_step
+    
+    # Whether the current and the next rows are both in the copy range.
+    def is_continue(self) -> Expression:
+        return self.is_copy_range * (1 - self.is_last)
 
 
 def verify_row_copy_range(cs: ConstraintSystem, curr: CopyRangeGadget, next: CopyRangeGadget) -> Expression:
@@ -145,6 +187,41 @@ def verify_row_copy_range(cs: ConstraintSystem, curr: CopyRangeGadget, next: Cop
                        (1 - next.is_first) * curr.is_copy_range * (1 - curr.is_last))
 
 
+# The OutOfBoundGadget tracks `is_pad`, indicating whether the source address is out of bounds.
+#
+#   is_pad = (address >= src_addr_end)
+#
+# Note: this gadget assumes that at the start, `address <= src_addr_end`. Otherwise, `is_pad` will be incorrectly 0, and the circuit will attempt additional RW operations, which overall should be rejected if the rwc_inc_left argument is correct.
+class OutOfBoundGadget:
+    is_pad: FQ
+    is_read: FQ
+    is_at_addr_end: FQ
+
+    def __init__(self, cs: ConstraintSystem, row: CopyCircuitRow):
+        self.is_pad = row.is_pad
+        self.is_read = row.q_step
+        self.is_at_addr_end = cs.is_equal(row.addr, row.src_addr_end)
+
+
+def verify_row_oob(cs: ConstraintSystem, curr: OutOfBoundGadget, next: OutOfBoundGadget, is_start: Expression, curr_continue: Expression):
+
+    # On a writer row, the address is always in bounds.
+    with cs.condition(1 - curr.is_read):
+        cs.constrain_zero(curr.is_pad)
+    
+    # At the start, is_pad is set to 0, or to 1 if the address is already exactly at the boundary.
+    with cs.condition(is_start):
+        cs.constrain_equal(curr.is_pad, curr.is_at_addr_end)
+
+    # When the address reaches the boundary, `is_pad` switches to 1.
+    with cs.condition(next.is_at_addr_end):
+        cs.constrain_equal(next.is_pad, FQ(1))
+    
+    # When not switching at the boundary, `is_pad` is copied until the end of the event.
+    with cs.condition((1 - next.is_at_addr_end) * curr_continue):
+        cs.constrain_equal(next.is_pad, curr.is_pad)
+
+
 # The RWC_Gadget tracks the current RW counter, and how many RW operations are left to count.
 class RWC_Gadget:
     rw_counter: Expression
@@ -155,13 +232,11 @@ class RWC_Gadget:
         self.rwc_inc_left = row.rwc_inc_left
 
 
-def verify_row_rw_counter(cs: ConstraintSystem, rg_0: RWC_Gadget, rg_1: RWC_Gadget, rwc_diff_0: Expression):
-    # After applying the current RW operation (rwc_diff_0), if there are still RW operations to count, then the counter is propagated to the next row.
-    # TODO: rather use is_last_row_of_event?
-    left_1 = rg_0.rwc_inc_left - rwc_diff_0
-    with cs.condition(left_1):
+def verify_row_rw_counter(cs: ConstraintSystem, enabled: Expression, rg_0: RWC_Gadget, rg_1: RWC_Gadget, rwc_diff_0: Expression):
+    # If the event is still running, then the counter is propagated to the next row.
+    with cs.condition(enabled):
         cs.constrain_equal(rg_1.rw_counter, rg_0.rw_counter + rwc_diff_0)
-        cs.constrain_equal(rg_1.rwc_inc_left, left_1)
+        cs.constrain_equal(rg_1.rwc_inc_left, rg_0.rwc_inc_left - rwc_diff_0)
 
     # TODO: constrain rwc_inc_left to non-zero when used, and zero when not used?
 
@@ -179,6 +254,7 @@ def verify_tag_decoding(cs: ConstraintSystem, row: CopyCircuitRow):
 def verify_row(cs: ConstraintSystem, tables: Tables, rows: Sequence[CopyCircuitRow], rand: FQ):
     # Decode the tag into boolean indicators for each data type.
     verify_tag_decoding(cs, rows[0])
+    is_rw = rows[0].is_memory + rows[0].is_tx_log
 
     # Copy Range detector.
     copy_range_0 = CopyRangeGadget(rows[0])
@@ -191,13 +267,27 @@ def verify_row(cs: ConstraintSystem, tables: Tables, rows: Sequence[CopyCircuitR
     word_iter_0 = WordIterator(rows[0])
     word_iter_1 = WordIterator(rows[1])
     word_iter_2 = WordIterator(rows[2])
-    word_continue_0 = verify_step_word_iterator(cs, word_iter_0, word_iter_2)
 
-    # Verify the propagation of parameters between two copy steps. This happens inside of the copy range (not padding), except at the last step (not last two rows), and also outside of the copy range if a word is still being processed (word_continue_0 = 1). 
-    # TODO: and not Padding
+    # The word iterator is allowed to start only when the tag is "memory" or "log", and the source address not beyond src_addr_end.
+    # TODO: is it needed to be before or within the copy range?. Make sure `is_pad` will work before the copy range.
+    word_can_start_0 = is_rw * (FQ(1) - rows[0].is_pad)
+
+    # The word iterator must be enabled when the tag is "memory" or "log", the row is within the copy range, and the source address not beyond src_addr_end.
+    word_must_run_0 = is_rw * copy_range_0.is_copy_range * (FQ(1) - rows[0].is_pad)
+
+    # Verify the word step transition, and the commands "can start" and "must run".
+    verify_step_word_iterator(cs, word_iter_0, word_iter_2, word_can_start_0, word_must_run_0)
+
+    # If the source was `is_pad` from the start, then the word iterator must not be running
+    # (otherwise it could have started before `is_pad` switched to 1).
+    with cs.condition(copy_range_0.is_first * rows[0].is_pad):
+        cs.constrain_zero(word_iter_0.is_in_word())
+
+    # Verify the propagation of parameters between two copy steps. This happens inside of the copy range (not padding), except at the last step (not last two rows), and also outside of the copy range if a word is still being processed (word_iter_0.is_continue).
+    # TODO: and not "Padding", that is unused rows.
     last_step = rows[0].is_last + rows[1].is_last
     not_last_step = 1 - last_step
-    with cs.condition(not_last_step + word_continue_0.expr()) as cs:
+    with cs.condition(not_last_step + word_iter_0.is_continue()) as cs:
         # ID, tag, and src_addr_end are constant within a copy event.
         cs.constrain_equal(rows[0].id.value(), rows[2].id.value())
         cs.constrain_equal(rows[0].tag, rows[2].tag)
@@ -225,25 +315,28 @@ def verify_row(cs: ConstraintSystem, tables: Tables, rows: Sequence[CopyCircuitR
     # The RLC of a step (at rows[2]) must include the byte of that step, on top of the previous accumulator value (at rows[0]).
     verify_step_word_rlc(cs, rand, rlc_updater_0, rlc_updater_2, updated_byte_2)
 
-    # Whether an RW operation is performed on this row 0.
-    rw_diff_0 = word_iter_0.is_word_end
+    # Whether an RW operation is performed on this row 0. RW op happens at the end of the word.
+    rw_diff_0 = word_iter_0.is_word_end()
+
+    # Whether the RW counter should be maintained from a row to the next.
+    continue_event = FQ(1) - is_last_row_of_event(copy_range_1, word_iter_0, word_iter_1).expr()
 
     # Maintain the RW counter, from one row to the next.
     rg_0 = RWC_Gadget(rows[0])
     rg_1 = RWC_Gadget(rows[1])
-    verify_row_rw_counter(cs, rg_0, rg_1, rw_diff_0)
+    verify_row_rw_counter(cs, continue_event, rg_0, rg_1, rw_diff_0)
     
     # Do the RW operation.
     with cs.condition(rw_diff_0):
         is_write = 1 - rows[0].q_step
         tag = select(rows[0].is_memory, FQ(RWTableTag.Memory), FQ(RWTableTag.TxLog))
-        slot_addr = rows[0].addr - 31
+        address_at_word_start = WordIterator.address_at_start(rows[0].addr)
         tables.rw_lookup(
             rw_counter=rg_0.rw_counter,
             rw=is_write,
             tag=tag,
             id=rows[0].id,
-            address=slot_addr,
+            address=address_at_word_start,
             value=rlc_updater_0.get_final_rlc(rand),
             value_prev=rlc_reader_0.get_final_rlc(rand),
         )
@@ -255,7 +348,7 @@ def verify_row(cs: ConstraintSystem, tables: Tables, rows: Sequence[CopyCircuitR
         # If a word is being processed on a row, then an RW operation will happen at the end of the word, which is either
         # that same row or a subsequent one.
         # TODO: handle padding of out-of-bounds reads.
-        rw_to_finish_0 = word_iter_0.is_enabled + word_iter_1.is_enabled
+        rw_to_finish_0 = word_iter_0.is_in_word() + word_iter_1.is_in_word()
         cs.constrain_equal(rows[0].rwc_inc_left, rw_to_finish_0)
 
     # for RlcAcc type, value == rlc_acc at the last row
@@ -263,13 +356,6 @@ def verify_row(cs: ConstraintSystem, tables: Tables, rows: Sequence[CopyCircuitR
         cs.constrain_equal(rows[1].rlc_acc, rows[1].value)
 
 
-# Whether the RW counter should be maintained from a row to the next.
-def continue_rwc(word_iter_0: WordIterator, word_iter_1: WordIterator) -> Expression:
-    # A word is running if it is enabled and not at the end.
-    return word_iter.is_enabled.expr() * (1 - word_iter.is_word_end.expr())
-
-
-# TODO: maybe not needed.
 def is_last_row_of_event(copy_range_1: CopyRangeGadget, word_iter_0: WordIterator, word_iter_1: WordIterator) -> Expression:
 
     # a: if in the copy range and not the end of it, then this is not the last row.
@@ -278,13 +364,16 @@ def is_last_row_of_event(copy_range_1: CopyRangeGadget, word_iter_0: WordIterato
     # Otherwise, this is the last row.
     # is_last_row_of_event = !a AND !b AND !c
     # TODO: make sure all variables are booleans.
-    a = copy_range_1.is_copy_range.expr() * (1 - copy_range_1.is_last.expr())
-    b = word_iter_0.is_enabled.expr() * (1 - word_iter_0.is_word_end.expr())
-    c = word_iter_1.is_enabled.expr() * (1 - word_iter_1.is_word_end.expr())
+    # TODO: make sure on both reader and writer rows.
+    # TODO: this expression has a high degree. Can we simplify it?
+    a = copy_range_1.is_continue()
+    b = word_iter_0.is_continue()
+    c = word_iter_1.is_continue()
     return (1 - a) * (1 - b) * (1 - c)
 
 
 def verify_step(cs: ConstraintSystem, rows: Sequence[CopyCircuitRow], r: FQ):
+
     with cs.condition(rows[0].q_step):
         # bytes_left == 1 for last step
         cs.constrain_zero(rows[1].is_last * (1 - rows[0].bytes_left))
@@ -304,6 +393,8 @@ def verify_step(cs: ConstraintSystem, rows: Sequence[CopyCircuitRow], r: FQ):
             )
         # is_pad == 0 for write row
         cs.constrain_zero(rows[1].is_pad)
+        # TODO: replace with the OutOfBoundsGadget
+
     # write value == read value if not rlc accumulator
     with cs.condition(rows[0].q_step * (1 - rows[1].is_rlc_acc)):
         cs.constrain_equal(rows[0].value, rows[1].value)

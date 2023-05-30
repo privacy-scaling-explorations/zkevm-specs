@@ -471,6 +471,7 @@ class CopyCircuitRow(TableRow):
     is_tx_log: FQ
     is_rlc_acc: FQ
     # For WordIterator
+    is_in_word: FQ
     position_in_word: FQ
     is_word_start: FQ
     is_word_end: FQ
