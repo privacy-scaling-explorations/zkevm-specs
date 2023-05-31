@@ -1,5 +1,6 @@
 from __future__ import annotations
 import dataclasses
+from dataclasses import dataclass
 from typing import (
     cast,
     Dict,
@@ -941,11 +942,29 @@ class CopyCircuit:
         new_rows: List[CopyCircuitRow] = []
         rlc_acc = FQ.zero()
         rlc_acc_update = FQ.zero()
-        for i in range(int(copy_length)):
+        print("XXX")
+
+        steps = CopyCircuit.StepGenerator(
+            src_by_word=(src_tag == CopyDataTypeTag.Memory),
+            src_addr=int(src_addr),
+            src_addr_end=int(src_addr_end),
+            dst_by_word=(dst_tag == CopyDataTypeTag.Memory) or (dst_tag == CopyDataTypeTag.TxLog),
+            dst_addr=int(dst_addr),
+            copy_length=int(copy_length),
+        ).full_range()
+
+        for (i, src_active, dst_active, in_copy_range) in steps:
+            print("i", i, "\t| src_active", src_active, "\t| dst_active", dst_active, "\t| in_copy_range", in_copy_range)
+
             if int(src_addr + i) < int(src_addr_end):
                 is_pad = False
-                assert src_addr + i in src_data, f"Cannot find data at the offset {src_addr+i}"
-                value = src_data[src_addr + i]
+
+                if src_active:
+                    assert src_addr + i in src_data, f"Cannot find data at the offset {src_addr+i}"
+                    value = src_data[src_addr + i]
+                else:
+                    value = FQ(0)
+
                 if src_tag == CopyDataTypeTag.Bytecode or dst_tag == CopyDataTypeTag.Bytecode:
                     value = cast(Tuple[IntOrFQ, IntOrFQ], value)
                     value, is_code = value
@@ -1037,14 +1056,17 @@ class CopyCircuit:
         is_tx_log = tag == CopyDataTypeTag.TxLog
         is_rlc_acc = tag == CopyDataTypeTag.RlcAcc
         rw_counter = rw_dict.rw_counter
-        if is_memory:
+        is_word_end = (addr % 32) == 31
+        slot_addr = addr - 31
+        slot_is_pad = int(slot_addr) >= int(src_addr_end) # Was it "pad" at the word start? TODO: handle src_addr==src_addr_end
+        if is_memory and is_word_end:
             if is_write:
-                rw_dict.memory_write(id.value().expr(), addr, value)
-            elif is_pad is False:
-                rw_dict.memory_read(id.value().expr(), addr, value)
-        elif is_tx_log:
+                rw_dict.memory_write(id.value().expr(), slot_addr, value)
+            elif slot_is_pad is False:
+                rw_dict.memory_read(id.value().expr(), slot_addr, value)
+        elif is_tx_log and is_word_end:
             assert is_write
-            rw_dict.tx_log_write(id.value().expr(), log_id, TxLogFieldTag.Data, addr, value)
+            rw_dict.tx_log_write(id.value().expr(), log_id, TxLogFieldTag.Data, slot_addr, value)
             addr += (int(TxLogFieldTag.Data) << 32) + (log_id << 48)
 
         position_in_word = ((addr % 32) + 1) if (is_memory or is_tx_log) else 0
@@ -1077,3 +1099,45 @@ class CopyCircuit:
                 is_word_end=FQ(position_in_word == 32),
             )
         )
+
+    
+    @dataclass
+    class StepGenerator:
+        src_by_word: bool
+        src_addr: int
+        src_addr_end: int
+        dst_by_word: bool
+        dst_addr: int
+        copy_length: int
+
+        def _prefetch_range(self):
+            src_prefetch = (self.src_addr % 32) if self.src_by_word and self.src_addr < self.src_addr_end else 0
+            dst_prefetch = self.dst_addr % 32 if self.dst_by_word else 0
+            prefetch = max(src_prefetch, dst_prefetch)
+            for i in range(-prefetch, 0):
+                # (offset, src_active, dst_active, in_copy_range)
+                yield (i, i >= -src_prefetch, i >= -dst_prefetch, False)
+        
+        def _copy_range(self):
+            for i in range(0, self.copy_length):
+                # (offset, src_active, dst_active, in_copy_range)
+                yield (i, self.src_addr < self.src_addr_end, True, True)
+
+        def _postfetch_range(self):
+            src_postfetch = (-self.src_addr - self.copy_length) % 32 if self.src_by_word and (self.src_addr + self.copy_length - 1) < self.src_addr_end else 0
+            dst_postfetch = (-self.dst_addr - self.copy_length) % 32 if self.dst_by_word else 0
+            postfetch = max(src_postfetch, dst_postfetch)
+            for i in range(0, postfetch):
+                # (offset, src_active, dst_active, in_copy_range)
+                yield (self.copy_length + i, i < src_postfetch, i < dst_postfetch, False)
+
+        """ Generate a sequence of steps: (offset, src_active, dst_active, in_copy_range) """
+        def full_range(self):
+            for step in self._prefetch_range():
+                yield step # Before the copy range.
+            
+            for step in self._copy_range():
+                yield step # In copy range.
+            
+            for step in self._postfetch_range():
+                yield step # After the copy range.

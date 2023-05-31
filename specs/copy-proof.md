@@ -40,6 +40,11 @@ In addition to the columns in the copy table, copy circuit adds a few auxiliary 
 
 - The user of the Copy table *should* calculate `rwc_inc_left` independently and deterministically, for defense-in-depth.
 
+- The State circuit is responsible for checking that the RW addresses are multiple of the word size (32B). This is easy because the State circuit already decomposes addresses into bytes. It must check that:
+
+     least_significant_byte == a * 128 + b * 64 + c * 32
+        with a, b, c three witnessed bits.
+
 
 ## Circuit Constraints
 
