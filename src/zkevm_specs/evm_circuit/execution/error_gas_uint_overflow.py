@@ -9,7 +9,7 @@ from ...util import (
     TxDataZeroGas,
 )
 from ..instruction import Instruction, Transition
-from ..table import CallContextFieldTag, RW
+from ..table import CallContextFieldTag
 from ..opcode import Opcode
 
 
@@ -132,20 +132,12 @@ def error_gas_uint_overflow(instruction: Instruction):
     (mem_size, is_opcode_memory_size_overflow) = instruction.memory_size(opcode)
     (_, is_safe_mul_overflow) = instruction.safe_mul(instruction.to_word_size(mem_size), 32)
 
-    # CALLDATACOPY,CODECOPY,EXTCODECOPY,RETURNDATACOPY: memoryCopierGas
-    # https://github.com/ethereum/go-ethereum/blob/b946b7a13b749c99979e312c83dce34cac8dd7b1/core/vm/gas_table.go#L65
-
-    # memoryGasCost
-    memory_size = instruction.call_context_lookup(CallContextFieldTag.MemorySize)
-    is_memory_size_overflow = instruction.is_memory_overflow(memory_size)
-
-    # init overflow flag
+    # callGas
+    # https://github.com/ethereum/go-ethereum/blob/b946b7a13b749c99979e312c83dce34cac8dd7b1/core/vm/gas.go#L37
+    # seems never overflow because of checking range inside of CallGadget
     is_call_gas_cost_overflow = (
         is_eip2028_overflow
     ) = is_non_zero_gas_overflow = is_eip3860_overflow = FQ(0)
-
-    # call gas_cost overflow flag.
-    # seems never overflow because of checking range inside of CallGadget
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
     call = CallGadget(instruction, FQ(0), is_call, is_callcode, is_delegatecall)
     is_warm_access = instruction.read_account_to_access_list(tx_id, call.callee_address)

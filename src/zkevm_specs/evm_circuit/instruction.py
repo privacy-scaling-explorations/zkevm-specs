@@ -1305,30 +1305,6 @@ class Instruction:
             return MAX_U64 / 32 + 1
         return FQ((size.n + 31) / 32)
 
-    def memory_copier_gas(self, opcode: Opcode):
-        (
-            is_calldatacopy,
-            is_codecopy,
-            is_extcodecopy,
-            is_returndatacopy,
-        ) = self.multiple_select(
-            opcode,
-            (
-                Opcode.CALLDATACOPY,
-                Opcode.CODECOPY,
-                Opcode.EXTCODECOPY,
-                Opcode.RETURNDATACOPY,
-            ),
-        )
-        stackpos = FQ(2) + FQ(is_extcodecopy)
-        words = instruction.stack_lookup(RW.Read, self.stack_pointer_offset - stackpos.n)
-        (words, overflow) = (words, self.is_u64_overflow(words))
-        if overflow == FQ(1):
-            return (FQ(0), overflow)
-        (words, overflow) = (words, self.safe_mul(self.to_word_size(words), GAS_COST_COPY))
-        if overflow == FQ(1):
-            return (FQ(0), overflow)
-
     def generate_contract_address(self, address: Expression, nonce: Expression) -> Expression:
         contract_addr = keccak(rlp.encode([address.expr().n.to_bytes(20, "big"), nonce.expr().n]))
         return FQ(int.from_bytes(contract_addr[-20:], "big"))
