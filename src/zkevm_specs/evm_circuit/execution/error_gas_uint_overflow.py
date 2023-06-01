@@ -129,43 +129,15 @@ def error_gas_uint_overflow(instruction: Instruction):
         + is_return
         + is_revert
     )
+    (mem_size, is_opcode_memory_size_overflow) = instruction.memory_size(opcode)
+    (_, is_safe_mul_overflow) = instruction.safe_mul(instruction.to_word_size(mem_size), 32)
 
-    def calc_mem_size64(off: Word, l: Word) -> Tuple[Word, bool]:
-        if instruction.is_u64_overflow(l) == FQ(0):
-            return (Word(), True)
-        return calc_mem_size64_with_uint(off, l)
+    # CALLDATACOPY,CODECOPY,EXTCODECOPY,RETURNDATACOPY: memoryCopierGas
+    # https://github.com/ethereum/go-ethereum/blob/b946b7a13b749c99979e312c83dce34cac8dd7b1/core/vm/gas_table.go#L65
 
-    def calc_mem_size64_with_uint(off: Word, length64: Word) -> Tuple[Word, bool]:
-        if length64 == Word():
-            return (Word(), False)
-
-    def memory_size_constraints():
-        (memSize, overflow) = (
-            (
-                instruction.stack_lookup(RW.Read, stack_pointer_offset),
-                instruction.stack_lookup(RW.Read, stack_pointer_offset - 1),
-            )
-            if is_sha3
-            else (
-                instruction.stack_lookup(RW.Read, stack_pointer_offset),
-                instruction.stack_lookup(RW.Read, stack_pointer_offset - 2),
-            )
-            if is_calldatacopy or is_returndatacopy or is_codecopy
-            else (
-                instruction.stack_lookup(RW.Read, stack_pointer_offset),
-                instruction.stack_lookup(RW.Read, stack_pointer_offset - 3),
-            )
-            if is_extcodecopy
-            else (
-                instruction.stack_lookup(RW.Read, stack_pointer_offset - 1),
-                instruction.stack_lookup(RW.Read, stack_pointer_offset - 2),
-            )
-            # if is_create
-        )
-
-    instruction.condition(
-        FQ(dataLen > 0),
-    )
+    # memoryGasCost
+    memory_size = instruction.call_context_lookup(CallContextFieldTag.MemorySize)
+    is_memory_size_overflow = instruction.is_memory_overflow(memory_size)
 
     # init overflow flag
     is_call_gas_cost_overflow = (

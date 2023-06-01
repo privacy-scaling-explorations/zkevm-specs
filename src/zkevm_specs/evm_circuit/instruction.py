@@ -1169,6 +1169,166 @@ class Instruction:
         self.range_check(gas_cost, N_BYTES_GAS)
         return gas_cost
 
+    def memory_size(self, opcode: Opcode) -> Tuple[FQ, FQ]:
+        (
+            is_sha3,
+            is_calldatacopy,
+            is_returndatacopy,
+            is_codecopy,
+            is_extcodecopy,
+            is_mload,
+            is_mstore8,
+            is_mstore,
+            is_create,
+            is_create2,
+            is_call,
+            is_delegatecall,
+            is_staticcall,
+            is_return,
+            is_revert,
+            is_log0,
+            is_log1,
+            is_log2,
+            is_log3,
+            is_log4,
+        ) = self.multiple_select(
+            opcode,
+            (
+                Opcode.SHA3,
+                Opcode.CALLDATACOPY,
+                Opcode.RETURNDATACOPY,
+                Opcode.CODECOPY,
+                Opcode.EXTCODECOPY,
+                Opcode.MLOAD,
+                Opcode.MSTORE8,
+                Opcode.MSTORE,
+                Opcode.CREATE,
+                Opcode.CREATE2,
+                Opcode.CALL,
+                Opcode.DELEGATECALL,
+                Opcode.STATICCALL,
+                Opcode.RETURN,
+                Opcode.REVERT,
+                Opcode.LOG0,
+                Opcode.LOG1,
+                Opcode.LOG2,
+                Opcode.LOG3,
+                Opcode.LOG4,
+            ),
+        )
+        if (
+            is_sha3 + is_return + is_revert + is_log0 + is_log1 + is_log2 + is_log3 + is_log4
+        ) == FQ(1):
+            return self.calc_mem_size64(
+                instruction.stack_lookup(RW.Read, self.stack_pointer_offset),
+                instruction.stack_lookup(RW.Read, self.stack_pointer_offset - 1),
+            )
+        elif (is_calldatacopy + is_returndatacopy + is_codecopy) == FQ(1):
+            return self.calc_mem_size64(
+                instruction.stack_lookup(RW.Read, self.stack_pointer_offset),
+                instruction.stack_lookup(RW.Read, self.stack_pointer_offset - 2),
+            )
+        elif is_extcodecopy == FQ(1):
+            return self.calc_mem_size64(
+                instruction.stack_lookup(RW.Read, self.stack_pointer_offset - 1),
+                instruction.stack_lookup(RW.Read, self.stack_pointer_offset - 3),
+            )
+        elif (is_mload + is_mstore) == FQ(1):
+            return self.calc_mem_size64_with_uint(
+                instruction.stack_lookup(RW.Read, self.stack_pointer_offset), FQ(32)
+            )
+        elif is_mstore8 == FQ(1):
+            return self.calc_mem_size64_with_uint(
+                instruction.stack_lookup(RW.Read, self.stack_pointer_offset), FQ(1)
+            )
+        elif (is_create + is_create2) == FQ(1):
+            return self.calc_mem_size64(
+                instruction.stack_lookup(RW.Read, self.stack_pointer_offset - 1),
+                instruction.stack_lookup(RW.Read, self.stack_pointer_offset - 2),
+            )
+        elif is_call == FQ(1):
+            (x, overflow) = self.calc_mem_size64(
+                instruction.stack_lookup(RW.Read, self.stack_pointer_offset - 5),
+                instruction.stack_lookup(RW.Read, self.stack_pointer_offset - 6),
+            )
+            if overflow == FQ(1):
+                return (FQ(0), FQ(1))
+            (y, overflow) = self.calc_mem_size64(
+                instruction.stack_lookup(RW.Read, self.stack_pointer_offset - 3),
+                instruction.stack_lookup(RW.Read, self.stack_pointer_offset - 4),
+            )
+            if overflow == FQ(1):
+                return (FQ(0), FQ(1))
+            if x > y:
+                return (x, FQ(0))
+            return (y, FQ(0))
+        elif (is_delegatecall + is_staticcall) == FQ(1):
+            (x, overflow) = self.calc_mem_size64(
+                instruction.stack_lookup(RW.Read, self.stack_pointer_offset - 4),
+                instruction.stack_lookup(RW.Read, self.stack_pointer_offset - 5),
+            )
+            if overflow == FQ(1):
+                return (FQ(0), FQ(1))
+            (y, overflow) = self.calc_mem_size64(
+                instruction.stack_lookup(RW.Read, self.stack_pointer_offset - 2),
+                instruction.stack_lookup(RW.Read, self.stack_pointer_offset - 3),
+            )
+            if overflow == FQ(1):
+                return (FQ(0), FQ(1))
+            if x > y:
+                return (x, FQ(0))
+            return (y, FQ(0))
+
+    def calc_mem_size64(self, off_word: Word, l_word: Word) -> Tuple[FQ, FQ]:
+        off = self.word_to_fq(off_word, N_BYTES_MEMORY_ADDRESS)
+        l = self.word_to_fq(l_word, N_BYTES_MEMORY_ADDRESS)
+        if self.is_u64_overflow(l) == FQ(0):
+            return (FQ(0), FQ(1))
+        return calc_mem_size64(off_word, off)
+
+    def calc_mem_size64_with_uint(self, off_word: Word, length64: FQ) -> Tuple[FQ, FQ]:
+        if length64 == FQ(0):
+            return (FQ(0), FQ(0))
+        off = self.word_to_fq(off_word, N_BYTES_MEMORY_ADDRESS)
+        (offset64, overflow) = (off, self.is_u64_overflow(off))
+        if overflow == FQ(0):
+            return (FQ(0), FQ(1))
+        val = offset64 + length64
+        return (val, FQ(val.n < offset64.n))
+
+    def safe_mul(self, x: FQ, y: FQ) -> Tuple[FQ, FQ]:
+        mul = x * y
+        return (mul, self.is_u64_overflow(mul))
+
+    def to_word_size(self, size: FQ) -> FQ:
+        if size.n > MAX_U64 - 31:
+            return MAX_U64 / 32 + 1
+        return FQ((size.n + 31) / 32)
+
+    def memory_copier_gas(self, opcode: Opcode):
+        (
+            is_calldatacopy,
+            is_codecopy,
+            is_extcodecopy,
+            is_returndatacopy,
+        ) = self.multiple_select(
+            opcode,
+            (
+                Opcode.CALLDATACOPY,
+                Opcode.CODECOPY,
+                Opcode.EXTCODECOPY,
+                Opcode.RETURNDATACOPY,
+            ),
+        )
+        stackpos = FQ(2) + FQ(is_extcodecopy)
+        words = instruction.stack_lookup(RW.Read, self.stack_pointer_offset - stackpos.n)
+        (words, overflow) = (words, self.is_u64_overflow(words))
+        if overflow == FQ(1):
+            return (FQ(0), overflow)
+        (words, overflow) = (words, self.safe_mul(self.to_word_size(words), GAS_COST_COPY))
+        if overflow == FQ(1):
+            return (FQ(0), overflow)
+
     def generate_contract_address(self, address: Expression, nonce: Expression) -> Expression:
         contract_addr = keccak(rlp.encode([address.expr().n.to_bytes(20, "big"), nonce.expr().n]))
         return FQ(int.from_bytes(contract_addr[-20:], "big"))
