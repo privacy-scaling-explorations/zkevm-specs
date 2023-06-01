@@ -28,9 +28,6 @@ def verify_step(cs: ConstraintSystem, rows: List[ExpCircuitRow]):
         cs.constrain_bool(rows[0].is_last)
         # remainder (r), i.e. odd/even parity of exponent is boolean.
         cs.constrain_bool(rows[0].r)
-        # is_last == 1 is followed by unusable row.
-        # is_last == 0 is following by usable row.
-        cs.constrain_equal(rows[0].is_last, (1 - rows[1].q_usable))
         # multiplication is assigned correctly
         _overflow, carry_lo_hi, additional_constraints = mul_add_words(
             rows[0].a, rows[0].b, rows[0].c, rows[0].d

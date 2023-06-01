@@ -110,7 +110,7 @@ class Block:
         value = lambda v: WordOrValue(FQ(v))
         word = lambda w: WordOrValue(Word(w))
         return [
-            BlockTableRow(FQ(BlockContextFieldTag.Coinbase), FQ(0), value(self.coinbase)),
+            BlockTableRow(FQ(BlockContextFieldTag.Coinbase), FQ(0), word(self.coinbase)),
             BlockTableRow(FQ(BlockContextFieldTag.GasLimit), FQ(0), value(self.gas_limit)),
             BlockTableRow(FQ(BlockContextFieldTag.Number), FQ(0), value(self.number)),
             BlockTableRow(FQ(BlockContextFieldTag.Timestamp), FQ(0), value(self.timestamp)),
@@ -209,13 +209,13 @@ class Transaction:
                 word(self.gas_price),
             ),
             TxTableRow(
-                FQ(self.id), FQ(TxContextFieldTag.CallerAddress), FQ(0), value(self.caller_address)
+                FQ(self.id), FQ(TxContextFieldTag.CallerAddress), FQ(0), word(self.caller_address)
             ),
             TxTableRow(
                 FQ(self.id),
                 FQ(TxContextFieldTag.CalleeAddress),
                 FQ(0),
-                value(0 if self.callee_address is None else self.callee_address),
+                word(0 if self.callee_address is None else self.callee_address),
             ),
             TxTableRow(
                 FQ(self.id),
@@ -453,6 +453,16 @@ class RWDictionary:
     ) -> RWDictionary:
         if isinstance(value, int):
             value = FQ(value)
+        # Sanity checks
+        if field_tag in [
+            CallContextFieldTag.CallerAddress,
+            CallContextFieldTag.CalleeAddress,
+            CallContextFieldTag.Value,
+            CallContextFieldTag.CodeHash,
+        ]:
+            assert isinstance(value, Word)
+        else:
+            assert isinstance(value, FQ)
         return self._append(
             RW.Read, RWTableTag.CallContext, id=FQ(call_id), address=FQ(field_tag), value=value
         )
@@ -462,6 +472,16 @@ class RWDictionary:
     ) -> RWDictionary:
         if isinstance(value, int):
             value = FQ(value)
+        # Sanity checks
+        if field_tag in [
+            CallContextFieldTag.CallerAddress,
+            CallContextFieldTag.CalleeAddress,
+            CallContextFieldTag.Value,
+            CallContextFieldTag.CodeHash,
+        ]:
+            assert isinstance(value, Word)
+        else:
+            assert isinstance(value, FQ)
         return self._append(
             RW.Write, RWTableTag.CallContext, id=FQ(call_id), address=FQ(field_tag), value=value
         )
@@ -476,6 +496,11 @@ class RWDictionary:
     ) -> RWDictionary:
         if isinstance(value, int):
             value = FQ(value)
+        # Sanity checks
+        if field_tag in [TxLogFieldTag.Address, TxLogFieldTag.Topic]:
+            assert isinstance(value, Word)
+        else:
+            assert isinstance(value, FQ)
         return self._append(
             RW.Write,
             RWTableTag.TxLog,
@@ -783,23 +808,21 @@ class KeccakCircuit:
 
 class ExpCircuit:
     rows: List[ExpCircuitRow]
-    pad_rows: List[ExpCircuitRow]
+    max_exp_steps: int
+    OFFSET_INCREMENT = 7
 
-    def __init__(self, pad_rows: Optional[List[ExpCircuitRow]] = None) -> None:
+    def __init__(self, max_exp_steps: int = 100) -> None:
         self.rows = []
-        self.pad_rows = []
-        if pad_rows is not None:
-            self.pad_rows = pad_rows
+        self.max_exp_steps = max_exp_steps
 
     def table(self) -> Sequence[ExpCircuitRow]:
-        return self.rows + self.pad_rows
+        return self.rows
 
     def add_event(self, base: int, exponent: int, identifier: IntOrFQ):
         steps: List[Tuple[int, int, int]] = []
         exponentiation = self._exp_by_squaring(base, exponent, steps)
         steps.reverse()
         self._append_steps(base, exponent, exponentiation, steps, identifier)
-        self._append_padding_row(identifier)
         return self
 
     def _exp_by_squaring(self, base: int, exponent: int, steps: List[Tuple[int, int, int]]):
@@ -856,24 +879,28 @@ class ExpCircuit:
                 # exponent is odd
                 exponent = exponent - 1
 
-    def _append_padding_row(self, identifier: IntOrFQ):
-        self.rows.append(
-            ExpCircuitRow(
-                q_usable=FQ.zero(),
-                is_step=FQ.zero(),
-                identifier=FQ(identifier),
-                is_last=FQ.zero(),
-                base=Word(0),
-                exponent=Word(0),
-                exponentiation=Word(0),
-                a=Word(0),
-                b=Word(0),
-                c=Word(0),
-                d=Word(0),
-                q=Word(0),
-                r=FQ(0),
+    def fill_dummy_events(self):
+        max_exp_rows = self.max_exp_steps * self.OFFSET_INCREMENT
+        rows_left = max_exp_rows - len(self.rows)
+        for i in range(rows_left):
+            self.rows.append(
+                ExpCircuitRow(
+                    q_usable=FQ.one(),
+                    is_step=FQ.zero(),
+                    identifier=FQ.zero(),
+                    is_last=FQ.zero(),
+                    base=Word(1),
+                    exponent=Word(1),
+                    exponentiation=Word(1),
+                    a=Word(1),
+                    b=Word(1),
+                    c=Word(0),
+                    d=Word(1),
+                    q=Word(0),
+                    r=FQ(1),
+                )
             )
-        )
+        return self
 
     def _append_step(
         self,

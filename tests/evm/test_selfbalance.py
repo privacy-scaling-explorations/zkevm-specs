@@ -29,7 +29,7 @@ def test_selfbalance(callee_address: U160, balance: U256):
         bytecode_table=set(bytecode.table_assignments()),
         rw_table=set(
             RWDictionary(9)
-            .call_context_read(1, CallContextFieldTag.CalleeAddress, callee_address)
+            .call_context_read(1, CallContextFieldTag.CalleeAddress, Word(callee_address))
             .account_read(callee_address, AccountFieldTag.Balance, Word(balance))
             .stack_write(1, 1023, Word(balance))
             .rws

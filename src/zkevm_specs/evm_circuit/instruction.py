@@ -947,7 +947,7 @@ class Instruction:
     def account_read(
         self, account_address: Expression, account_field_tag: AccountFieldTag
     ) -> Expression:
-        self.account_read_word(account_address, account_field_tag).value()
+        return self.account_read_word(account_address, account_field_tag).value()
 
     def account_read_word(
         self, account_address: Expression, account_field_tag: AccountFieldTag
@@ -1120,8 +1120,10 @@ class Instruction:
         return quadratic_cost + linear_cost
 
     def memory_expansion(self, offset: Expression, length: Expression) -> Tuple[FQ, FQ]:
-        memory_size, _ = self.constant_divmod(
-            length.expr() + offset.expr() + 31, FQ(32), N_BYTES_MEMORY_SIZE
+        memory_size, _ = (
+            self.constant_divmod(length.expr() + offset.expr() + 31, FQ(32), N_BYTES_MEMORY_SIZE)
+            if length != FQ(0)
+            else (FQ(0), FQ(0))
         )
 
         next_memory_size = self.max(self.curr.memory_word_size, memory_size, N_BYTES_MEMORY_SIZE)

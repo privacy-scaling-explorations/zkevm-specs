@@ -108,6 +108,30 @@ to not be in the table.
 - 11.3. `tx_id` is 1 if it's the first row and `tx_id` is in 11 bits range
 - 11.4. `state root` is the same
 
+## About Account and Storage accesses
+
+All account and storage reads and writes in the RwTable are linked to the MPT
+Circuit.  This is because unlike the rest of entries, which are initialized at
+0 in each block, account and storage persist during blocks via the Ethereum
+State and Storage Tries.
+
+In general we link the first and last accesses of each key (`[address,
+field_tag]` for Account, `[address, storage_key]` for Storage) to MPT proofs that
+use chained roots (the `root_next` of a proof matches the `root_previous` of the
+next proof).  Finally we match the `root_previous` of the first proof with the
+`block_previous.root` and the `root_next` of the last proof with the
+`block_next.root`.
+
+Linking the account and storage accesses with MPT proofs requires treating
+existing/non-existing cases sepparatedly: the EVM supports reading Account
+fields for non-existing accounts and Storage slots for non-existing slots; but
+since those values don't exists, a MPT inclusion proof can't be verified.
+Moreover, some EVM situations require explicity verifying that an account
+doesn't exist.  On the MPT side this is solved by introducing non-existing
+proofs.  The rules to link read/write access to accounts (as done by the EVM
+Circuit to the RwTable) and the MPT existence/non-existence proof are described
+[here](/specs/evm-proof.md#account-non-existence)
+
 ## Code
 
 Please refer to `src/zkevm-specs/state_circuit.py`
