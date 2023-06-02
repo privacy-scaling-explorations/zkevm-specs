@@ -68,8 +68,8 @@ class WordIterator:
     def is_continue_bidir(self) -> Expression:
         return self.is_in_word() * (FQ(1) - self.is_word_start()) * (FQ(1) - self.is_word_end())
 
-    def address_at_start(address_at_end: Expression) -> Expression:
-        return address_at_end - FQ(WordIterator.LENGTH - 1)
+    def address_at_start(self, address: Expression) -> Expression:
+        return address.expr() - (self.position_in_word - 1)
 
 
 # Verify the transition between two steps within a word.
@@ -123,6 +123,8 @@ class WordRlcGadget:
 
 # Verify that the accumulator `curr` includes the current input byte.
 # `curr` is either the start of a word, or a continuation after `prev`.
+# TODO: support the RLC destination.
+# TODO: ability to stop.
 def verify_step_word_rlc(cs: ConstraintSystem, rand: FQ, prev: WordRlcGadget, curr: WordRlcGadget, curr_byte: Expression):
     # The accumulator starts at 0 at the start of a word, or is copied from the previous row.
     prev_acc = select(curr.word_iter.is_word_start(), FQ(0), prev.rlc_acc).expr()
@@ -149,7 +151,7 @@ def verify_step_word_rlc(cs: ConstraintSystem, rand: FQ, prev: WordRlcGadget, cu
 # The CopyRangeGadget tracks whether the current row is within the copy range.
 # By contrast, outside of the copy range, no copy happens, but memory words may still be processed up to their boundaries.
 class CopyRangeGadget:
-    # Whether this row is within the copy range.
+    # Whether this row is within the copy range. Also called "mask".
     is_copy_range: FQ
     # Mark the first step of the copy range.
     is_first: FQ
@@ -272,8 +274,8 @@ def verify_row(cs: ConstraintSystem, tables: Tables, rows: Sequence[CopyCircuitR
     # TODO: is it needed to be before or within the copy range?. Make sure `is_pad` will work before the copy range.
     word_can_start_0 = is_rw * (FQ(1) - rows[0].is_pad)
 
-    # The word iterator must be enabled when the tag is "memory" or "log", the row is within the copy range, and the source address not beyond src_addr_end.
-    word_must_run_0 = is_rw * copy_range_0.is_copy_range * (FQ(1) - rows[0].is_pad)
+    # The word iterator must be enabled in the copy range, and the other conditions above.
+    word_must_run_0 = word_can_start_0 * copy_range_0.is_copy_range
 
     # Verify the word step transition, and the commands "can start" and "must run".
     verify_step_word_iterator(cs, word_iter_0, word_iter_2, word_can_start_0, word_must_run_0)
@@ -330,7 +332,7 @@ def verify_row(cs: ConstraintSystem, tables: Tables, rows: Sequence[CopyCircuitR
     with cs.condition(rw_diff_0):
         is_write = 1 - rows[0].q_step
         tag = select(rows[0].is_memory, FQ(RWTableTag.Memory), FQ(RWTableTag.TxLog))
-        address_at_word_start = WordIterator.address_at_start(rows[0].addr)
+        address_at_word_start = word_iter_0.address_at_start(rows[0].addr)
         tables.rw_lookup(
             rw_counter=rg_0.rw_counter,
             rw=is_write,
