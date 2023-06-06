@@ -82,7 +82,7 @@ DELETEME: Review note: Removed aux1 and aux2 and instead added InitialValue whic
 
 | 0 *Rwc*  | 1 *IsWrite* | 2 *Tag* k0                 | 3 *Id* k1 | 4 *Address* k2     | 5 *FieldTag* k3            | 6,7 *StoKey{Lo,Hi}* k4,k5 | 7,8 *Val{Lo,Hi}* | 9,10 *ValPrev{Lo,Hi}* | 11,12 *InitVal{Lo,Hi}* |
 | -------- | ----------- | -------------------------- | --------  | --------           | -------------------------- | ------------------------- | ---------------- | --------------------- | ---------------------- |
-|          |             | *RwTableTag*               |           |                    |                            |                           |                  |                       |                        |
+|          |             | *Target*               |           |                    |                            |                           |                  |                       |                        |
 | $counter | true        | TxAccessListAccount        | $txID     | $address           |                            |                           | $val,0           | $valPrev,0            |                        |
 | $counter | true        | TxAccessListAccountStorage | $txID     | $address           |                            | $storageKey{Lo,Hi}        | $val,0           | $valPrev,0            |                        |
 | $counter | $isWrite    | TxRefund                   | $txID     |                    |                            |                           | $val,0           | $valPrev,0            |                        |
