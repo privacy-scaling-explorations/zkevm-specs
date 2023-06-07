@@ -1169,6 +1169,8 @@ class Instruction:
         self.range_check(gas_cost, N_BYTES_GAS)
         return gas_cost
 
+    # calculate memory size required for the operation, and returns
+    # the size and whether the result overflowed uint64
     def memory_size(self, opcode: Opcode) -> Tuple[FQ, FQ]:
         (
             is_sha3,
@@ -1279,6 +1281,8 @@ class Instruction:
                 return (x, FQ(0))
             return (y, FQ(0))
 
+    # calcMemSize64 calculates the required memory size, and returns
+    # the size and whether the result overflowed uint64
     def calc_mem_size64(self, off_word: Word, l_word: Word) -> Tuple[FQ, FQ]:
         off = self.word_to_fq(off_word, N_BYTES_MEMORY_ADDRESS)
         l = self.word_to_fq(l_word, N_BYTES_MEMORY_ADDRESS)
@@ -1286,6 +1290,9 @@ class Instruction:
             return (FQ(0), FQ(1))
         return calc_mem_size64(off_word, off)
 
+    # calcMemSize64WithUint calculates the required memory size, and returns
+    # the size and whether the result overflowed uint64
+    # Identical to calcMemSize64, but length is a uint64
     def calc_mem_size64_with_uint(self, off_word: Word, length64: FQ) -> Tuple[FQ, FQ]:
         if length64 == FQ(0):
             return (FQ(0), FQ(0))
