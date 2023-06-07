@@ -93,8 +93,8 @@ def error_gas_uint_overflow(instruction: Instruction):
             FQ(((MAX_U64 - gas) // TxDataZeroGas)), FQ(z), N_BYTES_U64
         )
 
-        # TODO: eip 3860
-        # https://github.com/privacy-scaling-explorations/zkevm-specs/issues/421
+        # TODO: Would like to support EIP 3860 in the future (See
+        # https://github.com/privacy-scaling-explorations/zkevm-specs/issues/421)
         # gas += z * TxDataZeroGas
         # if is_create:
         #     lenWords = dataLen // 32
