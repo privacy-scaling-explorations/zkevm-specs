@@ -210,3 +210,47 @@ pub(crate) struct KeyData<F> {
     pub(crate) drifted_is_odd: Cell<F>,
 }
 ```
+
+## Nodes
+
+There are three different nodes in the MPT:
+
+  * Branch (and its special case Extension node)
+  * Account leaf
+  * Storage leaf
+
+In the circuit, there is a special node added that marks the beggining and end of
+the proof: `StartNode`. An example of the start node:
+
+```
+{"start":{"proof_type":"BalanceChanged"},"extension_branch":null,"account":null,"storage":null,"values":[[160,92,69,153,141,251,249,206,112,188,187,128,87,78,215,166,34,146,45,44,119,94,10,35,49,254,90,139,141,204,153,244,144,0],[160,125,24,72,139,179,78,113,251,49,243,102,147,31,42,67,250,44,213,59,218,72,77,153,183,213,188,44,45,1,156,32,62,0]],"keccak_data":[]}
+```
+
+Note that `values` contain the hashes of `S` and `C` tries. Also, `keccak_data` is empty as
+there is no byte stream for which we need a hash.
+
+An example of the end node:
+```
+{"start":{"proof_type":"Disabled"},"extension_branch":null,"account":null,"storage":null,"values":[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]],"keccak_data":[]}
+```
+
+For each `Node` exactly one of the `start`, `extension_branch`, `account`, and `storage` is set
+in the following struct:
+
+```
+pub struct Node {
+    pub(crate) start: Option<StartNode>,
+    pub(crate) extension_branch: Option<ExtensionBranchNode>,
+    pub(crate) account: Option<AccountNode>,
+    pub(crate) storage: Option<StorageNode>,
+    /// MPT node values
+    pub values: Vec<Vec<u8>>,
+    pub keccak_data: Vec<Vec<u8>>,
+}
+```
+
+The field `values` contains the RLP stream of a node split into rows and stripped off the
+RLP encoding bytes (which are stored in `ExtensionBranchNode`, `AccountNode`, `StorageNode`).
+
+The field `keccak_data` contains the RLP streams for which we need hash values.
+
