@@ -13,7 +13,7 @@ And after the balance is modified:
 [248 101 156 58 168 111 115 58 191 32 139 53 139 168 184 7 8 29 109 70 164 7 116 82 56 174 242 193 51 253 77 184 70 248 68 4 23 160 86 232 31 23 27 204 85 166 255 131 69 230 146 192 248 110 91 72 224 27 153 108 173 192 1 98 47 181 227 99 180 33 160 197 210 70 1 134 247 35 60 146 126 125 178 220 199 3 192 229 0 182 83 202 130 39 59 123 250 216 4 93 133 164 112]
 ```
 
-The account leaf `Node` in the circuit looks:
+In the circuit, the account leaf `Node` looks:
 ```
 {
 "address":[204,228,98,4,186,168,111,115,58,191,32,139,53,139,168,184,7,8,29,109,70,164,7,116,82,56,174,242,193,51,253,77],
@@ -25,7 +25,8 @@ The account leaf `Node` in the circuit looks:
 "storage":null,
 "values":[
     [157,52,45,53,199,120,18,165,14,109,22,4,141,198,233,128,219,44,247,218,241,231,2,206,125,246,58,246,15,3,0,0,0,0],
-    [156,58,168,111,115,58,191,32,139,53,139,168,184,7,8,29,109,70,164,7,116,82,56,174,242,193,51,253,77,0,0,0,0,0],[4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [156,58,168,111,115,58,191,32,139,53,139,168,184,7,8,29,109,70,164,7,116,82,56,174,242,193,51,253,77,0,0,0,0,0],
+    [4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
     [134,85,156,208,108,8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
     [160,86,232,31,23,27,204,85,166,255,131,69,230,146,192,248,110,91,72,224,27,153,108,173,192,1,98,47,181,227,99,180,33,0],
     [160,197,210,70,1,134,247,35,60,146,126,125,178,220,199,3,192,229,0,182,83,202,130,39,59,123,250,216,4,93,133,164,112,0],
@@ -59,7 +60,63 @@ AccountDrifted
 AccountWrong	
 ```
 
-## Old
+We can reconstruct the `S` RLP stream if we start with `list_rlp_bytes[0]`, then append `AccountKeyS`,
+`value_rlp_bytes[0]`, `list_rlp_bytes[0]`, `AccountNonceS`, `AccountBalanceS`, `AccountStorageS`,
+and `AccountCodehashS`.
+
+## Constraints
+
+There is a [memory](`main.md`) mechanism that is used for `MainData`, `ParentData`, and `KeyData` -
+the lookup table is being built dynamically and in each node there is a check whether the data has been updated
+correctly. 
+
+`MainData` contains the following fields: `proof_type`, `is_below_account`, `address_rlc`, `root_prev`,
+and `root`. 
+
+`is_below_account` constraint:
+```
+main_data.is_below_account = false
+```
+
+Storage and codehash RLP constraints (the length of storage and codehash is always `32`):
+```
+AccountStorageS RLP = 160
+AccountStorageC RLP = 160
+AccountCodehashS RLP = 160
+AccountCodehashC RLP = 160
+```
+
+`KeyData` contains the following fields: `rlc`, `mult`, `num_nibbles`, `is_odd`, `drifted_rlc`,
+`drifted_mult`, `drifted_num_nibbles`, and `drifted_is_odd`.
+
+Total number of the account address nibbles nees to be `64`. This is to prevent having short addresses
+which could lead to a root node which would be shorter than `32` bytes and thus not hashed. That
+means the trie could be manipulated to reach the desired root. The constraint below ensures that
+the number of nibbles in the branches and extensions above the leaf (stored in `key_data.num_nibbles`)
+together with the number of nibbles in the leaf is `64`:
+```
+key_data.num_nibbles + num_nibbles = 64
+```
+
+`ParentData` contains the following fields: `rlc`, `is_root`, `is_placeholder`, and `drifted_parent_rlc`.
+The field `parent_data.rlc` contains the hash of a child. The constraint below checks that the hashed
+value of the leaf RLC is `parent_data.rlc`:
+```
+(1, leaf_rlc, rlp_key.rlp_list.num_bytes(), parent_data.rlc) in keccak_table
+```
+
+<!--
+Note that a new entry is stored in the lookup table with the field `is_below_account` set to `true`.
+
+In the account leaf, all the fields stay the same except `address_rlc`. This one was set to `0` in
+the `StartNode` and should be the address RLC of the account in the account leaf row.
+This serves to check that there is always an account leaf above the storage leaf (only in the account leaf,
+the field `address_rlc` is allowed to be updated).
+-->
+
+# Old
+
+Note: the constraints that are covered in the new documentation (above) has been removed from below.
 
 An account leaf occupies 8 rows.
 Contrary as in the branch rows, the `S` and `C` leaves are not positioned parallel to each
@@ -210,12 +267,6 @@ that is parallel to the placeholder branch.
 
 Note that there is a similar constraint for the cases when the account leaf is in the first level, but
 here we do not fetch for the intermediate RLC from the branch above as there is no branch above.
-
-#### Total number of address nibbles
-
-Total number of account address nibbles nees to be 64. This is to prevent having short addresses
-which could lead to a root node which would be shorter than 32 bytes and thus not hashed. That
-means the trie could be manipulated to reach a desired root.
 
 ### Account leaf address RLC & nibbles count (after placeholder)
 
@@ -655,18 +706,6 @@ We can see `s_main.rlp2 = 160` which specifies that the length of the following 
 
 In `ACCOUNT_LEAF_STORAGE_CODEHASH_C` example row, there is `C` storage root stored in `s_main.bytes`
 and `C` codehash in `c_main.bytes`. Both these values are hash outputs.
-
-### Account leaf storage codehash
-
-#### Account leaf storage codehash s_main.rlp2 = 160
-
-`s_main.rlp2` stores the RLP length of the hash of storage root. The hash output length is 32
-and thus `s_main.rlp2` needs to be `160 = 128 + 32`. 
-
-#### Account leaf storage codehash c_main.rlp2 = 160
-
-`c_main.rlp2` stores the RLP length of the codehash. The hash output length is 32
-and thus `c_main.rlp2` needs to be `160 = 128 + 32`. 
 
 #### Storage root RLC 
 
