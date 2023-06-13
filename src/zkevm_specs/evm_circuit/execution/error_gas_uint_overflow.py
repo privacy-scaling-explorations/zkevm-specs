@@ -75,7 +75,7 @@ def error_gas_uint_overflow(instruction: Instruction):
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
     data = [
         instruction.tx_calldata_lookup(tx_id, calldata_offset + FQ(idx))
-        for idx in range(calldata_length.expr().n)
+        for idx in range(0, calldata_length.expr().n)
     ]
     dataLen = len(data)
 
@@ -138,7 +138,6 @@ def error_gas_uint_overflow(instruction: Instruction):
     is_call_gas_cost_overflow = (
         is_non_zero_calldata_gas_overflow
     ) = is_zero_calldata_gas_overflow = is_eip3860_overflow = FQ(0)
-    tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
     call = CallGadget(instruction, FQ(0), is_call, is_callcode, is_delegatecall)
     is_warm_access = instruction.read_account_to_access_list(tx_id, call.callee_address)
     gas_cost = call.gas_cost(instruction, is_warm_access)
@@ -146,7 +145,8 @@ def error_gas_uint_overflow(instruction: Instruction):
 
     # verify gas uint overflow.
     is_overflow = (
-        is_call_gas_cost_overflow
+        is_opcode_memory_size_overflow
+        + is_call_gas_cost_overflow
         + is_non_zero_calldata_gas_overflow
         + is_zero_calldata_gas_overflow
         + is_eip3860_overflow

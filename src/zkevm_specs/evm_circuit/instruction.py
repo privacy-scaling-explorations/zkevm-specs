@@ -1263,7 +1263,7 @@ class Instruction:
             )
             if overflow == FQ(1):
                 return (FQ(0), FQ(1))
-            if x > y:
+            if x.n > y.n:
                 return (x, FQ(0))
             return (y, FQ(0))
         elif (is_delegatecall + is_staticcall) == FQ(1):
@@ -1279,7 +1279,7 @@ class Instruction:
             )
             if overflow == FQ(1):
                 return (FQ(0), FQ(1))
-            if x > y:
+            if x.n > y.n:
                 return (x, FQ(0))
             return (y, FQ(0))
 
@@ -1288,9 +1288,9 @@ class Instruction:
     def calc_mem_size64(self, offset: Word, length: Word) -> Tuple[FQ, FQ]:
         off = self.word_to_fq(offset, N_BYTES_MEMORY_ADDRESS)
         l = self.word_to_fq(length, N_BYTES_MEMORY_ADDRESS)
-        if self.is_u64_overflow(l) == FQ(0):
+        if self.is_u64_overflow(l) == FQ(1):
             return (FQ(0), FQ(1))
-        return calc_mem_size64(offset, off)
+        return self.calc_mem_size64_with_uint(offset, off)
 
     # calcMemSize64WithUint calculates the required memory size, and returns
     # the size and whether the result overflowed uint64
@@ -1298,9 +1298,9 @@ class Instruction:
     def calc_mem_size64_with_uint(self, offset_word: Word, length64: FQ) -> Tuple[FQ, FQ]:
         if length64 == FQ(0):
             return (FQ(0), FQ(0))
-        off = self.word_to_fq(offset_word, N_BYTES_MEMORY_ADDRESS)
-        (offset64, overflow) = (off, self.is_u64_overflow(off))
-        if overflow == FQ(0):
+        offset = self.word_to_fq(offset_word, N_BYTES_MEMORY_ADDRESS)
+        (offset64, overflow) = (offset, self.is_u64_overflow(offset))
+        if overflow == FQ(1):
             return (FQ(0), FQ(1))
         val = offset64 + length64
         return (val, FQ(val.n < offset64.n))
@@ -1311,8 +1311,8 @@ class Instruction:
 
     def to_word_size(self, size: FQ) -> FQ:
         if size.n > MAX_U64 - 31:
-            return MAX_U64 / 32 + 1
-        return FQ((size.n + 31) / 32)
+            return FQ(MAX_U64 // 32 + 1)
+        return FQ((size.n + 31) // 32)
 
     def generate_contract_address(self, address: Expression, nonce: Expression) -> Expression:
         contract_addr = keccak(rlp.encode([address.expr().n.to_bytes(20, "big"), nonce.expr().n]))

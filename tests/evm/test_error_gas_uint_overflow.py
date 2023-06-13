@@ -34,7 +34,7 @@ CallContext = namedtuple(
 Stack = namedtuple(
     "Stack",
     ["gas", "value", "cd_offset", "cd_length", "rd_offset", "rd_length"],
-    defaults=[100, 2**64 - 1, 64, 2**64 - 1, 0, 2**64 - 1],
+    defaults=[100, 64, 0, 64, 0, 64],
 )
 
 TEST_DATA = [
@@ -59,28 +59,45 @@ def test_error_gas_uint_overflow_root(
     bytecode_hash = Word(bytecode.hash())
     callee_bytecode_hash = Word(account.code_hash())
 
+    rw_dictionary = (
+        RWDictionary(24)
+        .call_context_read(1, CallContextFieldTag.CallDataOffset, stack.cd_offset)
+        .call_context_read(1, CallContextFieldTag.CallDataLength, len(tx.call_data))
+        .call_context_read(1, CallContextFieldTag.TxId, tx.id)
+    )
+    rw_dictionary.stack_read(tx.id, 1012, Word(stack.gas)).stack_read(
+        tx.id, 1011, Word(account.address)
+    ).stack_read(tx.id, 1014, Word(account.address)).stack_read(
+        tx.id, 1013, Word(account.address)
+    ).stack_read(
+        1, 1017, Word(stack.gas)
+    ).stack_read(
+        1, 1018, Word(account.address)
+    ).stack_read(
+        1, 1019, Word(stack.value)
+    ).stack_read(
+        1, 1020, Word(stack.cd_offset)
+    ).stack_read(
+        1, 1021, Word(stack.cd_length)
+    ).stack_read(
+        1, 1022, Word(stack.rd_offset)
+    ).stack_read(
+        1, 1023, Word(stack.rd_length)
+    ).stack_write(
+        1, 1023, Word(False)
+    ).account_read(
+        account.address, AccountFieldTag.CodeHash, callee_bytecode_hash
+    ).tx_access_list_account_read(
+        1, account.address, True
+    ).call_context_read(
+        1, CallContextFieldTag.IsSuccess, 0
+    )
+
     tables = Tables(
         block_table=set(Block().table_assignments()),
         tx_table=set(tx.table_assignments()),
         bytecode_table=set(bytecode.table_assignments()),
-        rw_table=set(
-            RWDictionary(24)
-            .call_context_read(1, CallContextFieldTag.CallDataOffset, 0)
-            .call_context_read(1, CallContextFieldTag.CallDataLength, len(tx.call_data))
-            .call_context_read(1, CallContextFieldTag.TxId, tx.id)
-            .stack_read(1, 1017, Word(stack.gas))
-            .stack_read(1, 1018, Word(account.address))
-            .stack_read(1, 1019, Word(stack.value))
-            .stack_read(1, 1020, Word(stack.cd_offset))
-            .stack_read(1, 1021, Word(stack.cd_length))
-            .stack_read(1, 1022, Word(stack.rd_offset))
-            .stack_read(1, 1023, Word(stack.rd_length))
-            .stack_write(1, 1023, Word(False))
-            .account_read(account.address, AccountFieldTag.CodeHash, callee_bytecode_hash)
-            .tx_access_list_account_read(1, account.address, True)
-            .call_context_read(1, CallContextFieldTag.IsSuccess, 0)
-            .rws
-        ),
+        rw_table=set(rw_dictionary.rws),
     )
 
     verify_steps(
