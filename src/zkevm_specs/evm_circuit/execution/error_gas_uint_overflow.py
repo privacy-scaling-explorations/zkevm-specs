@@ -82,14 +82,14 @@ def error_gas_uint_overflow(instruction: Instruction):
         # eip 2028
         nz = len([byte for byte in data if byte != 0])
         gas = TxGasContractCreation if is_create == FQ(1) else TxGas
-        is_eip2028_overflow, _ = instruction.compare(
+        is_non_zero_calldata_gas_overflow, _ = instruction.compare(
             FQ(((MAX_U64 - gas) // TxDataNonZeroGasEIP2028)), FQ(nz), N_BYTES_U64
         )
         gas += nz * TxDataNonZeroGasEIP2028
 
         # tx data zero gas overflow
         z = dataLen - nz
-        is_non_zero_gas_overflow, _ = instruction.compare(
+        is_zero_calldata_gas_overflow, _ = instruction.compare(
             FQ(((MAX_U64 - gas) // TxDataZeroGas)), FQ(z), N_BYTES_U64
         )
 
@@ -136,8 +136,8 @@ def error_gas_uint_overflow(instruction: Instruction):
     # https://github.com/ethereum/go-ethereum/blob/b946b7a13b749c99979e312c83dce34cac8dd7b1/core/vm/gas.go#L37
     # seems never overflow because of checking range inside of CallGadget
     is_call_gas_cost_overflow = (
-        is_eip2028_overflow
-    ) = is_non_zero_gas_overflow = is_eip3860_overflow = FQ(0)
+        is_non_zero_calldata_gas_overflow
+    ) = is_zero_calldata_gas_overflow = is_eip3860_overflow = FQ(0)
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
     call = CallGadget(instruction, FQ(0), is_call, is_callcode, is_delegatecall)
     is_warm_access = instruction.read_account_to_access_list(tx_id, call.callee_address)
@@ -147,8 +147,8 @@ def error_gas_uint_overflow(instruction: Instruction):
     # verify gas uint overflow.
     is_overflow = (
         is_call_gas_cost_overflow
-        + is_eip2028_overflow
-        + is_non_zero_gas_overflow
+        + is_non_zero_calldata_gas_overflow
+        + is_zero_calldata_gas_overflow
         + is_eip3860_overflow
     )
     instruction.constrain_not_zero(FQ(is_overflow))

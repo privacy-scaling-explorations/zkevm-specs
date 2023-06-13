@@ -1283,20 +1283,20 @@ class Instruction:
 
     # calcMemSize64 calculates the required memory size, and returns
     # the size and whether the result overflowed uint64
-    def calc_mem_size64(self, off_word: Word, l_word: Word) -> Tuple[FQ, FQ]:
-        off = self.word_to_fq(off_word, N_BYTES_MEMORY_ADDRESS)
-        l = self.word_to_fq(l_word, N_BYTES_MEMORY_ADDRESS)
+    def calc_mem_size64(self, offset: Word, length: Word) -> Tuple[FQ, FQ]:
+        off = self.word_to_fq(offset, N_BYTES_MEMORY_ADDRESS)
+        l = self.word_to_fq(length, N_BYTES_MEMORY_ADDRESS)
         if self.is_u64_overflow(l) == FQ(0):
             return (FQ(0), FQ(1))
-        return calc_mem_size64(off_word, off)
+        return calc_mem_size64(offset, off)
 
     # calcMemSize64WithUint calculates the required memory size, and returns
     # the size and whether the result overflowed uint64
     # Identical to calcMemSize64, but length is a uint64
-    def calc_mem_size64_with_uint(self, off_word: Word, length64: FQ) -> Tuple[FQ, FQ]:
+    def calc_mem_size64_with_uint(self, offset_word: Word, length64: FQ) -> Tuple[FQ, FQ]:
         if length64 == FQ(0):
             return (FQ(0), FQ(0))
-        off = self.word_to_fq(off_word, N_BYTES_MEMORY_ADDRESS)
+        off = self.word_to_fq(offset_word, N_BYTES_MEMORY_ADDRESS)
         (offset64, overflow) = (off, self.is_u64_overflow(off))
         if overflow == FQ(0):
             return (FQ(0), FQ(1))
