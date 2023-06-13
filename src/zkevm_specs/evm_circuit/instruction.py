@@ -1169,8 +1169,10 @@ class Instruction:
         self.range_check(gas_cost, N_BYTES_GAS)
         return gas_cost
 
-    # calculate memory size required for the operation, and returns
+    # calculate the memory size required for the operation, and returns
     # the size and whether the result overflowed uint64
+    # stack offset is defined as follows
+    # https://github.com/ethereum/go-ethereum/blob/b946b7a13b749c99979e312c83dce34cac8dd7b1/core/vm/memory_table.go
     def memory_size(self, opcode: Opcode) -> Tuple[FQ, FQ]:
         (
             is_sha3,
