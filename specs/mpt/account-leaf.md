@@ -64,9 +64,34 @@ We can reconstruct the `S` RLP stream if we start with `list_rlp_bytes[0]`, then
 `value_rlp_bytes[0]`, `list_rlp_bytes[0]`, `AccountNonceS`, `AccountBalanceS`, `AccountStorageS`,
 and `AccountCodehashS`.
 
+## Gadgets
+
+`AccountLeafConfig` uses the following gadgets:
+
+```
+rlp_key: [ListKeyGadget<F>; 2],
+is_in_empty_trie: [IsEmptyTreeGadget<F>; 2],
+drifted: DriftedGadget<F>,
+wrong: WrongGadget<F>,
+is_non_existing_account_proof: IsEqualGadget<F>,
+is_account_delete_mod: IsEqualGadget<F>,
+is_nonce_mod: IsEqualGadget<F>,
+is_balance_mod: IsEqualGadget<F>,
+is_storage_mod: IsEqualGadget<F>,
+is_codehash_mod: IsEqualGadget<F>
+```
+
+### rlp_key
+
+`rlp_key` stores two `ListKeyGadgets` (one for `S` key, one for `C` key).
+It can be used to access the information about the key (length, number of nibbles, key RLC,
+RLC multiplier to be used after key, ...), but it also
+stores the first RLP bytes of the account leaf (that are stored in `list_rlp_bytes`).
+
+
 ## Constraints
 
-There is a [memory](`main.md`) mechanism that is used for `MainData`, `ParentData`, and `KeyData` -
+There is a [memory](main.md) mechanism that is used for `MainData`, `ParentData`, and `KeyData` -
 the lookup table is being built dynamically and in each node there is a check whether the data has been updated
 correctly. 
 
@@ -104,6 +129,44 @@ value of the leaf RLC is `parent_data.rlc`:
 ```
 (1, leaf_rlc, rlp_key.rlp_list.num_bytes(), parent_data.rlc) in keccak_table
 ```
+
+The first RLP byte of the value has to be `184`. This is the RLP byte meaning that behind this byte
+there is a string of length more than `55` and that only `1 = 184 - 183` byte is reserved
+for the length (the second RLP byte). The string is always of length greater than `55` because it contains
+the codehash (`32` bytes) and storage root (`32` bytes). Constraints:
+```
+value_rlp_bytes[0][0] = 183 + 1
+value_rlp_bytes[1][0] = 183 + 1
+```
+
+The value length is specified in `value_rlp_bytes[i][1]` and the length of the list containing in the
+value is specified in `value_list_rlp_bytes[i][1]`. The difference is always `2` - the difference coming
+from the two bytes: `value_list_rlp_bytes[i][0]` and `value_list_rlp_bytes[i][1]`. Constraints:
+```
+value_rlp_bytes[0][1] = value_list_rlp_bytes[0][1] + 2
+value_rlp_bytes[1][1] = value_list_rlp_bytes[1][1] + 2
+```
+
+The first RLP byte of the list is always `248 = 247 + 1` where `1` means there is `1` byte
+used for storing the list length (in `value_list_rlp_bytes[i][1]`). Constraints:
+```
+value_list_rlp_bytes[0][0] = 247 + 1
+value_list_rlp_bytes[1][0] = 247 + 1
+```
+
+The list contains the nonce, the balance, the storage (`1 + 32`), and the codehash (`1 + 32`). The length
+(`value_list_rlp_bytes[i][1]`) needs to reflect this:
+```
+value_list_rlp_bytes[i][1] = nonce_items[i].num_bytes() + balance_items[i].num_bytes() + (2 * (1 + 32))
+```
+
+The key length and the value list length have to match the account length. Constraints:
+```
+config.rlp_key[0].rlp_list.len() => config.rlp_key[0].key_value.num_bytes() + value_list_num_bytes
+config.rlp_key[1].rlp_list.len() => config.rlp_key[1].key_value.num_bytes() + value_list_num_bytes
+```
+Note that here `config.rlp_key[i]` contains the key (and its RLP bytes), but also `list_rlp_bytes[i]`.
+`rlp_key[i].rlp_list.len()` returns `list_rlp_bytes[i][1]` (`108` and `101` in the above example).
 
 <!--
 Note that a new entry is stored in the lookup table with the field `is_below_account` set to `true`.
@@ -585,37 +648,6 @@ the next row (this is why there is `r^l` instead of `r^{l-1}`).
 
 When balance is short, there is only one balance byte and we know in advance that the
 multiplier changes only by factor `r`.
-
-#### Leaf nonce balance s_main.rlp1 = 184
-
-`s_main.rlp1` needs always be 184. This is RLP byte meaning that behind this byte
-there is a string of length more than 55 bytes and that only `1 = 184 - 183` byte is reserved
-for length (`s_main.rlp2`). The string is always of length greater than 55 because there
-are codehash (32 bytes) and storage root (32 bytes) in the next row as part of this string.
-
-The only exception is when `is_non_existing_account_proof = 1` & `is_wrong_leaf = 0`.
-In this case the value does not matter as the account leaf is only a placeholder and
-does not use `s_main.rlp1` and `s_main.rlp2`. Note that it uses `s_main` for nibbles
-because the account address is computed using nibbles and this account address needs
-to be as required by a lookup.
-
-#### Leaf nonce balance c_main.rlp1 = 248
-
-`c_main.rlp1` needs to always be 248. This is RLP byte meaning that behind this byte
-there is a list which has one byte that specifies the length - `at c_main.rlp2`.
-
-The only exception is when `is_non_existing_account_proof = 1` & `is_wrong_leaf = 0`.
-In this case the value does not matter as the account leaf is only a placeholder and
-does not use `c_main`. Note that it uses `s_main` for nibbles because the account address
-is computed using nibbles and this account address needs to be as required by a lookup.
-That means there is an account leaf which is just a placeholder but it still has the
-correct address.
-
-Example:
-```
-[184  78   129      142       0 0 ... 0 248  76   135      28       5 107 201 118 120 59 0 0 ... 0]
-```
-248 at c_main.rlp1 means one byte for length. This byte is 76, meaning there are 76 bytes after it.
 
 #### Leaf nonce balance s_main.rlp2 - c_main.rlp2
 
