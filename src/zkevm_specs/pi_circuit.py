@@ -161,13 +161,14 @@ def check_row(
     assert (
         row.q_rpi_byte_enable
         * (FQ.one() - row.q_rpi_value_start)
-        * (row.rpi_value_lc - row_next.rpi_value_lc * byte_pow_base - row.rpi_bytes)
+        * (row.rpi_value_lc - (row_next.rpi_value_lc * byte_pow_base + row.rpi_bytes))
         == FQ.zero()
     )
 
     # 4. rpi_value_lc[i] = rpi_bytes[i]
-    assert row.q_rpi_byte_enable * row.q_rpi_value_start * (row.rpi_value_lc - row.rpi_bytes) == FQ(
-        0
+    assert (
+        row.q_rpi_byte_enable * row.q_rpi_value_start * (row.rpi_value_lc - row.rpi_bytes)
+        == FQ.zero()
     )
 
     # 5. lookup rpi_bytes_keccakrlc against rpi_digest_word
