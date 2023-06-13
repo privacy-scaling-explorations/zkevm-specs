@@ -72,6 +72,7 @@ def error_gas_uint_overflow(instruction: Instruction):
     # https://github.com/ethereum/go-ethereum/blob/b946b7a13b749c99979e312c83dce34cac8dd7b1/core/state_transition.go#L67
     calldata_offset = instruction.call_context_lookup(CallContextFieldTag.CallDataOffset)
     calldata_length = instruction.call_context_lookup(CallContextFieldTag.CallDataLength)
+    tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
     data = [
         instruction.tx_calldata_lookup(tx_id, calldata_offset + FQ(idx))
         for idx in range(calldata_length.expr().n)
@@ -106,7 +107,6 @@ def error_gas_uint_overflow(instruction: Instruction):
 
     # Run
     # https://github.com/ethereum/go-ethereum/blob/b946b7a13b749c99979e312c83dce34cac8dd7b1/core/vm/interpreter.go#L105
-    is_dynamic_gas = opcode.has_dynamic_gas()
     is_memory_size = (
         is_calldatacopy
         + is_codecopy

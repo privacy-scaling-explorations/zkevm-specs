@@ -1224,42 +1224,42 @@ class Instruction:
             is_sha3 + is_return + is_revert + is_log0 + is_log1 + is_log2 + is_log3 + is_log4
         ) == FQ(1):
             return self.calc_mem_size64(
-                instruction.stack_lookup(RW.Read, self.stack_pointer_offset),
-                instruction.stack_lookup(RW.Read, self.stack_pointer_offset - 1),
+                self.stack_lookup(RW.Read, self.stack_pointer_offset),
+                self.stack_lookup(RW.Read, self.stack_pointer_offset - 1),
             )
         elif (is_calldatacopy + is_returndatacopy + is_codecopy) == FQ(1):
             return self.calc_mem_size64(
-                instruction.stack_lookup(RW.Read, self.stack_pointer_offset),
-                instruction.stack_lookup(RW.Read, self.stack_pointer_offset - 2),
+                self.stack_lookup(RW.Read, self.stack_pointer_offset),
+                self.stack_lookup(RW.Read, self.stack_pointer_offset - 2),
             )
         elif is_extcodecopy == FQ(1):
             return self.calc_mem_size64(
-                instruction.stack_lookup(RW.Read, self.stack_pointer_offset - 1),
-                instruction.stack_lookup(RW.Read, self.stack_pointer_offset - 3),
+                self.stack_lookup(RW.Read, self.stack_pointer_offset - 1),
+                self.stack_lookup(RW.Read, self.stack_pointer_offset - 3),
             )
         elif (is_mload + is_mstore) == FQ(1):
             return self.calc_mem_size64_with_uint(
-                instruction.stack_lookup(RW.Read, self.stack_pointer_offset), FQ(32)
+                self.stack_lookup(RW.Read, self.stack_pointer_offset), FQ(32)
             )
         elif is_mstore8 == FQ(1):
             return self.calc_mem_size64_with_uint(
-                instruction.stack_lookup(RW.Read, self.stack_pointer_offset), FQ(1)
+                self.stack_lookup(RW.Read, self.stack_pointer_offset), FQ(1)
             )
         elif (is_create + is_create2) == FQ(1):
             return self.calc_mem_size64(
-                instruction.stack_lookup(RW.Read, self.stack_pointer_offset - 1),
-                instruction.stack_lookup(RW.Read, self.stack_pointer_offset - 2),
+                self.stack_lookup(RW.Read, self.stack_pointer_offset - 1),
+                self.stack_lookup(RW.Read, self.stack_pointer_offset - 2),
             )
         elif is_call == FQ(1):
             (x, overflow) = self.calc_mem_size64(
-                instruction.stack_lookup(RW.Read, self.stack_pointer_offset - 5),
-                instruction.stack_lookup(RW.Read, self.stack_pointer_offset - 6),
+                self.stack_lookup(RW.Read, self.stack_pointer_offset - 5),
+                self.stack_lookup(RW.Read, self.stack_pointer_offset - 6),
             )
             if overflow == FQ(1):
                 return (FQ(0), FQ(1))
             (y, overflow) = self.calc_mem_size64(
-                instruction.stack_lookup(RW.Read, self.stack_pointer_offset - 3),
-                instruction.stack_lookup(RW.Read, self.stack_pointer_offset - 4),
+                self.stack_lookup(RW.Read, self.stack_pointer_offset - 3),
+                self.stack_lookup(RW.Read, self.stack_pointer_offset - 4),
             )
             if overflow == FQ(1):
                 return (FQ(0), FQ(1))
@@ -1268,14 +1268,14 @@ class Instruction:
             return (y, FQ(0))
         elif (is_delegatecall + is_staticcall) == FQ(1):
             (x, overflow) = self.calc_mem_size64(
-                instruction.stack_lookup(RW.Read, self.stack_pointer_offset - 4),
-                instruction.stack_lookup(RW.Read, self.stack_pointer_offset - 5),
+                self.stack_lookup(RW.Read, self.stack_pointer_offset - 4),
+                self.stack_lookup(RW.Read, self.stack_pointer_offset - 5),
             )
             if overflow == FQ(1):
                 return (FQ(0), FQ(1))
             (y, overflow) = self.calc_mem_size64(
-                instruction.stack_lookup(RW.Read, self.stack_pointer_offset - 2),
-                instruction.stack_lookup(RW.Read, self.stack_pointer_offset - 3),
+                self.stack_lookup(RW.Read, self.stack_pointer_offset - 2),
+                self.stack_lookup(RW.Read, self.stack_pointer_offset - 3),
             )
             if overflow == FQ(1):
                 return (FQ(0), FQ(1))
