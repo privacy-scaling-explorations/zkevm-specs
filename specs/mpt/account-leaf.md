@@ -60,13 +60,17 @@ AccountDrifted
 AccountWrong	
 ```
 
+Each of the `values` is checked by [MainRLPGadget](gadgets.md) to ensure the RLP bytes correspond
+to the stream length. For example, the first value of the `values` above is `[157,52,45,53,...]`.
+It needs to be checked that the length of the stream is `29 = 157 - 128`.
+
 We can reconstruct the `S` RLP stream if we start with `list_rlp_bytes[0]`, then append `AccountKeyS`,
 `value_rlp_bytes[0]`, `list_rlp_bytes[0]`, `AccountNonceS`, `AccountBalanceS`, `AccountStorageS`,
 and `AccountCodehashS`.
 
 ## Gadgets
 
-`AccountLeafConfig` uses the following gadgets:
+`AccountLeafConfig` uses the following [gadgets](gadgets.md):
 
 ```
 rlp_key: [ListKeyGadget<F>; 2],
