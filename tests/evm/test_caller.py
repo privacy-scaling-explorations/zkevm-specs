@@ -33,7 +33,7 @@ def test_caller(caller: U160):
         bytecode_table=set(bytecode.table_assignments()),
         rw_table=set(
             RWDictionary(9)
-            .call_context_read(1, CallContextFieldTag.CallerAddress, caller)
+            .call_context_read(1, CallContextFieldTag.CallerAddress, Word(caller))
             .stack_write(1, 1023, Word(caller))
             .rws
         ),

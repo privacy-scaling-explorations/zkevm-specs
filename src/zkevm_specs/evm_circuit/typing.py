@@ -45,7 +45,7 @@ from .table import (
     BytecodeTableRow,
     CallContextFieldTag,
     RWTableRow,
-    RWTableTag,
+    Target,
     TxContextFieldTag,
     TxLogFieldTag,
     TxReceiptFieldTag,
@@ -58,6 +58,7 @@ from .table import (
     Bn256OperationTag,
 )
 from .opcode import get_push_size, Opcode
+
 
 POW2 = 2**256
 
@@ -113,7 +114,7 @@ class Block:
         value = lambda v: WordOrValue(FQ(v))
         word = lambda w: WordOrValue(Word(w))
         return [
-            BlockTableRow(FQ(BlockContextFieldTag.Coinbase), FQ(0), value(self.coinbase)),
+            BlockTableRow(FQ(BlockContextFieldTag.Coinbase), FQ(0), word(self.coinbase)),
             BlockTableRow(FQ(BlockContextFieldTag.GasLimit), FQ(0), value(self.gas_limit)),
             BlockTableRow(FQ(BlockContextFieldTag.Number), FQ(0), value(self.number)),
             BlockTableRow(FQ(BlockContextFieldTag.Timestamp), FQ(0), value(self.timestamp)),
@@ -212,13 +213,13 @@ class Transaction:
                 word(self.gas_price),
             ),
             TxTableRow(
-                FQ(self.id), FQ(TxContextFieldTag.CallerAddress), FQ(0), value(self.caller_address)
+                FQ(self.id), FQ(TxContextFieldTag.CallerAddress), FQ(0), word(self.caller_address)
             ),
             TxTableRow(
                 FQ(self.id),
                 FQ(TxContextFieldTag.CalleeAddress),
                 FQ(0),
-                value(0 if self.callee_address is None else self.callee_address),
+                word(0 if self.callee_address is None else self.callee_address),
             ),
             TxTableRow(
                 FQ(self.id),
@@ -431,24 +432,24 @@ class RWDictionary:
 
     def stack_read(self, call_id: IntOrFQ, stack_pointer: IntOrFQ, value: Word) -> RWDictionary:
         return self._append(
-            RW.Read, RWTableTag.Stack, id=FQ(call_id), address=FQ(stack_pointer), value=value
+            RW.Read, Target.Stack, id=FQ(call_id), address=FQ(stack_pointer), value=value
         )
 
     def stack_write(self, call_id: IntOrFQ, stack_pointer: IntOrFQ, value: Word) -> RWDictionary:
         return self._append(
-            RW.Write, RWTableTag.Stack, id=FQ(call_id), address=FQ(stack_pointer), value=value
+            RW.Write, Target.Stack, id=FQ(call_id), address=FQ(stack_pointer), value=value
         )
 
     def memory_read(self, call_id: IntOrFQ, memory_address: IntOrFQ, byte: IntOrFQ) -> RWDictionary:
         return self._append(
-            RW.Read, RWTableTag.Memory, id=FQ(call_id), address=FQ(memory_address), value=FQ(byte)
+            RW.Read, Target.Memory, id=FQ(call_id), address=FQ(memory_address), value=FQ(byte)
         )
 
     def memory_write(
         self, call_id: IntOrFQ, memory_address: IntOrFQ, byte: IntOrFQ
     ) -> RWDictionary:
         return self._append(
-            RW.Write, RWTableTag.Memory, id=FQ(call_id), address=FQ(memory_address), value=FQ(byte)
+            RW.Write, Target.Memory, id=FQ(call_id), address=FQ(memory_address), value=FQ(byte)
         )
 
     def call_context_read(
@@ -456,8 +457,18 @@ class RWDictionary:
     ) -> RWDictionary:
         if isinstance(value, int):
             value = FQ(value)
+        # Sanity checks
+        if field_tag in [
+            CallContextFieldTag.CallerAddress,
+            CallContextFieldTag.CalleeAddress,
+            CallContextFieldTag.Value,
+            CallContextFieldTag.CodeHash,
+        ]:
+            assert isinstance(value, Word)
+        else:
+            assert isinstance(value, FQ)
         return self._append(
-            RW.Read, RWTableTag.CallContext, id=FQ(call_id), address=FQ(field_tag), value=value
+            RW.Read, Target.CallContext, id=FQ(call_id), address=FQ(field_tag), value=value
         )
 
     def call_context_write(
@@ -465,8 +476,18 @@ class RWDictionary:
     ) -> RWDictionary:
         if isinstance(value, int):
             value = FQ(value)
+        # Sanity checks
+        if field_tag in [
+            CallContextFieldTag.CallerAddress,
+            CallContextFieldTag.CalleeAddress,
+            CallContextFieldTag.Value,
+            CallContextFieldTag.CodeHash,
+        ]:
+            assert isinstance(value, Word)
+        else:
+            assert isinstance(value, FQ)
         return self._append(
-            RW.Write, RWTableTag.CallContext, id=FQ(call_id), address=FQ(field_tag), value=value
+            RW.Write, Target.CallContext, id=FQ(call_id), address=FQ(field_tag), value=value
         )
 
     def tx_log_write(
@@ -479,9 +500,14 @@ class RWDictionary:
     ) -> RWDictionary:
         if isinstance(value, int):
             value = FQ(value)
+        # Sanity checks
+        if field_tag in [TxLogFieldTag.Address, TxLogFieldTag.Topic]:
+            assert isinstance(value, Word)
+        else:
+            assert isinstance(value, FQ)
         return self._append(
             RW.Write,
-            RWTableTag.TxLog,
+            Target.TxLog,
             id=FQ(tx_id),
             address=FQ(index + (int(field_tag) << 32) + (log_id << 48)),
             field_tag=FQ(0),
@@ -497,7 +523,7 @@ class RWDictionary:
     ) -> RWDictionary:
         return self._append(
             RW.Read,
-            RWTableTag.TxReceipt,
+            Target.TxReceipt,
             id=FQ(tx_id),
             field_tag=FQ(field_tag),
             value=FQ(value),
@@ -511,7 +537,7 @@ class RWDictionary:
     ) -> RWDictionary:
         return self._append(
             RW.Write,
-            RWTableTag.TxReceipt,
+            Target.TxReceipt,
             id=FQ(tx_id),
             field_tag=FQ(field_tag),
             value=FQ(value),
@@ -519,7 +545,7 @@ class RWDictionary:
 
     def tx_refund_read(self, tx_id: IntOrFQ, refund: IntOrFQ) -> RWDictionary:
         return self._append(
-            RW.Read, RWTableTag.TxRefund, id=FQ(tx_id), value=FQ(refund), value_prev=FQ(refund)
+            RW.Read, Target.TxRefund, id=FQ(tx_id), value=FQ(refund), value_prev=FQ(refund)
         )
 
     def tx_refund_write(
@@ -530,7 +556,7 @@ class RWDictionary:
         rw_counter_of_reversion: Optional[int] = None,
     ) -> RWDictionary:
         return self._state_write(
-            RWTableTag.TxRefund,
+            Target.TxRefund,
             id=FQ(tx_id),
             value=FQ(refund),
             value_prev=FQ(refund_prev),
@@ -546,7 +572,7 @@ class RWDictionary:
         rw_counter_of_reversion: Optional[int] = None,
     ) -> RWDictionary:
         return self._state_write(
-            RWTableTag.TxAccessListAccount,
+            Target.TxAccessListAccount,
             id=FQ(tx_id),
             address=FQ(account_address),
             value=FQ(value),
@@ -561,7 +587,7 @@ class RWDictionary:
         value: bool,
     ) -> RWDictionary:
         return self._state_read(
-            RWTableTag.TxAccessListAccount,
+            Target.TxAccessListAccount,
             id=FQ(tx_id),
             address=FQ(account_address),
             value=FQ(value),
@@ -578,7 +604,7 @@ class RWDictionary:
         rw_counter_of_reversion: Optional[int] = None,
     ) -> RWDictionary:
         return self._state_write(
-            RWTableTag.TxAccessListAccountStorage,
+            Target.TxAccessListAccountStorage,
             id=FQ(tx_id),
             address=FQ(account_address),
             storage_key=storage_key,
@@ -594,7 +620,7 @@ class RWDictionary:
             value = FQ(value)
         return self._append(
             RW.Read,
-            RWTableTag.Account,
+            Target.Account,
             address=FQ(account_address),
             field_tag=FQ(field_tag),
             value=value,
@@ -614,7 +640,7 @@ class RWDictionary:
         if isinstance(value_prev, int):
             value_prev = FQ(value_prev)
         return self._state_write(
-            RWTableTag.Account,
+            Target.Account,
             address=FQ(account_address),
             field_tag=FQ(field_tag),
             value=value,
@@ -634,7 +660,7 @@ class RWDictionary:
             tx_id = FQ(tx_id)
         return self._append(
             RW.Read,
-            RWTableTag.AccountStorage,
+            Target.AccountStorage,
             id=tx_id,
             address=FQ(account_address),
             storage_key=storage_key,
@@ -656,7 +682,7 @@ class RWDictionary:
         if isinstance(tx_id, int):
             tx_id = FQ(tx_id)
         return self._state_write(
-            RWTableTag.AccountStorage,
+            Target.AccountStorage,
             id=tx_id,
             address=FQ(account_address),
             storage_key=storage_key,
@@ -668,7 +694,7 @@ class RWDictionary:
 
     def _state_write(
         self,
-        tag: RWTableTag,
+        tag: Target,
         id: Expression = FQ(0),
         address: Expression = FQ(0),
         field_tag: Expression = FQ(0),
@@ -708,7 +734,7 @@ class RWDictionary:
 
     def _state_read(
         self,
-        tag: RWTableTag,
+        tag: Target,
         id: Expression = FQ(0),
         address: Expression = FQ(0),
         field_tag: Expression = FQ(0),
@@ -732,7 +758,7 @@ class RWDictionary:
     def _append(
         self,
         rw: RW,
-        tag: RWTableTag,
+        tag: Target,
         id: Expression = FQ(0),
         address: Expression = FQ(0),
         field_tag: Expression = FQ(0),
@@ -786,23 +812,21 @@ class KeccakCircuit:
 
 class ExpCircuit:
     rows: List[ExpCircuitRow]
-    pad_rows: List[ExpCircuitRow]
+    max_exp_steps: int
+    OFFSET_INCREMENT = 7
 
-    def __init__(self, pad_rows: Optional[List[ExpCircuitRow]] = None) -> None:
+    def __init__(self, max_exp_steps: int = 100) -> None:
         self.rows = []
-        self.pad_rows = []
-        if pad_rows is not None:
-            self.pad_rows = pad_rows
+        self.max_exp_steps = max_exp_steps
 
     def table(self) -> Sequence[ExpCircuitRow]:
-        return self.rows + self.pad_rows
+        return self.rows
 
     def add_event(self, base: int, exponent: int, identifier: IntOrFQ):
         steps: List[Tuple[int, int, int]] = []
         exponentiation = self._exp_by_squaring(base, exponent, steps)
         steps.reverse()
         self._append_steps(base, exponent, exponentiation, steps, identifier)
-        self._append_padding_row(identifier)
         return self
 
     def _exp_by_squaring(self, base: int, exponent: int, steps: List[Tuple[int, int, int]]):
@@ -859,24 +883,28 @@ class ExpCircuit:
                 # exponent is odd
                 exponent = exponent - 1
 
-    def _append_padding_row(self, identifier: IntOrFQ):
-        self.rows.append(
-            ExpCircuitRow(
-                q_usable=FQ.zero(),
-                is_step=FQ.zero(),
-                identifier=FQ(identifier),
-                is_last=FQ.zero(),
-                base=Word(0),
-                exponent=Word(0),
-                exponentiation=Word(0),
-                a=Word(0),
-                b=Word(0),
-                c=Word(0),
-                d=Word(0),
-                q=Word(0),
-                r=FQ(0),
+    def fill_dummy_events(self):
+        max_exp_rows = self.max_exp_steps * self.OFFSET_INCREMENT
+        rows_left = max_exp_rows - len(self.rows)
+        for i in range(rows_left):
+            self.rows.append(
+                ExpCircuitRow(
+                    q_usable=FQ.one(),
+                    is_step=FQ.zero(),
+                    identifier=FQ.zero(),
+                    is_last=FQ.zero(),
+                    base=Word(1),
+                    exponent=Word(1),
+                    exponentiation=Word(1),
+                    a=Word(1),
+                    b=Word(1),
+                    c=Word(0),
+                    d=Word(1),
+                    q=Word(0),
+                    r=FQ(1),
+                )
             )
-        )
+        return self
 
     def _append_step(
         self,
@@ -946,7 +974,7 @@ class CopyCircuit:
                 is_pad = False
                 assert src_addr + i in src_data, f"Cannot find data at the offset {src_addr+i}"
                 value = src_data[src_addr + i]
-                if src_tag == CopyDataTypeTag.Bytecode:
+                if src_tag == CopyDataTypeTag.Bytecode or dst_tag == CopyDataTypeTag.Bytecode:
                     value = cast(Tuple[IntOrFQ, IntOrFQ], value)
                     value, is_code = value
                 else:

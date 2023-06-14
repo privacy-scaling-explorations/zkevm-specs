@@ -139,7 +139,7 @@ def test_sstore(
             .call_context_read(1, CallContextFieldTag.IsStatic, 0)
             .call_context_read(1, CallContextFieldTag.RwCounterEndOfReversion, 0 if is_success else 14)
             .call_context_read(1, CallContextFieldTag.IsPersistent, is_success)
-            .call_context_read(1, CallContextFieldTag.CalleeAddress, tx.callee_address)
+            .call_context_read(1, CallContextFieldTag.CalleeAddress, Word(tx.callee_address))
             .stack_read(1, 1022, Word(storage_key))
             .stack_read(1, 1023, Word(value))
             .account_storage_write(tx.callee_address, Word(storage_key), Word(value), Word(value_prev), tx.id, Word(value_committed), rw_counter_of_reversion=None if is_success else 14)

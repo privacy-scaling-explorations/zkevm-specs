@@ -19,8 +19,8 @@ Proved by the tx circuit.
 | $TxID    | Nonce               | 0          | $value,0       |
 | $TxID    | Gas                 | 0          | $value,0       |
 | $TxID    | GasPrice            | 0          | $value{Lo,Hi}  |
-| $TxID    | CallerAddress       | 0          | $value,0       |
-| $TxID    | CalleeAddress       | 0          | $value,0       |
+| $TxID    | CallerAddress       | 0          | $value{Lo,Hi}  |
+| $TxID    | CalleeAddress       | 0          | $value{Lo,Hi}  |
 | $TxID    | IsCreate            | 0          | $value,0       |
 | $TxID    | Value               | 0          | $value{Lo,Hi}  |
 | $TxID    | CallDataLength      | 0          | $value,0       |
@@ -82,7 +82,7 @@ DELETEME: Review note: Removed aux1 and aux2 and instead added InitialValue whic
 
 | 0 *Rwc*  | 1 *IsWrite* | 2 *Tag* k0                 | 3 *Id* k1 | 4 *Address* k2     | 5 *FieldTag* k3            | 6,7 *StoKey{Lo,Hi}* k4,k5 | 7,8 *Val{Lo,Hi}* | 9,10 *ValPrev{Lo,Hi}* | 11,12 *InitVal{Lo,Hi}* |
 | -------- | ----------- | -------------------------- | --------  | --------           | -------------------------- | ------------------------- | ---------------- | --------------------- | ---------------------- |
-|          |             | *RwTableTag*               |           |                    |                            |                           |                  |                       |                        |
+|          |             | *Target*               |           |                    |                            |                           |                  |                       |                        |
 | $counter | true        | TxAccessListAccount        | $txID     | $address           |                            |                           | $val,0           | $valPrev,0            |                        |
 | $counter | true        | TxAccessListAccountStorage | $txID     | $address           |                            | $storageKey{Lo,Hi}        | $val,0           | $valPrev,0            |                        |
 | $counter | $isWrite    | TxRefund                   | $txID     |                    |                            |                           | $val,0           | $valPrev,0            |                        |
@@ -97,8 +97,8 @@ DELETEME: Review note: Removed aux1 and aux2 and instead added InitialValue whic
 | $counter | false       | CallContext                | $callID   |                    | CallerId                   |                           | $val,0           |                       |                        |
 | $counter | false       | CallContext                | $callID   |                    | TxId                       |                           | $val,0           |                       |                        |
 | $counter | false       | CallContext                | $callID   |                    | Depth                      |                           | $val,0           |                       |                        |
-| $counter | false       | CallContext                | $callID   |                    | CallerAddress              |                           | $val,0           |                       |                        |
-| $counter | false       | CallContext                | $callID   |                    | CalleeAddress              |                           | $val,0           |                       |                        |
+| $counter | false       | CallContext                | $callID   |                    | CallerAddress              |                           | $val{Lo,Hi}      |                       |                        |
+| $counter | false       | CallContext                | $callID   |                    | CalleeAddress              |                           | $val{Lo,Hi}      |                       |                        |
 | $counter | false       | CallContext                | $callID   |                    | CallDataOffset             |                           | $val,0           |                       |                        |
 | $counter | false       | CallContext                | $callID   |                    | CallDataLength             |                           | $val,0           |                       |                        |
 | $counter | false       | CallContext                | $callID   |                    | ReturnDataOffset           |                           | $val,0           |                       |                        |
@@ -128,7 +128,7 @@ DELETEME: Review note: Removed aux1 and aux2 and instead added InitialValue whic
 | $counter | $isWrite    | AccountStorage             | $txID     | $address           |                            | $storageKey{Lo,Hi}        | $val{Lo,Hi}      | $valPrev{Lo,Hi}       | $committedValue{Lo,Hi} |
 |          |             |                            |           |                    |                            |                           |                  |                       |                        |
 |          |             |                            |           |                    | *TxLogTag*                 |                           |                  |                       |                        |
-| $counter | true        | TxLog                      | $txID     | $logID,0           | Address                    |                           | $val,0           |                       |                        |
+| $counter | true        | TxLog                      | $txID     | $logID,0           | Address                    |                           | $val{Lo,Hi}      |                       |                        |
 | $counter | true        | TxLog                      | $txID     | $logID,$topicIndex | Topic                      |                           | $val{Lo,Hi}      |                       |                        |
 | $counter | true        | TxLog                      | $txID     | $logID,$byteIndex  | Data                       |                           | $val,0           |                       |                        |
 | $counter | true        | TxLog                      | $txID     | $logID,0           | TopicLength                |                           | $val,0           |                       |                        |
@@ -170,7 +170,7 @@ __Hence the addition inside of the block_table.__
 | 0 *Tag*                | 1 *Index* | 2 *Value{Lo,Hi}* |
 | ---                    | ---       | ---              |
 | *BlockContextFieldTag* |           |                  |
-| Coinbase               | 0         | $value,0         |
+| Coinbase               | 0         | $value{Lo,Hi}    |
 | GasLimit               | 0         | $value,0         |
 | BlockNumber            | 0         | $value,0         |
 | Time                   | 0         | $value,0         |

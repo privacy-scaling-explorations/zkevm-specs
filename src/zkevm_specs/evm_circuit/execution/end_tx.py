@@ -28,7 +28,10 @@ def end_tx(instruction: Instruction):
         tx_gas_price, instruction.curr.gas_left + effective_refund
     )
     instruction.constrain_zero(carry)
-    tx_caller_address = instruction.tx_context_lookup(tx_id, TxContextFieldTag.CallerAddress)
+    tx_caller_address_word = instruction.tx_context_lookup_word(
+        tx_id, TxContextFieldTag.CallerAddress
+    )
+    tx_caller_address = instruction.word_to_address(tx_caller_address_word)
     instruction.add_balance(tx_caller_address, [value])
 
     # Add gas_used * effective_tip to coinbase's balance
@@ -36,7 +39,8 @@ def end_tx(instruction: Instruction):
     effective_tip, _ = instruction.sub_word(tx_gas_price, base_fee)
     reward, carry = instruction.mul_word_by_u64(effective_tip, gas_used)
     instruction.constrain_zero(carry)
-    coinbase = instruction.block_context_lookup(BlockContextFieldTag.Coinbase)
+    coinbase_word = instruction.block_context_lookup_word(BlockContextFieldTag.Coinbase)
+    coinbase = instruction.word_to_address(coinbase_word)
     instruction.add_balance(coinbase, [reward])
 
     # constrain tx status matches with `PostStateOrStatus` of TxReceipt tag in RW

@@ -9,10 +9,12 @@ from ...util import FQ, IdentityBaseGas, IdentityPerWordGas
 
 
 def dataCopy(instruction: Instruction):
+    address_word = instruction.call_context_lookup_word(CallContextFieldTag.CalleeAddress)
+    address = instruction.word_to_address(address_word)
     instruction.fixed_lookup(
         FixedTableTag.PrecompileInfo,
         FQ(instruction.curr.execution_state),
-        instruction.call_context_lookup(CallContextFieldTag.CalleeAddress, RW.Read),
+        address,
         FQ(IdentityBaseGas),
     )
 

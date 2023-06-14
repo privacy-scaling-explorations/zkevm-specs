@@ -2,6 +2,11 @@ from __future__ import annotations
 from enum import IntEnum, auto
 from typing import Optional, Sequence, Tuple, Union, List, cast
 
+from eth_utils import (
+    keccak,
+)
+import rlp  # type: ignore
+
 from ..util import (
     FQ,
     IntOrFQ,
@@ -36,7 +41,7 @@ from .table import (
     FixedTableTag,
     TxContextFieldTag,
     RW,
-    RWTableTag,
+    Target,
     TxLogFieldTag,
     TxReceiptFieldTag,
     CopyDataTypeTag,
@@ -163,6 +168,9 @@ class Instruction:
             f"Expected value to be in {rhs}, but got {lhs}"
         )
 
+    def constrain_in_word(self, lhs: Word, rhs: List[Word]):
+        assert lhs in rhs, ConstraintUnsatFailure(f"Expected word to be in {rhs}, but got {lhs}")
+
     def constrain_bool(self, num: Expression):
         assert num.expr() in [0, 1], ConstraintUnsatFailure(
             f"Expected value to be a bool, but got {num}"
@@ -268,7 +276,7 @@ class Instruction:
             gas_left=gas_left,
             reversible_write_counter=reversible_write_counter,
             log_id=log_id,
-            # Initailization unconditionally
+            # Initialization unconditionally
             program_counter=Transition.to(0),
             stack_pointer=Transition.to(1024),
             memory_word_size=Transition.to(0),
@@ -686,7 +694,7 @@ class Instruction:
         # evm only write tx log
         value = self.rw_lookup(
             RW.Write,
-            RWTableTag.TxLog,
+            Target.TxLog,
             id=tx_id,
             address=FQ(index + (int(field_tag) << 32) + (log_id.expr().n << 48)),
             field_tag=FQ(0),
@@ -703,7 +711,7 @@ class Instruction:
     ) -> Expression:
         value = self.rw_lookup(
             RW.Read,
-            RWTableTag.TxReceipt,
+            Target.TxReceipt,
             id=tx_id,
             address=FQ(0),
             field_tag=FQ(field_tag),
@@ -720,7 +728,7 @@ class Instruction:
     ) -> Expression:
         value = self.rw_lookup(
             RW.Write,
-            RWTableTag.TxReceipt,
+            Target.TxReceipt,
             id=tx_id,
             address=FQ(0),
             field_tag=FQ(field_tag),
@@ -762,17 +770,12 @@ class Instruction:
         return self.opcode_lookup_at(index, is_code)
 
     def opcode_lookup_at(self, index: FQ, is_code: bool) -> FQ:
-        if self.curr.is_root and self.curr.is_create:
-            raise NotImplementedError(
-                "The opcode source when is_root and is_create (root creation call) is not determined yet"
-            )
-        else:
-            return self.bytecode_lookup(self.curr.code_hash, index, FQ(is_code)).expr()
+        return self.bytecode_lookup(self.curr.code_hash, index, FQ(is_code)).expr()
 
     def rw_lookup(
         self,
         rw: RW,
-        tag: RWTableTag,
+        tag: Target,
         id: Optional[Expression] = None,
         address: Optional[Expression] = None,
         field_tag: Optional[Expression] = None,
@@ -805,7 +808,7 @@ class Instruction:
 
     def state_write(
         self,
-        tag: RWTableTag,
+        tag: Target,
         id: Optional[Expression] = None,
         address: Optional[Expression] = None,
         field_tag: Optional[Expression] = None,
@@ -844,7 +847,7 @@ class Instruction:
 
     def state_read(
         self,
-        tag: RWTableTag,
+        tag: Target,
         id: Optional[Expression] = None,
         address: Optional[Expression] = None,
         field_tag: Optional[Expression] = None,
@@ -872,11 +875,11 @@ class Instruction:
     ) -> WordOrValue:
         if call_id is None:
             call_id = self.curr.call_id
-        return self.rw_lookup(rw, RWTableTag.CallContext, call_id, FQ(field_tag)).value
+        return self.rw_lookup(rw, Target.CallContext, call_id, FQ(field_tag)).value
 
     def rw_table_start_lookup(self, counter: Expression):
         # Raises exception if no lookup matches
-        self.rw_lookup(rw=RW.Read, tag=RWTableTag.Start, rw_counter=counter)
+        self.rw_lookup(rw=RW.Read, tag=Target.Start, rw_counter=counter)
 
     def reversion_info(self, call_id: Optional[Expression] = None) -> ReversionInfo:
         [rw_counter_end_of_reversion, is_persistent] = [
@@ -903,7 +906,7 @@ class Instruction:
 
     def stack_lookup(self, rw: RW, stack_pointer_offset: Expression) -> Word:
         stack_pointer = self.curr.stack_pointer + stack_pointer_offset
-        return self.rw_lookup(rw, RWTableTag.Stack, self.curr.call_id, stack_pointer).value
+        return self.rw_lookup(rw, Target.Stack, self.curr.call_id, stack_pointer).value
 
     def memory_lookup(
         self, rw: RW, memory_address: Expression, call_id: Optional[Expression] = None
@@ -911,11 +914,11 @@ class Instruction:
         if call_id is None:
             call_id = self.curr.call_id
         return cast_expr(
-            self.rw_lookup(rw, RWTableTag.Memory, call_id, memory_address).value.value(), FQ
+            self.rw_lookup(rw, Target.Memory, call_id, memory_address).value.value(), FQ
         )
 
     def tx_refund_read(self, tx_id: Expression) -> FQ:
-        return cast_expr(self.rw_lookup(RW.Read, RWTableTag.TxRefund, tx_id).value.value(), FQ)
+        return cast_expr(self.rw_lookup(RW.Read, Target.TxRefund, tx_id).value.value(), FQ)
 
     def tx_refund_write(
         self,
@@ -923,7 +926,7 @@ class Instruction:
         reversion_info: Optional[ReversionInfo] = None,
     ) -> Tuple[FQ, FQ]:
         row = self.state_write(
-            RWTableTag.TxRefund,
+            Target.TxRefund,
             tx_id,
             reversion_info=reversion_info,
         )
@@ -932,13 +935,13 @@ class Instruction:
     def account_read(
         self, account_address: Expression, account_field_tag: AccountFieldTag
     ) -> Expression:
-        self.account_read_word(account_address, account_field_tag).value()
+        return self.account_read_word(account_address, account_field_tag).value()
 
     def account_read_word(
         self, account_address: Expression, account_field_tag: AccountFieldTag
     ) -> WordOrValue:
         return self.rw_lookup(
-            RW.Read, RWTableTag.Account, address=account_address, field_tag=FQ(account_field_tag)
+            RW.Read, Target.Account, address=account_address, field_tag=FQ(account_field_tag)
         ).value
 
     def account_write(
@@ -957,7 +960,7 @@ class Instruction:
         reversion_info: Optional[ReversionInfo] = None,
     ) -> Tuple[WordOrValue, WordOrValue]:
         row = self.state_write(
-            RWTableTag.Account,
+            Target.Account,
             address=account_address,
             field_tag=FQ(account_field_tag),
             reversion_info=reversion_info,
@@ -997,7 +1000,7 @@ class Instruction:
     ) -> Word:
         row = self.rw_lookup(
             RW.Read,
-            RWTableTag.AccountStorage,
+            Target.AccountStorage,
             tx_id,
             account_address,
             field_tag=None,
@@ -1013,7 +1016,7 @@ class Instruction:
         reversion_info: Optional[ReversionInfo] = None,
     ) -> Tuple[Word, Word, Word]:
         row = self.state_write(
-            RWTableTag.AccountStorage,
+            Target.AccountStorage,
             tx_id,
             account_address,
             storage_key=storage_key,
@@ -1028,7 +1031,7 @@ class Instruction:
         reversion_info: Optional[ReversionInfo] = None,
     ) -> FQ:
         row = self.state_write(
-            RWTableTag.TxAccessListAccount,
+            Target.TxAccessListAccount,
             tx_id,
             account_address,
             value=FQ(1),
@@ -1042,7 +1045,7 @@ class Instruction:
         account_address: Expression,
     ) -> FQ:
         row = self.state_read(
-            RWTableTag.TxAccessListAccount,
+            Target.TxAccessListAccount,
             tx_id,
             account_address,
         )
@@ -1056,7 +1059,7 @@ class Instruction:
         reversion_info: Optional[ReversionInfo] = None,
     ) -> FQ:
         row = self.state_write(
-            RWTableTag.TxAccessListAccountStorage,
+            Target.TxAccessListAccountStorage,
             tx_id,
             account_address,
             storage_key=storage_key,
@@ -1105,8 +1108,10 @@ class Instruction:
         return quadratic_cost + linear_cost
 
     def memory_expansion(self, offset: Expression, length: Expression) -> Tuple[FQ, FQ]:
-        memory_size, _ = self.constant_divmod(
-            length.expr() + offset.expr() + 31, FQ(32), N_BYTES_MEMORY_SIZE
+        memory_size, _ = (
+            self.constant_divmod(length.expr() + offset.expr() + 31, FQ(32), N_BYTES_MEMORY_SIZE)
+            if length != FQ(0)
+            else (FQ(0), FQ(0))
         )
 
         next_memory_size = self.max(self.curr.memory_word_size, memory_size, N_BYTES_MEMORY_SIZE)
@@ -1151,6 +1156,22 @@ class Instruction:
         gas_cost = word_size * gas_cost_copy + memory_expansion_gas_cost
         self.range_check(gas_cost, N_BYTES_GAS)
         return gas_cost
+
+    def generate_contract_address(self, address: Expression, nonce: Expression) -> Expression:
+        contract_addr = keccak(rlp.encode([address.expr().n.to_bytes(20, "big"), nonce.expr().n]))
+        return FQ(int.from_bytes(contract_addr[-20:], "big"))
+
+    def generate_CREAET2_contract_address(
+        self, address: Expression, salt: Word, code_hash: Word
+    ) -> Expression:
+        # keccak256(0xff + sender_address + salt + keccak256(initialisation_code))[12:]
+        contract_addr = keccak(
+            b"\xff"
+            + address.expr().n.to_bytes(20, "big")
+            + salt.int_value().to_bytes(32, "little")
+            + code_hash.int_value().to_bytes(32, "little")
+        )
+        return FQ(int.from_bytes(contract_addr[-20:], "big"))
 
     def pow2_lookup(self, value: Expression, pow_lo128: Expression, pow_hi128: Expression):
         self.fixed_lookup(FixedTableTag.Pow2, value, pow_lo128, pow_hi128)

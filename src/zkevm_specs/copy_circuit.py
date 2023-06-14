@@ -6,7 +6,7 @@ from .evm_circuit import (
     CopyDataTypeTag,
     CopyCircuitRow,
     RW,
-    RWTableTag,
+    Target,
     CopyCircuit,
     TxContextFieldTag,
     BytecodeFieldTag,
@@ -36,7 +36,7 @@ def verify_row(cs: ConstraintSystem, rows: Sequence[CopyCircuitRow]):
         cs.constrain_equal(rows[0].addr + 1, rows[2].addr)
         cs.constrain_equal(rows[0].src_addr_end, rows[2].src_addr_end)
 
-    # contrain the transition for `rw_counter` and `rwc_inc_left`
+    # constrain the transition for `rw_counter` and `rwc_inc_left`
     rw_diff = (1 - rows[0].is_pad) * (rows[0].is_memory + rows[0].is_tx_log)
     with cs.condition(1 - rows[0].is_last) as cs:
         # not last row
@@ -100,7 +100,7 @@ def verify_copy_table(copy_circuit: CopyCircuit, tables: Tables, r: FQ):
         # lookup into tables
         if row.is_memory == 1 and row.is_pad == 0:
             val = tables.rw_lookup(
-                row.rw_counter, 1 - row.q_step, FQ(RWTableTag.Memory), row.id.value(), row.addr
+                row.rw_counter, 1 - row.q_step, FQ(Target.Memory), row.id.value(), row.addr
             ).value.value()
             cs.constrain_equal(val, row.value)
         if row.is_bytecode == 1 and row.is_pad == 0:
@@ -117,7 +117,7 @@ def verify_copy_table(copy_circuit: CopyCircuit, tables: Tables, r: FQ):
             val = tables.rw_lookup(
                 row.rw_counter,
                 FQ(RW.Write),
-                FQ(RWTableTag.TxLog),
+                FQ(Target.TxLog),
                 row.id.value(),  # tx_id
                 row.addr,
             ).value.value()

@@ -5,7 +5,7 @@ from zkevm_specs.evm_circuit import (
     StepState,
     verify_steps,
     Tables,
-    RWTableTag,
+    Target,
     RWTableRow,
     RW,
     CallContextFieldTag,
@@ -49,7 +49,7 @@ def test_end_block(
                 RWTableRow(
                     FQ(22),
                     FQ(RW.Read),
-                    key0=FQ(RWTableTag.CallContext),
+                    key0=FQ(Target.CallContext),
                     id=FQ(1),
                     address=FQ(3),
                     field_tag=FQ(CallContextFieldTag.TxId),
@@ -61,7 +61,7 @@ def test_end_block(
                 RWTableRow(
                     FQ(23),
                     FQ(RW.Read),
-                    key0=FQ(RWTableTag.TxReceipt),
+                    key0=FQ(Target.TxReceipt),
                     id=FQ(tx.id),
                     address=FQ(0),
                     field_tag=FQ(TxReceiptFieldTag.CumulativeGasUsed),
@@ -71,7 +71,7 @@ def test_end_block(
             )
 
     rw_padding = [
-        RWTableRow(FQ(i + 1), FQ(0), FQ(RWTableTag.Start)) for i in range(MAX_RWS - len(rw_rows))
+        RWTableRow(FQ(i + 1), FQ(0), FQ(Target.Start)) for i in range(MAX_RWS - len(rw_rows))
     ]
 
     num_txs = 0 if empty_block else 1
