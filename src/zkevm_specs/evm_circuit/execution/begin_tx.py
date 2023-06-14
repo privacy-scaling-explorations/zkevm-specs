@@ -40,6 +40,12 @@ def begin_tx(instruction: Instruction):
     instruction.constrain_not_zero(tx_caller_address)
 
     # Verify nonce
+    # TODO: Document that the TxInvalid feature is required to add invalid Tx
+    # to a block.  In regular Ethereum this is not possible because such Txs
+    # are rejected and never included in a Block.  But in a zkRollup setting,
+    # where the queueing of Txs is decoupled from block formation, there's a
+    # chance that a Tx is scheduled to be included in a block but it's invalid,
+    # so the circuit must prove that the Tx in that block is invalid.
     is_tx_invalid = instruction.tx_context_lookup(tx_id, TxContextFieldTag.TxInvalid)
     tx_nonce = instruction.tx_context_lookup(tx_id, TxContextFieldTag.Nonce)
     nonce, nonce_prev = instruction.account_write(tx_caller_address, AccountFieldTag.Nonce)
@@ -74,10 +80,12 @@ def begin_tx(instruction: Instruction):
     instruction.constrain_zero(instruction.add_account_to_access_list(tx_id, tx_caller_address))
     instruction.constrain_zero(instruction.add_account_to_access_list(tx_id, tx_callee_address))
 
+
+    receipt_addres = contract_address if tx_is_create else tx_callee_address
     # Verify transfer
     sender_balance_pair, _ = instruction.transfer_with_gas_fee(
         tx_caller_address,
-        tx_callee_address,
+        receipt_address,
         Word(0) if (is_tx_invalid.expr() == 1) else tx_value,
         Word(0) if (is_tx_invalid.expr() == 1) else gas_fee,
         reversion_info,
@@ -95,6 +103,10 @@ def begin_tx(instruction: Instruction):
 
     if tx_is_create == 1:
 
+        # NOTE(Edu): Tx.sender = tx_caller_address
+        # When create, new contract address is tx_callee_address
+        # contract_address must be equal to tx_callee_address
+
             # calculate new contract address
             
             contract_address = instruction.generate_contract_address(tx_caller_address, tx_nonce)
@@ -103,7 +115,7 @@ def begin_tx(instruction: Instruction):
             # get code hash of tx calldata
 
             copy_rwc_inc, rlc_acc = instruction.copy_lookup(
-                instruction.curr.call_id,
+                instruction.curr.call_id, # NOTE(Edu) This should be tx_id and not call_id
                 CopyDataTypeTag.TxCallData,
                 instruction.curr.call_id,
                 CopyDataTypeTag.RlcAcc,
@@ -113,8 +125,8 @@ def begin_tx(instruction: Instruction):
                 tx_call_data_length,
                 instruction.curr.rw_counter + instruction.rw_counter_offset,
             )
-            instruction.constrain_equal(copy_rwc_inc, tx_call_data_length)  
-            instruction.rw_counter_offset += int(copy_rwc_inc)
+            instruction.constrain_equal(copy_rwc_inc, tx_call_data_length)  # NOTE(Edu): Reads to the TxTable don't increment the rwc, so `copy_rw_inc` should be `0`.  Moreover, this should already be guaranteed by the Copy Circuit, so I think there's no need to check anything here.
+            instruction.rw_counter_offset += int(copy_rwc_inc) # NOTE(Edu): Since `copy_rwc_inc` is 0, this is redundant.
             
             code_hash = instruction.keccak_lookup(tx_call_data_length, rlc_acc)
             is_empty_code_hash = instruction.is_equal_word(code_hash, Word(EMPTY_CODE_HASH))
@@ -122,7 +134,7 @@ def begin_tx(instruction: Instruction):
             # copy tx calldata to bytecode table
 
             copy_rwc_inc, _ = instruction.copy_lookup(
-                instruction.curr.call_id,  # src_id
+                instruction.curr.call_id,  # src_id # NOTE(Edu): Same as before, this should be tx_id
                 CopyDataTypeTag.TxCallData,  # src_type
                 code_hash,  # dst_id
                 CopyDataTypeTag.Bytecode,  # dst_type
@@ -132,11 +144,27 @@ def begin_tx(instruction: Instruction):
                 tx_call_data_length,  # length
                 instruction.curr.rw_counter + instruction.rw_counter_offset,
             )
-            instruction.constrain_equal(copy_rwc_inc, tx_call_data_length)  
+            instruction.constrain_equal(copy_rwc_inc, tx_call_data_length)  # NOTE(Edu): Like before, this should be 0.
             instruction.rw_counter_offset += int(copy_rwc_inc)
+
+
+# Tx.value = 10
+
+# create tx
+# BeginTx (10)
+#    CALL (5)
+#    REVERT
+# EndTx
+
+# BeginTx
+# Opcode 1
+# Opcode 2
+# STOP
+# EndTx
 
             # Move to next transition
 
+            # NOTE(Edu): Verify with Geth what happens when sending a Tx with tx.to = None, tx.calldata = [], tx.value > 0.
             if is_empty_code_hash == FQ(1) or is_tx_invalid == FQ(1):
                 # Make sure tx is persistent
                 instruction.constrain_equal(reversion_info.is_persistent, FQ(1))
@@ -144,7 +172,8 @@ def begin_tx(instruction: Instruction):
                 # Do step state transition
                 instruction.constrain_equal(instruction.next.execution_state, ExecutionState.EndTx)
                 instruction.constrain_step_state_transition(
-                    rw_counter=Transition.delta(10+2*tx_call_data_length), call_id=Transition.to(call_id)
+                    # rw_counter=Transition.delta(10+2*tx_call_data_length), call_id=Transition.to(call_id)
+                    rw_counter=Transition.delta(10), call_id=Transition.to(call_id)
                 )
             else: 
                 # Setup next call's context
@@ -160,7 +189,7 @@ def begin_tx(instruction: Instruction):
                     (CallContextFieldTag.CallDataOffset, FQ(0)),
                     (CallContextFieldTag.CallDataLength, tx_call_data_length),
                     (CallContextFieldTag.Value, tx_value),
-                    (CallContextFieldTag.IsStatic, FQ(True)),
+                    (CallContextFieldTag.IsStatic, FQ(False)),
                     (CallContextFieldTag.LastCalleeId, FQ(0)),
                     (CallContextFieldTag.LastCalleeReturnDataOffset, FQ(0)),
                     (CallContextFieldTag.LastCalleeReturnDataLength, FQ(0)),
@@ -174,7 +203,7 @@ def begin_tx(instruction: Instruction):
                     )
 
                 instruction.step_state_transition_to_new_context(
-                    rw_counter=Transition.delta(23+2*tx_call_data_length),
+                    rw_counter=Transition.delta(23),
                     call_id=Transition.to(call_id),
                     is_root=Transition.to(True),
                     is_create=Transition.to(True),
