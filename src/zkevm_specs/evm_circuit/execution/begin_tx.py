@@ -40,6 +40,13 @@ def begin_tx(instruction: Instruction):
     instruction.constrain_not_zero(tx_caller_address)
 
     # Verify nonce
+    # TODO: Document that the TxInvalid feature is required to add invalid Tx
+    #   to a block.  In regular Ethereum this is not possible because such Txs
+    #   are rejected and never included in a Block.  But in a zkRollup setting,
+    #   where the queueing of Txs is decoupled from block formation, there's a
+    #   chance that a Tx is scheduled to be included in a block but it's invalid,
+    #   so the circuit must prove that the Tx in that block is invalid.
+    
     is_tx_invalid = instruction.tx_context_lookup(tx_id, TxContextFieldTag.TxInvalid)
     tx_nonce = instruction.tx_context_lookup(tx_id, TxContextFieldTag.Nonce)
     nonce, nonce_prev = instruction.account_write(tx_caller_address, AccountFieldTag.Nonce)
@@ -73,11 +80,17 @@ def begin_tx(instruction: Instruction):
     # Prepare access list of caller and callee
     instruction.constrain_zero(instruction.add_account_to_access_list(tx_id, tx_caller_address))
     instruction.constrain_zero(instruction.add_account_to_access_list(tx_id, tx_callee_address))
+    
+    # Calculate new contract address if tx_is_create    
+    contract_address = instruction.generate_contract_address(tx_caller_address, tx_nonce)
+    contract_address_word = instruction.address_to_word(contract_address)
+ 
+    callee = contract_address if tx_is_create else tx_callee_address
 
     # Verify transfer
     sender_balance_pair, _ = instruction.transfer_with_gas_fee(
         tx_caller_address,
-        tx_callee_address,
+        callee,
         Word(0) if (is_tx_invalid.expr() == 1) else tx_value,
         Word(0) if (is_tx_invalid.expr() == 1) else gas_fee,
         reversion_info,
@@ -95,45 +108,39 @@ def begin_tx(instruction: Instruction):
 
     if tx_is_create == 1:
 
-            # calculate new contract address
-            
-            contract_address = instruction.generate_contract_address(tx_caller_address, tx_nonce)
-            contract_address_word = instruction.address_to_word(contract_address)
-
-            # get code hash of tx calldata
+            # Get code hash of tx calldata
 
             copy_rwc_inc, rlc_acc = instruction.copy_lookup(
-                instruction.curr.call_id,
-                CopyDataTypeTag.TxCallData,
-                instruction.curr.call_id,
-                CopyDataTypeTag.RlcAcc,
-                FQ.zero(),
-                tx_call_data_length,
-                FQ.zero(),
-                tx_call_data_length,
+                tx_id,                       # src_id
+                CopyDataTypeTag.TxCallData,  # src_type
+                instruction.curr.call_id,    # dst_id
+                CopyDataTypeTag.RlcAcc,      # dst_type
+                FQ.zero(),                   # src_addr
+                tx_call_data_length,         # src_addr_boundary
+                FQ.zero(),                   # dst_addr
+                tx_call_data_length,         # length
                 instruction.curr.rw_counter + instruction.rw_counter_offset,
             )
-            instruction.constrain_equal(copy_rwc_inc, tx_call_data_length)  
-            instruction.rw_counter_offset += int(copy_rwc_inc)
+
+            assert(copy_rwc_inc == FQ.zero()); # no memory involved, no rw counter incremented
             
             code_hash = instruction.keccak_lookup(tx_call_data_length, rlc_acc)
             is_empty_code_hash = instruction.is_equal_word(code_hash, Word(EMPTY_CODE_HASH))
 
-            # copy tx calldata to bytecode table
+            # Copy tx calldata to bytecode table
 
             copy_rwc_inc, _ = instruction.copy_lookup(
-                instruction.curr.call_id,  # src_id
+                tx_id,                       # src_id
                 CopyDataTypeTag.TxCallData,  # src_type
-                code_hash,  # dst_id
-                CopyDataTypeTag.Bytecode,  # dst_type
-                FQ.zero(),  # src_addr
-                tx_call_data_length,  # src_addr_boundary
-                FQ(0),  # dst_addr
-                tx_call_data_length,  # length
+                code_hash,                   # dst_id
+                CopyDataTypeTag.Bytecode,    # dst_type
+                FQ.zero(),                   # src_addr
+                tx_call_data_length,         # src_addr_boundary
+                FQ(0),                       # dst_addr
+                tx_call_data_length,         # length
                 instruction.curr.rw_counter + instruction.rw_counter_offset,
             )
-            instruction.constrain_equal(copy_rwc_inc, tx_call_data_length)  
-            instruction.rw_counter_offset += int(copy_rwc_inc)
+            assert(copy_rwc_inc == FQ.zero()); # no memory involved, no rw counter incremented
 
             # Move to next transition
 
