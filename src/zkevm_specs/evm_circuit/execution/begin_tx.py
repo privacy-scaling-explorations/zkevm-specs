@@ -9,8 +9,7 @@ from ...util import (
 from ..execution_state import ExecutionState
 from ..instruction import Instruction, Transition
 from ..precompile import Precompile
-from ..table import CallContextFieldTag, TxContextFieldTag, AccountFieldTag
-
+from ..table import CallContextFieldTag, TxContextFieldTag, AccountFieldTag, CopyDataTypeTag
 
 def begin_tx(instruction: Instruction):
     call_id = instruction.curr.rw_counter
@@ -95,12 +94,96 @@ def begin_tx(instruction: Instruction):
     instruction.constrain_equal(is_tx_invalid, invalid_tx)
 
     if tx_is_create == 1:
-        # TODO: Verify created address
-        # code_hash represents the contract creation code
-        # 1. In the case of root call, code_hash is the hash of the tx calldata.
-        # 2. In the case of internal call, code_hash is the hash of the chunk of
-        #    caller memory corresponding to the contract init code.
-        raise NotImplementedError
+
+            # calculate new contract address
+            
+            contract_address = instruction.generate_contract_address(tx_caller_address, tx_nonce)
+            contract_address_word = instruction.address_to_word(contract_address)
+
+            # get code hash of tx calldata
+
+            copy_rwc_inc, rlc_acc = instruction.copy_lookup(
+                instruction.curr.call_id,
+                CopyDataTypeTag.TxCallData,
+                instruction.curr.call_id,
+                CopyDataTypeTag.RlcAcc,
+                FQ.zero(),
+                tx_call_data_length,
+                FQ.zero(),
+                tx_call_data_length,
+                instruction.curr.rw_counter + instruction.rw_counter_offset,
+            )
+            instruction.constrain_equal(copy_rwc_inc, tx_call_data_length)  
+            instruction.rw_counter_offset += int(copy_rwc_inc)
+            
+            code_hash = instruction.keccak_lookup(tx_call_data_length, rlc_acc)
+            is_empty_code_hash = instruction.is_equal_word(code_hash, Word(EMPTY_CODE_HASH))
+
+            # copy tx calldata to bytecode table
+
+            copy_rwc_inc, _ = instruction.copy_lookup(
+                instruction.curr.call_id,  # src_id
+                CopyDataTypeTag.TxCallData,  # src_type
+                code_hash,  # dst_id
+                CopyDataTypeTag.Bytecode,  # dst_type
+                FQ.zero(),  # src_addr
+                tx_call_data_length,  # src_addr_boundary
+                FQ(0),  # dst_addr
+                tx_call_data_length,  # length
+                instruction.curr.rw_counter + instruction.rw_counter_offset,
+            )
+            instruction.constrain_equal(copy_rwc_inc, tx_call_data_length)  
+            instruction.rw_counter_offset += int(copy_rwc_inc)
+
+            # Move to next transition
+
+            if is_empty_code_hash == FQ(1) or is_tx_invalid == FQ(1):
+                # Make sure tx is persistent
+                instruction.constrain_equal(reversion_info.is_persistent, FQ(1))
+
+                # Do step state transition
+                instruction.constrain_equal(instruction.next.execution_state, ExecutionState.EndTx)
+                instruction.constrain_step_state_transition(
+                    rw_counter=Transition.delta(10+2*tx_call_data_length), call_id=Transition.to(call_id)
+                )
+            else: 
+                # Setup next call's context
+                # Note that:
+                # - CallerId, ReturnDataOffset, ReturnDataLength
+                #   should never be used in root call, so unnecessary to be checked
+                # - TxId is checked from previous step or constraint to 1 if is_first_step
+                # - IsSuccess, IsPersistent will be verified in the end of tx
+                for tag, word_or_value in [
+                    (CallContextFieldTag.Depth, FQ(1)),
+                    (CallContextFieldTag.CallerAddress, tx_caller_address_word),
+                    (CallContextFieldTag.CalleeAddress, contract_address_word),
+                    (CallContextFieldTag.CallDataOffset, FQ(0)),
+                    (CallContextFieldTag.CallDataLength, tx_call_data_length),
+                    (CallContextFieldTag.Value, tx_value),
+                    (CallContextFieldTag.IsStatic, FQ(True)),
+                    (CallContextFieldTag.LastCalleeId, FQ(0)),
+                    (CallContextFieldTag.LastCalleeReturnDataOffset, FQ(0)),
+                    (CallContextFieldTag.LastCalleeReturnDataLength, FQ(0)),
+                    (CallContextFieldTag.IsRoot, FQ(True)),
+                    (CallContextFieldTag.IsCreate, FQ(True)),
+                    (CallContextFieldTag.CodeHash, code_hash),
+                ]:
+                    instruction.constrain_equal_word(
+                        instruction.call_context_lookup_word(tag, call_id=call_id),
+                        WordOrValue(word_or_value),
+                    )
+
+                instruction.step_state_transition_to_new_context(
+                    rw_counter=Transition.delta(23+2*tx_call_data_length),
+                    call_id=Transition.to(call_id),
+                    is_root=Transition.to(True),
+                    is_create=Transition.to(True),
+                    code_hash=Transition.to_word(code_hash),
+                    gas_left=Transition.to(gas_left),
+                    reversible_write_counter=Transition.to(2),
+                    log_id=Transition.to(0),
+                )
+    
     elif tx_callee_address in list(Precompile):
         # TODO: Handle precompile
         raise NotImplementedError
