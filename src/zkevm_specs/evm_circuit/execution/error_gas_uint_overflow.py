@@ -138,9 +138,11 @@ def error_gas_uint_overflow(instruction: Instruction):
     is_call_gas_cost_overflow = (
         is_non_zero_calldata_gas_overflow
     ) = is_zero_calldata_gas_overflow = is_eip3860_overflow = FQ(0)
-    call = CallGadget(instruction, FQ(0), is_call, is_callcode, is_delegatecall)
-    is_warm_access = instruction.read_account_to_access_list(tx_id, call.callee_address)
-    gas_cost = call.gas_cost(instruction, is_warm_access)
+
+    # call = CallGadget(instruction, FQ(0), is_call, is_callcode, is_delegatecall)
+    def call_gas_constraint():
+        gas = instruction.stack_lookup(RW.Read, instruction.stack_pointer_offset)
+
     is_call_gas_cost_overflow = is_call * instruction.is_u64_overflow(gas_cost)
 
     # verify gas uint overflow.

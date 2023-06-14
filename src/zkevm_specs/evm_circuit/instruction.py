@@ -22,7 +22,7 @@ from ..util import (
     MAX_MEMORY_SIZE,
     N_BYTES_ACCOUNT_ADDRESS,
     N_BYTES_MEMORY_ADDRESS,
-    N_BYTES_MEMORY_SIZE,
+    N_BYTES_MEMORY_WORD_SIZE,
     N_BYTES_GAS,
     GAS_COST_COPY,
     MEMORY_EXPANSION_QUAD_DENOMINATOR,
@@ -1121,12 +1121,16 @@ class Instruction:
 
     def memory_expansion(self, offset: Expression, length: Expression) -> Tuple[FQ, FQ]:
         memory_size, _ = (
-            self.constant_divmod(length.expr() + offset.expr() + 31, FQ(32), N_BYTES_MEMORY_SIZE)
+            self.constant_divmod(
+                length.expr() + offset.expr() + 31, FQ(32), N_BYTES_MEMORY_WORD_SIZE
+            )
             if length != FQ(0)
             else (FQ(0), FQ(0))
         )
 
-        next_memory_size = self.max(self.curr.memory_word_size, memory_size, N_BYTES_MEMORY_SIZE)
+        next_memory_size = self.max(
+            self.curr.memory_word_size, memory_size, N_BYTES_MEMORY_WORD_SIZE
+        )
 
         memory_gas_cost = self.memory_gas_cost(self.curr.memory_word_size)
         memory_gas_cost_next = self.memory_gas_cost(next_memory_size)
@@ -1142,15 +1146,17 @@ class Instruction:
         rd_length: Optional[Expression] = None,
     ) -> Tuple[FQ, FQ]:
         cd_memory_size, _ = self.constant_divmod(
-            cd_offset.expr() + cd_length.expr() + FQ(31), FQ(32), N_BYTES_MEMORY_SIZE
+            cd_offset.expr() + cd_length.expr() + FQ(31), FQ(32), N_BYTES_MEMORY_WORD_SIZE
         )
-        next_memory_size = self.max(self.curr.memory_word_size, cd_memory_size, N_BYTES_MEMORY_SIZE)
+        next_memory_size = self.max(
+            self.curr.memory_word_size, cd_memory_size, N_BYTES_MEMORY_WORD_SIZE
+        )
 
         if rd_offset is not None and rd_length is not None:
             rd_memory_size, _ = self.constant_divmod(
-                rd_offset.expr() + rd_length.expr() + FQ(31), FQ(32), N_BYTES_MEMORY_SIZE
+                rd_offset.expr() + rd_length.expr() + FQ(31), FQ(32), N_BYTES_MEMORY_WORD_SIZE
             )
-            next_memory_size = self.max(next_memory_size, rd_memory_size, N_BYTES_MEMORY_SIZE)
+            next_memory_size = self.max(next_memory_size, rd_memory_size, N_BYTES_MEMORY_WORD_SIZE)
 
         memory_gas_cost = self.memory_gas_cost(self.curr.memory_word_size)
         memory_gas_cost_next = self.memory_gas_cost(next_memory_size)
@@ -1164,7 +1170,7 @@ class Instruction:
         memory_expansion_gas_cost: Expression,
         gas_cost_copy: int = GAS_COST_COPY,
     ) -> FQ:
-        word_size, _ = self.constant_divmod(length + FQ(31), FQ(32), N_BYTES_MEMORY_SIZE)
+        word_size, _ = self.constant_divmod(length + FQ(31), FQ(32), N_BYTES_MEMORY_WORD_SIZE)
         gas_cost = word_size * gas_cost_copy + memory_expansion_gas_cost
         self.range_check(gas_cost, N_BYTES_GAS)
         return gas_cost
