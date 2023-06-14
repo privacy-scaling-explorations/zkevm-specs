@@ -6,7 +6,7 @@ from .evm_circuit import (
     CopyDataTypeTag,
     CopyCircuitRow,
     RW,
-    RWTableTag,
+    Target,
     CopyCircuit,
     TxContextFieldTag,
     BytecodeFieldTag,
@@ -106,7 +106,7 @@ def verify_copy_table(copy_circuit: CopyCircuit, tables: Tables, r: FQ):
         # lookup into tables
         if row.is_memory == 1 and row.is_pad == 0:
             val = tables.rw_lookup(
-                row.rw_counter, 1 - row.q_step, FQ(RWTableTag.Memory), row.id.value(), row.addr
+                row.rw_counter, 1 - row.q_step, FQ(Target.Memory), row.id.value(), row.addr
             ).value.value()
             cs.constrain_equal(val, row.value)
         if row.is_bytecode == 1 and row.is_pad == 0:
@@ -123,7 +123,7 @@ def verify_copy_table(copy_circuit: CopyCircuit, tables: Tables, r: FQ):
             val = tables.rw_lookup(
                 row.rw_counter,
                 FQ(RW.Write),
-                FQ(RWTableTag.TxLog),
+                FQ(Target.TxLog),
                 row.id.value(),  # tx_id
                 row.addr,
             ).value.value()

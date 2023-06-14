@@ -41,7 +41,7 @@ from .table import (
     FixedTableTag,
     TxContextFieldTag,
     RW,
-    RWTableTag,
+    Target,
     TxLogFieldTag,
     TxReceiptFieldTag,
     CopyDataTypeTag,
@@ -694,7 +694,7 @@ class Instruction:
         # evm only write tx log
         value = self.rw_lookup(
             RW.Write,
-            RWTableTag.TxLog,
+            Target.TxLog,
             id=tx_id,
             address=FQ(index + (int(field_tag) << 32) + (log_id.expr().n << 48)),
             field_tag=FQ(0),
@@ -711,7 +711,7 @@ class Instruction:
     ) -> Expression:
         value = self.rw_lookup(
             RW.Read,
-            RWTableTag.TxReceipt,
+            Target.TxReceipt,
             id=tx_id,
             address=FQ(0),
             field_tag=FQ(field_tag),
@@ -728,7 +728,7 @@ class Instruction:
     ) -> Expression:
         value = self.rw_lookup(
             RW.Write,
-            RWTableTag.TxReceipt,
+            Target.TxReceipt,
             id=tx_id,
             address=FQ(0),
             field_tag=FQ(field_tag),
@@ -775,7 +775,7 @@ class Instruction:
     def rw_lookup(
         self,
         rw: RW,
-        tag: RWTableTag,
+        tag: Target,
         id: Optional[Expression] = None,
         address: Optional[Expression] = None,
         field_tag: Optional[Expression] = None,
@@ -808,7 +808,7 @@ class Instruction:
 
     def state_write(
         self,
-        tag: RWTableTag,
+        tag: Target,
         id: Optional[Expression] = None,
         address: Optional[Expression] = None,
         field_tag: Optional[Expression] = None,
@@ -847,7 +847,7 @@ class Instruction:
 
     def state_read(
         self,
-        tag: RWTableTag,
+        tag: Target,
         id: Optional[Expression] = None,
         address: Optional[Expression] = None,
         field_tag: Optional[Expression] = None,
@@ -875,11 +875,11 @@ class Instruction:
     ) -> WordOrValue:
         if call_id is None:
             call_id = self.curr.call_id
-        return self.rw_lookup(rw, RWTableTag.CallContext, call_id, FQ(field_tag)).value
+        return self.rw_lookup(rw, Target.CallContext, call_id, FQ(field_tag)).value
 
     def rw_table_start_lookup(self, counter: Expression):
         # Raises exception if no lookup matches
-        self.rw_lookup(rw=RW.Read, tag=RWTableTag.Start, rw_counter=counter)
+        self.rw_lookup(rw=RW.Read, tag=Target.Start, rw_counter=counter)
 
     def reversion_info(self, call_id: Optional[Expression] = None) -> ReversionInfo:
         [rw_counter_end_of_reversion, is_persistent] = [
@@ -906,7 +906,7 @@ class Instruction:
 
     def stack_lookup(self, rw: RW, stack_pointer_offset: Expression) -> Word:
         stack_pointer = self.curr.stack_pointer + stack_pointer_offset
-        return self.rw_lookup(rw, RWTableTag.Stack, self.curr.call_id, stack_pointer).value
+        return self.rw_lookup(rw, Target.Stack, self.curr.call_id, stack_pointer).value
 
     def memory_lookup(
         self, rw: RW, memory_address: Expression, call_id: Optional[Expression] = None
@@ -914,11 +914,11 @@ class Instruction:
         if call_id is None:
             call_id = self.curr.call_id
         return cast_expr(
-            self.rw_lookup(rw, RWTableTag.Memory, call_id, memory_address).value.value(), FQ
+            self.rw_lookup(rw, Target.Memory, call_id, memory_address).value.value(), FQ
         )
 
     def tx_refund_read(self, tx_id: Expression) -> FQ:
-        return cast_expr(self.rw_lookup(RW.Read, RWTableTag.TxRefund, tx_id).value.value(), FQ)
+        return cast_expr(self.rw_lookup(RW.Read, Target.TxRefund, tx_id).value.value(), FQ)
 
     def tx_refund_write(
         self,
@@ -926,7 +926,7 @@ class Instruction:
         reversion_info: Optional[ReversionInfo] = None,
     ) -> Tuple[FQ, FQ]:
         row = self.state_write(
-            RWTableTag.TxRefund,
+            Target.TxRefund,
             tx_id,
             reversion_info=reversion_info,
         )
@@ -935,13 +935,13 @@ class Instruction:
     def account_read(
         self, account_address: Expression, account_field_tag: AccountFieldTag
     ) -> Expression:
-        self.account_read_word(account_address, account_field_tag).value()
+        return self.account_read_word(account_address, account_field_tag).value()
 
     def account_read_word(
         self, account_address: Expression, account_field_tag: AccountFieldTag
     ) -> WordOrValue:
         return self.rw_lookup(
-            RW.Read, RWTableTag.Account, address=account_address, field_tag=FQ(account_field_tag)
+            RW.Read, Target.Account, address=account_address, field_tag=FQ(account_field_tag)
         ).value
 
     def account_write(
@@ -960,7 +960,7 @@ class Instruction:
         reversion_info: Optional[ReversionInfo] = None,
     ) -> Tuple[WordOrValue, WordOrValue]:
         row = self.state_write(
-            RWTableTag.Account,
+            Target.Account,
             address=account_address,
             field_tag=FQ(account_field_tag),
             reversion_info=reversion_info,
@@ -1000,7 +1000,7 @@ class Instruction:
     ) -> Word:
         row = self.rw_lookup(
             RW.Read,
-            RWTableTag.AccountStorage,
+            Target.AccountStorage,
             tx_id,
             account_address,
             field_tag=None,
@@ -1016,7 +1016,7 @@ class Instruction:
         reversion_info: Optional[ReversionInfo] = None,
     ) -> Tuple[Word, Word, Word]:
         row = self.state_write(
-            RWTableTag.AccountStorage,
+            Target.AccountStorage,
             tx_id,
             account_address,
             storage_key=storage_key,
@@ -1031,7 +1031,7 @@ class Instruction:
         reversion_info: Optional[ReversionInfo] = None,
     ) -> FQ:
         row = self.state_write(
-            RWTableTag.TxAccessListAccount,
+            Target.TxAccessListAccount,
             tx_id,
             account_address,
             value=FQ(1),
@@ -1045,7 +1045,7 @@ class Instruction:
         account_address: Expression,
     ) -> FQ:
         row = self.state_read(
-            RWTableTag.TxAccessListAccount,
+            Target.TxAccessListAccount,
             tx_id,
             account_address,
         )
@@ -1059,7 +1059,7 @@ class Instruction:
         reversion_info: Optional[ReversionInfo] = None,
     ) -> FQ:
         row = self.state_write(
-            RWTableTag.TxAccessListAccountStorage,
+            Target.TxAccessListAccountStorage,
             tx_id,
             account_address,
             storage_key=storage_key,

@@ -145,7 +145,7 @@ def create(instruction: Instruction):
         # verify return contract address
         instruction.constrain_equal(
             instruction.word_to_fq(return_contract_address_word, N_BYTES_ACCOUNT_ADDRESS),
-            is_success * contract_address,
+            is_success.expr() * contract_address.expr(),
         )
 
         # ErrContractAddressCollision constraint
@@ -211,7 +211,7 @@ def create(instruction: Instruction):
             for field_tag, expected_word_or_value in [
                 (CallContextFieldTag.CallerId, instruction.curr.call_id),
                 (CallContextFieldTag.TxId, tx_id),
-                (CallContextFieldTag.Depth, depth + 1),
+                (CallContextFieldTag.Depth, depth.expr() + 1),
                 (CallContextFieldTag.CallerAddress, caller_address_word),
                 (CallContextFieldTag.CalleeAddress, contract_address_word),
                 (CallContextFieldTag.IsSuccess, is_success),
@@ -219,6 +219,9 @@ def create(instruction: Instruction):
                 (CallContextFieldTag.IsRoot, FQ(False)),
                 (CallContextFieldTag.IsCreate, FQ(True)),
             ]:
+                assert isinstance(expected_word_or_value, FQ) or isinstance(
+                    expected_word_or_value, Word
+                )
                 instruction.constrain_equal_word(
                     instruction.call_context_lookup_word(field_tag, call_id=callee_call_id),
                     WordOrValue(expected_word_or_value),

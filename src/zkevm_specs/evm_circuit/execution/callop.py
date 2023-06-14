@@ -210,6 +210,9 @@ def callop(instruction: Instruction):
             (CallContextFieldTag.IsCreate, FQ(False)),
             (CallContextFieldTag.CodeHash, call.callee_code_hash),
         ]:
+            assert isinstance(expected_word_or_value, FQ) or isinstance(
+                expected_word_or_value, Word
+            )
             instruction.constrain_equal_word(
                 instruction.call_context_lookup_word(field_tag, call_id=callee_call_id),
                 WordOrValue(expected_word_or_value),
