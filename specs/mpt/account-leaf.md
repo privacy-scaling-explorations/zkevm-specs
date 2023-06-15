@@ -87,11 +87,34 @@ is_codehash_mod: IsEqualGadget<F>
 
 ### rlp_key
 
-`rlp_key` stores two `ListKeyGadgets` (one for `S` key, one for `C` key).
+`rlp_key` stores two `ListKeyGadget` (one for `S` key, one for `C` key).
 It can be used to access the information about the key (length, number of nibbles, key RLC,
 RLC multiplier to be used after key, ...), but it also
 stores the first RLP bytes of the account leaf (that are stored in `list_rlp_bytes`).
 
+```
+pub(crate) struct ListKeyGadget<F> {
+    pub(crate) rlp_list_bytes: [Cell<F>; 3],
+    pub(crate) rlp_list: RLPListGadget<F>,
+    pub(crate) key_value: RLPItemView<F>,
+    pub(crate) key: LeafKeyGadget<F>,
+}
+```
+
+`ListKeyGadget` contains `RLPListGadget` (as `MainRLPGadget` does) because the account leaf
+is always a list of RLP items (and `ListKeyGadget` does not contain only the key, but also
+the first bytes of the account leaf). Thus, for example, `rlp_list` can be used to access the
+number of bytes of the account leaf stream.
+
+### is_in_empty_trie
+
+The gadget [IsEmptyTreeGadget](gadgets.md) is used to check whether the trie is empty or there
+is no leaf in the branch at the modified position - this is to avoid triggering the account leaf 
+constraints when there is no account leaf.
+
+### drifted
+
+The gadget [DriftedGadget](gadgets.md)
 
 ## Constraints
 
@@ -835,79 +858,7 @@ Note: `s_main.rlp1` and `c_main.rlp1` are not used.
 
 ## Account leaf in added branch (drifted leaf) constraints
 
-Sometimes `S` and `C` proofs are not of the same length. For example, when a new account `A1` is added,
-the following scenario might happen. Let us say that the account that is being added has the address
-(in nibbles):
-``` 
-[8, 15, 1, ...]
-``` 
-
-And let us say there already exists an account `A` with the following nibbles:
-```
-[8, 15, 3, ...]
-```
-
-Also, let us assume that the account `A` is in the third trie level. We have `Branch0` in the first level:
-```
-           Branch0
-Node_0_0 Node_0_1 ... Node_0_15
-```
-
-`Node_0_8` is the hash of a branch `Branch1`:
-```
-           Branch1
-Node_1_0 Node_1_1 ... Node_1_15
-```
-
-`Node_1_15` is the hash of the account `A`.
-
-So we have:
-```
-                              Branch0
-Node_0_0 Node_0_1 ...              Node_0_8                 ... Node_0_15
-                                      |
-                        Node_1_0 Node_1_1 ... Node_1_15
-                                                  |
-                                                  A
-```
-
-Before we add the account `A1`, we first obtain the `S` proof which will contain the account `A` as a leaf
-because the first part of the address `[8, 15]` is the same and when going down the trie retrieving
-the elements of a proof, the algorithm arrives to the account `A`.
-
-When we add the account `A1`, it cannot be placed at position 15 in `Branch1` because it is already
-occupied by the account `A`. For this reason, a new branch `Branch2` is added.
-Now, the third nibble of the accounts `A` and `A1` is considered. The account `A` drifts into a new branch
-to position 3, while the account `A1` is placed at position 1 in `Branch2`.
-
-Thus, the `C` proof has one element more than the `S` proof (the difference is due to `Branch2`).
-
-```
-S proof              || C proof
-Branch0              || Branch0
-Branch1              || Branch1
-(Placeholder branch) || Branch2
-A                    || A1
-```
-
-Note that the scenario is reversed (`S` and `C` are turned around) when a leaf is deleted
-from the branch with exactly two leaves.
-
-To preserve the parallel layout, the circuit uses a placeholder branch that occupies the columns
-in `S` proof parallel to `Branch2`.
-
-Having a parallel layout is beneficial for multiple reasons, for example having the layout as below
-would cause problems with selectors such as `is_branch_child` as there would be account and branch
-in the same row. Also, it would make the lookups more complicated as it is much easier to enable
-a lookup if accounts `A` and `A1` are in the same row. Non-parallel layout:
-
-```
-S proof              || C proof
-Branch0              || Branch0
-Branch1              || Branch1
-A                    || Branch2
-                     || A1
-```
+... TODO: move to DriftedGadget
 
 We need to include the account `A` that drifted into `Branch2` in the `C` proof too. This is because
 we need to check that `Branch2` contains exactly two leaves: `A1` and `A` after it moved down from
