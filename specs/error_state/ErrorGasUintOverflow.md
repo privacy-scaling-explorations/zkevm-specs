@@ -30,7 +30,6 @@ so we only need to care about follows case.
 
 - [IntrinsicGas](https://github.com/ethereum/go-ethereum/blob/b946b7a13b749c99979e312c83dce34cac8dd7b1/core/state_transition.go#L67)
 - [Run](https://github.com/ethereum/go-ethereum/blob/b946b7a13b749c99979e312c83dce34cac8dd7b1/core/vm/interpreter.go#L105)
-- [callGas](https://github.com/ethereum/go-ethereum/blob/b946b7a13b749c99979e312c83dce34cac8dd7b1/core/vm/gas.go#L37)
 
 More details are [here](https://github.com/privacy-scaling-explorations/zkevm-specs/pull/361#issuecomment-1478969271)
 
