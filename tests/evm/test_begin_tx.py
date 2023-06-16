@@ -206,7 +206,7 @@ TESTING_DATA = (
         Transaction(
             caller_address=0xFE,
             callee_address=None,
-            gas=100000, # TODO(amb) make more precise gas
+            gas = 53580, # TODO(amb) make more precise gas
             value = 1,
             call_data = bytes(gen_bytecode(True,0, True).code)
         ),
@@ -353,7 +353,7 @@ def test_begin_tx(tx: Transaction, callee: Account, is_success: bool):
                 rw_counter=rw_dictionary.rw_counter,
                 call_id=CALL_ID,
                 is_root=True,
-                is_create=False,
+                is_create=is_tx_create,
                 code_hash=bytecode_hash,
                 program_counter=0,
                 stack_pointer=1024,

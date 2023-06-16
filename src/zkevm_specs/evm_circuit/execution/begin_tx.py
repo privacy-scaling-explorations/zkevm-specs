@@ -127,7 +127,6 @@ def begin_tx(instruction: Instruction):
 
                 # Get code hash of tx calldata
 
-                print("------FIRST LOOKUP ----------------------------")
 
                 copy_rwc_inc, rlc_acc = instruction.copy_lookup(
                     tx_id,                       # src_id
@@ -147,8 +146,6 @@ def begin_tx(instruction: Instruction):
                 is_empty_code_hash = instruction.is_equal_word(code_hash, Word(EMPTY_CODE_HASH))
 
                 # Copy tx calldata to bytecode table
-
-                print("------SECOND LOOKUP ----------------------------")
 
                 copy_rwc_inc, _ = instruction.copy_lookup(
                     tx_id,                       # src_id
@@ -185,7 +182,7 @@ def begin_tx(instruction: Instruction):
                     )
 
                 instruction.step_state_transition_to_new_context(
-                    rw_counter=Transition.delta(2),
+                    rw_counter=Transition.delta(22),
                     call_id=Transition.to(call_id),
                     is_root=Transition.to(True),
                     is_create=Transition.to(True),
