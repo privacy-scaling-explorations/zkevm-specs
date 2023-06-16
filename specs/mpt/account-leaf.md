@@ -114,7 +114,34 @@ constraints when there is no account leaf.
 
 ### drifted
 
-The gadget [DriftedGadget](gadgets.md)
+The gadget [DriftedGadget](gadgets.md) handles the leaf being moved from one branch to a newly created branch.
+`AccountDrifted` value contains the key of the leaf that drifted to a new branch - it is the same as the key
+before drifting, but with the first nibble (or nibbles if extension node) removed.
+
+The gadget is constructed as follows:
+
+ * `key_rlc` contains the key RLC of the leaf before it drifted, this value needs to be checked in the 
+ gadget to be the same as the key RLC of the leaf after it drifted (the nibble(s) moved from the leaf key
+ to the nibbles that mark the path to the leaf)
+ * `leaf_no_key_rlc` is the RLC of the leaf value (which does not change when the leaf drifts to a new
+ branch)
+ * `drifted_bytes` contains the `AccountDrifted` value.
+
+```
+config.drifted = DriftedGadget::construct(
+    cb,
+    &config.parent_data,
+    &config.key_data,
+    &key_rlc,
+    &leaf_no_key_rlc,
+    &drifted_bytes,
+    &ctx.r,
+);
+```
+
+### wrong
+
+
 
 ## Constraints
 
@@ -488,24 +515,6 @@ in what follows.
 The balance constraints are analogous to the nonce constraints described above.
 The difference is that balance is stored in `c_main.bytes`.
 
-#### is_wrong_leaf is bool
-
-When `non_existing_account_proof` proof type (which can be of two subtypes: with wrong leaf
-and without wrong leaf, more about it below), the `is_wrong_leaf` flag specifies whether
-the subtype is with wrong leaf or not.
-When `non_existing_account_proof` without wrong leaf
-the proof contains only branches and a placeholder account leaf.
-In this case, it is checked that there is nil in the parent branch
-at the proper position (see `account_non_existing`). Note that we need (placeholder) account
-leaf for lookups and to know when to check that parent branch has a nil.
-
-In `is_wrong_leaf is bool` we only check that `is_wrong_leaf` is a boolean values.
-Other wrong leaf related constraints are in other gates.
-
-#### is_wrong_leaf needs to be 0 when not in non_existing_account proof
-
-`is_wrong_leaf` can be set to 1 only when the proof is not non_existing_account proof.
-
 #### Nonce RLC long 
 
 Besides having nonce (its bytes) stored in `s_main.bytes`, we also have the RLC
@@ -855,117 +864,6 @@ the hash of the leaf needs to be checked to be the state root.
 Range lookups ensure that `s_main` and `c_main` columns are all bytes (between 0 - 255).
 
 Note: `s_main.rlp1` and `c_main.rlp1` are not used.
-
-## Account leaf in added branch (drifted leaf) constraints
-
-... TODO: move to DriftedGadget
-
-We need to include the account `A` that drifted into `Branch2` in the `C` proof too. This is because
-we need to check that `Branch2` contains exactly two leaves: `A1` and `A` after it moved down from
-`Branch1`. We need to also check that the account `A` in `S` proof (in `Branch1`) differs 
-from the account `A` in `C` proof (in `Branch2`) in exactly one key nibble (this is different
-if an extension node is added instead of a branch), everything else stays the same (the value
-stored in the leaf).
-
-An example of `getProof` output where `S` proof have two elements (branch and account leaf):
-
-```
-[248 241 160 255 151 217 75 103 5 122 115 224 137 233 146 50 189 95 178 178 247 44 237 22 101 231 39 198 40 14 249 60 251 151 15 128 128 128 128 160 60 79 85 51 115 192 158 157 93 223 211 100 62 94 72 146 251 82 116 111 190 139 246 12 252 146 211 122 66 110 206 20 128 160 120 190 160 200 253 109 255 226 49 189 87 112 136 160 23 77 119 59 173 185 188 145 251 156 155 144 100 217 100 114 109 106 128 160 69 72 113 186 79 146 63 86 46 218 1 200 131 76 71 142 217 35 30 209 101 239 91 47 163 221 136 130 249 155 236 112 160 49 65 26 94 193 156 227 78 42 198 56 211 105 254 0 33 31 96 41 208 40 13 215 156 51 173 132 112 34 192 121 49 160 244 154 252 18 232 96 245 36 84 15 253 182 157 226 247 165 106 144 166 1 2 140 228 170 110 87 112 80 140 149 162 43 128 160 20 103 6 95 163 140 21 238 207 84 226 60 134 0 183 217 11 213 185 123 139 201 37 22 227 234 220 30 160 20 244 115 128 128 128]
-[248 102 157 55 236 125 29 155 142 209 241 75 145 144 143 254 65 81 209 56 13 192 157 236 195 213 73 132 11 251 149 241 184 70 248 68 1 128 160 112 158 181 221 162 20 124 79 184 25 162 13 167 162 146 25 237 242 59 120 184 154 118 137 92 181 187 152 115 82 223 48 160 7 190 1 231 231 32 111 227 30 206 233 26 215 93 173 166 90 214 186 67 58 230 71 161 185 51 4 105 247 198 103 124]
-```
-
-An example of `getProof` output where `C` proof have three elements (branch, added branch, and account leaf):
-
-```
-[248 241 160 188 253 144 87 144 251 204 78 148 203 12 141 0 77 176 70 67 92 90 100 110 40 255 28 218 97 116 184 26 121 18 49 128 128 128 128 160 60 79 85 51 115 192 158 157 93 223 211 100 62 94 72 146 251 82 116 111 190 139 246 12 252 146 211 122 66 110 206 20 128 160 120 190 160 200 253 109 255 226 49 189 87 112 136 160 23 77 119 59 173 185 188 145 251 156 155 144 100 217 100 114 109 106 128 160 69 72 113 186 79 146 63 86 46 218 1 200 131 76 71 142 217 35 30 209 101 239 91 47 163 221 136 130 249 155 236 112 160 49 65 26 94 193 156 227 78 42 198 56 211 105 254 0 33 31 96 41 208 40 13 215 156 51 173 132 112 34 192 121 49 160 244 154 252 18 232 96 245 36 84 15 253 182 157 226 247 165 106 144 166 1 2 140 228 170 110 87 112 80 140 149 162 43 128 160 20 103 6 95 163 140 21 238 207 84 226 60 134 0 183 217 11 213 185 123 139 201 37 22 227 234 220 30 160 20 244 115 128 128 128]
-[248 81 128 128 128 128 128 128 128 160 222 45 71 217 199 68 20 55 244 206 68 197 49 191 78 208 106 209 111 87 254 9 221 230 148 86 131 219 7 121 62 140 160 190 214 56 80 83 126 135 17 104 48 181 30 249 223 80 59 155 70 206 67 24 6 82 98 81 246 212 143 253 181 15 180 128 128 128 128 128 128 128 128]
-[248 102 157 32 133 130 180 167 143 97 28 115 102 25 94 62 148 249 8 6 55 244 16 75 187 208 208 127 251 120 61 73 184 70 248 68 1 23 160 112 158 181 221 162 20 124 79 184 25 162 13 167 162 146 25 237 242 59 120 184 154 118 137 92 181 187 152 115 82 223 48 160 7 190 1 231 231 32 111 227 30 206 233 26 215 93 173 166 90 214 186 67 58 230 71 161 185 51 4 105 247 198 103 124]
-```
-
-The account leaf is distributed over 8 rows as described above:
-
-```
-ACCOUNT_LEAF_KEY_S
-ACCOUNT_LEAF_KEY_C
-ACCOUNT_NON_EXISTING
-ACCOUNT_LEAF_NONCE_BALANCE_S
-ACCOUNT_LEAF_NONCE_BALANCE_C
-ACCOUNT_LEAF_STORAGE_CODEHASH_S
-ACCOUNT_LEAF_STORAGE_CODEHASH_C
-ACCOUNT_DRIFTED_LEAF
-```
-
-`ACCOUNT_DRIFTED_LEAF` row is where the account `A` (when in `Branch2`) is stored.
-We can see the example below - the key of the account `A` (when in `Branch2`) is in the last
-row. Note that key of the account `A` when in `Branch1` is in the first row.
-
-```
-[248 102 157 55 236 125 29 155 142 209 241 75 145 144 143 254 65 81 209 56 13 192 157 236 195 213 73 132 11 251 149 241 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 92 69 153 141 251 249 206 112 188 187 128 87 78 215 166 34 146 45 44 119 94 10 35 49 254 90 139 141 204 153 244 144 242 246 191 23 44 167 166 154 14 14 27 198 200 66 149 155 102 162 36 92 147 76 227 228 141 122 139 186 245 89 5 41 252 237 52 8 133 130 180 167 143 97 28 115 102 25 94 62 148 249 8 6 55 244 16 75 187 208 208 127 251 120 61 73 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 1 6]
-[248 102 157 32 133 130 180 167 143 97 28 115 102 25 94 62 148 249 8 6 55 244 16 75 187 208 208 127 251 120 61 73 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 92 69 153 141 251 249 206 112 188 187 128 87 78 215 166 34 146 45 44 119 94 10 35 49 254 90 139 141 204 153 244 144 242 246 191 23 44 167 166 154 14 14 27 198 200 66 149 155 102 162 36 92 147 76 227 228 141 122 139 186 245 89 5 41 252 237 52 8 133 130 180 167 143 97 28 115 102 25 94 62 148 249 8 6 55 244 16 75 187 208 208 127 251 120 61 73 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 1 4]
-[0 0 0 32 133 130 180 167 143 97 28 115 102 25 94 62 148 249 8 6 55 244 16 75 187 208 208 127 251 120 61 73 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 92 69 153 141 251 249 206 112 188 187 128 87 78 215 166 34 146 45 44 119 94 10 35 49 254 90 139 141 204 153 244 144 242 246 191 23 44 167 166 154 14 14 27 198 200 66 149 155 102 162 36 92 147 76 227 228 141 122 139 186 245 89 5 41 252 237 52 8 133 130 180 167 143 97 28 115 102 25 94 62 148 249 8 6 55 244 16 75 187 208 208 127 251 120 61 73 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 1 18]
-[184 70 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 248 68 128 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 92 69 153 141 251 249 206 112 188 187 128 87 78 215 166 34 146 45 44 119 94 10 35 49 254 90 139 141 204 153 244 144 242 246 191 23 44 167 166 154 14 14 27 198 200 66 149 155 102 162 36 92 147 76 227 228 141 122 139 186 245 89 5 41 252 237 52 8 133 130 180 167 143 97 28 115 102 25 94 62 148 249 8 6 55 244 16 75 187 208 208 127 251 120 61 73 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 1 7]
-[184 70 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 248 68 23 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 92 69 153 141 251 249 206 112 188 187 128 87 78 215 166 34 146 45 44 119 94 10 35 49 254 90 139 141 204 153 244 144 242 246 191 23 44 167 166 154 14 14 27 198 200 66 149 155 102 162 36 92 147 76 227 228 141 122 139 186 245 89 5 41 252 237 52 8 133 130 180 167 143 97 28 115 102 25 94 62 148 249 8 6 55 244 16 75 187 208 208 127 251 120 61 73 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 1 8]
-[0 160 112 158 181 221 162 20 124 79 184 25 162 13 167 162 146 25 237 242 59 120 184 154 118 137 92 181 187 152 115 82 223 48 0 160 7 190 1 231 231 32 111 227 30 206 233 26 215 93 173 166 90 214 186 67 58 230 71 161 185 51 4 105 247 198 103 124 0 92 69 153 141 251 249 206 112 188 187 128 87 78 215 166 34 146 45 44 119 94 10 35 49 254 90 139 141 204 153 244 144 242 246 191 23 44 167 166 154 14 14 27 198 200 66 149 155 102 162 36 92 147 76 227 228 141 122 139 186 245 89 5 41 252 237 52 8 133 130 180 167 143 97 28 115 102 25 94 62 148 249 8 6 55 244 16 75 187 208 208 127 251 120 61 73 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 1 9]
-[0 160 112 158 181 221 162 20 124 79 184 25 162 13 167 162 146 25 237 242 59 120 184 154 118 137 92 181 187 152 115 82 223 48 0 160 7 190 1 231 231 32 111 227 30 206 233 26 215 93 173 166 90 214 186 67 58 230 71 161 185 51 4 105 247 198 103 124 0 92 69 153 141 251 249 206 112 188 187 128 87 78 215 166 34 146 45 44 119 94 10 35 49 254 90 139 141 204 153 244 144 242 246 191 23 44 167 166 154 14 14 27 198 200 66 149 155 102 162 36 92 147 76 227 228 141 122 139 186 245 89 5 41 252 237 52 8 133 130 180 167 143 97 28 115 102 25 94 62 148 249 8 6 55 244 16 75 187 208 208 127 251 120 61 73 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 1 11]
-[248 102 157 32 236 125 29 155 142 209 241 75 145 144 143 254 65 81 209 56 13 192 157 236 195 213 73 132 11 251 149 241 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 6 92 69 153 141 251 249 206 112 188 187 128 87 78 215 166 34 146 45 44 119 94 10 35 49 254 90 139 141 204 153 244 144 242 246 191 23 44 167 166 154 14 14 27 198 200 66 149 155 102 162 36 92 147 76 227 228 141 122 139 186 245 89 5 41 252 237 52 8 133 130 180 167 143 97 28 115 102 25 94 62 148 249 8 6 55 244 16 75 187 208 208 127 251 120 61 73 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 1 10]
-```
-
-We can observe that there is a difference of one nibble in the key. In the first row, the nibbles
-are compressed as: `[55, 236, 125, ...]`. In the last row, the nibbles are compressed as:
-`[32, 236, 125, ...]`. The difference is that in the first row there is a first nibble `7 = 55 - 48`.
-This nibble is not present in the account `A` when moved down into `Branch2` because 7 is the position
-where the account `A` is placed in `Branch2`.
-
-### Account drifted leaf: intermediate leaf RLC after key"
-
-#### Account leaf key s_rlp1 = 248
-
-`s_rlp1` is always 248 because the account leaf is always longer than 55 bytes.
-
-#### Account leaf key intermediate RLC
-
-We check that the leaf RLC is properly computed. RLC is then taken and
-nonce/balance & storage root / codehash values are added to the RLC (note that nonce/balance
-& storage root / codehash are not stored for the drifted leaf because these values stay
-the same as in the leaf before drift).
-Finally, the lookup is used to check the hash that corresponds to this RLC is
-in the parent branch at `drifted_pos` position.
-
-### mult_diff
-
-Similarly as in `account_leaf_key.rs`.
-When the full account intermediate RLC is computed, we need
-to know the intermediate RLC and the randomness multiplier (`r` to some power) from the key row.
-The power of randomness `r` is determined by the key length - the intermediate RLC in the current row
-is computed as (key starts in `s_main.bytes[1]`):
-
-```
-rlc = s_main.rlp1 + s_main.rlp2 * r + s_main.bytes[0] * r^2 + key_bytes[0] * r^3 + ... + key_bytes[key_len-1] * r^{key_len + 2}
-```
-
-So the multiplier to be used in the next row is `r^{key_len + 2}`. 
-
-`mult_diff` needs to correspond to the key length + 2 RLP bytes + 1 byte for byte that contains the key length.
-That means `mult_diff` needs to be `r^{key_len+1}` where `key_len = s_main.bytes[0] - 128`.
-
-Note that the key length is different than the on of the leaf before it drifted (by one nibble
-if a branch is added, by multiple nibbles if extension node is added).
-
-### Account drifted leaf key RLC
-
-#### Drifted leaf key RLC same as the RLC of the leaf before drift
-
-The key RLC of the drifted leaf needs to be the same as the key RLC of the leaf before
-the drift - the nibbles are the same in both cases, the difference is that before the
-drift some nibbles are stored in the leaf key, while after the drift these nibbles are used as 
-position in a branch or/and nibbles of the extension node.
-
-### Account leaf key in added branch: drifted leaf hash in the parent branch
-
-We take the leaf RLC computed in the key row, we then add nonce/balance and storage root/codehash
-to get the final RLC of the drifted leaf. We then check whether the drifted leaf is at
-the `drifted_pos` in the parent branch - we use a lookup to check that the hash that
-corresponds to this RLC is in the parent branch at `drifted_pos` position.
 
 ### Range lookups
 
