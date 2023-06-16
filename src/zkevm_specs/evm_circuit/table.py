@@ -764,6 +764,12 @@ def lookup(
     ]
 
     if len(matched_rows) == 0:
+        print("LOOKUP FAILURE")
+        print("TABLE: ", table_name)
+        print("QUERY: ",query)
+        print("CURRENT VALUES")
+        for row in table:
+            print("-->",row)
         raise LookupUnsatFailure(table_name, query)
     elif len(matched_rows) > 1:
         raise LookupAmbiguousFailure(table_name, query, matched_rows)

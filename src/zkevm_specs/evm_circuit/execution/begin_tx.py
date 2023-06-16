@@ -77,20 +77,22 @@ def begin_tx(instruction: Instruction):
     gas_not_enough, _ = instruction.compare(tx_gas, tx_intrinsic_gas, MAX_N_BYTES)
     gas_left = tx_gas.expr() if gas_not_enough == 1 else tx_gas.expr() - tx_intrinsic_gas
 
-    # Prepare access list of caller and callee
-    instruction.constrain_zero(instruction.add_account_to_access_list(tx_id, tx_caller_address))
-    instruction.constrain_zero(instruction.add_account_to_access_list(tx_id, tx_callee_address))
-    
     # Calculate new contract address if tx_is_create    
     contract_address = instruction.generate_contract_address(tx_caller_address, tx_nonce)
     contract_address_word = instruction.address_to_word(contract_address)
- 
-    callee = contract_address if tx_is_create else tx_callee_address
+
+    callee_address = contract_address if tx_is_create == 1 else tx_callee_address
+
+    print("[begin_tx] callee_address=",callee_address, " tx_is_create", tx_is_create)
+
+    # Prepare access list of caller and callee
+    instruction.constrain_zero(instruction.add_account_to_access_list(tx_id, tx_caller_address))
+    instruction.constrain_zero(instruction.add_account_to_access_list(tx_id, callee_address))
 
     # Verify transfer
     sender_balance_pair, _ = instruction.transfer_with_gas_fee(
         tx_caller_address,
-        callee,
+        callee_address,
         Word(0) if (is_tx_invalid.expr() == 1) else tx_value,
         Word(0) if (is_tx_invalid.expr() == 1) else gas_fee,
         reversion_info,
@@ -108,58 +110,60 @@ def begin_tx(instruction: Instruction):
 
     if tx_is_create == 1:
 
-            # Get code hash of tx calldata
-
-            copy_rwc_inc, rlc_acc = instruction.copy_lookup(
-                tx_id,                       # src_id
-                CopyDataTypeTag.TxCallData,  # src_type
-                instruction.curr.call_id,    # dst_id
-                CopyDataTypeTag.RlcAcc,      # dst_type
-                FQ.zero(),                   # src_addr
-                tx_call_data_length,         # src_addr_boundary
-                FQ.zero(),                   # dst_addr
-                tx_call_data_length,         # length
-                instruction.curr.rw_counter + instruction.rw_counter_offset,
-            )
-
-            assert(copy_rwc_inc == FQ.zero()); # no memory involved, no rw counter incremented
-            
-            code_hash = instruction.keccak_lookup(tx_call_data_length, rlc_acc)
-            is_empty_code_hash = instruction.is_equal_word(code_hash, Word(EMPTY_CODE_HASH))
-
-            # Copy tx calldata to bytecode table
-
-            copy_rwc_inc, _ = instruction.copy_lookup(
-                tx_id,                       # src_id
-                CopyDataTypeTag.TxCallData,  # src_type
-                code_hash,                   # dst_id
-                CopyDataTypeTag.Bytecode,    # dst_type
-                FQ.zero(),                   # src_addr
-                tx_call_data_length,         # src_addr_boundary
-                FQ(0),                       # dst_addr
-                tx_call_data_length,         # length
-                instruction.curr.rw_counter + instruction.rw_counter_offset,
-            )
-            assert(copy_rwc_inc == FQ.zero()); # no memory involved, no rw counter incremented
-
-            # Move to next transition
-
-            if is_empty_code_hash == FQ(1) or is_tx_invalid == FQ(1):
+            if is_tx_invalid == FQ(1) or tx_call_data_length == 0:
                 # Make sure tx is persistent
                 instruction.constrain_equal(reversion_info.is_persistent, FQ(1))
 
                 # Do step state transition
                 instruction.constrain_equal(instruction.next.execution_state, ExecutionState.EndTx)
                 instruction.constrain_step_state_transition(
-                    rw_counter=Transition.delta(10+2*tx_call_data_length), call_id=Transition.to(call_id)
+                    rw_counter=Transition.delta(9), call_id=Transition.to(call_id)
                 )
-            else: 
+            else:
+
+                # Expected behabeur
+                # - If initcode does not RETRUN, contract is created empty and value transferred
+                # - If initcode is invalid bytecode or reverts, contract is not created and value not transferred
+
+                # Get code hash of tx calldata
+
+                print("------FIRST LOOKUP ----------------------------")
+
+                copy_rwc_inc, rlc_acc = instruction.copy_lookup(
+                    tx_id,                       # src_id
+                    CopyDataTypeTag.TxCalldata,  # src_type
+                    call_id,                     # dst_id
+                    CopyDataTypeTag.RlcAcc,      # dst_type
+                    FQ.zero(),                   # src_addr
+                    tx_call_data_length,         # src_addr_boundary
+                    FQ.zero(),                   # dst_addr
+                    tx_call_data_length,         # length
+                    instruction.curr.rw_counter + instruction.rw_counter_offset,
+                )
+
+                assert(copy_rwc_inc == FQ.zero()); # no memory involved, no rw counter incremented
+
+                code_hash = instruction.keccak_lookup(tx_call_data_length, rlc_acc)
+                is_empty_code_hash = instruction.is_equal_word(code_hash, Word(EMPTY_CODE_HASH))
+
+                # Copy tx calldata to bytecode table
+
+                print("------SECOND LOOKUP ----------------------------")
+
+                copy_rwc_inc, _ = instruction.copy_lookup(
+                    tx_id,                       # src_id
+                    CopyDataTypeTag.TxCalldata,  # src_type
+                    code_hash,                   # dst_id
+                    CopyDataTypeTag.Bytecode,    # dst_type
+                    FQ.zero(),                   # src_addr
+                    tx_call_data_length,         # src_addr_boundary
+                    FQ(0),                       # dst_addr
+                    tx_call_data_length,         # length
+                    instruction.curr.rw_counter + instruction.rw_counter_offset,
+                )
+                assert(copy_rwc_inc == FQ.zero()); # no memory involved, no rw counter incremented
+
                 # Setup next call's context
-                # Note that:
-                # - CallerId, ReturnDataOffset, ReturnDataLength
-                #   should never be used in root call, so unnecessary to be checked
-                # - TxId is checked from previous step or constraint to 1 if is_first_step
-                # - IsSuccess, IsPersistent will be verified in the end of tx
                 for tag, word_or_value in [
                     (CallContextFieldTag.Depth, FQ(1)),
                     (CallContextFieldTag.CallerAddress, tx_caller_address_word),
@@ -181,7 +185,7 @@ def begin_tx(instruction: Instruction):
                     )
 
                 instruction.step_state_transition_to_new_context(
-                    rw_counter=Transition.delta(23+2*tx_call_data_length),
+                    rw_counter=Transition.delta(2),
                     call_id=Transition.to(call_id),
                     is_root=Transition.to(True),
                     is_create=Transition.to(True),
