@@ -8,7 +8,7 @@ from zkevm_specs.util.param import (
     N_BYTES_ACCOUNT_ADDRESS,
     N_BYTES_GAS,
     N_BYTES_MEMORY_ADDRESS,
-    N_BYTES_MEMORY_SIZE,
+    N_BYTES_MEMORY_WORD_SIZE,
     N_BYTES_STACK,
     N_BYTES_U64,
 )
@@ -70,7 +70,9 @@ def create(instruction: Instruction):
     gas_left = instruction.curr.gas_left
     gas_cost = GAS_COST_CREATE + memory_expansion_gas_cost
     if is_create2 == 1:
-        memory_size, _ = instruction.constant_divmod(size + FQ(31), FQ(32), N_BYTES_MEMORY_SIZE)
+        memory_size, _ = instruction.constant_divmod(
+            size + FQ(31), FQ(32), N_BYTES_MEMORY_WORD_SIZE
+        )
         gas_cost += GAS_COST_COPY_SHA3 * memory_size
     gas_available = gas_left - gas_cost
 

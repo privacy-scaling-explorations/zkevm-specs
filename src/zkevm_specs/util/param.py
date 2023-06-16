@@ -9,7 +9,7 @@ N_BYTES_ACCOUNT_ADDRESS = 20
 # Number of bytes of memory address
 N_BYTES_MEMORY_ADDRESS = 5
 # Number of bytes of memory size (in word)
-N_BYTES_MEMORY_SIZE = 4
+N_BYTES_MEMORY_WORD_SIZE = 4
 # Number of bytes of gas
 N_BYTES_GAS = 8
 # Number of bytes of program counter

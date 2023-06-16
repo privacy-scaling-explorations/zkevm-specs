@@ -66,6 +66,35 @@ def error_gas_uint_overflow(instruction: Instruction):
         ),
     )
     is_create = is_create_flag + is_create2_flag
+    is_dynamic_gas = (
+        is_calldatacopy
+        + is_codecopy
+        + is_extcodecopy
+        + is_returndatacopy
+        + is_sha3
+        + is_call
+        + is_delegatecall
+        + is_staticcall
+        + is_create_flag
+        + is_create2_flag
+        + is_log0
+        + is_log1
+        + is_log2
+        + is_log3
+        + is_log4
+        + is_mload
+        + is_mstore
+        + is_mstore8
+        + is_return
+        + is_revert
+    )
+    is_opcode_memory_size_overflow = (
+        is_safe_mul_overflow
+    ) = (
+        is_call_gas_cost_overflow
+    ) = (
+        is_non_zero_calldata_gas_overflow
+    ) = is_zero_calldata_gas_overflow = is_eip3860_overflow = FQ(0)
 
     # IntrinsicGas
     # https://github.com/ethereum/go-ethereum/blob/b946b7a13b749c99979e312c83dce34cac8dd7b1/core/state_transition.go#L67
@@ -78,8 +107,8 @@ def error_gas_uint_overflow(instruction: Instruction):
     ]
     dataLen = len(data)
 
-    def non_zero_gas_constraints():
-        # eip 2028
+    def transaction_data_gas_overflow():
+        # zero and non-zero bytes are priced differently
         nz = len([byte for byte in data if byte != 0])
         gas = TxGasContractCreation if is_create == FQ(1) else TxGas
         is_non_zero_calldata_gas_overflow, _ = instruction.compare(
@@ -102,38 +131,20 @@ def error_gas_uint_overflow(instruction: Instruction):
         #         FQ((MAX_U64 - gas) // InitCodeWordGas), FQ(lenWords), N_BYTES_U64
         #     )
 
-    instruction.condition(FQ(dataLen > 0), non_zero_gas_constraints)
+    instruction.condition(FQ(dataLen > 0), transaction_data_gas_overflow)
 
     # Run
     # https://github.com/ethereum/go-ethereum/blob/b946b7a13b749c99979e312c83dce34cac8dd7b1/core/vm/interpreter.go#L105
-    is_memory_size = (
-        is_calldatacopy
-        + is_codecopy
-        + is_extcodecopy
-        + is_returndatacopy
-        + is_sha3
-        + is_call
-        + is_delegatecall
-        + is_staticcall
-        + is_create_flag
-        + is_create2_flag
-        + is_log0
-        + is_log1
-        + is_log2
-        + is_log3
-        + is_log4
-        + is_mload
-        + is_mstore
-        + is_mstore8
-        + is_return
-        + is_revert
-    )
-    (mem_size, is_opcode_memory_size_overflow) = instruction.memory_size(opcode)
-    (_, is_safe_mul_overflow) = instruction.safe_mul(instruction.to_word_size(mem_size), 32)
+    def dynamic_gas_overflow():
+        (mem_size, is_opcode_memory_size_overflow) = instruction.memory_size(opcode)
+        (_, is_safe_mul_overflow) = instruction.safe_mul(instruction.to_word_size(mem_size), 32)
+
+    instruction.condition(is_dynamic_gas, dynamic_gas_overflow)
 
     # verify gas uint overflow.
     is_overflow = (
         is_opcode_memory_size_overflow
+        + is_safe_mul_overflow
         + is_call_gas_cost_overflow
         + is_non_zero_calldata_gas_overflow
         + is_zero_calldata_gas_overflow
@@ -146,7 +157,7 @@ def error_gas_uint_overflow(instruction: Instruction):
         instruction.call_context_lookup(CallContextFieldTag.IsSuccess), FQ(0)
     )
 
-    # # state transition.
+    # state transition.
     if instruction.curr.is_root:
         # Do step state transition
         instruction.constrain_step_state_transition(
