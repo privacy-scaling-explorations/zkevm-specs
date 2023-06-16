@@ -32,6 +32,7 @@ CALLEE_WITH_REVERT_BYTECODE = Account(address=CALLEE_ADDRESS, code=REVERT_BYTECO
 
 CALL_ID = 1
 
+
 def gen_bytecode(is_return: bool, offset: int, has_init_code: bool) -> Bytecode:
     if not has_init_code:
         return Bytecode()
@@ -185,7 +186,7 @@ TESTING_DATA = (
         Transaction(
             caller_address=0xFE,
             callee_address=None,
-            gas=100000, # TODO(amb) make more precise gas
+            gas=100000,  # TODO(amb) make more precise gas
         ),
         CALLEE_WITH_NOTHING,
         True,
@@ -195,8 +196,8 @@ TESTING_DATA = (
         Transaction(
             caller_address=0xFE,
             callee_address=None,
-            gas=100000, # TODO(amb) make more precise gas
-            value = 1,
+            gas=100000,  # TODO(amb) make more precise gas
+            value=1,
         ),
         CALLEE_WITH_NOTHING,
         True,
@@ -206,14 +207,38 @@ TESTING_DATA = (
         Transaction(
             caller_address=0xFE,
             callee_address=None,
-            gas = 53580, # TODO(amb) make more precise gas
-            value = 1,
-            call_data = bytes(gen_bytecode(True,0, True).code)
+            gas=53580,  # TODO(amb) make more precise gas
+            call_data=bytes(gen_bytecode(True, 0, True).code),
         ),
         CALLEE_WITH_NOTHING,
         True,
-    )
+    ),
+    # Create tx with initcode and value
+    (
+        Transaction(
+            caller_address=0xFE,
+            callee_address=None,
+            gas=53580,
+            value=1,
+            call_data=bytes(gen_bytecode(True, 0, True).code),
+        ),
+        CALLEE_WITH_NOTHING,
+        True,
+    ),
+    # Create tx with reverting initcode
+    (
+        Transaction(
+            caller_address=0xFE,
+            callee_address=None,
+            gas=53580,
+            value=1,
+            call_data=bytes(gen_bytecode(False, 0, True).code),
+        ),
+        CALLEE_WITH_NOTHING,
+        True,
+    ),
 )
+
 
 @pytest.mark.parametrize("tx, callee, is_success", TESTING_DATA)
 def test_begin_tx(tx: Transaction, callee: Account, is_success: bool):
@@ -236,11 +261,9 @@ def test_begin_tx(tx: Transaction, callee: Account, is_success: bool):
     bytecode_hash = calldata_hash if is_tx_create else Word(callee.code_hash())
 
     contract_address = keccak256(rlp.encode([tx.caller_address.to_bytes(20, "big"), tx.nonce]))
-    contract_address =  int.from_bytes(contract_address[-20:], "big")
+    contract_address = int.from_bytes(contract_address[-20:], "big")
 
     callee_address = contract_address if is_tx_create else tx.callee_address
-
-    print("[test] callee_address=",Word(callee_address), " is_tx_create=", is_tx_create)
 
     # fmt: off
     rw_dictionary = (
@@ -266,6 +289,7 @@ def test_begin_tx(tx: Transaction, callee: Account, is_success: bool):
        rw_dictionary \
        .account_read(tx.callee_address, AccountFieldTag.CodeHash, bytecode_hash)
     elif len(tx.call_data)>0:
+
         src_data_dict = dict([(i, tx.call_data[i]) for i in range(len(tx.call_data))])
 
         copy_calldata_to_keccak = CopyCircuit().copy(
@@ -327,7 +351,6 @@ def test_begin_tx(tx: Transaction, callee: Account, is_success: bool):
         .call_context_read(1, CallContextFieldTag.IsCreate, is_tx_create) \
         .call_context_read(1, CallContextFieldTag.CodeHash, bytecode_hash)
 
-
     # fmt: on
 
     tables = Tables(
@@ -335,8 +358,8 @@ def test_begin_tx(tx: Transaction, callee: Account, is_success: bool):
         tx_table=set(tx.table_assignments()),
         bytecode_table=set(callee.code.table_assignments()),
         rw_table=set(rw_dictionary.rws),
-        copy_circuit = copy_table,
-        keccak_table = keccak_table,
+        copy_circuit=copy_table,
+        keccak_table=keccak_table,
     )
 
     verify_steps(
