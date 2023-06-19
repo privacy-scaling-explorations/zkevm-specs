@@ -25,7 +25,7 @@ shared among all of them. It contains the following circuits:
  - [x] Copy Table
  - [x] Block Table
 
-The following diagram shows the relation between this circuits and tables:
+The following diagram shows the relation between these circuits and tables:
 ![](./super_circuit.png)
 
 **Note**: There are some smaller sub-circuits, like the ECDSA circuit and opcode related
@@ -34,6 +34,6 @@ Circuits, so they are not shown in the diagram for clarity.
 
 Putting together all sub-circuits in one allows them to easily make lookups to whatever table is
 necessary without the need of having them copied. The main drawback is that the Super Circuit proof
-is very large, and therefore its verification its costly. To alleviate this problem a new circuit is
+is very large, and therefore its verification is costly. To alleviate this problem a new circuit is
 introduced: the Root Circuit, whose function is to verify the Super Circuit proof, generating a much
 smaller proof which is cheaper to verify.

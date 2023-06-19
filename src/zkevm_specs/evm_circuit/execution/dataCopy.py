@@ -9,10 +9,12 @@ from ...util import FQ, IdentityBaseGas, IdentityPerWordGas
 
 
 def dataCopy(instruction: Instruction):
+    address_word = instruction.call_context_lookup_word(CallContextFieldTag.CalleeAddress)
+    address = instruction.word_to_address(address_word)
     instruction.fixed_lookup(
         FixedTableTag.PrecompileInfo,
         FQ(instruction.curr.execution_state),
-        instruction.call_context_lookup(CallContextFieldTag.CalleeAddress, RW.Read),
+        address,
         FQ(IdentityBaseGas),
     )
 
@@ -27,7 +29,7 @@ def dataCopy(instruction: Instruction):
     )
 
     # Copy current call data to return data
-    size = call_data_length.expr()
+    size = call_data_length
 
     gas_cost = FQ(IdentityBaseGas) + instruction.memory_copier_gas_cost(
         call_data_length, FQ(0), IdentityPerWordGas
@@ -39,9 +41,9 @@ def dataCopy(instruction: Instruction):
         caller_id,
         CopyDataTypeTag.Memory,
         call_data_offset,
-        call_data_offset + size,
+        call_data_offset.expr() + size,
         return_data_offset,
-        return_data_offset + return_data_length.expr(),
+        return_data_offset.expr() + return_data_length,
         instruction.curr.rw_counter + instruction.rw_counter_offset,
     )
 
@@ -52,12 +54,12 @@ def dataCopy(instruction: Instruction):
         instruction.curr.call_id,
         CopyDataTypeTag.Memory,
         call_data_offset,
-        call_data_offset + size,
+        call_data_offset.expr() + size,
         FQ(0),
         return_data_length,
         instruction.curr.rw_counter + instruction.rw_counter_offset + copy_rwc_inc,
     )
-    instruction.rw_counter_offset += 4 * int(size)
+    instruction.rw_counter_offset += 4 * int(size.expr())
 
     # Restore caller state to next StepState
     instruction.step_state_transition_to_restored_context(

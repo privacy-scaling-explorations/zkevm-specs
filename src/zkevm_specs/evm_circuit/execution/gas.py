@@ -1,4 +1,4 @@
-from ...util import N_BYTES_GAS
+from ...util import Word
 from ..instruction import Instruction, Transition
 from ..opcode import Opcode
 
@@ -7,12 +7,9 @@ def gas(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
     instruction.constrain_equal(opcode, Opcode.GAS)
 
-    # fetch gas from rw table and consider only the lower 8 bytes (uint64)
-    gas = instruction.rlc_to_fq(instruction.stack_push(), N_BYTES_GAS)
-
-    instruction.constrain_equal(
-        gas,
-        instruction.curr.gas_left - Opcode.GAS.constant_gas_cost(),
+    instruction.constrain_equal_word(
+        Word.from_lo(instruction.curr.gas_left - Opcode.GAS.constant_gas_cost()),
+        instruction.stack_push(),
     )
 
     instruction.step_state_transition_in_same_context(

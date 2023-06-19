@@ -1,10 +1,6 @@
 from zkevm_specs.evm_circuit.util.call_gadget import CallGadget
 from zkevm_specs.util.param import N_BYTES_GAS
-from ...util import (
-    FQ,
-    GAS_STIPEND_CALL_WITH_VALUE,
-    RLC,
-)
+from ...util import FQ, GAS_STIPEND_CALL_WITH_VALUE, Word, WordOrValue
 from ..instruction import Instruction, Transition
 from ..opcode import Opcode
 from ..table import RW, CallContextFieldTag, AccountFieldTag
@@ -22,19 +18,23 @@ def callop(instruction: Instruction):
 
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
     reversion_info = instruction.reversion_info()
-    caller_address = instruction.call_context_lookup(CallContextFieldTag.CalleeAddress)
+    ctx_caller_address_word = instruction.call_context_lookup_word(
+        CallContextFieldTag.CalleeAddress
+    )
+    ctx_caller_address = instruction.word_to_address(ctx_caller_address_word)
     is_static = instruction.select(
         is_staticcall, FQ(1), instruction.call_context_lookup(CallContextFieldTag.IsStatic)
     )
     depth = instruction.call_context_lookup(CallContextFieldTag.Depth)
-    parent_caller_address, parent_call_value = (
+    parent_caller_address_word, parent_call_value = (
         (
-            instruction.call_context_lookup(CallContextFieldTag.CallerAddress),
-            instruction.call_context_lookup(CallContextFieldTag.Value),
+            instruction.call_context_lookup_word(CallContextFieldTag.CallerAddress),
+            instruction.call_context_lookup_word(CallContextFieldTag.Value),
         )
         if is_delegatecall == 1
-        else (RLC(0), RLC(0))
+        else (Word(0), Word(0))
     )
+    parent_caller_address = instruction.word_to_address(parent_caller_address_word)
 
     # Verify depth is less than 1024
     instruction.range_lookup(depth, 1024)
@@ -48,9 +48,13 @@ def callop(instruction: Instruction):
     # - caller_address = parent_caller_address
     #
     callee_address = instruction.select(
-        is_callcode + is_delegatecall, caller_address, call.callee_address
+        is_callcode + is_delegatecall, ctx_caller_address, call.callee_address
     )
-    caller_address = instruction.select(is_delegatecall, parent_caller_address, caller_address)
+    callee_address_word = instruction.address_to_word(callee_address)
+    caller_address_word = instruction.select_word(
+        is_delegatecall, parent_caller_address_word, ctx_caller_address_word
+    )
+    caller_address = instruction.word_to_address(caller_address_word)
 
     # Add `callee_address` to access list
     is_warm_access = instruction.add_account_to_access_list(
@@ -87,7 +91,7 @@ def callop(instruction: Instruction):
     elif is_callcode == 1:
         # For CALLCODE opcode, get caller balance to constrain it should be
         # greater than or equal to stack `value`.
-        caller_balance = instruction.account_read(caller_address, AccountFieldTag.Balance)
+        caller_balance = instruction.account_read_word(caller_address, AccountFieldTag.Balance)
 
     # For both CALL and CALLCODE opcodes, verify caller balance is greater than
     # or equal to stack `value`.
@@ -155,7 +159,7 @@ def callop(instruction: Instruction):
             call_id=Transition.same(),
             is_root=Transition.same(),
             is_create=Transition.same(),
-            code_hash=Transition.same(),
+            code_hash=Transition.same_word(),
         )
     else:
         # Similar as above comment.
@@ -183,19 +187,19 @@ def callop(instruction: Instruction):
 
         # Setup next call's context. Note that RwCounterEndOfReversion, IsPersistent
         # have been checked above.
-        for field_tag, expected_value in [
+        for field_tag, expected_word_or_value in [
             (CallContextFieldTag.CallerId, instruction.curr.call_id),
             (CallContextFieldTag.TxId, tx_id.expr()),
             (CallContextFieldTag.Depth, depth.expr() + 1),
-            (CallContextFieldTag.CallerAddress, caller_address.expr()),
-            (CallContextFieldTag.CalleeAddress, callee_address.expr()),
+            (CallContextFieldTag.CallerAddress, caller_address_word),
+            (CallContextFieldTag.CalleeAddress, callee_address_word),
             (CallContextFieldTag.CallDataOffset, call.cd_offset),
             (CallContextFieldTag.CallDataLength, call.cd_length),
             (CallContextFieldTag.ReturnDataOffset, call.rd_offset),
             (CallContextFieldTag.ReturnDataLength, call.rd_length),
             (
                 CallContextFieldTag.Value,
-                instruction.select(is_delegatecall, parent_call_value.expr(), call.value.expr()),
+                instruction.select_word(is_delegatecall, parent_call_value, call.value),
             ),
             (CallContextFieldTag.IsSuccess, call.is_success),
             (CallContextFieldTag.IsStatic, is_static.expr()),
@@ -206,9 +210,12 @@ def callop(instruction: Instruction):
             (CallContextFieldTag.IsCreate, FQ(False)),
             (CallContextFieldTag.CodeHash, call.callee_code_hash),
         ]:
-            instruction.constrain_equal(
-                instruction.call_context_lookup(field_tag, call_id=callee_call_id),
-                expected_value,
+            assert isinstance(expected_word_or_value, FQ) or isinstance(
+                expected_word_or_value, Word
+            )
+            instruction.constrain_equal_word(
+                instruction.call_context_lookup_word(field_tag, call_id=callee_call_id),
+                WordOrValue(expected_word_or_value),
             )
 
         # Give gas stipend if value is not zero
@@ -219,7 +226,7 @@ def callop(instruction: Instruction):
             call_id=Transition.to(callee_call_id),
             is_root=Transition.to(False),
             is_create=Transition.to(False),
-            code_hash=Transition.to(call.callee_code_hash),
+            code_hash=Transition.to_word(call.callee_code_hash),
             gas_left=Transition.to(callee_gas_left),
             reversible_write_counter=Transition.to(2),
             log_id=Transition.same(),

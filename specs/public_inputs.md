@@ -117,7 +117,7 @@ synchronize the State Trie.
 ## Data to synchronize the State Trie
 
 In order to synchronize the State Trie after a new block (assuming we have the state
-of the previous block), we need the at least the following data:
+of the previous block), we need at least the following data:
 
 - For each tx
     - GasPrice: 256 bits
@@ -188,7 +188,7 @@ later be "uncompressed" (opened) from a contract.
 
 The commitment defined in EIP 4844 uses a different field than our circuits, so
 opening it in a circuit is very expensive.  Instead, we must prove the equivalence
-of the committed raw public inputs (outisde of the circuits) with the witnessed
+of the committed raw public inputs (outside of the circuits) with the witnessed
 raw public inputs (inside the circuits), with the help of the PublicInputs
 circuit.
 
@@ -220,7 +220,7 @@ Notes:
 - With this approach, once we cross the `Aggregation0` circuit, the verification cost of each proof is independent of the "real" number of public inputs (i.e. the number of transactions, the size of call data, the number of block fields, etc.)
 - Calculating an RLC of values in a contract is cheap (it just needs `MULMOD`, `ADDMOD`)
 
-The following diagram shows the the public input approach using the RLC shortcut:
+The following diagram shows the public input approach using the RLC shortcut:
 
 ![](./public_inputs.rev1.png)
 

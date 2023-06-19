@@ -14,8 +14,8 @@ from zkevm_specs.evm_circuit import (
     Bytecode,
     RWDictionary,
 )
-from zkevm_specs.util import RLC, EMPTY_CODE_HASH, U64
-from common import rand_fq, rand_address, rand_range, rand_word
+from zkevm_specs.util import Word, EMPTY_CODE_HASH, U64
+from common import rand_address, rand_range, rand_word
 
 RETURN_BYTECODE = Bytecode().return_(0, 0)
 REVERT_BYTECODE = Bytecode().revert(0, 0)
@@ -158,8 +158,6 @@ TESTING_DATA = (
 
 @pytest.mark.parametrize("tx, callee, is_success", TESTING_DATA)
 def test_begin_tx(tx: Transaction, callee: Account, is_success: bool):
-    randomness = rand_fq()
-
     is_tx_valid = 1 - tx.invalid_tx
     rw_counter_end_of_reversion = 24
     caller_nonce_prev = 0
@@ -172,7 +170,7 @@ def test_begin_tx(tx: Transaction, callee: Account, is_success: bool):
     )
     callee_balance = callee_balance_prev + tx.value if is_tx_valid else callee_balance_prev
 
-    bytecode_hash = RLC(callee.code_hash(), randomness)
+    bytecode_hash = Word(callee.code_hash())
 
     # fmt: off
     rw_dictionary = (
@@ -184,18 +182,18 @@ def test_begin_tx(tx: Transaction, callee: Account, is_success: bool):
         .account_write(tx.caller_address, AccountFieldTag.Nonce, caller_nonce_prev + is_tx_valid, caller_nonce_prev)
         .tx_access_list_account_write(tx.id, tx.caller_address, True, False)
         .tx_access_list_account_write(tx.id, tx.callee_address, True, False)
-        .account_write(tx.caller_address, AccountFieldTag.Balance, RLC(caller_balance, randomness), RLC(caller_balance_prev, randomness), rw_counter_of_reversion=None if is_success else rw_counter_end_of_reversion)
-        .account_write(tx.callee_address, AccountFieldTag.Balance, RLC(callee_balance, randomness), RLC(callee_balance_prev, randomness), rw_counter_of_reversion=None if is_success else rw_counter_end_of_reversion - 1)
+        .account_write(tx.caller_address, AccountFieldTag.Balance, Word(caller_balance), Word(caller_balance_prev), rw_counter_of_reversion=None if is_success else rw_counter_end_of_reversion)
+        .account_write(tx.callee_address, AccountFieldTag.Balance, Word(callee_balance), Word(callee_balance_prev), rw_counter_of_reversion=None if is_success else rw_counter_end_of_reversion - 1)
         .account_read(tx.callee_address, AccountFieldTag.CodeHash, bytecode_hash)
     )
     if callee.code_hash() != EMPTY_CODE_HASH and is_tx_valid == 1:
         rw_dictionary \
         .call_context_read(1, CallContextFieldTag.Depth, 1) \
-        .call_context_read(1, CallContextFieldTag.CallerAddress, tx.caller_address) \
-        .call_context_read(1, CallContextFieldTag.CalleeAddress, tx.callee_address) \
+        .call_context_read(1, CallContextFieldTag.CallerAddress, Word(tx.caller_address)) \
+        .call_context_read(1, CallContextFieldTag.CalleeAddress, Word(tx.callee_address)) \
         .call_context_read(1, CallContextFieldTag.CallDataOffset, 0) \
         .call_context_read(1, CallContextFieldTag.CallDataLength, len(tx.call_data)) \
-        .call_context_read(1, CallContextFieldTag.Value, RLC(tx.value, randomness)) \
+        .call_context_read(1, CallContextFieldTag.Value, Word(tx.value)) \
         .call_context_read(1, CallContextFieldTag.IsStatic, 0) \
         .call_context_read(1, CallContextFieldTag.LastCalleeId, 0) \
         .call_context_read(1, CallContextFieldTag.LastCalleeReturnDataOffset, 0) \
@@ -206,14 +204,13 @@ def test_begin_tx(tx: Transaction, callee: Account, is_success: bool):
     # fmt: on
 
     tables = Tables(
-        block_table=set(Block().table_assignments(randomness)),
-        tx_table=set(tx.table_assignments(randomness)),
-        bytecode_table=set(callee.code.table_assignments(randomness)),
+        block_table=set(Block().table_assignments()),
+        tx_table=set(tx.table_assignments()),
+        bytecode_table=set(callee.code.table_assignments()),
         rw_table=set(rw_dictionary.rws),
     )
 
     verify_steps(
-        randomness=randomness,
         tables=tables,
         steps=[
             StepState(

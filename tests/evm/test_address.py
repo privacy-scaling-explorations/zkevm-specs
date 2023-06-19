@@ -9,8 +9,8 @@ from zkevm_specs.evm_circuit import (
     Tables,
     verify_steps,
 )
-from zkevm_specs.util import RLC, U160
-from common import rand_address, rand_fq
+from zkevm_specs.util import Word, U160
+from common import rand_address
 
 TESTING_DATA = (
     0x00,
@@ -23,25 +23,22 @@ TESTING_DATA = (
 
 @pytest.mark.parametrize("address", TESTING_DATA)
 def test_address(address: U160):
-    randomness = rand_fq()
-
     bytecode = Bytecode().address()
-    bytecode_hash = RLC(bytecode.hash(), randomness)
+    bytecode_hash = Word(bytecode.hash())
 
     tables = Tables(
         block_table=set(),
         tx_table=set(),
-        bytecode_table=set(bytecode.table_assignments(randomness)),
+        bytecode_table=set(bytecode.table_assignments()),
         rw_table=set(
             RWDictionary(9)
-            .call_context_read(1, CallContextFieldTag.CalleeAddress, address)
-            .stack_write(1, 1023, RLC(address, randomness))
+            .call_context_read(1, CallContextFieldTag.CalleeAddress, Word(address))
+            .stack_write(1, 1023, Word(address))
             .rws
         ),
     )
 
     verify_steps(
-        randomness=randomness,
         tables=tables,
         steps=[
             StepState(

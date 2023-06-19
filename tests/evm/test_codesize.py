@@ -6,26 +6,22 @@ from zkevm_specs.evm_circuit import (
     Tables,
     verify_steps,
 )
-from zkevm_specs.util import RLC
-from common import rand_fq
+from zkevm_specs.util import Word
 
 
 def test_codesize():
-    randomness = rand_fq()
-
     bytecode = Bytecode().codesize().stop()
     codesize = len(bytecode.code)
-    bytecode_hash = RLC(bytecode.hash(), randomness)
+    bytecode_hash = Word(bytecode.hash())
 
     tables = Tables(
         block_table=set(),
         tx_table=set(),
-        bytecode_table=set(bytecode.table_assignments(randomness)),
-        rw_table=set(RWDictionary(9).stack_write(1, 1023, RLC(codesize, randomness)).rws),
+        bytecode_table=set(bytecode.table_assignments()),
+        rw_table=set(RWDictionary(9).stack_write(1, 1023, Word(codesize)).rws),
     )
 
     verify_steps(
-        randomness=randomness,
         tables=tables,
         steps=[
             StepState(

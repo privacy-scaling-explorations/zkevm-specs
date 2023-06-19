@@ -7,13 +7,21 @@ from zkevm_specs.pi_circuit import (
     Block,
     Transaction,
 )
-from zkevm_specs.util import FQ, U64, U256, U160
+from zkevm_specs.util import FQ, U64, U256, U160, WordOrValue, Word
 import random
 from random import randrange, randbytes
 
 random.seed(1234)
 randomness = FQ(randrange(FQ.field_modulus))
 rand_rpi = randomness  # Simulate a randomness for now
+
+
+def word(v: int) -> WordOrValue:
+    return WordOrValue(Word(v))
+
+
+def value(v: int) -> WordOrValue:
+    return WordOrValue(FQ(v))
 
 
 def verify(
@@ -149,7 +157,7 @@ def test_bad_rand_rpi_col():
 
 def test_bad_block_table():
     def override(witness):
-        witness.rows[5].block_table.value = FQ(123)
+        witness.rows[5].block_table.value = word(123)
 
     override_not_success(override)
 
@@ -170,7 +178,7 @@ def test_bad_tx_table_index():
 
 def test_bad_tx_table_value():
     def override(witness):
-        witness.rows[5].tx_table.value = FQ(123)
+        witness.rows[5].tx_table.value = word(123)
 
     override_not_success(override)
 
@@ -198,13 +206,13 @@ def test_bad_rand_rpi_chain_id_pub():
 
 def test_bad_rand_rpi_state_root_pub():
     def override(witness):
-        witness.public_inputs.state_root = FQ(123)
+        witness.public_inputs.state_root = word(123)
 
     override_not_success(override)
 
 
 def test_bad_rand_rpi_state_root_prev_pub():
     def override(witness):
-        witness.public_inputs.state_root_prev = FQ(123)
+        witness.public_inputs.state_root_prev = word(123)
 
     override_not_success(override)

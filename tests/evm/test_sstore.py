@@ -12,14 +12,14 @@ from zkevm_specs.evm_circuit import (
     RWDictionary,
 )
 from zkevm_specs.util import (
-    RLC,
+    Word,
     COLD_SLOAD_COST,
     SLOAD_GAS,
     SSTORE_SET_GAS,
     SSTORE_RESET_GAS,
     SSTORE_CLEARS_SCHEDULE,
 )
-from common import rand_fq, rand_address
+from common import rand_address
 
 
 def gen_test_cases():
@@ -89,15 +89,13 @@ def test_sstore(
     warm: bool,
     is_success: bool,
 ):
-    randomness = rand_fq()
-
     storage_key = int.from_bytes(storage_key_be_bytes, "big")
     value = int.from_bytes(value_be_bytes, "big")
     value_prev = int.from_bytes(value_prev_be_bytes, "big")
     value_committed = int.from_bytes(original_value_be_bytes, "big")
 
     bytecode = Bytecode().push32(storage_key_be_bytes).push32(value_be_bytes).sstore().stop()
-    bytecode_hash = RLC(bytecode.hash(), randomness)
+    bytecode_hash = Word(bytecode.hash())
 
     if value_prev == value:
         expected_gas_cost = SLOAD_GAS
@@ -131,9 +129,9 @@ def test_sstore(
                     gas_refund = gas_refund + SSTORE_RESET_GAS - SLOAD_GAS
 
     tables = Tables(
-        block_table=set(Block().table_assignments(randomness)),
-        tx_table=set(tx.table_assignments(randomness)),
-        bytecode_table=set(bytecode.table_assignments(randomness)),
+        block_table=set(Block().table_assignments()),
+        tx_table=set(tx.table_assignments()),
+        bytecode_table=set(bytecode.table_assignments()),
         rw_table=set(
             # fmt: off
             RWDictionary(1)
@@ -141,11 +139,11 @@ def test_sstore(
             .call_context_read(1, CallContextFieldTag.IsStatic, 0)
             .call_context_read(1, CallContextFieldTag.RwCounterEndOfReversion, 0 if is_success else 14)
             .call_context_read(1, CallContextFieldTag.IsPersistent, is_success)
-            .call_context_read(1, CallContextFieldTag.CalleeAddress, tx.callee_address)
-            .stack_read(1, 1022, RLC(storage_key, randomness))
-            .stack_read(1, 1023, RLC(value, randomness))
-            .account_storage_write(tx.callee_address, RLC(storage_key, randomness), RLC(value, randomness), RLC(value_prev, randomness), tx.id, RLC(value_committed, randomness), rw_counter_of_reversion=None if is_success else 14)
-            .tx_access_list_account_storage_write(tx.id, tx.callee_address, RLC(storage_key, randomness), 1, 1 if warm else 0, rw_counter_of_reversion=None if is_success else 13)
+            .call_context_read(1, CallContextFieldTag.CalleeAddress, Word(tx.callee_address))
+            .stack_read(1, 1022, Word(storage_key))
+            .stack_read(1, 1023, Word(value))
+            .account_storage_write(tx.callee_address, Word(storage_key), Word(value), Word(value_prev), tx.id, Word(value_committed), rw_counter_of_reversion=None if is_success else 14)
+            .tx_access_list_account_storage_write(tx.id, tx.callee_address, Word(storage_key), True, True if warm else False, rw_counter_of_reversion=None if is_success else 13)
             .tx_refund_write(tx.id, gas_refund, gas_refund_prev, rw_counter_of_reversion=None if is_success else 12)
             .rws
             # fmt: on
@@ -153,7 +151,6 @@ def test_sstore(
     )
 
     verify_steps(
-        randomness=randomness,
         tables=tables,
         steps=[
             StepState(

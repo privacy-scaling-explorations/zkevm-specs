@@ -85,13 +85,14 @@ class ExecutionState(IntEnum):
     ErrorStack = auto()
     # For SSTORE, LOG0, LOG1, LOG2, LOG3, LOG4, CREATE, CALL, CREATE2, SELFDESTRUCT
     ErrorWriteProtection = auto()
-    # For CALL, CALLCODE, DELEGATECALL, STATICCALL
+    # For CALL, CALLCODE, DELEGATECALL, STATICCALL, CREATE
     ErrorDepth = auto()
-    # For CALL, CALLCODE
+    # For CALL, CALLCODE, CREATE
     ErrorInsufficientBalance = auto()
     # For CREATE, CREATE2
     ErrorContractAddressCollision = auto()
     ErrorInvalidCreationCode = auto()
+    ErrorNonceUintOverflow = auto()
     # For opcode RETURN which needs to store code when it's is creation
     ErrorMaxCodeSizeExceeded = auto()
     # For JUMP, JUMPI
@@ -104,7 +105,7 @@ class ExecutionState(IntEnum):
     ErrorOutOfGasStaticMemoryExpansion = auto()
     # For opcodes CREATE, RETURN, REVERT, which have dynamic size memory expansion gas cost
     ErrorOutOfGasDynamicMemoryExpansion = auto()
-    # For opcode CALLDATACOPY, CODECOPY, RETURNDATACOPY, which copies a specified chunk of memory
+    # For opcode CALLDATACOPY, CODECOPY, EXTCODECOPY, RETURNDATACOPY, which copies a specified chunk of memory
     ErrorOutOfGasMemoryCopy = auto()
     # For opcodes BALANCE, EXTCODESIZE, EXTCODEHASH, which possibly touches an extra account
     ErrorOutOfGasAccountAccess = auto()
@@ -115,7 +116,6 @@ class ExecutionState(IntEnum):
     # For opcodes which have their own gas calculation
     ErrorOutOfGasEXP = auto()
     ErrorOutOfGasSHA3 = auto()
-    ErrorOutOfGasEXTCODECOPY = auto()
     ErrorOutOfGasSloadSstore = auto()
     # For CALL, CALLCODE, DELEGATECALL and STATICCALL opcodes which may run out of gas.
     ErrorOutOfGasCall = auto()
@@ -387,7 +387,6 @@ class ExecutionState(IntEnum):
             ExecutionState.ErrorOutOfGasLOG,
             ExecutionState.ErrorOutOfGasEXP,
             ExecutionState.ErrorOutOfGasSHA3,
-            ExecutionState.ErrorOutOfGasEXTCODECOPY,
             ExecutionState.ErrorOutOfGasSloadSstore,
             ExecutionState.ErrorOutOfGasCall,
             ExecutionState.ErrorOutOfGasCREATE2,

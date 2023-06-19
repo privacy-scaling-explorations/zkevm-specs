@@ -79,6 +79,8 @@ GAS_STIPEND_CALL_WITH_VALUE = 2300
 GAS_COST_ACCESS_LIST_ADDRESS = 2400
 # Gas cost of warming up a storage with the access list
 GAS_COST_ACCESS_LIST_STORAGE = 1900
+# Gas cost of storing a byte of bytecode at contract creation
+GAS_COST_CODE_DEPOSIT = 200
 
 
 # Quotient for max refund of gas used
@@ -106,9 +108,15 @@ SSTORE_CLEARS_SCHEDULE = 4800
 # of cells in a step
 MAX_COPY_BYTES = 32
 
+# max bytecode size, 24576 bytes
+MAX_CODE_SIZE = 24576
+
+# Maximum depth of call/create stack
+CALL_CREATE_DEPTH = 1024
+
 # PublicInputs circuit parameters
-PUBLIC_INPUTS_BLOCK_LEN = 7 + 256  # Length of block public data
-PUBLIC_INPUTS_EXTRA_LEN = 3  # Length of fields that don't belong to any table
+PUBLIC_INPUTS_BLOCK_LEN = (7 + 256) * 2  # Length of block public data
+PUBLIC_INPUTS_EXTRA_LEN = 3 * 2  # Length of fields that don't belong to any table
 PUBLIC_INPUTS_TX_LEN = 10  # Length of tx public data (without calldata)
 
 

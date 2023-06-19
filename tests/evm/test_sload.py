@@ -11,8 +11,8 @@ from zkevm_specs.evm_circuit import (
     Bytecode,
     RWDictionary,
 )
-from zkevm_specs.util import RLC, COLD_SLOAD_COST, WARM_STORAGE_READ_COST
-from common import rand_fq, rand_address
+from zkevm_specs.util import Word, COLD_SLOAD_COST, WARM_STORAGE_READ_COST
+from common import rand_address
 
 
 TESTING_DATA = (
@@ -45,30 +45,28 @@ TESTING_DATA = (
 
 @pytest.mark.parametrize("tx, storage_key_be_bytes, warm, is_persistent", TESTING_DATA)
 def test_sload(tx: Transaction, storage_key_be_bytes: bytes, warm: bool, is_persistent: bool):
-    randomness = rand_fq()
-
-    storage_key = RLC(bytes(reversed(storage_key_be_bytes)), randomness)
+    storage_key = Word(bytes(reversed(storage_key_be_bytes)))
 
     bytecode = Bytecode().push32(storage_key_be_bytes).sload().stop()
-    bytecode_hash = RLC(bytecode.hash(), randomness)
+    bytecode_hash = Word(bytecode.hash())
 
-    value = RLC(2, randomness)
-    value_committed = RLC(0, randomness)
+    value = Word(2)
+    value_committed = Word(0)
 
     rw_counter_end_of_reversion = 19
     reversible_write_counter = 3
 
     tables = Tables(
-        block_table=set(Block().table_assignments(randomness)),
-        tx_table=set(tx.table_assignments(randomness)),
-        bytecode_table=set(bytecode.table_assignments(randomness)),
+        block_table=set(Block().table_assignments()),
+        tx_table=set(tx.table_assignments()),
+        bytecode_table=set(bytecode.table_assignments()),
         rw_table=set(
             # fmt: off
             RWDictionary(9)
             .call_context_read(1, CallContextFieldTag.TxId, tx.id)
             .call_context_read(1, CallContextFieldTag.RwCounterEndOfReversion, 0 if is_persistent else rw_counter_end_of_reversion)
             .call_context_read(1, CallContextFieldTag.IsPersistent, is_persistent)
-            .call_context_read(1, CallContextFieldTag.CalleeAddress, tx.callee_address)
+            .call_context_read(1, CallContextFieldTag.CalleeAddress, Word(tx.callee_address))
             .stack_read(1, 1023, storage_key)
             .account_storage_read(tx.callee_address, storage_key, value, tx.id, value_committed)
             .stack_write(1, 1023, value)
@@ -79,7 +77,6 @@ def test_sload(tx: Transaction, storage_key_be_bytes: bytes, warm: bool, is_pers
     )
 
     verify_steps(
-        randomness=randomness,
         tables=tables,
         steps=[
             StepState(
