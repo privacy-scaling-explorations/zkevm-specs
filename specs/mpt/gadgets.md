@@ -243,19 +243,66 @@ computed using the drifted leaf key and the value RLC (`leaf_no_key_rlc`):
 
 ## WrongGadget
 
-When `NonExistingAccountProof` or `NonExistingStorageProof`
-proof type we can have two subtypes: with a wrong leaf and without a wrong leaf.
-Without wrong leaf proof contains only branches and a placeholder leaf.
-In this case, it is checked that there is nil in the parent branch
-at the proper position. Note that we need an (placeholder) account
-leaf for lookups and to know when to check that parent branch has a nil.
+`WrongGadget` is used to prove that there is no leaf at the specified address (for an account leaf)
+or key (for storage leaf).
 
-<!--
-In `is_wrong_leaf is bool` we only check that `is_wrong_leaf` is a boolean values.
-Other wrong leaf related constraints are in other gates.
+When proving there is no leaf, there are two proof types:
+    1. A leaf is returned by `getProof` that is not at the required address (we call this a wrong leaf).
+    This happens when traversing through branches and there is a leaf in the last branch at the same nibble
+    as the nibble in the required address, but the following nibbles are different - adding a leaf at this
+    position would result in having a new branch with the old (wrong) leaf and the newly added.
+    2. A branch is the last element of `getProof` response and there is a nil object
+    at the next nibble (placeholder leaf is added).
+    `WrongGadget` is not needed in this case.
+    We just need to prove that the branch contains nil object at the enquired address.
 
-`is_wrong_leaf` can be set to 1 only when the proof is not non_existing_account proof.
--->
+`WrongGadget` constructor takes the following fields:
+```
+pub(crate) fn construct(
+    cb: &mut MPTConstraintBuilder<F>,
+    expected_address: Expression<F>,
+    is_non_existing: Expression<F>,
+    key_value: &RLPItemView<F>,
+    key_rlc: &Expression<F>,
+    wrong_item: &RLPItemView<F>,
+    is_in_empty_tree: Expression<F>,
+    key_data: KeyData<F>,
+    r: &Expression<F>,
+)
+```
+
+### Constraints
+
+The `wrong_item` field holds the address / key (the nibbles that remain
+after the nibbles used for traversing through the branches are removed) that was enquired.
+The `expected_address` field contains the RLC of the address that was enquired.
+
+The value `key_rlc_wrong` is computed using `key_data.rlc` and `wrong_item`.
+It needs to be the same as the required address:
+```
+key_rlc_wrong = expected_address
+```
+
+The field `key_rlc` contains the key RLC of the (wrong) leaf that was returned by `getProof`.
+It needs to be different than the expected address. For this reason, `IsEqualGadget is instantiated:
+```
+config.is_key_equal = IsEqualGadget::construct(
+    &mut cb.base,
+    key_rlc.expr(),
+    expected_address,
+);
+```
+
+And the constraint should ensure that the two addresses are different:
+```
+config.is_key_equal = false
+```
+
+Finally, it needs to be ensured that the lengths of the wrong address and the enquired address
+are the same:
+```
+config.wrong_rlp_key.key_value.len() = key_value.len()
+```
 
 
 
