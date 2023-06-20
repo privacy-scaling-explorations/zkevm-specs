@@ -38,11 +38,11 @@ NOTE:
 
 ## `rw_table`
 
-There are 10 columns in `rw_table`.
+There are 14 columns in `rw_table`.
  - col. 0 (*Rwc*) is the read-write counter. 32 bits, starts at 1.
  - col. 1 (*IsWrite*) specify this row is for `read` or `write`.
- - col. 2 (*Tag*) is a tag for different contexts. The content for different *Tag*s are in col. 3 ~ col. 10.
- - col. 3 ~ 10 are the content for different *`Tag`* specified in col. 2 accordingly.
+ - col. 2 (*Tag*) is a tag for different contexts. The content for different *Tag*s are in col. 3 ~ col. 13.
+ - col. 3 ~ 13 are the content for different *`Tag`* specified in col. 2 accordingly.
     - col. 3 *Id*
         - **txID**: 32 bits, starts at 1 (corresponds to `txIndex + 1`).
         - **callID**: 32 bits, starts at 1 (corresponds to `rw_counter` when the call begins).
@@ -57,13 +57,12 @@ There are 10 columns in `rw_table`.
         - For *Tag* **TxReceipt**:
             - **PostStateOrStatus**: 8 bits
             - **CumulativeGasUsed**: 64 bits
-    - col. 6 *StorageKey* is field size and reserved for RLC encoded (Random Linear Combination) values
-    - col. 7 *value* and col. 8 *initialValue*: variable size, depending on Tag (key0) and FieldTag (key3) where appropriate.
+    - cols. {6,7} *StorageKey* is a Word and reserved for values
+    - cols. {8,9} *value*, {10,11} *valuePrev*, {12,13} *initVal*, variable size, depending on Tag (key0) and FieldTag (key3) where appropriate.
         - (*value*) For *Tag* **Memory**: 8 bits
         - (*value*) For *Tag* **TxLog**: 8 bits
-            - For *FieldTag* **Topic**: field size, RLC encoded (Random Linear Combination).
-            - For *FieldTag* **Data**: 8 bits
-    - col. 9 *root*: RLC encoded MPT state root.
+            - For *FieldTag* **Topic**: field size.
+            - For *FieldTag* **Data**: 8 bits.
 
 The correctness of the rw_table is validated in the state circuit.
 > - **CallContext constant**: read-only data in a call, usually checked with the
@@ -77,8 +76,6 @@ The correctness of the rw_table is validated in the state circuit.
 
 
 NOTE: `kN` means `keyN`
-
-DELETEME: Review note: Removed aux1 and aux2 and instead added InitialValue which corresponds to the current usage and has a more meaningful name.
 
 | 0 *Rwc*  | 1 *IsWrite* | 2 *Tag* k0                 | 3 *Id* k1 | 4 *Address* k2     | 5 *FieldTag* k3            | 6,7 *StoKey{Lo,Hi}* k4,k5 | 7,8 *Val{Lo,Hi}* | 9,10 *ValPrev{Lo,Hi}* | 11,12 *InitVal{Lo,Hi}* |
 | -------- | ----------- | -------------------------- | --------  | --------           | -------------------------- | ------------------------- | ---------------- | --------------------- | ---------------------- |
