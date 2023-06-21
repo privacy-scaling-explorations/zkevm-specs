@@ -1,7 +1,7 @@
 from ..instruction import Instruction
 
 
-def stack_error(instruction: Instruction):
+def error_stack(instruction: Instruction):
     # retrieve op code associated to stack error
     opcode = instruction.opcode_lookup(True)
     instruction.responsible_opcode_lookup(opcode, instruction.curr.stack_pointer)

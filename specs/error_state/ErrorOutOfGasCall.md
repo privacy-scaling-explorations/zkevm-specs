@@ -31,7 +31,7 @@ gas_cost = (
 1. `gas_left < gas_cost`.
 2. Current call must be failed.
 3. If it's a root call, it transits to `EndTx`.
-4. if it is not root call, it restores caller's context by reading to `rw_table`, then does step state transition to it.
+4. If it is not root call, it restores caller's context by reading to `rw_table`, then does step state transition to it.
 
 ## Code
 

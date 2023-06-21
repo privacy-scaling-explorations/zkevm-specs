@@ -1,6 +1,6 @@
 from ..instruction import Instruction, Transition
 from ..table import CallContextFieldTag, RW, CopyDataTypeTag
-from zkevm_specs.util import N_BYTES_MEMORY_SIZE
+from zkevm_specs.util import N_BYTES_MEMORY_WORD_SIZE
 
 
 def returndatacopy(instruction: Instruction):
@@ -24,7 +24,7 @@ def returndatacopy(instruction: Instruction):
     instruction.range_check(
         return_data_length
         - (instruction.word_to_fq(offset_word, 8) + instruction.word_to_fq(size_word, 8)),
-        N_BYTES_MEMORY_SIZE,
+        N_BYTES_MEMORY_WORD_SIZE,
     )
 
     memory_offset, size = instruction.memory_offset_and_length(memory_offset_word, size_word)
