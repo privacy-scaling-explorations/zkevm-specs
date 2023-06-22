@@ -220,10 +220,6 @@ Notes:
 - With this approach, once we cross the `Aggregation0` circuit, the verification cost of each proof is independent of the "real" number of public inputs (i.e. the number of transactions, the size of call data, the number of block fields, etc.)
 - Calculating an RLC of values in a contract is cheap (it just needs `MULMOD`, `ADDMOD`)
 
-The following diagram shows the public input approach using the RLC shortcut:
-
-![](./public_inputs.rev1.png)
-
 ## Verify a KZG BLS commitment inside a circuit
 
 Here's a proposal to prove that the commitment using KZG with a BLS curve (as
@@ -291,3 +287,7 @@ to calculate the block hash in a circuit, so we will need to extend the block
 fields to match every field found in the block header.
 
 Please refer to `src/zkevm-specs/public_inputs.py`.
+
+> Deprecated: the following diagram shows the OLD design of public input approach using the RLC shortcut.
+
+![](./public_inputs_deprecated.rev1.png)
