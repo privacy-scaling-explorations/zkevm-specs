@@ -10,7 +10,7 @@ When handling a contract creation transaction, bytecodes to initialize are run a
 
 In bus-mapping, when the executing opcode is RETURN and the current call context is CREATE, check if the first byte of contract code is 0xEF to identify this error.
 
-Even though this error occurs in CREATE or CREATE2, it should be better to constrain it in the RETURN opcode. Since it is easy to get the available memory length and construct constraints with it.
+Even though this error occurs in CREATE or CREATE2, this error should be constrained in the RETURN opcode. Since it is easy to get the available memory length and construct constraints with it.
 
 Overall it looks as the following:
 
