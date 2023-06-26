@@ -11,25 +11,25 @@ The circuit checks the transition from `val1` to `val2` at `key1` that led to th
 of trie root from `root1` to `root2`.
 
 Similarly, MPT circuit can prove that `nonce`, `balance`, or `codehash` has been changed at
-a particular address. But also, the circuit can prove that at a particular address no account exists
-(`NonExistingAccountProof`), that at particular storage key no value is stored `NonExistingStorageProof`,
-or that at a particular address an account has been deleted.
+a particular address. But also, the circuit can prove that at the particular address no account exists
+(`AccountDoesNotExist` proof), that at the particular storage key no value is stored (`StorageDoesNotExist` proof),
+or that at the particular address an account has been deleted.
 
 The circuit exposes a table which looks like:
 
 | Address | ProofType               | Key  | ValuePrev     | Value        | RootPrev  | Root  |
 | ------- | ----------------------- | ---- | ------------- | ------------ | --------- | ----- |
-| $addr   | NonceMod                | 0    | $noncePrev    | $nonceCur    | $rootPrev | $root |
-| $addr   | BalanceMod              | 0    | $balancePrev  | $balanceCur  | $rootPrev | $root |
-| $addr   | CodeHashMod             | 0    | $codeHashPrev | $codeHashCur | $rootPrev | $root |
-| $addr   | NonExistingAccountProof | 0    | 0             | 0            | $root     | $root |
-| $addr   | AccountDeleteMod        | 0    | 0             | 0            | $rootPrev | $root |
-| $addr   | StorageMod              | $key | $valuePrev    | $value       | $rootPrev | $root |
-| $addr   | NonExistingStorageProof | $key | 0             | 0            | $root     | $root |
+| $addr   | NonceChanged            | 0    | $noncePrev    | $nonceCur    | $rootPrev | $root |
+| $addr   | BalanceChanged          | 0    | $balancePrev  | $balanceCur  | $rootPrev | $root |
+| $addr   | CodeHashExists             | 0    | $codeHashPrev | $codeHashCur | $rootPrev | $root |
+| $addr   | AccountDoesNotExist     | 0    | 0             | 0            | $root     | $root |
+| $addr   | AccountDestructed       | 0    | 0             | 0            | $rootPrev | $root |
+| $addr   | StorageChanged          | $key | $valuePrev    | $value       | $rootPrev | $root |
+| $addr   | StorageDoesNotExist     | $key | 0             | 0            | $root     | $root |
 
-Note that `StorageMod` proof also supports storage leaf creation and storage leaf deletion,
-`NonceMod` also supports account leaf creation with nonce value and the rest of fields set to default, and
-`BalanceMod` also supports account leaf creation with balance value and the rest of fields set to default.
+Note that `StorageChanged` proof also supports storage leaf creation and storage leaf deletion,
+`NonceChanged` also supports account leaf creation with nonce value and the rest of fields set to default, and
+`BalanceChanged` also supports account leaf creation with balance value and the rest of fields set to default.
 
 The proof returned by `eth getProof` looks like:
 
@@ -104,10 +104,40 @@ MPT circuit supports the following proofs:
 The constraints are grouped according to different trie node types:
  * Account leaf: [account-leaf.md](account-leaf.md)
  * Storage leaf: [storage-leaf.md](storage-leaf.md)
- * Branch and extension node: [branch.md](branch.md)
+ * Branch and extension node: [branch.md](extension_branch.md)
 
-Additionally, [there](rlp-gadget.md) is a RLP gadget for RLP constraints as all trie nodes are RLP
-encoded. To ensure the initial state is set properly, there is the [start gadget](start.md).
+There is a state machine `StateMachineConfig` that configures constraints for each of the nodes.
+```
+pub struct StateMachineConfig<F> {
+    is_start: Column<Advice>,
+    is_branch: Column<Advice>,
+    is_account: Column<Advice>,
+    is_storage: Column<Advice>,
+
+    start_config: StartConfig<F>,
+    branch_config: ExtensionBranchConfig<F>,
+    storage_config: StorageLeafConfig<F>,
+    account_config: AccountLeafConfig<F>,
+}
+```
+
+There are no explicitly written constraints to enforce which nodes can follow which nodes, but the proper sequence of nodes
+is implicitly implied by constraints for the total number of nibbles and constraints for hash of the node being included in the
+parent node. The only explicit constraint of this kind is in `account_leaf.rs` to prevent having two or more account leaves
+in the same proof:
+```
+config.main_data.is_below_account = false
+```
+A possible attack would be to have two storage proofs one after another (if there is not the whole proof, the total number of
+nibbles fails), but the probability is negligible as the second storage trie would need to hash to 0 as it would
+be compared to the first storage leaf which stores the default values (`parent_data.rlc = 0`).
+
+The lookups to be executed by other circuits are enabled only in the account and storage rows. Even when there is no leaf returned
+by `getProof` (for example for `AccountDestructed`), a placeholder leaf is added to the witness and the lookup is enabled
+there (with all the constraints needed to ensure the leaf is only a placeholder). 
+
+All nodes contain the array of RLP items (for example branch children for branch node) where the RLP encoding needs to be checked.
+For this reason, there is a [RLP gadget](rlp-gadget.md). To ensure the initial state is set properly, there is the [start gadget](start.md).
 
 ## Proof chaining
 
