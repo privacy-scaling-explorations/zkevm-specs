@@ -237,11 +237,100 @@ value_list_rlp_bytes[i][1] = nonce_items[i].num_bytes() + balance_items[i].num_b
 
 The key length and the value list length have to match the account length. Constraints:
 ```
-config.rlp_key[0].rlp_list.len() => config.rlp_key[0].key_value.num_bytes() + value_list_num_bytes
-config.rlp_key[1].rlp_list.len() => config.rlp_key[1].key_value.num_bytes() + value_list_num_bytes
+config.rlp_key[0].rlp_list.len() = config.rlp_key[0].key_value.num_bytes() + value_list_num_bytes
+config.rlp_key[1].rlp_list.len() = config.rlp_key[1].key_value.num_bytes() + value_list_num_bytes
 ```
 Note that here `config.rlp_key[i]` contains the key (and its RLP bytes), but also `list_rlp_bytes[i]`.
 `rlp_key[i].rlp_list.len()` returns `list_rlp_bytes[i][1]` (`108` and `101` in the above example).
+
+We then add a value to the dynamic lookup table that stores `key` data:
+```
+KeyData::store_defaults(cb, &ctx.memory[key_memory(is_s)]);
+```
+This sets the `key` data to `0` to be prepared for a storage proof (up until this point `key`
+was used for the address).
+When in the first storage proof node, the lookup will be executed to
+ensure that the key RLC is `0` (the key RLC is updated in each trie level).
+
+We add a value to the dynamic lookup table that stores `parent` data:
+```
+ParentData::store(
+    cb,
+    &ctx.memory[parent_memory(is_s)],
+    storage_rlc[is_s.idx()].expr(),
+    true.expr(),
+    false.expr(),
+    storage_rlc[is_s.idx()].expr(),
+);
+```
+When in the first storage proof node, the lookup will be executed to
+ensure that the first storage proof node hash is the same as the parent `rlc` 
+(which stores the storage trie root hash).
+
+Finally, we add a value to the dynamic table that stores `main` data:
+```
+MainData::store(
+    cb,
+    &ctx.memory[main_memory()],
+    [
+        config.main_data.proof_type.expr(),
+        true.expr(),
+        is_non_existing_account.expr(),
+        key_rlc[true.idx()].expr(),
+        config.main_data.root_prev.expr(),
+        config.main_data.root.expr(),
+    ],
+);
+```
+Note the `true` value as the second parameter which results into `is_below_account = 1`. This is to
+know that we are from now on in the storage proof (below account proof) and is used to prevent having
+two account proofs in a row.
+
+When `config.is_account_delete_mod = true` we need to make sure there is no account at the given
+address.
+There are two possible cases:
+- 1. Account leaf is deleted and there is a `nil` object in
+branch. In this case we have a placeholder leaf.
+- 2. Account leaf is deleted from a branch with two leaves, the remaining
+leaf moves one level up and replaces the branch. In this case we
+have a branch placeholder.
+
+Note that for the second case, the `drifted` gadget constraints ensure the proper transition.
+TODO: update the names when updated in the circuit
+```
+require!(or::expr([
+    config.is_in_empty_trie[false.idx()].expr(),
+    config.parent_data[false.idx()].is_placeholder.expr()
+]) => true);
+```
+
+When `config.is_account_delete_mod = false` we need to make sure there
+is only one modification:
+```
+ifx!{not!(config.is_nonce_mod) => {
+    require!(nonce_rlc[false.idx()] => nonce_rlc[true.idx()]);
+}}
+ifx!{not!(config.is_balance_mod) => {
+    require!(balance_rlc[false.idx()] => balance_rlc[true.idx()]);
+}}
+ifx!{not!(config.is_storage_mod) => {
+    require!(storage_rlc[false.idx()] => storage_rlc[true.idx()]);
+}}
+ifx!{not!(config.is_codehash_mod) => {
+    require!(codehash_rlc[false.idx()] => codehash_rlc[true.idx()]);
+}}
+```
+
+For `AccountDoesNotExist` proof we need to ensure `S` and `C` proofs are the same — there is no
+change in the trie and the same address is used:
+```
+require!(config.main_data.root => config.main_data.root_prev);
+require!(key_rlc[true.idx()] => key_rlc[false.idx()]);
+```
+
+Finally, the MPT table (for external lookups) is checked to contain the proper values.
+
+
 
 <!--
 Note that a new entry is stored in the lookup table with the field `is_below_account` set to `true`.
