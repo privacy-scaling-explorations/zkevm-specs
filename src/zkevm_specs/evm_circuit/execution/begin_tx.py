@@ -125,7 +125,7 @@ def begin_tx(instruction: Instruction):
 
             # Get code hash of tx calldata
 
-            copy_rwc_inc, rlc_acc = instruction.copy_lookup(
+            copy_rwc_inc, tx_calldata_rlc = instruction.copy_lookup(
                 tx_id,  # src_id
                 CopyDataTypeTag.TxCalldata,  # src_type
                 call_id,  # dst_id
@@ -140,8 +140,7 @@ def begin_tx(instruction: Instruction):
             assert copy_rwc_inc == FQ.zero()
             # no memory involved, no rw counter incremented
 
-            code_hash = instruction.keccak_lookup(tx_call_data_length, rlc_acc)
-            is_empty_code_hash = instruction.is_equal_word(code_hash, Word(EMPTY_CODE_HASH))
+            code_hash = instruction.keccak_lookup(tx_call_data_length, tx_calldata_rlc)
 
             # Copy tx calldata to bytecode table
 
@@ -168,7 +167,7 @@ def begin_tx(instruction: Instruction):
                 (CallContextFieldTag.CallDataOffset, FQ(0)),
                 (CallContextFieldTag.CallDataLength, tx_call_data_length),
                 (CallContextFieldTag.Value, tx_value),
-                (CallContextFieldTag.IsStatic, FQ(True)),
+                (CallContextFieldTag.IsStatic, FQ(False)),
                 (CallContextFieldTag.LastCalleeId, FQ(0)),
                 (CallContextFieldTag.LastCalleeReturnDataOffset, FQ(0)),
                 (CallContextFieldTag.LastCalleeReturnDataLength, FQ(0)),

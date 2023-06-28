@@ -280,7 +280,7 @@ def test_begin_tx(tx: Transaction, callee: Account, is_success: bool):
     )
 
     is_create_tx_with_calldata = is_tx_create and len(tx.call_data)>0
-    is_regular_tx_with_code_hash = not is_tx_create and callee.code_hash() != EMPTY_CODE_HASH
+    is_regular_tx_and_callee_is_contract = not is_tx_create and callee.code_hash() != EMPTY_CODE_HASH
 
     copy_table = CopyCircuit().rows
     keccak_table = KeccakCircuit().rows
@@ -335,7 +335,7 @@ def test_begin_tx(tx: Transaction, callee: Account, is_success: bool):
         ).rows
 
 
-    if (is_create_tx_with_calldata or is_regular_tx_with_code_hash) and is_tx_valid == 1:
+    if (is_create_tx_with_calldata or is_regular_tx_and_callee_is_contract) and is_tx_valid == 1:
         rw_dictionary \
         .call_context_read(1, CallContextFieldTag.Depth, 1) \
         .call_context_read(1, CallContextFieldTag.CallerAddress, Word(tx.caller_address)) \
@@ -343,7 +343,7 @@ def test_begin_tx(tx: Transaction, callee: Account, is_success: bool):
         .call_context_read(1, CallContextFieldTag.CallDataOffset, 0) \
         .call_context_read(1, CallContextFieldTag.CallDataLength, len(tx.call_data)) \
         .call_context_read(1, CallContextFieldTag.Value, Word(tx.value)) \
-        .call_context_read(1, CallContextFieldTag.IsStatic, is_tx_create) \
+        .call_context_read(1, CallContextFieldTag.IsStatic, False) \
         .call_context_read(1, CallContextFieldTag.LastCalleeId, 0) \
         .call_context_read(1, CallContextFieldTag.LastCalleeReturnDataOffset, 0) \
         .call_context_read(1, CallContextFieldTag.LastCalleeReturnDataLength, 0) \
