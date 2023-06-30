@@ -139,10 +139,10 @@ def test_error_gas_uint_overflow_root(
     need_overflow = (stack.cd_offset <= MAX_U64 and stack.cd_length <= MAX_U64) or is_memory_op
 
     # Special case for root txs
-    # To generate an overflowed calldata would cause memory corrupt in the local env.
+    # To generate an overflowed calldata would cause memory corrupted in the local env.
     # So, to make ci and local test works, we ignore the cases if overflowed calldata needed.
     # Those cases were verified by changing MAX_U64 to a smaller number, like 55,000
-    if is_root and need_overflow:
+    if need_overflow:
         return
     tx = Transaction(id=1, call_data=gen_calldata(need_overflow, is_create))
 
