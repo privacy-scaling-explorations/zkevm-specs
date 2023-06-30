@@ -7,7 +7,7 @@ from ...util import (
     TxGasContractCreation,
     TxDataZeroGas,
 )
-from ..instruction import Instruction, Transition
+from ..instruction import Instruction
 from ..table import CallContextFieldTag
 from ..opcode import Opcode
 
@@ -98,48 +98,59 @@ def error_gas_uint_overflow(instruction: Instruction):
 
     # IntrinsicGas
     # https://github.com/ethereum/go-ethereum/blob/b946b7a13b749c99979e312c83dce34cac8dd7b1/core/state_transition.go#L67
-    calldata_offset = instruction.call_context_lookup(CallContextFieldTag.CallDataOffset)
     calldata_length = instruction.call_context_lookup(CallContextFieldTag.CallDataLength)
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
-    data = [
-        instruction.tx_calldata_lookup(tx_id, calldata_offset + FQ(idx))
-        for idx in range(0, calldata_length.expr().n)
-    ]
-    dataLen = len(data)
+    is_root = instruction.call_context_lookup(CallContextFieldTag.IsRoot)
 
-    def transaction_data_gas_overflow():
-        # zero and non-zero bytes are priced differently
-        nz = len([byte for byte in data if byte != 0])
-        gas = TxGasContractCreation if is_create == FQ(1) else TxGas
-        is_non_zero_calldata_gas_overflow, _ = instruction.compare(
-            FQ(((MAX_U64 - gas) // TxDataNonZeroGasEIP2028)), FQ(nz), N_BYTES_U64
-        )
-        gas += nz * TxDataNonZeroGasEIP2028
+    if is_root.expr() == FQ(1):
+        data = [
+            instruction.tx_calldata_lookup(tx_id, FQ(idx))
+            for idx in range(0, calldata_length.expr().n)
+        ]
+        data_len = len(data)
 
-        # tx data zero gas overflow
-        z = dataLen - nz
-        is_zero_calldata_gas_overflow, _ = instruction.compare(
-            FQ(((MAX_U64 - gas) // TxDataZeroGas)), FQ(z), N_BYTES_U64
-        )
+        def transaction_data_gas_overflow() -> tuple[bool, bool]:
+            # zero and non-zero bytes are priced differently
+            nz = len([byte for byte in data if byte != 0])
+            gas = TxGasContractCreation if is_create == FQ(1) else TxGas
+            is_non_zero_calldata_gas_overflow, _ = instruction.compare(
+                FQ(((MAX_U64 - gas) // TxDataNonZeroGasEIP2028)), FQ(nz), N_BYTES_U64
+            )
+            gas += nz * TxDataNonZeroGasEIP2028
 
-        # TODO: Would like to support EIP 3860 in the future (See
-        # https://github.com/privacy-scaling-explorations/zkevm-specs/issues/421)
-        # gas += z * TxDataZeroGas
-        # if is_create:
-        #     lenWords = dataLen // 32
-        #     is_eip3860_overflow, _ = instruction.compare(
-        #         FQ((MAX_U64 - gas) // InitCodeWordGas), FQ(lenWords), N_BYTES_U64
-        #     )
+            # tx data zero gas overflow
+            is_zero_calldata_gas_overflow = FQ(0)
+            if is_non_zero_calldata_gas_overflow == FQ(0):
+                z = data_len - nz
+                is_zero_calldata_gas_overflow, _ = instruction.compare(
+                    FQ(((MAX_U64 - gas) // TxDataZeroGas)), FQ(z), N_BYTES_U64
+                )
 
-    instruction.condition(FQ(dataLen > 0), transaction_data_gas_overflow)
+            # TODO: Would like to support EIP 3860 in the future (See
+            # https://github.com/privacy-scaling-explorations/zkevm-specs/issues/421)
+            # gas += z * TxDataZeroGas
+            # if is_create:
+            #     lenWords = data_len // 32
+            #     is_eip3860_overflow, _ = instruction.compare(
+            #         FQ((MAX_U64 - gas) // InitCodeWordGas), FQ(lenWords), N_BYTES_U64
+            #     )
+            return (is_non_zero_calldata_gas_overflow, is_zero_calldata_gas_overflow)
+
+        if data_len > 0:
+            (
+                is_non_zero_calldata_gas_overflow,
+                is_zero_calldata_gas_overflow,
+            ) = transaction_data_gas_overflow()
 
     # Run
-    # https://github.com/ethereum/go-ethereum/blob/b946b7a13b749c99979e312c83dce34cac8dd7b1/core/vm/interpreter.go#L105
-    def dynamic_gas_overflow():
+    # https://github.com/ethereum/go-ethereum/blob/b946b7a13b749c99979e312c83dce34cac8dd7b1/core/vm/interpreter.go#L196
+    def dynamic_gas_overflow() -> tuple[bool, bool]:
         (mem_size, is_opcode_memory_size_overflow) = instruction.memory_size(opcode)
         (_, is_safe_mul_overflow) = instruction.safe_mul(instruction.to_word_size(mem_size), 32)
+        return (is_opcode_memory_size_overflow, is_safe_mul_overflow)
 
-    instruction.condition(is_dynamic_gas, dynamic_gas_overflow)
+    if is_dynamic_gas:
+        (is_opcode_memory_size_overflow, is_safe_mul_overflow) = dynamic_gas_overflow()
 
     # verify gas uint overflow.
     is_overflow = (
@@ -152,24 +163,5 @@ def error_gas_uint_overflow(instruction: Instruction):
     )
     instruction.constrain_not_zero(FQ(is_overflow))
 
-    # verify call failure.
-    instruction.constrain_equal(
-        instruction.call_context_lookup(CallContextFieldTag.IsSuccess), FQ(0)
-    )
-
-    # state transition.
-    if instruction.curr.is_root:
-        # Do step state transition
-        instruction.constrain_step_state_transition(
-            rw_counter=Transition.delta(12),
-            call_id=Transition.same(),
-        )
-    else:
-        # when it is internal call, need to restore caller's state as finishing this call.
-        # Restore caller state to next StepState
-        instruction.step_state_transition_to_restored_context(
-            rw_counter_delta=12,
-            return_data_offset=FQ(0),
-            return_data_length=FQ(0),
-            gas_left=instruction.curr.gas_left,
-        )
+    # There is one rw lookup in `constrain_error_state`
+    instruction.constrain_error_state(instruction.rw_counter_offset + 1)

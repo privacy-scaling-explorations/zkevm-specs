@@ -1230,73 +1230,89 @@ class Instruction:
             is_sha3 + is_return + is_revert + is_log0 + is_log1 + is_log2 + is_log3 + is_log4
         ) == FQ(1):
             return self.calc_mem_size64(
-                self.stack_lookup(RW.Read, self.stack_pointer_offset),
-                self.stack_lookup(RW.Read, self.stack_pointer_offset - 1),
+                self.stack_pop(),
+                self.stack_pop(),
             )
         elif (is_calldatacopy + is_returndatacopy + is_codecopy) == FQ(1):
+            self.stack_pop()
             return self.calc_mem_size64(
-                self.stack_lookup(RW.Read, self.stack_pointer_offset),
-                self.stack_lookup(RW.Read, self.stack_pointer_offset - 2),
+                self.stack_pop(),
+                self.stack_pop(),
             )
         elif is_extcodecopy == FQ(1):
+            self.stack_pop()
+            self.stack_pop()
             return self.calc_mem_size64(
-                self.stack_lookup(RW.Read, self.stack_pointer_offset - 1),
-                self.stack_lookup(RW.Read, self.stack_pointer_offset - 3),
+                self.stack_pop(),
+                self.stack_pop(),
             )
-        elif (is_mload + is_mstore) == FQ(1):
-            return self.calc_mem_size64_with_uint(
-                self.stack_lookup(RW.Read, self.stack_pointer_offset), FQ(32)
-            )
-        elif is_mstore8 == FQ(1):
-            return self.calc_mem_size64_with_uint(
-                self.stack_lookup(RW.Read, self.stack_pointer_offset), FQ(1)
-            )
+        elif is_mload == FQ(1):
+            return self.calc_mem_size64_with_uint(self.stack_pop(), FQ(32))
+        elif (is_mstore8 + is_mstore) == FQ(1):
+            offset = self.stack_pop()
+            self.stack_pop()
+            return self.calc_mem_size64_with_uint(offset, FQ(32))
         elif (is_create + is_create2) == FQ(1):
+            self.stack_pop()
+            offset = self.stack_pop()
+            size = self.stack_pop()
+            if is_create2 == FQ(1):
+                self.stack_pop()
             return self.calc_mem_size64(
-                self.stack_lookup(RW.Read, self.stack_pointer_offset - 1),
-                self.stack_lookup(RW.Read, self.stack_pointer_offset - 2),
+                offset,
+                size,
             )
-        elif is_call == FQ(1):
+        elif (is_delegatecall + is_staticcall + is_call) == FQ(1):
+            if is_call == FQ(1):
+                self.stack_pop()
+            self.stack_pop()
+            self.stack_pop()
+            cd_offset = self.stack_pop()
+            cd_length = self.stack_pop()
             (x, overflow) = self.calc_mem_size64(
-                self.stack_lookup(RW.Read, self.stack_pointer_offset - 5),
-                self.stack_lookup(RW.Read, self.stack_pointer_offset - 6),
+                self.stack_pop(),
+                self.stack_pop(),
             )
             if overflow == FQ(1):
                 return (FQ(0), FQ(1))
+
             (y, overflow) = self.calc_mem_size64(
-                self.stack_lookup(RW.Read, self.stack_pointer_offset - 3),
-                self.stack_lookup(RW.Read, self.stack_pointer_offset - 4),
+                cd_offset,
+                cd_length,
             )
             if overflow == FQ(1):
                 return (FQ(0), FQ(1))
             if x.n > y.n:
                 return (x, FQ(0))
             return (y, FQ(0))
-        elif (is_delegatecall + is_staticcall) == FQ(1):
-            (x, overflow) = self.calc_mem_size64(
-                self.stack_lookup(RW.Read, self.stack_pointer_offset - 4),
-                self.stack_lookup(RW.Read, self.stack_pointer_offset - 5),
-            )
-            if overflow == FQ(1):
-                return (FQ(0), FQ(1))
-            (y, overflow) = self.calc_mem_size64(
-                self.stack_lookup(RW.Read, self.stack_pointer_offset - 2),
-                self.stack_lookup(RW.Read, self.stack_pointer_offset - 3),
-            )
-            if overflow == FQ(1):
-                return (FQ(0), FQ(1))
-            if x.n > y.n:
-                return (x, FQ(0))
-            return (y, FQ(0))
+        # elif (is_delegatecall + is_staticcall) == FQ(1):
+        #     self.stack_pop()
+        #     self.stack_pop()
+        #     cd_offset = self.stack_pop()
+        #     cd_length = self.stack_pop()
+        #     (x, overflow) = self.calc_mem_size64(
+        #         self.stack_pop(),
+        #         self.stack_pop(),
+        #     )
+        #     if overflow == FQ(1):
+        #         return (FQ(0), FQ(1))
+        #     (y, overflow) = self.calc_mem_size64(
+        #          cd_offset,
+        #         cd_length,
+        #     )
+        #     if overflow == FQ(1):
+        #         return (FQ(0), FQ(1))
+        #     if x.n > y.n:
+        #         return (x, FQ(0))
+        #     return (y, FQ(0))
 
     # calcMemSize64 calculates the required memory size, and returns
     # the size and whether the result overflowed uint64
     def calc_mem_size64(self, offset: Word, length: Word) -> Tuple[FQ, FQ]:
-        off = self.word_to_fq(offset, N_BYTES_MEMORY_ADDRESS)
-        l = self.word_to_fq(length, N_BYTES_MEMORY_ADDRESS)
-        if self.is_u64_overflow(l) == FQ(1):
+        len = self.word_to_fq(length, MAX_N_BYTES)
+        if self.is_u64_overflow(len) == FQ(1):
             return (FQ(0), FQ(1))
-        return self.calc_mem_size64_with_uint(offset, off)
+        return self.calc_mem_size64_with_uint(offset, len)
 
     # calcMemSize64WithUint calculates the required memory size, and returns
     # the size and whether the result overflowed uint64
@@ -1304,10 +1320,11 @@ class Instruction:
     def calc_mem_size64_with_uint(self, offset_word: Word, length64: FQ) -> Tuple[FQ, FQ]:
         if length64 == FQ(0):
             return (FQ(0), FQ(0))
-        offset = self.word_to_fq(offset_word, N_BYTES_MEMORY_ADDRESS)
-        (offset64, overflow) = (offset, self.is_u64_overflow(offset))
-        if overflow == FQ(1):
+        offset = self.word_to_fq(offset_word, MAX_N_BYTES)
+        if self.is_u64_overflow(offset) == FQ(1):
             return (FQ(0), FQ(1))
+
+        offset64 = self.word_to_fq(offset_word, N_BYTES_MEMORY_ADDRESS)
         val = offset64 + length64
         return (val, FQ(val.n < offset64.n))
 
