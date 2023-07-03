@@ -128,12 +128,6 @@ def error_gas_uint_overflow(instruction: Instruction):
 
             # TODO: Would like to support EIP 3860 in the future (See
             # https://github.com/privacy-scaling-explorations/zkevm-specs/issues/421)
-            # gas += z * TxDataZeroGas
-            # if is_create:
-            #     lenWords = data_len // 32
-            #     is_eip3860_overflow, _ = instruction.compare(
-            #         FQ((MAX_U64 - gas) // InitCodeWordGas), FQ(lenWords), N_BYTES_U64
-            #     )
             return (is_non_zero_calldata_gas_overflow, is_zero_calldata_gas_overflow)
 
         if data_len > 0:
