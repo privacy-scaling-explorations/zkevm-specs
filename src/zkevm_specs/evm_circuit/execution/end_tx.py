@@ -24,10 +24,7 @@ def end_tx(instruction: Instruction):
 
     # Add effective_refund * gas_price back to caller's balance
     tx_gas_price = instruction.tx_gas_price(tx_id)
-    value, carry = instruction.mul_word_by_u64(
-        tx_gas_price, instruction.curr.gas_left + effective_refund
-    )
-    instruction.constrain_zero(carry)
+    value = instruction.mul_word_by_u64(tx_gas_price, instruction.curr.gas_left + effective_refund)
     tx_caller_address_word = instruction.tx_context_lookup_word(
         tx_id, TxContextFieldTag.CallerAddress
     )
@@ -37,8 +34,7 @@ def end_tx(instruction: Instruction):
     # Add gas_used * effective_tip to coinbase's balance
     base_fee = instruction.block_context_lookup_word(BlockContextFieldTag.BaseFee)
     effective_tip, _ = instruction.sub_word(tx_gas_price, base_fee)
-    reward, carry = instruction.mul_word_by_u64(effective_tip, gas_used)
-    instruction.constrain_zero(carry)
+    reward = instruction.mul_word_by_u64(effective_tip, gas_used)
     coinbase_word = instruction.block_context_lookup_word(BlockContextFieldTag.Coinbase)
     coinbase = instruction.word_to_address(coinbase_word)
     instruction.add_balance(coinbase, [reward])

@@ -579,7 +579,7 @@ class Instruction:
 
         return Word((diff_lo, diff_hi)), FQ(borrow_hi)
 
-    def mul_word_by_u64(self, multiplicand: Word, multiplier: Expression) -> Tuple[Word, FQ]:
+    def mul_word_by_u64(self, multiplicand: Word, multiplier: Expression) -> Word:
         multiplicand_lo, multiplicand_hi = multiplicand.to_lo_hi()
 
         quotient_lo, product_lo = divmod((multiplicand_lo * multiplier.expr()).n, 1 << 128)
@@ -587,9 +587,9 @@ class Instruction:
             (multiplicand_hi * multiplier.expr() + quotient_lo).n, 1 << 128
         )
 
-        product_bytes = product_lo.to_bytes(16, "little") + product_hi.to_bytes(16, "little")
+        self.constrain_zero(FQ(quotient_hi))
 
-        return Word((FQ(product_lo), FQ(product_hi))), FQ(quotient_hi)
+        return Word((FQ(product_lo), FQ(product_hi)))
 
     def mul_add_words(self, a: Word, b: Word, c: Word, d: Word) -> FQ:
         """

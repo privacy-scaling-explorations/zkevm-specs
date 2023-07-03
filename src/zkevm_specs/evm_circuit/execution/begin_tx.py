@@ -59,8 +59,7 @@ def begin_tx(instruction: Instruction):
     # Calculate gas fee
     tx_gas = instruction.tx_context_lookup(tx_id, TxContextFieldTag.Gas)
     tx_gas_price = instruction.tx_gas_price(tx_id)
-    gas_fee, carry = instruction.mul_word_by_u64(tx_gas_price, tx_gas)
-    instruction.constrain_zero(carry)
+    gas_fee = instruction.mul_word_by_u64(tx_gas_price, tx_gas)
 
     # intrinsic gas
     # G_0 = sum([G_txdatazero if CallData[i] == 0 else G_txdatanonzero for i in len(CallData)]) +
