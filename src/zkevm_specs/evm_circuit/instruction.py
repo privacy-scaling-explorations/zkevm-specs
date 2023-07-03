@@ -1,6 +1,6 @@
 from __future__ import annotations
 from enum import IntEnum, auto
-from typing import Optional, Sequence, Tuple, Union, List, cast
+from typing import Optional, Sequence, Tuple, Union, List, Callable, cast
 
 from eth_utils import (
     keccak,
@@ -17,10 +17,12 @@ from ..util import (
     Expression,
     ExpressionImpl,
     cast_expr,
+    MAX_U64,
     MAX_N_BYTES,
+    MAX_MEMORY_SIZE,
     N_BYTES_ACCOUNT_ADDRESS,
     N_BYTES_MEMORY_ADDRESS,
-    N_BYTES_MEMORY_SIZE,
+    N_BYTES_MEMORY_WORD_SIZE,
     N_BYTES_GAS,
     GAS_COST_COPY,
     MEMORY_EXPANSION_QUAD_DENOMINATOR,
@@ -395,6 +397,12 @@ class Instruction:
     def is_equal(self, lhs: Expression, rhs: Expression) -> FQ:
         return self.is_zero(lhs.expr() - rhs.expr())
 
+    def is_u64_overflow(self, lhs: Expression) -> FQ:
+        return FQ(lhs.expr().n > MAX_U64)
+
+    def is_memory_overflow(self, lhs: Expression) -> FQ:
+        return FQ(lhs.expr().n > MAX_MEMORY_SIZE)
+
     def is_equal_word(self, lhs: Word, rhs: Word) -> FQ:
         return self.is_zero_word(
             Word((lhs.lo.expr() - rhs.lo.expr(), lhs.hi.expr() - rhs.hi.expr()), check=False)
@@ -408,6 +416,10 @@ class Instruction:
     ) -> ExpressionImpl:
         assert condition in [0, 1], "Condition of select should be a checked bool"
         return when_true if condition == 1 else when_false
+
+    def condition(self, condition: FQ, build: Callable):
+        if condition == FQ(1):
+            build()
 
     def select_word(self, condition: FQ, when_true: Word, when_false: Word) -> Word:
         assert condition in [0, 1], "Condition of select_word should be a checked bool"
@@ -1109,12 +1121,16 @@ class Instruction:
 
     def memory_expansion(self, offset: Expression, length: Expression) -> Tuple[FQ, FQ]:
         memory_size, _ = (
-            self.constant_divmod(length.expr() + offset.expr() + 31, FQ(32), N_BYTES_MEMORY_SIZE)
+            self.constant_divmod(
+                length.expr() + offset.expr() + 31, FQ(32), N_BYTES_MEMORY_WORD_SIZE
+            )
             if length != FQ(0)
             else (FQ(0), FQ(0))
         )
 
-        next_memory_size = self.max(self.curr.memory_word_size, memory_size, N_BYTES_MEMORY_SIZE)
+        next_memory_size = self.max(
+            self.curr.memory_word_size, memory_size, N_BYTES_MEMORY_WORD_SIZE
+        )
 
         memory_gas_cost = self.memory_gas_cost(self.curr.memory_word_size)
         memory_gas_cost_next = self.memory_gas_cost(next_memory_size)
@@ -1130,15 +1146,17 @@ class Instruction:
         rd_length: Optional[Expression] = None,
     ) -> Tuple[FQ, FQ]:
         cd_memory_size, _ = self.constant_divmod(
-            cd_offset.expr() + cd_length.expr() + FQ(31), FQ(32), N_BYTES_MEMORY_SIZE
+            cd_offset.expr() + cd_length.expr() + FQ(31), FQ(32), N_BYTES_MEMORY_WORD_SIZE
         )
-        next_memory_size = self.max(self.curr.memory_word_size, cd_memory_size, N_BYTES_MEMORY_SIZE)
+        next_memory_size = self.max(
+            self.curr.memory_word_size, cd_memory_size, N_BYTES_MEMORY_WORD_SIZE
+        )
 
         if rd_offset is not None and rd_length is not None:
             rd_memory_size, _ = self.constant_divmod(
-                rd_offset.expr() + rd_length.expr() + FQ(31), FQ(32), N_BYTES_MEMORY_SIZE
+                rd_offset.expr() + rd_length.expr() + FQ(31), FQ(32), N_BYTES_MEMORY_WORD_SIZE
             )
-            next_memory_size = self.max(next_memory_size, rd_memory_size, N_BYTES_MEMORY_SIZE)
+            next_memory_size = self.max(next_memory_size, rd_memory_size, N_BYTES_MEMORY_WORD_SIZE)
 
         memory_gas_cost = self.memory_gas_cost(self.curr.memory_word_size)
         memory_gas_cost_next = self.memory_gas_cost(next_memory_size)
@@ -1152,10 +1170,172 @@ class Instruction:
         memory_expansion_gas_cost: Expression,
         gas_cost_copy: int = GAS_COST_COPY,
     ) -> FQ:
-        word_size, _ = self.constant_divmod(length + FQ(31), FQ(32), N_BYTES_MEMORY_SIZE)
+        word_size, _ = self.constant_divmod(length + FQ(31), FQ(32), N_BYTES_MEMORY_WORD_SIZE)
         gas_cost = word_size * gas_cost_copy + memory_expansion_gas_cost
         self.range_check(gas_cost, N_BYTES_GAS)
         return gas_cost
+
+    # calculate the memory size required for the operation, and returns
+    # the size and whether the result overflowed uint64
+    # stack offset is defined as follows
+    # https://github.com/ethereum/go-ethereum/blob/b946b7a13b749c99979e312c83dce34cac8dd7b1/core/vm/memory_table.go
+    def memory_size(self, opcode: Opcode) -> Tuple[FQ, FQ]:
+        (
+            is_sha3,
+            is_calldatacopy,
+            is_returndatacopy,
+            is_codecopy,
+            is_extcodecopy,
+            is_mload,
+            is_mstore8,
+            is_mstore,
+            is_create,
+            is_create2,
+            is_call,
+            is_delegatecall,
+            is_staticcall,
+            is_return,
+            is_revert,
+            is_log0,
+            is_log1,
+            is_log2,
+            is_log3,
+            is_log4,
+        ) = self.multiple_select(
+            opcode,
+            (
+                Opcode.SHA3,
+                Opcode.CALLDATACOPY,
+                Opcode.RETURNDATACOPY,
+                Opcode.CODECOPY,
+                Opcode.EXTCODECOPY,
+                Opcode.MLOAD,
+                Opcode.MSTORE8,
+                Opcode.MSTORE,
+                Opcode.CREATE,
+                Opcode.CREATE2,
+                Opcode.CALL,
+                Opcode.DELEGATECALL,
+                Opcode.STATICCALL,
+                Opcode.RETURN,
+                Opcode.REVERT,
+                Opcode.LOG0,
+                Opcode.LOG1,
+                Opcode.LOG2,
+                Opcode.LOG3,
+                Opcode.LOG4,
+            ),
+        )
+        if (
+            is_sha3 + is_return + is_revert + is_log0 + is_log1 + is_log2 + is_log3 + is_log4
+        ) == FQ(1):
+            return self.calc_mem_size64(
+                self.stack_pop(),
+                self.stack_pop(),
+            )
+        elif (is_calldatacopy + is_returndatacopy + is_codecopy) == FQ(1):
+            self.stack_pop()
+            return self.calc_mem_size64(
+                self.stack_pop(),
+                self.stack_pop(),
+            )
+        elif is_extcodecopy == FQ(1):
+            self.stack_pop()
+            self.stack_pop()
+            return self.calc_mem_size64(
+                self.stack_pop(),
+                self.stack_pop(),
+            )
+        elif is_mload == FQ(1):
+            return self.calc_mem_size64_with_uint(self.stack_pop(), FQ(32))
+        elif (is_mstore8 + is_mstore) == FQ(1):
+            offset = self.stack_pop()
+            self.stack_pop()
+            return self.calc_mem_size64_with_uint(offset, FQ(32))
+        elif (is_create + is_create2) == FQ(1):
+            self.stack_pop()
+            offset = self.stack_pop()
+            size = self.stack_pop()
+            if is_create2 == FQ(1):
+                self.stack_pop()
+            return self.calc_mem_size64(
+                offset,
+                size,
+            )
+        elif (is_delegatecall + is_staticcall + is_call) == FQ(1):
+            if is_call == FQ(1):
+                self.stack_pop()
+            self.stack_pop()
+            self.stack_pop()
+            cd_offset = self.stack_pop()
+            cd_length = self.stack_pop()
+            (x, overflow) = self.calc_mem_size64(
+                self.stack_pop(),
+                self.stack_pop(),
+            )
+            if overflow == FQ(1):
+                return (FQ(0), FQ(1))
+
+            (y, overflow) = self.calc_mem_size64(
+                cd_offset,
+                cd_length,
+            )
+            if overflow == FQ(1):
+                return (FQ(0), FQ(1))
+            if x.n > y.n:
+                return (x, FQ(0))
+            return (y, FQ(0))
+        # elif (is_delegatecall + is_staticcall) == FQ(1):
+        #     self.stack_pop()
+        #     self.stack_pop()
+        #     cd_offset = self.stack_pop()
+        #     cd_length = self.stack_pop()
+        #     (x, overflow) = self.calc_mem_size64(
+        #         self.stack_pop(),
+        #         self.stack_pop(),
+        #     )
+        #     if overflow == FQ(1):
+        #         return (FQ(0), FQ(1))
+        #     (y, overflow) = self.calc_mem_size64(
+        #          cd_offset,
+        #         cd_length,
+        #     )
+        #     if overflow == FQ(1):
+        #         return (FQ(0), FQ(1))
+        #     if x.n > y.n:
+        #         return (x, FQ(0))
+        #     return (y, FQ(0))
+
+    # calcMemSize64 calculates the required memory size, and returns
+    # the size and whether the result overflowed uint64
+    def calc_mem_size64(self, offset: Word, length: Word) -> Tuple[FQ, FQ]:
+        len = self.word_to_fq(length, MAX_N_BYTES)
+        if self.is_u64_overflow(len) == FQ(1):
+            return (FQ(0), FQ(1))
+        return self.calc_mem_size64_with_uint(offset, len)
+
+    # calcMemSize64WithUint calculates the required memory size, and returns
+    # the size and whether the result overflowed uint64
+    # Identical to calcMemSize64, but length is a uint64
+    def calc_mem_size64_with_uint(self, offset_word: Word, length64: FQ) -> Tuple[FQ, FQ]:
+        if length64 == FQ(0):
+            return (FQ(0), FQ(0))
+        offset = self.word_to_fq(offset_word, MAX_N_BYTES)
+        if self.is_u64_overflow(offset) == FQ(1):
+            return (FQ(0), FQ(1))
+
+        offset64 = self.word_to_fq(offset_word, N_BYTES_MEMORY_ADDRESS)
+        val = offset64 + length64
+        return (val, FQ(val.n < offset64.n))
+
+    def safe_mul(self, x: FQ, y: FQ) -> Tuple[FQ, FQ]:
+        mul = x * y
+        return (mul, self.is_u64_overflow(mul))
+
+    def to_word_size(self, size: FQ) -> FQ:
+        if size.n > MAX_U64 - 31:
+            return FQ(MAX_U64 // 32 + 1)
+        return FQ((size.n + 31) // 32)
 
     def generate_contract_address(self, address: Expression, nonce: Expression) -> Expression:
         contract_addr = keccak(rlp.encode([address.expr().n.to_bytes(20, "big"), nonce.expr().n]))

@@ -57,11 +57,12 @@ from .signextend import *
 from .stop import stop
 from .return_revert import *
 from .extcodecopy import *
-from .oog_constant import *
-from .oog_call import *
+from .error_oog_constant import *
+from .error_oog_call import *
 from .error_stack import *
 from .error_invalid_jump import *
 from .error_invalid_opcode import *
+from .error_gas_uint_overflow import *
 
 
 EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
@@ -118,11 +119,12 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.CREATE2: create,
     ExecutionState.STOP: stop,
     ExecutionState.RETURN: return_revert,
-    ExecutionState.ErrorInvalidJump: invalid_jump,
-    ExecutionState.ErrorInvalidOpcode: invalid_opcode,
-    ExecutionState.ErrorOutOfGasCall: oog_call,
-    ExecutionState.ErrorOutOfGasConstant: oog_constant,
-    ExecutionState.ErrorStack: stack_error,
+    ExecutionState.ErrorInvalidJump: error_invalid_jump,
+    ExecutionState.ErrorGasUintOverflow: error_gas_uint_overflow,
+    ExecutionState.ErrorOutOfGasCall: error_oog_call,
+    ExecutionState.ErrorInvalidOpcode: error_invalid_opcode,
+    ExecutionState.ErrorOutOfGasConstant: error_oog_constant,
+    ExecutionState.ErrorStack: error_stack,
     # ExecutionState.ECRECOVER: ,
     # ExecutionState.SHA256: ,
     # ExecutionState.RIPEMD160: ,
