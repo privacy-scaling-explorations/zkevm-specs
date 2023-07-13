@@ -32,7 +32,6 @@ def callop(instruction: Instruction):
         if is_delegatecall == 1
         else (Word(0), Word(0))
     )
-    instruction.word_to_address(parent_caller_address_word)
 
     call = CallGadget(instruction, FQ(1), is_call, is_callcode, is_delegatecall, is_staticcall)
 
