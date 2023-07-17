@@ -2,7 +2,7 @@
 
 ## Procedure
 
-Handle the corresponding out of gas errors for `CREATE`, `RETURN` and `REVERT` opcodes.
+Handle the corresponding out of gas errors for `CREATE`, `CREATE2`, `RETURN` and `REVERT` opcodes due to memory expansion.
 
 ### EVM behavior
 
@@ -12,10 +12,10 @@ For the current `go-ethereum` code, the out of gas error may occur for `constant
 gas_cost = constant_gas + dynamic_gas
 ```
 
-The constant gas is different for `CREATE`, `RETURN` and `REVERT`.
+The constant gas is different for `CREATE`, `CREATE2`, `RETURN` and `REVERT`.
 
 ```
-if opcode == CREATE:
+if opcode == CREATE or opcode == CREATE2:
     constant_gas = 32000
 else:
     constant_gas = 0
@@ -57,3 +57,7 @@ else:
 2. `2` call context lookups for `is_success` and `rw_counter_end_of_reversion`.
 
 And restore context lookups for non-root call.
+
+## Code
+
+Please refer to `src/zkevm_specs/evm/execution/error_oog_dynamic_memory_expansion.py`.
