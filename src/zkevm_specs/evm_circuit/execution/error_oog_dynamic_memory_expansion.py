@@ -15,7 +15,7 @@ def error_oog_dynamic_memory_expansion(instruction: Instruction):
     # Constrain opcode must be one of CREATE, CREATE2, RETURN or REVERT.
     instruction.constrain_equal(is_create + is_create2 + is_return + is_revert, FQ(1))
 
-    if is_create or is_create2:
+    if is_create + is_create2 == FQ(1):
         instruction.stack_pop()
         offset_word = instruction.stack_pop()
         size_word = instruction.stack_pop()
@@ -36,4 +36,4 @@ def error_oog_dynamic_memory_expansion(instruction: Instruction):
     )
     instruction.constrain_equal(gas_not_enough, FQ(1))
 
-    instruction.constrain_error_state(1 + instruction.curr.reversible_write_counter.n)
+    instruction.constrain_error_state(1 + instruction.rw_counter_offset)
