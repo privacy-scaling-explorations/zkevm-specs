@@ -17,4 +17,4 @@ def error_oog_constant(instruction: Instruction):
     )
     instruction.constrain_equal(gas_not_enough, FQ(1))
 
-    instruction.constrain_error_state(1 + instruction.curr.reversible_write_counter.n)
+    instruction.constrain_error_state(instruction.curr.reversible_write_counter.n)
