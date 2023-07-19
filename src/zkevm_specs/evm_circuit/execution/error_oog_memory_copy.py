@@ -56,7 +56,6 @@ def error_oog_memory_copy(instruction: Instruction):
         memory_offset, copy_size
     )
     dynamic_gas = instruction.memory_copier_gas_cost(copy_size, memory_expansion_gas_cost)
-    print(dynamic_gas)
 
     # check gas left is less than total gas required
     gas_not_enough, _ = instruction.compare(

@@ -82,4 +82,4 @@ And restore context lookups for non-root call.
 
 ## Code
 
-TODO: add after circuit merge first.
+Please refer to `src/zkevm_specs/evm/execution/error_oog_memory_copy.py`.

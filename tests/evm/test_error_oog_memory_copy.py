@@ -20,6 +20,9 @@ TESTING_DATA_IS_ROOT = (
     (False, False, Opcode.CALLDATACOPY, 32, 32, 11),
     (False, False, Opcode.CODECOPY, 32, 32, 11),
     (False, False, Opcode.RETURNDATACOPY, 32, 32, 11),
+    (True, False, Opcode.CALLDATACOPY, 32, 32, 11),
+    (True, False, Opcode.CODECOPY, 32, 32, 11),
+    (True, False, Opcode.RETURNDATACOPY, 32, 32, 11),
     # EXTCODECOPY
     # constant gas cost of EXTCODECOPY is either 100 (warm access) or 2600 (cold access)
     (False, False, Opcode.EXTCODECOPY, 32, 32, 2608),
@@ -38,8 +41,8 @@ def test_error_oog_memory_copy(
     caller_id = 1 if is_root else 2
     is_ext_code_copy = True if opcode == Opcode.EXTCODECOPY else False
 
-    # root call and warm/cold access only occurred while EXTCODECOPY
-    if is_root or is_warm_access:
+    # warm/cold access only occurred while EXTCODECOPY
+    if is_warm_access:
         assert is_ext_code_copy
 
     if is_ext_code_copy:
