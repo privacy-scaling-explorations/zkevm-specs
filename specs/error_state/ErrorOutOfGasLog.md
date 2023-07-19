@@ -21,4 +21,5 @@ For this gadget, the core is to calculate gas required as following:
   - if it is not root call, it restores caller's context by reading to `rw_table`, then does step state transition to it.
 
 ## Code
-    TODO: add python code after circuit merges!
+    
+Please refer to `src/zkevm_specs/evm/execution/error_oog_log.py`.
