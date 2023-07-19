@@ -1,5 +1,4 @@
 import pytest
-from common import memory_expansion
 
 from zkevm_specs.evm_circuit import (
     ExecutionState,
@@ -41,7 +40,9 @@ def test_error_log(opcode: Opcode, offset: int, size: int, gas_left: int):
     current_call_id = 2
     rw_counter = 14
     rw_table = (
-        RWDictionary(rw_counter).stack_read(current_call_id, 1022, Word(offset)).stack_read(current_call_id, 1023, Word(size))
+        RWDictionary(rw_counter)
+        .stack_read(current_call_id, 1022, Word(offset))
+        .stack_read(current_call_id, 1023, Word(size))
     )
     stack_pointer = 1022
     pc = (Opcode.LOG4 - Opcode.LOG0 + 1) * 33 + 1

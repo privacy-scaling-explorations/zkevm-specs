@@ -1,8 +1,4 @@
-from zkevm_specs.util.param import (
-    GAS_COST_LOG,
-    GAS_COST_LOGDATA,
-    N_BYTES_MEMORY_ADDRESS
-)
+from zkevm_specs.util.param import GAS_COST_LOG, GAS_COST_LOGDATA, N_BYTES_MEMORY_ADDRESS
 from ...util import FQ
 from ..instruction import Instruction
 from ..opcode import Opcode
