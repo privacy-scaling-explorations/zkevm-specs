@@ -24,7 +24,7 @@ TESTING_DATA = (
 
 
 @pytest.mark.parametrize("opcode, offset, size, gas_left", TESTING_DATA)
-def test_error_log(opcode: Opcode, offset: int, size: int, gas_left: int):
+def test_error_oog_log(opcode: Opcode, offset: int, size: int, gas_left: int):
     if opcode == Opcode.LOG0:
         bytecode = Bytecode().log0()
     elif opcode == Opcode.LOG1:
