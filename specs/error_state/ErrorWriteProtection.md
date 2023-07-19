@@ -4,9 +4,9 @@
 State modifying opcodes, which include `[SSTORE, CREATE, CREATE2, CALL, SELFDESTRUCT, LOG0, LOG1, LOG2, LOG3, LOG4]`, throw write protection errors when executed in a read-only call context (static call). See [EIP-214](https://eips.ethereum.org/EIPS/eip-214).
 
 ### EVM behavior
-A write protection error is thrown if
+A write protection error is thrown if all the following conditions are met:
 - State modifying opcodes run in a read-only context.
-If the opcode is `CALL`, the `value` argument needs to be non-zero as well.
+- If the opcode is `CALL` and the `value` argument is non-zero.
 
 ### Constraints
 1. constrain this error happens in one of op codes `[SSTORE, CREATE, CREATE2, CALL, SELFDESTRUCT, LOG0, LOG1, LOG2, LOG3, LOG4]`
