@@ -58,9 +58,7 @@ def test_error_write_protection(opcode: Opcode, bytecode: Bytecode):
     caller_context = CallContext()
     caller_bytecode_hash = Word(bytecode.hash())
 
-    is_call = False
-    if opcode is Opcode.CALL:
-        is_call = True
+    is_call = (opcode is Opcode.CALL)
 
     rw_dictionary = (
         RWDictionary(18 if is_call is True else 15)
