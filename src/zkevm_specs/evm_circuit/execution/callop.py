@@ -86,7 +86,7 @@ def callop(instruction: Instruction):
     is_precheck_ok = is_depth_ok == FQ(1) and insufficient_balance == FQ(0)
 
     # If precheck is false, this call must be failed
-    if is_precheck_ok is False:
+    if not is_precheck_ok:
         instruction.constrain_zero(call.is_success)
 
     # For CALL opcode, transfer only when is_precheck_ok is true
