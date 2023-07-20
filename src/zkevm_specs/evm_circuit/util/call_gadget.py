@@ -43,8 +43,12 @@ class CallGadget:
         is_call: FQ,
         is_callcode: FQ,
         is_delegatecall: FQ,
+        is_staticcall: FQ,
     ):
         self.IS_SUCCESS_CALL = is_success_call
+
+        # must be one of CALL, CALLCODE, DELEGATECALL or STATICCALL.
+        instruction.constrain_equal(is_call + is_callcode + is_delegatecall + is_staticcall, FQ(1))
 
         # Lookup values from stack
         gas = instruction.stack_pop()
@@ -61,16 +65,22 @@ class CallGadget:
         self.is_success = result.lo.expr()
         instruction.constrain_equal_word(Word.from_lo(self.is_success), result)
 
-        if self.IS_SUCCESS_CALL == FQ(1):
-            # Verify is_success is a bool
-            instruction.constrain_bool(self.is_success)
-            self.gas = instruction.word_to_fq(gas, N_BYTES_GAS)
-            self.is_u64_gas = instruction.is_zero(instruction.sum(gas.to_le_bytes()[N_BYTES_GAS:]))
-        else:
+        # Verify is_success is a bool
+        instruction.constrain_bool(self.is_success)
+        if self.IS_SUCCESS_CALL == FQ(0):
             instruction.constrain_zero(self.is_success)
+
+        self.gas = instruction.word_to_fq(gas, N_BYTES_GAS)
+        self.is_u64_gas = instruction.is_zero(instruction.sum(gas.to_le_bytes()[N_BYTES_GAS:]))
         self.has_value = (
-            FQ(0) if is_delegatecall == FQ(1) else 1 - instruction.is_zero_word(self.value)
+            FQ(0)
+            if is_delegatecall + is_staticcall == FQ(1)
+            else 1 - instruction.is_zero_word(self.value)
         )
+
+        # `value` must be zero for DELEGATECALL or STATICCALL
+        if is_delegatecall + is_staticcall == FQ(1):
+            instruction.constrain_zero_word(self.value)
 
         self.callee_address = instruction.word_to_fq(callee_address, N_BYTES_ACCOUNT_ADDRESS)
         self.cd_offset, self.cd_length = instruction.memory_offset_and_length(cd_offset, cd_length)
@@ -106,6 +116,10 @@ class CallGadget:
                 is_warm_access, FQ(GAS_COST_WARM_ACCESS), FQ(GAS_COST_ACCOUNT_COLD_ACCESS)
             )
             + self.has_value
-            * (GAS_COST_CALL_WITH_VALUE + is_call * self.callee_not_exists * GAS_COST_NEW_ACCOUNT)
+            * (
+                GAS_COST_CALL_WITH_VALUE
+                # gas for creating a new account, only when CALL, call succeeds and callee is not existed
+                + is_call * self.is_success * self.callee_not_exists * GAS_COST_NEW_ACCOUNT
+            )
             + self.memory_expansion_gas_cost
         )
