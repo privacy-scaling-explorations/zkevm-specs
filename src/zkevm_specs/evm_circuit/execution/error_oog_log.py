@@ -26,6 +26,6 @@ def error_oog_log(instruction: Instruction):
 
     # check gas left is less than total gas required
     insufficient_gas, _ = instruction.compare(instruction.curr.gas_left, gas_cost, N_BYTES_GAS)
-    instruction.constrain_equal(gas_not_enough, FQ(1))
+    instruction.constrain_equal(insufficient_gas, FQ(1))
 
     instruction.constrain_error_state(instruction.rw_counter_offset + 1)
