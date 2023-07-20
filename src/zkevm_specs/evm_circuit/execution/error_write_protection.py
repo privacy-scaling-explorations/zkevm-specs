@@ -55,9 +55,6 @@ def error_write_protection(instruction: Instruction):
     )
 
     # Spec 2.
-    # current call must be an internal call
-    is_root = instruction.call_context_lookup(CallContextFieldTag.IsRoot)
-    instruction.constrain_equal(is_root, FQ(0))
     # current call context must be readonly
     is_static = instruction.call_context_lookup(CallContextFieldTag.IsStatic)
     instruction.constrain_equal(is_static, FQ(1))

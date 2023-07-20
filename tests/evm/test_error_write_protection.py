@@ -51,16 +51,14 @@ TESTING_DATA = gen_testing_data()
 
 @pytest.mark.parametrize("opcode, bytecode", TESTING_DATA)
 def test_error_write_protection(opcode: Opcode, bytecode: Bytecode):
-
     caller_context = CallContext()
     caller_bytecode_hash = Word(bytecode.hash())
 
     is_call = opcode is Opcode.CALL
 
-    rw_dictionary = (
-        RWDictionary(18 if is_call is True else 15)
-        .call_context_read(2, CallContextFieldTag.IsRoot, FQ(False))
-        .call_context_read(2, CallContextFieldTag.IsStatic, FQ(True))
+    rw_counter = 17 if is_call is True else 14
+    rw_dictionary = RWDictionary(rw_counter).call_context_read(
+        2, CallContextFieldTag.IsStatic, FQ(True)
     )
 
     # Only need to check `value` for CALL op code
@@ -96,7 +94,7 @@ def test_error_write_protection(opcode: Opcode, bytecode: Bytecode):
         steps=[
             StepState(
                 execution_state=ExecutionState.ErrorWriteProtection,
-                rw_counter=18 if is_call is True else 15,
+                rw_counter=rw_counter,
                 call_id=2,
                 is_root=False,
                 is_create=caller_context.is_create,

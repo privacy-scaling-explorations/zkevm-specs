@@ -10,7 +10,7 @@ A write protection error is thrown if all the following conditions are met:
 
 ### Constraints
 1. constrain this error happens in one of op codes `[SSTORE, CREATE, CREATE2, CALL, SELFDESTRUCT, LOG0, LOG1, LOG2, LOG3, LOG4]`
-2. current call context must be readonly & internal call (since requires at least one `staticcall` ahead).
+2. current call context must be readonly (this call must be a internal call since it requires at least one `staticcall` ahead).
 3. for `CALL` op code, do stack read & check `value` is not zero.
 4. common error steps constraints:
    - current call must be failed.
