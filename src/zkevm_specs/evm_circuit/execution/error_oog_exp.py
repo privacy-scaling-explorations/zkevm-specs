@@ -22,6 +22,7 @@ def error_oog_exp(instruction: Instruction):
     # get total gas cost
     exponent_byte_size = instruction.byte_size(exponent)
     dynamic_gas_cost = GAS_COST_EXP_PER_BYTE * exponent_byte_size
+    print(dynamic_gas_cost)
 
     # check gas left is less than total gas required
     gas_not_enough, _ = instruction.compare(
