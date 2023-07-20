@@ -42,9 +42,13 @@ def create(instruction: Instruction):
     nonce, nonce_prev = instruction.account_write(caller_address, AccountFieldTag.Nonce)
     balance = instruction.account_read(caller_address, AccountFieldTag.Balance)
     is_success = instruction.call_context_lookup(CallContextFieldTag.IsSuccess)
+    is_static = instruction.call_context_lookup(CallContextFieldTag.IsStatic)
     reversion_info = instruction.reversion_info()
 
     has_init_code = size != FQ(0)
+
+    # can't be a STATICCALL
+    instruction.is_zero(is_static)
 
     ### Gas cost calculation
     # gas cost of memory expansion

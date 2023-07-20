@@ -295,6 +295,7 @@ def test_create_create2(
         .account_write(caller.address, AccountFieldTag.Nonce, nonce, nonce - 1) \
         .account_read(caller.address, AccountFieldTag.Balance, caller.balance) \
         .call_context_read(CURRENT_CALL_ID, CallContextFieldTag.IsSuccess, is_success) \
+        .call_context_read(CURRENT_CALL_ID, CallContextFieldTag.IsStatic, is_static) \
         .call_context_read(CURRENT_CALL_ID, CallContextFieldTag.RwCounterEndOfReversion, caller_ctx.rw_counter_end_of_reversion) \
         .call_context_read(CURRENT_CALL_ID, CallContextFieldTag.IsPersistent, caller_ctx.is_persistent)
     
