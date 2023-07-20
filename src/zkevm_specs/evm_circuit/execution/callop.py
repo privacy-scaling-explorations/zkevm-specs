@@ -91,9 +91,7 @@ def callop(instruction: Instruction):
 
     # For CALL opcode, transfer only when is_precheck_ok is true
     if is_call == FQ(1) and is_precheck_ok == FQ(1):
-        instruction.transfer(
-            caller_address, callee_address, call.value, callee_reversion_info
-        )
+        instruction.transfer(caller_address, callee_address, call.value, callee_reversion_info)
     # For CALLCODE opcode, if is_success is true, then insufficient_balance must be zero
     if is_callcode == FQ(1) and call.is_success == FQ(1):
         instruction.constrain_zero(insufficient_balance)
