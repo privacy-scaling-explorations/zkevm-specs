@@ -51,9 +51,6 @@ TESTING_DATA = gen_testing_data()
 
 @pytest.mark.parametrize("opcode, bytecode", TESTING_DATA)
 def test_error_write_protection(opcode: Opcode, bytecode: Bytecode):
-    # fixed values
-    callee_address = 0xCAFECAFE
-    gas = 1000
 
     caller_context = CallContext()
     caller_bytecode_hash = Word(bytecode.hash())
@@ -68,8 +65,6 @@ def test_error_write_protection(opcode: Opcode, bytecode: Bytecode):
 
     # Only need to check `value` for CALL op code
     if is_call:
-        rw_dictionary.stack_read(2, 1017, Word(gas))
-        rw_dictionary.stack_read(2, 1018, Word(callee_address))
         rw_dictionary.stack_read(2, 1019, Word(100))
 
     # fmt: off

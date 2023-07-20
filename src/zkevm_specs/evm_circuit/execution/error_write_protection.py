@@ -1,4 +1,4 @@
-from zkevm_specs.evm_circuit.table import CallContextFieldTag
+from zkevm_specs.evm_circuit.table import RW, CallContextFieldTag
 
 from ...util import FQ
 from ..instruction import Instruction
@@ -64,9 +64,8 @@ def error_write_protection(instruction: Instruction):
 
     # Spec 3. for `CALL` op code, `value` must be  non-zero
     if is_call == FQ(1):
-        instruction.stack_pop()
-        instruction.stack_pop()
-        value = instruction.stack_pop()
+        # the first 2 stacks are `gas`` and `callee_address` and the 3rd one is `value`
+        value = instruction.stack_lookup(RW.Read, 2)
         instruction.constrain_not_zero_word(value)
 
     # There is one rw lookup in `constrain_error_state`
