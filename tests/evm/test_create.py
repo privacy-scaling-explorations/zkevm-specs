@@ -391,7 +391,7 @@ def test_create_create2(
     # fmt: on
 
     reversible_write_counter = caller_ctx.reversible_write_counter + (
-        3 if is_precheck_ok and not_address_collision else 1
+        3 if is_precheck_ok and not_address_collision else 0
     )
     verify_steps(
         tables=tables,
@@ -423,7 +423,7 @@ def test_create_create2(
                     program_counter=0,
                     stack_pointer=1024,
                     gas_left=callee_gas_left,
-                    reversible_write_counter=2,
+                    reversible_write_counter=3,
                 )
                 if has_init_code and is_precheck_ok and not_address_collision
                 else StepState(

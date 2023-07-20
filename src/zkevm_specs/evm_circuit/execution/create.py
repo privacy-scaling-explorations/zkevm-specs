@@ -94,6 +94,9 @@ def create(instruction: Instruction):
         is_depth_ok == FQ(1) and is_insufficient_balance == FQ(0) and is_nonce_in_range == FQ(1)
     )
 
+    # CREATE:  3 pops and 1 push, stack delta = 2
+    # CREATE2: 4 pops and 1 push, stack delta = 3
+    stack_pointer_delta = 2 + is_create2
     not_address_collision = False
     if is_precheck_ok:
         # calculate contract address
@@ -140,10 +143,6 @@ def create(instruction: Instruction):
             # EIP 161, the nonce of a newly created contract is 1
             nonce, _ = instruction.account_write(contract_address, AccountFieldTag.Nonce)
             instruction.constrain_equal(nonce, FQ(1))
-
-            # CREATE:  3 pops and 1 push, stack delta = 2
-            # CREATE2: 4 pops and 1 push, stack delta = 3
-            stack_pointer_delta = 2 + is_create2
 
             if has_init_code:
                 # copy init_code from memory to bytecode
@@ -215,37 +214,13 @@ def create(instruction: Instruction):
                     is_create=Transition.to(True),
                     code_hash=Transition.to_word(instruction.next.code_hash),
                     gas_left=Transition.to(callee_gas_left),
-                    # `transfer` includes two balance updates
-                    reversible_write_counter=Transition.to(2),
+                    # `transfer` includes two balance updates and one nonce update
+                    reversible_write_counter=Transition.to(3),
                     log_id=Transition.same(),
-                )
-            else:
-                for field_tag, expected_value in [
-                    (CallContextFieldTag.LastCalleeId, FQ(0)),
-                    (CallContextFieldTag.LastCalleeReturnDataOffset, FQ(0)),
-                    (CallContextFieldTag.LastCalleeReturnDataLength, FQ(0)),
-                ]:
-                    instruction.constrain_equal(
-                        instruction.call_context_lookup(field_tag, RW.Write),
-                        expected_value,
-                    )
-
-                instruction.constrain_step_state_transition(
-                    rw_counter=Transition.delta(instruction.rw_counter_offset),
-                    program_counter=Transition.delta(1),
-                    stack_pointer=Transition.delta(stack_pointer_delta),
-                    gas_left=Transition.delta(-gas_cost),
-                    reversible_write_counter=Transition.delta(3),
-                    memory_word_size=Transition.to(next_memory_size),
-                    # Always stay same
-                    call_id=Transition.same(),
-                    is_root=Transition.same(),
-                    is_create=Transition.same(),
-                    code_hash=Transition.same_word(),
                 )
 
     # error cases
-    if not is_precheck_ok or not not_address_collision:
+    if not is_precheck_ok or not not_address_collision or not has_init_code:
         for field_tag, expected_value in [
             (CallContextFieldTag.LastCalleeId, FQ(0)),
             (CallContextFieldTag.LastCalleeReturnDataOffset, FQ(0)),
@@ -256,11 +231,13 @@ def create(instruction: Instruction):
                 expected_value,
             )
 
+        # if not_address_collision, have 2 writes from `transfer` and 1 write from nonce update
+        reversible_write_counter_delta = 3 if not_address_collision and not has_init_code else 0
         instruction.constrain_step_state_transition(
             rw_counter=Transition.delta(instruction.rw_counter_offset),
             program_counter=Transition.delta(1),
-            stack_pointer=Transition.delta(2 + is_create2),
-            reversible_write_counter=Transition.delta(1),
+            stack_pointer=Transition.delta(stack_pointer_delta),
+            reversible_write_counter=Transition.delta(reversible_write_counter_delta),
             gas_left=Transition.delta(-gas_cost),
             memory_word_size=Transition.to(next_memory_size),
             # Always stay same
