@@ -259,7 +259,7 @@ def test_callop(
 
     # Only check balance and stack depth
     is_precheck_ok = caller.balance >= value and depth < 1025
-    is_success = False if is_precheck_ok is False or callee is CALLEE_WITH_REVERT_BYTECODE else True
+    is_success = (is_precheck_ok and callee != CALLEE_WITH_REVERT_BYTECODE)
     is_reverted_by_caller = not caller_ctx.is_persistent and is_success
     is_reverted_by_callee = not is_success
     callee_is_persistent = caller_ctx.is_persistent and is_success
