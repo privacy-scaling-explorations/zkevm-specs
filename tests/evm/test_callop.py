@@ -57,6 +57,7 @@ def expected(
     caller_ctx: CallContext,
     stack: Stack,
     is_warm_access: bool,
+    is_precheck_ok: bool,
 ):
     def memory_size(offset: int, length: int) -> int:
         if length == 0:
@@ -82,7 +83,7 @@ def expected(
         * (
             GAS_COST_CALL_WITH_VALUE
             # Only CALL opcode could invoke transfer to make empty account into non-empty.
-            + is_call * callee.is_empty() * GAS_COST_NEW_ACCOUNT
+            + is_precheck_ok * is_call * callee.is_empty() * GAS_COST_NEW_ACCOUNT
         )
         + memory_expansion_gas_cost
     )
@@ -91,7 +92,7 @@ def expected(
     callee_gas_left = min(all_but_one_64th_gas, stack.gas)
     caller_gas_left = caller_ctx.gas_left - (
         gas_cost - has_value * GAS_STIPEND_CALL_WITH_VALUE
-        if bytecode_hash == EMPTY_CODE_HASH
+        if bytecode_hash == EMPTY_CODE_HASH or is_precheck_ok is False
         else gas_cost + callee_gas_left
     )
 
@@ -116,7 +117,6 @@ def gen_testing_data():
         CALLEE_WITH_REVERT_BYTECODE,
     ]
     call_contexts = [
-        CallContext(gas_left=100000, is_persistent=True, reversible_write_counter=2),
         CallContext(
             gas_left=100000, is_persistent=True, memory_word_size=8, reversible_write_counter=5
         ),
@@ -129,15 +129,12 @@ def gen_testing_data():
     ]
     stacks = [
         Stack(),
-        Stack(value=int(1e18)),
-        Stack(gas=100),
-        Stack(gas=100000),
-        Stack(cd_offset=64, cd_length=320, rd_offset=0, rd_length=32),
-        Stack(cd_offset=0, cd_length=32, rd_offset=64, rd_length=320),
+        Stack(value=int(1e18), gas=100000),
+        Stack(value=int(1e18), gas=100, cd_offset=64, cd_length=320, rd_offset=0, rd_length=32),
         Stack(cd_offset=0xFFFFFF, cd_length=0, rd_offset=0xFFFFFF, rd_length=0),
     ]
     is_warm_accesss = [True, False]
-
+    depths = [1, 1024, 1025]
     return [
         (
             opcode,
@@ -148,6 +145,7 @@ def gen_testing_data():
             call_context,
             stack,
             is_warm_access,
+            depth,
             expected(
                 opcode,
                 callee.code_hash(),
@@ -156,10 +154,11 @@ def gen_testing_data():
                 call_context,
                 stack,
                 is_warm_access,
+                CALLER.balance >= stack.value and depth < 1025,
             ),
         )
-        for opcode, callee, call_context, stack, is_warm_access in product(
-            opcodes, callees, call_contexts, stacks, is_warm_accesss
+        for opcode, callee, call_context, stack, is_warm_access, depth in product(
+            opcodes, callees, call_contexts, stacks, is_warm_accesss, depths
         )
     ]
 
@@ -168,7 +167,7 @@ TESTING_DATA = gen_testing_data()
 
 
 @pytest.mark.parametrize(
-    "opcode, caller, callee, parent_caller, parent_value, caller_ctx, stack, is_warm_access, expected",
+    "opcode, caller, callee, parent_caller, parent_value, caller_ctx, stack, is_warm_access, depth, expected",
     TESTING_DATA,
 )
 def test_callop(
@@ -180,6 +179,7 @@ def test_callop(
     caller_ctx: CallContext,
     stack: Stack,
     is_warm_access: bool,
+    depth: int,
     expected: Expected,
 ):
     is_call = 1 if opcode == Opcode.CALL else 0
@@ -257,7 +257,9 @@ def test_callop(
         is_empty_code_hash = True
     callee_bytecode_hash = Word(callee_bytecode_hash if not callee.is_empty() else 0)
 
-    is_success = False if callee is CALLEE_WITH_REVERT_BYTECODE else True
+    # Only check balance and stack depth
+    is_precheck_ok = caller.balance >= value and depth < 1025
+    is_success = is_precheck_ok and callee != CALLEE_WITH_REVERT_BYTECODE
     is_reverted_by_caller = not caller_ctx.is_persistent and is_success
     is_reverted_by_callee = not is_success
     callee_is_persistent = caller_ctx.is_persistent and is_success
@@ -288,7 +290,7 @@ def test_callop(
         .call_context_read(1, CallContextFieldTag.IsPersistent, caller_ctx.is_persistent)
         .call_context_read(1, CallContextFieldTag.CalleeAddress, Word(caller.address))
         .call_context_read(1, CallContextFieldTag.IsStatic, is_static)
-        .call_context_read(1, CallContextFieldTag.Depth, 1)
+        .call_context_read(1, CallContextFieldTag.Depth, depth)
     )
     if is_delegatecall == 1:
         rw_dictionary \
@@ -316,6 +318,10 @@ def test_callop(
         .call_context_read(call_id, CallContextFieldTag.IsPersistent, callee_is_persistent)
     # fmt: on
 
+    # Read balance only when CALL or CALLCODE
+    if is_call + is_callcode == 1:
+        rw_dictionary.account_read(caller.address, AccountFieldTag.Balance, caller.balance)
+
     # For opcode CALLCODE:
     # - callee = caller
     #
@@ -328,23 +334,19 @@ def test_callop(
         callee = caller
         caller = parent_caller
 
-    caller_balance_prev = Word(caller.balance)
-    callee_balance_prev = Word(callee.balance)
-    caller_balance = Word(caller.balance - value)
-    callee_balance = Word(callee.balance + value)
-
     # fmt: off
-    if is_call == 1:
+    if is_call == 1 and is_precheck_ok:
+        caller_balance_prev = Word(caller.balance)
+        callee_balance_prev = Word(callee.balance)
+        caller_balance = Word(caller.balance - value)
+        callee_balance = Word(callee.balance + value)
         # For `transfer` invocation.
         rw_dictionary \
             .account_write(caller.address, AccountFieldTag.Balance, caller_balance, caller_balance_prev, rw_counter_of_reversion=None if callee_is_persistent else callee_rw_counter_end_of_reversion) \
             .account_write(callee.address, AccountFieldTag.Balance, callee_balance, callee_balance_prev, rw_counter_of_reversion=None if callee_is_persistent else callee_rw_counter_end_of_reversion - 1)
-    elif is_callcode == 1:
-        # Get caller balance to constrain it should be greater than or equal to stack `value`.
-        rw_dictionary \
-            .account_read(caller.address, AccountFieldTag.Balance, Word(caller.balance))
 
-    if is_empty_code_hash:
+
+    if is_precheck_ok is False or is_empty_code_hash:
         rw_dictionary \
         .call_context_write(1, CallContextFieldTag.LastCalleeId, 0) \
         .call_context_write(1, CallContextFieldTag.LastCalleeReturnDataOffset, 0) \
@@ -358,7 +360,7 @@ def test_callop(
         .call_context_write(1, CallContextFieldTag.ReversibleWriteCounter, caller_ctx.reversible_write_counter + 1) \
         .call_context_read(call_id, CallContextFieldTag.CallerId, 1) \
         .call_context_read(call_id, CallContextFieldTag.TxId, 1) \
-        .call_context_read(call_id, CallContextFieldTag.Depth, 2) \
+        .call_context_read(call_id, CallContextFieldTag.Depth, depth + 1) \
         .call_context_read(call_id, CallContextFieldTag.CallerAddress, Word(caller.address)) \
         .call_context_read(call_id, CallContextFieldTag.CalleeAddress, Word(callee.address)) \
         .call_context_read(call_id, CallContextFieldTag.CallDataOffset, stack.cd_offset if stack.cd_length != 0 else 0) \
@@ -418,7 +420,7 @@ def test_callop(
                     memory_word_size=expected.next_memory_size,
                     reversible_write_counter=caller_ctx.reversible_write_counter + 3,
                 )
-                if is_empty_code_hash
+                if is_empty_code_hash or is_precheck_ok is False
                 else StepState(
                     execution_state=ExecutionState.STOP
                     if callee.code == STOP_BYTECODE
