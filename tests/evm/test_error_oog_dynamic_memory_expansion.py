@@ -36,6 +36,7 @@ def test_oog_dynamic_memory_expansion_root(
     # So, it's better to be a non-zero value
     reversible_write_counter = 2
 
+    pc = 67
     rw_counter = 2 if is_root else 14
     caller_id = 1 if is_root else 2
     is_create = True if opcode == Opcode.CREATE or opcode == Opcode.CREATE2 else False
@@ -47,7 +48,7 @@ def test_oog_dynamic_memory_expansion_root(
             .stack_read(caller_id, stack_pointer + 1, Word(offset))
             .stack_read(caller_id, stack_pointer + 2, Word(length))
         )
-        pc = 100
+
     else:
         stack_pointer = 1021
         bytecode = Bytecode().return_() if opcode == Opcode.RETURN else Bytecode().revert()
@@ -56,7 +57,6 @@ def test_oog_dynamic_memory_expansion_root(
             .stack_read(caller_id, stack_pointer, Word(offset))
             .stack_read(caller_id, stack_pointer + 1, Word(length))
         )
-        pc = 67
 
     bytecode_hash = Word(bytecode.hash())
 

@@ -34,4 +34,6 @@ def error_oog_dynamic_memory_expansion(instruction: Instruction):
     )
     instruction.constrain_equal(gas_not_enough, FQ(1))
 
-    instruction.constrain_error_state(instruction.rw_counter_offset + instruction.curr.reversible_write_counter)
+    instruction.constrain_error_state(
+        instruction.rw_counter_offset + instruction.curr.reversible_write_counter
+    )
