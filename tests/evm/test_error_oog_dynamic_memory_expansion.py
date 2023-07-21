@@ -30,28 +30,32 @@ TESTING_DATA_IS_ROOT = (
 def test_oog_dynamic_memory_expansion_root(
     is_root: bool, opcode: Opcode, offset: int, length: int, gas_left: int
 ):
-    rw_counter = 3 if is_root else 15
+    # It's a cumulative reversible write counter and it'll be 2 after BeginTx
+    # It could a random value as well but
+    # we can verify the rw_counter in the next call context is correct or not.
+    # So, it's better to be a non-zero value
+    reversible_write_counter = 2
+
+    rw_counter = 2 if is_root else 14
     caller_id = 1 if is_root else 2
     is_create = True if opcode == Opcode.CREATE or opcode == Opcode.CREATE2 else False
     if is_create:
+        stack_pointer = 1020
         bytecode = Bytecode().create()
         rw_table = (
             RWDictionary(rw_counter)
-            .stack_read(caller_id, 1021, Word(1))
-            .stack_read(caller_id, 1022, Word(offset))
-            .stack_read(caller_id, 1023, Word(length))
+            .stack_read(caller_id, stack_pointer + 1, Word(offset))
+            .stack_read(caller_id, stack_pointer + 2, Word(length))
         )
-        stack_pointer = 1021
         pc = 100
-
     else:
+        stack_pointer = 1021
         bytecode = Bytecode().return_() if opcode == Opcode.RETURN else Bytecode().revert()
         rw_table = (
             RWDictionary(rw_counter - 1)
-            .stack_read(caller_id, 1022, Word(offset))
-            .stack_read(caller_id, 1023, Word(length))
+            .stack_read(caller_id, stack_pointer, Word(offset))
+            .stack_read(caller_id, stack_pointer + 1, Word(length))
         )
-        stack_pointer = 1022
         pc = 67
 
     bytecode_hash = Word(bytecode.hash())
@@ -72,7 +76,7 @@ def test_oog_dynamic_memory_expansion_root(
             .call_context_read(1, CallContextFieldTag.StackPointer, stack_pointer) \
             .call_context_read(1, CallContextFieldTag.GasLeft, gas_left) \
             .call_context_read(1, CallContextFieldTag.MemorySize, memory_word_size) \
-            .call_context_read(1, CallContextFieldTag.ReversibleWriteCounter, 0) \
+            .call_context_read(1, CallContextFieldTag.ReversibleWriteCounter, reversible_write_counter) \
             .call_context_write(1, CallContextFieldTag.LastCalleeId, 2) \
             .call_context_write(1, CallContextFieldTag.LastCalleeReturnDataOffset, 0) \
             .call_context_write(1, CallContextFieldTag.LastCalleeReturnDataLength, 0)
@@ -98,18 +102,18 @@ def test_oog_dynamic_memory_expansion_root(
                 program_counter=0,
                 stack_pointer=stack_pointer,
                 gas_left=gas_left,
-                reversible_write_counter=0,
+                reversible_write_counter=reversible_write_counter,
             ),
             StepState(
                 execution_state=ExecutionState.EndTx,
-                rw_counter=rw_table.rw_counter,
+                rw_counter=rw_table.rw_counter + reversible_write_counter,
                 call_id=1,
                 gas_left=0,
             )
             if is_root is True
             else StepState(
                 execution_state=ExecutionState.STOP,
-                rw_counter=rw_table.rw_counter,
+                rw_counter=rw_table.rw_counter + reversible_write_counter,
                 call_id=1,
                 is_root=False,
                 is_create=is_create,
@@ -118,7 +122,7 @@ def test_oog_dynamic_memory_expansion_root(
                 stack_pointer=stack_pointer,
                 gas_left=gas_left,
                 memory_word_size=memory_word_size,
-                reversible_write_counter=0,
+                reversible_write_counter=reversible_write_counter,
             ),
         ],
     )
