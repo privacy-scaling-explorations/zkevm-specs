@@ -1,5 +1,4 @@
 import pytest
-from common import memory_expansion
 
 from zkevm_specs.evm_circuit import (
     ExecutionState,

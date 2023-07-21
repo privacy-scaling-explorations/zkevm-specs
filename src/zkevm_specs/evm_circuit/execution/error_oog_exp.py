@@ -1,9 +1,6 @@
 from zkevm_specs.util.param import (
     GAS_COST_EXP_PER_BYTE,
-    GAS_COST_LOG,
-    GAS_COST_LOGDATA,
     GAS_COST_SLOW,
-    N_BYTES_MEMORY_ADDRESS,
 )
 from ...util import FQ
 from ..instruction import Instruction
@@ -22,7 +19,6 @@ def error_oog_exp(instruction: Instruction):
     # get total gas cost
     exponent_byte_size = instruction.byte_size(exponent)
     dynamic_gas_cost = GAS_COST_EXP_PER_BYTE * exponent_byte_size
-    print(dynamic_gas_cost)
 
     # check gas left is less than total gas required
     gas_not_enough, _ = instruction.compare(
