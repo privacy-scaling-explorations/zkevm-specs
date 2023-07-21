@@ -1,4 +1,4 @@
-from zkevm_specs.evm_circuit.table import CallContextFieldTag
+from zkevm_specs.evm_circuit.table import CallContextFieldTag, RW
 from zkevm_specs.util.param import (
     GAS_COST_ACCOUNT_COLD_ACCESS,
     GAS_COST_FASTEST,
@@ -29,11 +29,12 @@ def error_oog_memory_copy(instruction: Instruction):
     )
 
     # EXTCODECOPY has one more extra stack pop for external address
+    stack_offset = 0
     if is_ext_code_copy == FQ(1):
-        external_address = instruction.stack_pop()
-    memory_offset_word = instruction.stack_pop()
-    instruction.stack_pop()  # calldata offset, we don't need it here.
-    copy_size_word = instruction.stack_pop()
+        external_address = instruction.stack_lookup(RW.Read, stack_offset)
+        stack_offset += 1
+    memory_offset_word = instruction.stack_lookup(RW.Read, stack_offset)
+    copy_size_word = instruction.stack_lookup(RW.Read, stack_offset + 2)
 
     # Get constant gas cost
     if is_ext_code_copy == FQ(1):
@@ -63,4 +64,6 @@ def error_oog_memory_copy(instruction: Instruction):
     )
     instruction.constrain_equal(gas_not_enough, FQ(1))
 
-    instruction.constrain_error_state(instruction.rw_counter_offset + 1)
+    instruction.constrain_error_state(
+        instruction.rw_counter_offset + instruction.curr.reversible_write_counter + 1
+    )

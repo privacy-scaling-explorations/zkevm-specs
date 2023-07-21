@@ -41,31 +41,41 @@ def test_error_oog_memory_copy(
     caller_id = 1 if is_root else 2
     is_ext_code_copy = True if opcode == Opcode.EXTCODECOPY else False
 
+    # fixed value
+    rw_counter_end_of_reversion = 5
+
+    # It's a cumulative reversible write counter and it'll be 2 after BeginTx
+    # It could a random value as well but
+    # we can verify the rw_counter in the next call context is correct or not.
+    # So, it's better to be a non-zero value
+    reversible_write_counter = 2
+
     # warm/cold access only occurred while EXTCODECOPY
     if is_warm_access:
         assert is_ext_code_copy
 
     if is_ext_code_copy:
+        stack_pointer = 1020
+        pc = 100
         rw_counter = 9 if is_root else 20
         address = 0xCAFECAFE
         bytecode = Bytecode().extcodecopy()
         rw_table = (
             RWDictionary(rw_counter)
-            .stack_read(caller_id, 1020, Word(address))
-            .stack_read(caller_id, 1021, Word(offset))
-            .stack_read(caller_id, 1022, Word(0))
-            .stack_read(caller_id, 1023, Word(length))
+            .stack_read(caller_id, stack_pointer, Word(address))
+            .stack_read(caller_id, stack_pointer + 1, Word(offset))
+            .stack_read(caller_id, stack_pointer + 3, Word(length))
         )
         # fmt: off
         rw_table \
             .call_context_read(caller_id, CallContextFieldTag.TxId, caller_id) \
-            .call_context_read(caller_id, CallContextFieldTag.RwCounterEndOfReversion, 1) \
+            .call_context_read(caller_id, CallContextFieldTag.RwCounterEndOfReversion, rw_counter_end_of_reversion) \
             .call_context_read(caller_id, CallContextFieldTag.IsPersistent, False) \
-            .tx_access_list_account_write(caller_id, address, True, is_warm_access, rw_counter_of_reversion=1)
+            .tx_access_list_account_write(caller_id, address, True, is_warm_access, rw_counter_of_reversion=rw_counter_end_of_reversion-reversible_write_counter)
         # fmt: on
-        stack_pointer = 1020
-        pc = 133
     else:
+        stack_pointer = 1021
+        pc = 67
         rw_counter = 3
         if opcode == Opcode.CALLDATACOPY:
             bytecode = Bytecode().calldatacopy()
@@ -76,12 +86,9 @@ def test_error_oog_memory_copy(
 
         rw_table = (
             RWDictionary(rw_counter)
-            .stack_read(caller_id, 1021, Word(offset))
-            .stack_read(caller_id, 1022, Word(0))
-            .stack_read(caller_id, 1023, Word(length))
+            .stack_read(caller_id, stack_pointer, Word(offset))
+            .stack_read(caller_id, stack_pointer + 2, Word(length))
         )
-        stack_pointer = 1021
-        pc = 100
 
     bytecode_hash = Word(bytecode.hash())
 
@@ -127,18 +134,18 @@ def test_error_oog_memory_copy(
                 program_counter=0,
                 stack_pointer=stack_pointer,
                 gas_left=gas_left,
-                reversible_write_counter=0,
+                reversible_write_counter=reversible_write_counter,
             ),
             StepState(
                 execution_state=ExecutionState.EndTx,
-                rw_counter=rw_table.rw_counter,
+                rw_counter=rw_table.rw_counter + reversible_write_counter,
                 call_id=1,
                 gas_left=0,
             )
             if is_root is True
             else StepState(
                 execution_state=ExecutionState.STOP,
-                rw_counter=rw_table.rw_counter,
+                rw_counter=rw_table.rw_counter + reversible_write_counter,
                 call_id=1,
                 is_root=False,
                 is_create=False,
