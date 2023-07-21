@@ -609,6 +609,22 @@ class RWDictionary:
             rw_counter_of_reversion=rw_counter_of_reversion,
         )
 
+    def tx_access_list_account_storage_read(
+        self,
+        tx_id: IntOrFQ,
+        account_address: IntOrFQ,
+        storage_key: Word,
+        value: bool,
+    ) -> RWDictionary:
+        return self._state_read(
+            Target.TxAccessListAccountStorage,
+            id=FQ(tx_id),
+            address=FQ(account_address),
+            storage_key=storage_key,
+            value=FQ(value),
+            value_prev=FQ(value),
+        )
+
     def account_read(
         self, account_address: IntOrFQ, field_tag: AccountFieldTag, value: Union[int, FQ, Word]
     ) -> RWDictionary:

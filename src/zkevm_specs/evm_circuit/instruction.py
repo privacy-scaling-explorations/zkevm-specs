@@ -1023,7 +1023,7 @@ class Instruction:
             field_tag=None,
             storage_key=storage_key,
         )
-        return row.value
+        return row.value, row.value_prev
 
     def account_storage_write(
         self,
@@ -1084,6 +1084,17 @@ class Instruction:
             reversion_info=reversion_info,
         )
         return row.value_prev.value().expr()
+
+    def read_account_storage_to_access_list(
+        self,
+        tx_id: Expression,
+        account_address: Expression,
+        storage_key: Word,
+    ) -> FQ:
+        row = self.state_read(
+            Target.TxAccessListAccountStorage, tx_id, account_address, storage_key=storage_key
+        )
+        return row.value.value().expr()
 
     def transfer_with_gas_fee(
         self,
