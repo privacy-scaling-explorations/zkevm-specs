@@ -1,4 +1,4 @@
-from ...util import FQ
+from ...util import FQ, N_BYTES_PROGRAM_COUNTER
 from ..instruction import Instruction, Transition
 from ..table import CallContextFieldTag
 from ..execution_state import ExecutionState
@@ -7,9 +7,13 @@ from ..execution_state import ExecutionState
 def stop(instruction: Instruction):
     # Note when transition to STOP, program_counter can only be increased by 1,
     # (JUMP* will always transit to JUMPDEST, then to STOP if any) so when opcode
-    # fetching is out of range, the program_counter must be equal to code_length.
+    # fetching is out of range, the program_counter must be greater or equal than code_length.
     code_length = instruction.bytecode_length(instruction.curr.code_hash)
-    is_out_of_range = instruction.is_equal(code_length, instruction.curr.program_counter)
+    out_of_range = instruction.compare(
+        code_length, instruction.curr.program_counter, N_BYTES_PROGRAM_COUNTER
+    )
+    (lt, eq) = out_of_range
+    is_out_of_range = lt + eq
     if is_out_of_range == FQ(0):
         instruction.responsible_opcode_lookup(instruction.opcode_lookup(True))
 

@@ -21,7 +21,7 @@ def error_oog_call(instruction: Instruction):
     tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
 
     # init CallGadget to handle stack vars.
-    call = CallGadget(instruction, FQ(0), is_call, is_callcode, is_delegatecall)
+    call = CallGadget(instruction, FQ(0), is_call, is_callcode, is_delegatecall, is_staticcall)
 
     # TODO: handle PrecompiledContract oog cases
 

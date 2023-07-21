@@ -150,6 +150,11 @@ class Instruction:
             f"Expected value to be != 0, but got {value}"
         )
 
+    def constrain_zero_word(self, value: Word):
+        assert value.lo.expr() == 0 and value.hi.expr() == 0, ConstraintUnsatFailure(
+            f"Expected word to be 0, but got {value}"
+        )
+
     def constrain_not_zero_word(self, value: Word):
         assert value.lo.expr() != 0 or value.hi.expr() != 0, ConstraintUnsatFailure(
             f"Expected word to be != 0, but got {value}"

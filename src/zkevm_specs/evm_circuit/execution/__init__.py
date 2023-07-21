@@ -64,6 +64,7 @@ from .error_invalid_jump import *
 from .error_invalid_opcode import *
 from .error_gas_uint_overflow import *
 from .error_oog_dynamic_memory_expansion import *
+from .error_write_protection import *
 
 
 EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
@@ -127,6 +128,7 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.ErrorOutOfGasConstant: error_oog_constant,
     ExecutionState.ErrorStack: error_stack,
     ExecutionState.ErrorOutOfGasDynamicMemoryExpansion: error_oog_dynamic_memory_expansion,
+    ExecutionState.ErrorWriteProtection: error_write_protection,
     # ExecutionState.ECRECOVER: ,
     # ExecutionState.SHA256: ,
     # ExecutionState.RIPEMD160: ,
