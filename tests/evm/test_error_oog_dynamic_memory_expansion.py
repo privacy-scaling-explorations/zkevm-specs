@@ -41,7 +41,7 @@ def test_oog_dynamic_memory_expansion_root(
     caller_id = 1 if is_root else 2
     is_create = True if opcode == Opcode.CREATE or opcode == Opcode.CREATE2 else False
     if is_create:
-        stack_pointer = 1020
+        stack_pointer = 1021 - opcode == Opcode.CREATE2
         bytecode = Bytecode().create()
         rw_table = (
             RWDictionary(rw_counter)
