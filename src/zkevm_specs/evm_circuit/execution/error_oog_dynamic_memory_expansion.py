@@ -1,5 +1,5 @@
 from zkevm_specs.evm_circuit.table import RW
-from zkevm_specs.util.param import GAS_COST_CREATE, N_BYTES_MEMORY_ADDRESS
+from zkevm_specs.util.param import GAS_COST_CREATE
 from ...util import FQ
 from ..instruction import Instruction
 from ..opcode import Opcode
@@ -24,8 +24,7 @@ def error_oog_dynamic_memory_expansion(instruction: Instruction):
     # get gas cost of memory expansion
     offset_word = instruction.stack_lookup(RW.Read, stack_offset)
     size_word = instruction.stack_lookup(RW.Read, stack_offset + 1)
-    offset = instruction.word_to_fq(offset_word, N_BYTES_MEMORY_ADDRESS)
-    size = instruction.word_to_fq(size_word, N_BYTES_MEMORY_ADDRESS)
+    offset, size = instruction.memory_offset_and_length(offset_word, size_word)
     (_, memory_expansion_gas_cost) = instruction.memory_expansion(offset, size)
 
     # check gas left is less than total gas required
