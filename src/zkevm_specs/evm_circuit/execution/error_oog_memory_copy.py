@@ -40,9 +40,7 @@ def error_oog_memory_copy(instruction: Instruction):
     if is_ext_code_copy == FQ(1):
         address = instruction.word_to_fq(external_address, N_BYTES_MEMORY_ADDRESS)
         tx_id = instruction.call_context_lookup(CallContextFieldTag.TxId)
-        is_warm = instruction.add_account_to_access_list(
-            tx_id, address, instruction.reversion_info()
-        )
+        is_warm = instruction.read_account_to_access_list(tx_id, address)
         if is_warm == FQ(1):
             constant_gas = GAS_COST_WARM_ACCESS
         else:
