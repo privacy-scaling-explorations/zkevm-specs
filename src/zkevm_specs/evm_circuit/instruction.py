@@ -1023,7 +1023,7 @@ class Instruction:
             field_tag=None,
             storage_key=storage_key,
         )
-        return row.value, row.value_prev
+        return row.value
 
     def account_storage_write(
         self,

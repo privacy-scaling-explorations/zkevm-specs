@@ -1,3 +1,4 @@
+from zkevm_specs.util.arithmetic import Word
 from zkevm_specs.util.param import GAS_COST_SSTORE_SENTRY_EIP2200, N_BYTES_GAS
 from ...util import (
     FQ,
@@ -25,16 +26,16 @@ def error_oog_sload_sstore(instruction: Instruction):
     is_warm = instruction.read_account_storage_to_access_list(tx_id, callee_address, storage_key)
 
     if is_sload == FQ(1):
-        gas_cost = FQ(WARM_STORAGE_READ_COST) if is_warm == FQ(1) else FQ(COLD_SLOAD_COST)
+        gas_cost = WARM_STORAGE_READ_COST if is_warm == FQ(1) else COLD_SLOAD_COST
     else:
         value = instruction.stack_pop()
-        _, value_prev = instruction.account_storage_read(callee_address, storage_key, tx_id)
-        original_value = instruction.curr.aux_data
+        value_prev = instruction.account_storage_read(callee_address, storage_key, tx_id)
+        original_value = Word(instruction.curr.aux_data)
 
         if value == value_prev:
             gas_cost = SLOAD_GAS  # 100
         elif value_prev == original_value:
-            if original_value == 0:
+            if original_value == Word(0):
                 gas_cost = SSTORE_SET_GAS  # 20000
             else:
                 gas_cost = SSTORE_RESET_GAS  # 2900
@@ -44,15 +45,15 @@ def error_oog_sload_sstore(instruction: Instruction):
             gas_cost += COLD_SLOAD_COST
 
     # check gas left is less than total gas required
-    insufficient_gas, _ = instruction.compare(instruction.curr.gas_left, gas_cost, N_BYTES_GAS)
+    insufficient_gas, _ = instruction.compare(instruction.curr.gas_left, FQ(gas_cost), N_BYTES_GAS)
     if is_sload == FQ(1):
         instruction.constrain_equal(insufficient_gas, FQ(1))
     else:
         # For SSTORE, the OOG error occurs when the gas left is less than or equal to `SSTORE_SENTRY`
         lt_gas, eq_gas = instruction.compare(
-            instruction.curr.gas_left, GAS_COST_SSTORE_SENTRY_EIP2200, N_BYTES_GAS
+            instruction.curr.gas_left, FQ(GAS_COST_SSTORE_SENTRY_EIP2200), N_BYTES_GAS
         )
-        instruction.constrain_equal(lt_gas + eq_gas + insufficient_gas, FQ(1))
+        instruction.constrain_not_zero(lt_gas + eq_gas + insufficient_gas)
 
     instruction.constrain_error_state(
         instruction.rw_counter_offset + instruction.curr.reversible_write_counter + 1
