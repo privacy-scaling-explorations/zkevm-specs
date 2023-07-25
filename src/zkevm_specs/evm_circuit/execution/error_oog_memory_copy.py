@@ -51,8 +51,9 @@ def error_oog_memory_copy(instruction: Instruction):
         constant_gas = GAS_COST_FASTEST
 
     # get dynamic gas cost which includes memory expansion and memory copy
-    memory_offset = instruction.word_to_fq(memory_offset_word, N_BYTES_MEMORY_ADDRESS)
-    copy_size = instruction.word_to_fq(copy_size_word, N_BYTES_MEMORY_ADDRESS)
+    memory_offset, copy_size = instruction.memory_offset_and_length(
+        memory_offset_word, copy_size_word
+    )
     _, memory_expansion_gas_cost = instruction.memory_expansion_dynamic_length(
         memory_offset, copy_size
     )
