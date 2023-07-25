@@ -69,9 +69,7 @@ def test_error_oog_memory_copy(
         # fmt: off
         rw_table \
             .call_context_read(caller_id, CallContextFieldTag.TxId, caller_id) \
-            .call_context_read(caller_id, CallContextFieldTag.RwCounterEndOfReversion, rw_counter_end_of_reversion) \
-            .call_context_read(caller_id, CallContextFieldTag.IsPersistent, False) \
-            .tx_access_list_account_write(caller_id, address, True, is_warm_access, rw_counter_of_reversion=rw_counter_end_of_reversion-reversible_write_counter)
+            .tx_access_list_account_read(caller_id, address, is_warm_access)
         # fmt: on
     else:
         stack_pointer = 1021
