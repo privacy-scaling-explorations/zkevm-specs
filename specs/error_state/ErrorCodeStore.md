@@ -6,7 +6,7 @@
 ### EVM behavior
 When handling a CREATE-kind transaction, Initial bytecode opcodes will run and current call context is created. The final bytecode opcodes to store for new contract is the `RETURN` opcode of init codes result.
 
-`RETURN` opcode returns memory [`offset`...`offset` + `length`] content as bytecodes to store into state db. For returned bytecodes, store them cost additional gas.   
+`RETURN` opcode returns memory [`offset`...`offset` + `length`] content as bytecode to store into state db. For returned bytecode, store them cost additional gas.   
 
 ```
 let CODE_DEPOSIT_BYTE_COST = 200
@@ -14,7 +14,7 @@ code_store_cost = CODE_DEPOSIT_BYTE_COST * len(bytecodes)
 ``` 
 
 - If `code_store_cost` > gas left, it is `CodeStoreOutOfGas` case.
-- If returned bytecodes length > `MAXCODESIZE`, it is `MaxCodeSizeExceeded` case.  
+- If returned bytecode length > `MAXCODESIZE`, it is `MaxCodeSizeExceeded` case.  
 
 In circuit bus mapping side, check these two code store errors in [here](https://github.com/privacy-scaling-explorations/zkevm-circuits/blob/main/bus-mapping/src/circuit_input_builder/input_state_ref.rs#L1148&L1155). When executing opcode is `RETURN` and call context is creating(`call.is_create == true`) meanwhile.  
 
@@ -23,8 +23,8 @@ Even though errors occur in `CREATE` kind opcodes, it is special not checking er
 Overall it looks like the following:  
 - Pop EVM word `offset` and `length` from the stack, 
 - Go to `ErrorCodeStore` state when call context is being created & select which one of the followings occurs:
-  1. Storing `length` of bytecodes runs out of gas.
-  2. `length` of bytecodes exceeds `MAXCODESIZE`.
+  1. Storing `length` of bytecode runs out of gas.
+  2. `length` of bytecode exceeds `MAXCODESIZE`.
 
 ### Constraints
 1. `code_store_cost` > gas_left or `length` > `MAXCODESIZE`
