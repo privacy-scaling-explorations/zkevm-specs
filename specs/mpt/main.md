@@ -284,3 +284,29 @@ RLP encoding bytes (which are stored in `ExtensionBranchNode`, `AccountNode`, `S
 
 The field `keccak_data` contains the RLP streams for which we need hash values.
 
+## Placeholders
+
+There are cases when the `S` and `C` proofs are not of the same length:
+
+ * When one proof does not contain a storage leaf. For example, in the `S` proof
+   we do not have a leaf as the value at the specified key has not be set yet.
+   The value is then set and the `C` proof contains a storage leaf. In this case,
+   to preserve the circuit layout, a placeholder storage leaf is added to the `S` proof.
+ * When a leaf is replaced by a branch. For example, in the `S` proof we have a leaf at
+   some key with nibbles `n1 n2 n3 n4 `, we then set a value at key `n1 n2 n3 n5` - the
+   leaf at position `n1 n2 n3` turns into a branch with two leaves at positions `n4` and
+   `n5`. In this case, the `S` proof does not have a branch and to preserve the layout we
+   add a placeholder branch to it. 
+ * When an extension node is replaced by another (shorter or longer) extension node.
+   For example, we have an extension node at `n1 n2 n3 n4 n5 n6` with branch with two leaves
+   at positions `n` and `m`. If we add a leaf at `n1 n2 n3 n4 n7` where `n5 != n7`,
+   a new extension node is inserted at `n1 n2 n3 n4` with a new branch with an extension node
+   at position `n5` (with only one nibble `n6`) and a leaf at position `n7`.
+   In this case, the `S` proof contains the extension node at `n1 n2 n3 n4 n5 n6` and
+   no underlying branch and leaf (the modification happens at `n1 n2 n3 n4 n7` and only
+   an extension node is find there), thus we need to add a placeholder branch and a placeholder
+   leaf.
+
+
+
+
