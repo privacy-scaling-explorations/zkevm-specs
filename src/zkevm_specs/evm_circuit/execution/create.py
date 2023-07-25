@@ -12,9 +12,6 @@ from zkevm_specs.util.param import (
     N_BYTES_STACK,
     N_BYTES_U64,
 )
-from ...util import (
-    CALL_CREATE_DEPTH,
-)
 from ..instruction import Instruction, Transition
 from ..table import RW, CallContextFieldTag, AccountFieldTag, CopyDataTypeTag
 
@@ -43,7 +40,7 @@ def create(instruction: Instruction):
     caller_address_word = instruction.call_context_lookup_word(CallContextFieldTag.CallerAddress)
     caller_address = instruction.word_to_address(caller_address_word)
     nonce, nonce_prev = instruction.account_write(caller_address, AccountFieldTag.Nonce)
-    _, balance_prev = instruction.account_write(caller_address, AccountFieldTag.Balance)
+    balance = instruction.account_read(caller_address, AccountFieldTag.Balance)
     is_success = instruction.call_context_lookup(CallContextFieldTag.IsSuccess)
     is_static = instruction.call_context_lookup(CallContextFieldTag.IsStatic)
     reversion_info = instruction.reversion_info()
@@ -90,20 +87,144 @@ def create(instruction: Instruction):
 
     ### Do stack depth, nonce and balance pre-check
     # ErrDepth constraint
-    is_error_depth, _ = instruction.compare(FQ(CALL_CREATE_DEPTH), depth, N_BYTES_STACK)
+    is_depth_ok, _ = instruction.compare(depth, FQ(1025), N_BYTES_STACK)
     # ErrInsufficientBalance constraint
-    is_insufficient_balance, _ = instruction.compare_word(Word(balance_prev.expr().n), value_word)
+    is_insufficient_balance, _ = instruction.compare_word(Word(balance.expr().n), value_word)
     # ErrNonceUintOverflow constraint
     is_nonce_in_range, _ = instruction.compare(nonce_prev, FQ(MAX_U64), N_BYTES_U64)
 
     # pass the pre-check if none of above errors happen
     is_precheck_ok = (
-        is_error_depth == FQ(0) and is_insufficient_balance == FQ(0) and is_nonce_in_range == FQ(1)
+        is_depth_ok == FQ(1) and is_insufficient_balance == FQ(0) and is_nonce_in_range == FQ(1)
     )
 
-    # error cases, should end this call and return
-    # is_static should be false
-    if not is_precheck_ok:
+    # CREATE:  3 pops and 1 push, stack delta = 2
+    # CREATE2: 4 pops and 1 push, stack delta = 3
+    stack_pointer_delta = 2 + is_create2
+    not_address_collision = False
+    if is_precheck_ok:
+        # calculate contract address
+        code_hash = instruction.curr.aux_data if has_init_code else Word(EMPTY_CODE_HASH)
+        contract_address = (
+            instruction.generate_contract_address(caller_address, nonce)
+            if is_create == 1
+            else instruction.generate_CREAET2_contract_address(caller_address, salt_word, code_hash)
+        )
+        contract_address_word = instruction.address_to_word(contract_address)
+
+        # add contract address to access list
+        instruction.add_account_to_access_list(tx_id, contract_address)
+
+        # ErrContractAddressCollision, if any one of following criteria meets.
+        # Nonce is not zero or account code hash is not either 0 or EMPTY_CODE_HASH.
+        callee_code_hash = instruction.account_read_word(contract_address, AccountFieldTag.CodeHash)
+        callee_nonce = instruction.account_read(contract_address, AccountFieldTag.Nonce)
+        is_zero_nonce = instruction.is_zero(callee_nonce)
+        is_empty_hash = instruction.is_equal_word(callee_code_hash, Word(EMPTY_CODE_HASH))
+        is_zero_hash = instruction.is_equal_word(callee_code_hash, Word(0))
+        if is_zero_nonce == FQ(1) and (is_empty_hash == FQ(1) or is_zero_hash == FQ(1)):
+            not_address_collision = True
+
+        if not_address_collision:
+            # verify return contract address
+            instruction.constrain_equal(
+                instruction.word_to_fq(return_contract_address_word, N_BYTES_ACCOUNT_ADDRESS),
+                is_success.expr() * contract_address.expr(),
+            )
+
+            # Propagate is_persistent
+            callee_reversion_info = instruction.reversion_info(call_id=callee_call_id)
+            instruction.constrain_equal(
+                callee_reversion_info.is_persistent,
+                reversion_info.is_persistent * is_success.expr(),
+            )
+
+            # transfer value from caller to contract address
+            instruction.transfer(
+                caller_address, contract_address, value_word, callee_reversion_info
+            )
+
+            # EIP 161, the nonce of a newly created contract is 1
+            nonce, _ = instruction.account_write(contract_address, AccountFieldTag.Nonce)
+            instruction.constrain_equal(nonce, FQ(1))
+
+            if has_init_code:
+                # copy init_code from memory to bytecode
+                copy_rwc_inc, _ = instruction.copy_lookup(
+                    instruction.curr.call_id,  # src_id
+                    CopyDataTypeTag.Memory,  # src_type
+                    instruction.next.code_hash,  # dst_id
+                    CopyDataTypeTag.Bytecode,  # dst_type
+                    offset,  # src_addr
+                    offset + size,  # src_addr_boundary
+                    FQ(0),  # dst_addr
+                    size,  # length
+                    instruction.curr.rw_counter + instruction.rw_counter_offset,
+                )
+                instruction.rw_counter_offset += int(copy_rwc_inc)
+
+                # verify the equality of input `size` and length of calldata
+                code_size = instruction.bytecode_length(instruction.next.code_hash)
+                instruction.constrain_equal(code_size, size)
+
+                # Save caller's call state
+                for field_tag, expected_value in [
+                    (CallContextFieldTag.ProgramCounter, instruction.curr.program_counter + 1),
+                    (
+                        CallContextFieldTag.StackPointer,
+                        instruction.curr.stack_pointer + stack_pointer_delta,
+                    ),
+                    (CallContextFieldTag.GasLeft, gas_left - gas_cost - callee_gas_left),
+                    (CallContextFieldTag.MemorySize, next_memory_size),
+                    (
+                        CallContextFieldTag.ReversibleWriteCounter,
+                        instruction.curr.reversible_write_counter + 1,
+                    ),
+                ]:
+                    instruction.constrain_equal(
+                        instruction.call_context_lookup(field_tag, RW.Write),
+                        expected_value,
+                    )
+                # Setup next call's context.
+                for field_tag, expected_word_or_value in [
+                    (CallContextFieldTag.CallerId, instruction.curr.call_id),
+                    (CallContextFieldTag.TxId, tx_id),
+                    (CallContextFieldTag.Depth, depth.expr() + 1),
+                    (CallContextFieldTag.CallerAddress, caller_address_word),
+                    (CallContextFieldTag.CalleeAddress, contract_address_word),
+                    (CallContextFieldTag.IsSuccess, is_success),
+                    (CallContextFieldTag.IsStatic, FQ(False)),
+                    (CallContextFieldTag.IsRoot, FQ(False)),
+                    (CallContextFieldTag.IsCreate, FQ(True)),
+                ]:
+                    assert isinstance(expected_word_or_value, FQ) or isinstance(
+                        expected_word_or_value, Word
+                    )
+                    instruction.constrain_equal_word(
+                        instruction.call_context_lookup_word(field_tag, call_id=callee_call_id),
+                        WordOrValue(expected_word_or_value),
+                    )
+                instruction.constrain_equal_word(
+                    instruction.call_context_lookup_word(
+                        CallContextFieldTag.CodeHash, call_id=callee_call_id
+                    ),
+                    code_hash,
+                )
+
+                instruction.step_state_transition_to_new_context(
+                    rw_counter=Transition.delta(instruction.rw_counter_offset),
+                    call_id=Transition.to(callee_call_id),
+                    is_root=Transition.to(False),
+                    is_create=Transition.to(True),
+                    code_hash=Transition.to_word(instruction.next.code_hash),
+                    gas_left=Transition.to(callee_gas_left),
+                    # `transfer` includes two balance updates and one nonce update
+                    reversible_write_counter=Transition.to(3),
+                    log_id=Transition.same(),
+                )
+
+    # error cases
+    if not is_precheck_ok or not not_address_collision or not has_init_code:
         for field_tag, expected_value in [
             (CallContextFieldTag.LastCalleeId, FQ(0)),
             (CallContextFieldTag.LastCalleeReturnDataOffset, FQ(0)),
@@ -114,11 +235,13 @@ def create(instruction: Instruction):
                 expected_value,
             )
 
+        # if not_address_collision, have 2 writes from `transfer` and 1 write from nonce update
+        reversible_write_counter_delta = 3 if not_address_collision and not has_init_code else 0
         instruction.constrain_step_state_transition(
             rw_counter=Transition.delta(instruction.rw_counter_offset),
             program_counter=Transition.delta(1),
-            stack_pointer=Transition.delta(2 + is_create2),
-            reversible_write_counter=Transition.delta(1),
+            stack_pointer=Transition.delta(stack_pointer_delta),
+            reversible_write_counter=Transition.delta(reversible_write_counter_delta),
             gas_left=Transition.delta(-gas_cost),
             memory_word_size=Transition.to(next_memory_size),
             # Always stay same
@@ -127,146 +250,3 @@ def create(instruction: Instruction):
             is_create=Transition.same(),
             code_hash=Transition.same_word(),
         )
-    else:
-        # calculate contract address
-        code_hash = instruction.next.code_hash if has_init_code else Word(EMPTY_CODE_HASH)
-        contract_address = (
-            instruction.generate_contract_address(caller_address, nonce)
-            if is_create == 1
-            else instruction.generate_CREAET2_contract_address(caller_address, salt_word, code_hash)
-        )
-        contract_address_word = instruction.address_to_word(contract_address)
-        # add contract address to access list
-        instruction.add_account_to_access_list(tx_id, contract_address)
-
-        if has_init_code:
-            # verify the equality of input `size` and length of calldata
-            code_size = instruction.bytecode_length(instruction.next.code_hash)
-            instruction.constrain_equal(code_size, size)
-
-        # verify return contract address
-        instruction.constrain_equal(
-            instruction.word_to_fq(return_contract_address_word, N_BYTES_ACCOUNT_ADDRESS),
-            is_success.expr() * contract_address.expr(),
-        )
-
-        # ErrContractAddressCollision constraint
-        # code_hash_prev could be either 0 or EMPTY_CODE_HASH
-        # code_hash should be EMPTY_CODE_HASH to make sure the account is created properly
-        code_hash, code_hash_prev = instruction.account_write_word(
-            contract_address, AccountFieldTag.CodeHash
-        )
-        instruction.constrain_in_word(
-            code_hash_prev,
-            [Word(0), Word(EMPTY_CODE_HASH)],
-        )
-        instruction.constrain_equal_word(code_hash, Word(EMPTY_CODE_HASH))
-
-        # Propagate is_persistent
-        callee_reversion_info = instruction.reversion_info(call_id=callee_call_id)
-        instruction.constrain_equal(
-            callee_reversion_info.is_persistent,
-            reversion_info.is_persistent * is_success.expr(),
-        )
-
-        # transfer value from caller to contract address
-        instruction.transfer(caller_address, contract_address, value_word, callee_reversion_info)
-
-        # CREATE:  3 pops and 1 push, stack delta = 2
-        # CREATE2: 4 pops and 1 push, stack delta = 3
-        stack_pointer_delta = 2 + is_create2
-
-        if has_init_code:
-            # copy init_code from memory to bytecode
-            copy_rwc_inc, _ = instruction.copy_lookup(
-                instruction.curr.call_id,  # src_id
-                CopyDataTypeTag.Memory,  # src_type
-                instruction.next.code_hash,  # dst_id
-                CopyDataTypeTag.Bytecode,  # dst_type
-                offset,  # src_addr
-                offset + size,  # src_addr_boundary
-                FQ(0),  # dst_addr
-                size,  # length
-                instruction.curr.rw_counter + instruction.rw_counter_offset,
-            )
-            instruction.rw_counter_offset += int(copy_rwc_inc)
-
-            # Save caller's call state
-            for field_tag, expected_value in [
-                (CallContextFieldTag.ProgramCounter, instruction.curr.program_counter + 1),
-                (
-                    CallContextFieldTag.StackPointer,
-                    instruction.curr.stack_pointer + stack_pointer_delta,
-                ),
-                (CallContextFieldTag.GasLeft, gas_left - gas_cost - callee_gas_left),
-                (CallContextFieldTag.MemorySize, next_memory_size),
-                (
-                    CallContextFieldTag.ReversibleWriteCounter,
-                    instruction.curr.reversible_write_counter + 1,
-                ),
-            ]:
-                instruction.constrain_equal(
-                    instruction.call_context_lookup(field_tag, RW.Write),
-                    expected_value,
-                )
-            # Setup next call's context.
-            for field_tag, expected_word_or_value in [
-                (CallContextFieldTag.CallerId, instruction.curr.call_id),
-                (CallContextFieldTag.TxId, tx_id),
-                (CallContextFieldTag.Depth, depth.expr() + 1),
-                (CallContextFieldTag.CallerAddress, caller_address_word),
-                (CallContextFieldTag.CalleeAddress, contract_address_word),
-                (CallContextFieldTag.IsSuccess, is_success),
-                (CallContextFieldTag.IsStatic, FQ(False)),
-                (CallContextFieldTag.IsRoot, FQ(False)),
-                (CallContextFieldTag.IsCreate, FQ(True)),
-            ]:
-                assert isinstance(expected_word_or_value, FQ) or isinstance(
-                    expected_word_or_value, Word
-                )
-                instruction.constrain_equal_word(
-                    instruction.call_context_lookup_word(field_tag, call_id=callee_call_id),
-                    WordOrValue(expected_word_or_value),
-                )
-            instruction.constrain_equal_word(
-                instruction.call_context_lookup_word(
-                    CallContextFieldTag.CodeHash, call_id=callee_call_id
-                ),
-                code_hash,
-            )
-
-            instruction.step_state_transition_to_new_context(
-                rw_counter=Transition.delta(instruction.rw_counter_offset),
-                call_id=Transition.to(callee_call_id),
-                is_root=Transition.to(False),
-                is_create=Transition.to(True),
-                code_hash=Transition.to_word(instruction.next.code_hash),
-                gas_left=Transition.to(callee_gas_left),
-                # `transfer` includes two balance updates
-                reversible_write_counter=Transition.to(2),
-                log_id=Transition.same(),
-            )
-        else:
-            for field_tag, expected_value in [
-                (CallContextFieldTag.LastCalleeId, FQ(0)),
-                (CallContextFieldTag.LastCalleeReturnDataOffset, FQ(0)),
-                (CallContextFieldTag.LastCalleeReturnDataLength, FQ(0)),
-            ]:
-                instruction.constrain_equal(
-                    instruction.call_context_lookup(field_tag, RW.Write),
-                    expected_value,
-                )
-
-            instruction.constrain_step_state_transition(
-                rw_counter=Transition.delta(instruction.rw_counter_offset),
-                program_counter=Transition.delta(1),
-                stack_pointer=Transition.delta(stack_pointer_delta),
-                gas_left=Transition.delta(-gas_cost),
-                reversible_write_counter=Transition.delta(3),
-                memory_word_size=Transition.to(next_memory_size),
-                # Always stay same
-                call_id=Transition.same(),
-                is_root=Transition.same(),
-                is_create=Transition.same(),
-                code_hash=Transition.same_word(),
-            )
