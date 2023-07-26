@@ -40,4 +40,4 @@ Overall it looks like the following:
 - Restore context lookups for non-root call.
 
 ## Code
-   Please refer to `src/zkevm_specs/evm/execution/error_oog_create.py`.
+   Please refer to `src/zkevm_specs/evm/execution/error_code_store.py`.
