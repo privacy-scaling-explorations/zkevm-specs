@@ -1,28 +1,17 @@
-from collections import namedtuple
-from itertools import product
-
 import pytest
-from common import CallContext
 
 from zkevm_specs.evm_circuit import (
     Block,
     Bytecode,
     CallContextFieldTag,
     ExecutionState,
-    Opcode,
     RWDictionary,
     StepState,
     Tables,
     verify_steps,
 )
 from zkevm_specs.util import Word
-from zkevm_specs.util.arithmetic import FQ
-from zkevm_specs.util.param import GAS_COST_CODE_DEPOSIT, MAX_CODE_SIZE
-
-Op = namedtuple(
-    "Op",
-    ["opcode", "byte_code"],
-)
+from zkevm_specs.util.param import MAX_CODE_SIZE
 
 
 TESTING_DATA = (
