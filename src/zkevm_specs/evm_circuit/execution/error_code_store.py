@@ -26,7 +26,7 @@ def error_code_store(instruction: Instruction):
     # check if bytecode size exceeds MAX_CODE_SIZE
     over_max_code_size, _ = instruction.compare(FQ(MAX_CODE_SIZE), return_length, N_BYTES_STACK)
 
-    # check gas left is less than const gas required
+    # check gas left is less than total gas required
     gas_cost_code_store = FQ(GAS_COST_CODE_DEPOSIT) * return_length
     insufficient_gas, _ = instruction.compare(
         instruction.curr.gas_left, gas_cost_code_store, N_BYTES_GAS

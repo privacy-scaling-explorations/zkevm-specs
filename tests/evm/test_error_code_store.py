@@ -17,7 +17,7 @@ from zkevm_specs.evm_circuit import (
 )
 from zkevm_specs.util import Word
 from zkevm_specs.util.arithmetic import FQ
-from zkevm_specs.util.param import MAX_CODE_SIZE
+from zkevm_specs.util.param import GAS_COST_CODE_DEPOSIT, MAX_CODE_SIZE
 
 Op = namedtuple(
     "Op",
@@ -25,20 +25,37 @@ Op = namedtuple(
 )
 
 
-def gen_testing_data():
-    size = [10, MAX_CODE_SIZE, MAX_CODE_SIZE + 1]
-    is_root = [True, False]
-    gas_left = [10]
-    return [
-        (size, is_root, gas_left) for size, is_root, gas_left in product(size, is_root, gas_left)
-    ]
+TESTING_DATA = (
+    ### insufficient gas case
+    # size: 200, gas_left: 40000 - 1,
+    (ExecutionState.ErrorOutOfGasCodeStore, 200, 40000 - 1, True),  # is_root
+    (ExecutionState.ErrorOutOfGasCodeStore, 200, 40000 - 1, False),  # not is_root
+    # size: MAX_CODE_SIZE, gas_left: MAX_CODE_SIZE * 200 - 1
+    (
+        ExecutionState.ErrorMaxCodeSizeExceeded,
+        MAX_CODE_SIZE,
+        MAX_CODE_SIZE * 200 - 1,
+        True,
+    ),  # is_root
+    (
+        ExecutionState.ErrorMaxCodeSizeExceeded,
+        MAX_CODE_SIZE,
+        MAX_CODE_SIZE * 200 - 1,
+        False,
+    ),  # not is_root
+    ### bytecode size exceeds MAX_CODE_SIZE
+    # size: MAX_CODE_SIZE + 1, gas_left: 5M
+    (ExecutionState.ErrorMaxCodeSizeExceeded, MAX_CODE_SIZE + 1, 5 * 10**6, True),  # is_root
+    (ExecutionState.ErrorMaxCodeSizeExceeded, MAX_CODE_SIZE + 1, 5 * 10**6, False),  # not is_root
+    ### bytecode size exceeds MAX_CODE_SIZE and insufficient gas
+    # size: MAX_CODE_SIZE + 1, gas_left: 2M
+    (ExecutionState.ErrorMaxCodeSizeExceeded, MAX_CODE_SIZE + 1, 2 * 10**6, True),  # is_root
+    (ExecutionState.ErrorMaxCodeSizeExceeded, MAX_CODE_SIZE + 1, 2 * 10**6, False),  # not is_root
+)
 
 
-TESTING_DATA = gen_testing_data()
-
-
-@pytest.mark.parametrize("size, is_root, gas_left", TESTING_DATA)
-def test_error_code_store(size: int, is_root: bool, gas_left: int):
+@pytest.mark.parametrize("execution_state, size, gas_left, is_root", TESTING_DATA)
+def test_error_code_store(execution_state: ExecutionState, size: int, gas_left: int, is_root: bool):
     bytecode = Bytecode().push32(size).push32(32).return_()
     bytecode_hash = Word(bytecode.hash())
 
@@ -57,7 +74,7 @@ def test_error_code_store(size: int, is_root: bool, gas_left: int):
         # fmt: off
         rw_table \
             .call_context_read(current_call_id, CallContextFieldTag.CallerId, 1) \
-            .call_context_read(1, CallContextFieldTag.IsRoot, is_root) \
+            .call_context_read(1, CallContextFieldTag.IsRoot, False) \
             .call_context_read(1, CallContextFieldTag.IsCreate, True) \
             .call_context_read(1, CallContextFieldTag.CodeHash, bytecode_hash) \
             .call_context_read(1, CallContextFieldTag.ProgramCounter, pc + 1) \
@@ -82,7 +99,7 @@ def test_error_code_store(size: int, is_root: bool, gas_left: int):
         tables=tables,
         steps=[
             StepState(
-                execution_state=ExecutionState.ErrorMaxCodeSizeExceeded,
+                execution_state=execution_state,
                 rw_counter=rw_counter,
                 call_id=current_call_id,
                 is_root=is_root,
