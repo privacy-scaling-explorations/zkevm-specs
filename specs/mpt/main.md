@@ -136,8 +136,7 @@ The lookups to be executed by other circuits are enabled only in the account and
 by `getProof` (for example for `AccountDestructed`), a placeholder leaf is added to the witness and the lookup is enabled
 there (with all the constraints needed to ensure the leaf is only a placeholder). 
 
-All nodes contain the array of RLP items (for example branch children for branch node) where the RLP encoding needs to be checked.
-For this reason, there is a [RLP gadget](rlp-gadget.md). To ensure the initial state is set properly, there is the [start gadget](start.md).
+To ensure the initial state is set properly, there is the [start gadget](start.md).
 
 ## Proof chaining
 
@@ -283,6 +282,45 @@ The field `values` contains the RLP stream of a node split into rows and strippe
 RLP encoding bytes (which are stored in `ExtensionBranchNode`, `AccountNode`, `StorageNode`).
 
 The field `keccak_data` contains the RLP streams for which we need hash values.
+
+## RLP encoding
+
+Each node is a stream of bytes that is RLP encoded.
+Some basic RLP constraints are implemented in [MainRLPGadget](gadgets.md), while others,
+more node specific, are implemented in node configs. For example, `AccountLeafConfig`
+contains constraints like:
+```
+require!(value_rlp_bytes[0] => RLP_LONG + 1);
+```
+
+The `MainRLPGadget` struct:
+```
+pub struct MainRLPGadget<F> {
+    bytes: Vec<Cell<F>>,
+    rlp: RLPItemGadget<F>,
+    num_bytes: Cell<F>,
+    len: Cell<F>,
+    mult_diff: Cell<F>,
+    rlc_content: Cell<F>,
+    rlc_rlp: Cell<F>,
+    tag: Cell<F>,
+}
+```
+
+The `RLPItemGadget` determines using the first byte (see the function `decode_rlp` in
+`rlp_gadgets.rs`) of the RLP stream what is the type of the stream.
+If the first byte is smaller than `192` (`RLP_LIST_SHORT`), the stream is a string, otherwise a list.
+
+```
+pub(crate) struct RLPItemGadget<F> {
+    pub(crate) value: RLPValueGadget<F>,
+    pub(crate) list: RLPListGadget<F>,
+}
+```
+
+The `MainRLPGadget` ensures the `RLPItemGadget` is properly based on the first byte of the RLP stream.
+The node specific constraints are implemented in node configs and use either `RLPValueGadget` or
+`RLPListGadget`.
 
 ## Placeholders
 
