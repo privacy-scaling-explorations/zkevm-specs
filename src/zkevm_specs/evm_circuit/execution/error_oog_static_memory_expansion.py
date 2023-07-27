@@ -1,4 +1,4 @@
-from zkevm_specs.util.param import N_BYTES_MEMORY_ADDRESS
+from zkevm_specs.util.param import GAS_COST_FASTEST, N_BYTES_MEMORY_ADDRESS
 from ...util import FQ
 from ..instruction import Instruction
 from ..opcode import Opcode
@@ -19,7 +19,7 @@ def error_oog_static_memory_expansion(instruction: Instruction):
     offset = instruction.word_to_fq(instruction.stack_pop(), N_BYTES_MEMORY_ADDRESS)
 
     # get total gas cost
-    constant_gas = FQ(3)
+    constant_gas = FQ(GAS_COST_FASTEST)
     size = 1 if is_mstore8 else 32
     _, memory_expansion_gas = instruction.memory_expansion_dynamic_length(offset, FQ(size))
     gas_cost = constant_gas + memory_expansion_gas
