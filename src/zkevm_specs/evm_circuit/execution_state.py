@@ -67,7 +67,7 @@ class ExecutionState(IntEnum):
     MSIZE = auto()
     GAS = auto()
     JUMPDEST = auto()
-    PUSH = auto()  # PUSH1, PUSH2, ..., PUSH32
+    PUSH = auto()  # PUSH0, PUSH1, PUSH2, ..., PUSH32
     DUP = auto()  # DUP1, DUP2, ..., DUP16
     SWAP = auto()  # SWAP1, SWAP2, ..., SWAP16
     LOG = auto()  # LOG0, LOG1, LOG2, LOG3, LOG4
@@ -258,6 +258,7 @@ class ExecutionState(IntEnum):
             return [Opcode.JUMPDEST]
         elif self == ExecutionState.PUSH:
             return [
+                Opcode.PUSH0,
                 Opcode.PUSH1,
                 Opcode.PUSH2,
                 Opcode.PUSH3,
