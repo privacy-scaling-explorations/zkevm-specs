@@ -68,6 +68,7 @@ from .error_oog_memory_copy import *
 from .error_oog_log import *
 from .error_write_protection import *
 from .error_oog_exp import *
+from .error_oog_sha3 import *
 
 
 EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
@@ -135,6 +136,7 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.ErrorOutOfGasLOG: error_oog_log,
     ExecutionState.ErrorWriteProtection: error_write_protection,
     ExecutionState.ErrorOutOfGasEXP: error_oog_exp,
+    ExecutionState.ErrorOutOfGasSHA3: error_oog_sha3,
     # ExecutionState.ECRECOVER: ,
     # ExecutionState.SHA256: ,
     # ExecutionState.RIPEMD160: ,
