@@ -18,7 +18,7 @@ The constant gas costs are the same for `BALANCE`, `EXTCODESIZE`, and `EXTCODEHA
 constant_gas = 0
 ```
 
-The calculation of the dynamic gas costs of `BALANCE`, `EXTCODESIZE`, and `EXTCODEHASH` is the same. It depends on cold and warm access.
+The calculation of the dynamic gas costs of `BALANCE`, `EXTCODESIZE`, and `EXTCODEHASH` is the same. It depends on cold or warm access.
 
 ```
 if is_warm:
