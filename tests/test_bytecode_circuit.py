@@ -1,7 +1,13 @@
 from copy import deepcopy
 
 from zkevm_specs.bytecode_circuit import *
-from zkevm_specs.evm_circuit import Opcode, Bytecode, BytecodeFieldTag, BytecodeTableRow, is_push
+from zkevm_specs.evm_circuit import (
+    Bytecode,
+    BytecodeFieldTag,
+    BytecodeTableRow,
+    Opcode,
+    is_push_with_data,
+)
 from zkevm_specs.util import U256, keccak256
 from common import rand_fq
 
@@ -48,17 +54,17 @@ randomness_keccak = rand_fq()
 def test_bytecode_unrolling():
     rows = []
     bytecode = []
-    # First add all non-push bytes, which should all be seen as code
+    # First add all non push-with-data bytes, which should all be seen as code
     for byte in range(256):
-        if not is_push(byte):
+        if not is_push_with_data(byte):
             bytecode.append(byte)
             rows.append((0, BytecodeFieldTag.Byte, len(rows), True, byte))
     # Now add the different push ops
     for n in range(1, 33):
         data_byte = int(Opcode.PUSH32)
-        bytecode.append(Opcode.PUSH1 + n - 1)
+        bytecode.append(Opcode.PUSH0 + n)
         bytecode.extend([data_byte] * n)
-        rows.append((0, BytecodeFieldTag.Byte, len(rows), True, Opcode.PUSH1 + n - 1))
+        rows.append((0, BytecodeFieldTag.Byte, len(rows), True, Opcode.PUSH0 + n))
         for _ in range(n):
             rows.append((0, BytecodeFieldTag.Byte, len(rows), False, data_byte))
     # Set the hash of the complete bytecode in the rows

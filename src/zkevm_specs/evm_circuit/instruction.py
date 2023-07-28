@@ -1407,6 +1407,7 @@ class Instruction:
 
     def constrain_error_state(self, rw_counter_delta: int):
         # Current call must fail.
+        rw_counter_delta += 1
         is_success = self.call_context_lookup(CallContextFieldTag.IsSuccess)
         self.constrain_equal(is_success, FQ(0))
 

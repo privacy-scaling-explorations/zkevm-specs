@@ -36,5 +36,5 @@ def error_code_store(instruction: Instruction):
     instruction.constrain_not_zero(insufficient_gas + over_max_code_size)
 
     instruction.constrain_error_state(
-        1 + instruction.rw_counter_offset + instruction.curr.reversible_write_counter.n
+        instruction.rw_counter_offset + instruction.curr.reversible_write_counter.n
     )
