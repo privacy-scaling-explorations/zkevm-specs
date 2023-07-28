@@ -20,7 +20,10 @@ def error_oog_dynamic_memory_expansion(instruction: Instruction):
     stack_offset = 0
     if is_create + is_create2 == FQ(1):
         constant_gas = GAS_COST_CREATE
+        # the first stack of CREATE/CREATE2 is `value`, so we plus 1 here.
+        # see specs/opcode/F0CREATE_F5CREATE2.md for more details.
         stack_offset += 1
+
     # get gas cost of memory expansion
     offset_word = instruction.stack_lookup(RW.Read, stack_offset)
     size_word = instruction.stack_lookup(RW.Read, stack_offset + 1)

@@ -44,7 +44,7 @@ else:
 
 ### Constraints
 
-1. Current opcode is one of `CREATE`, `RETURN` and `REVERT`.
+1. Current opcode is one of `CREATE`, `CREATE2`, `RETURN` and `REVERT`.
 2. Constrain `gas_left < gas_cost`.
 3. Current call must fail.
 4. If it's a root call, it transits to `EndTx`.
@@ -53,7 +53,7 @@ else:
 
 ### Lookups
 
-1. `3` stack pop for `CREATE` and `2` stack pop for `RETURN` and `REVERT`.
+1. `2` stack lookups for `CREATE`, `CREATE2`, `RETURN` and `REVERT`.
 2. `2` call context lookups for `is_success` and `rw_counter_end_of_reversion`.
 
 And restore context lookups for non-root call.
