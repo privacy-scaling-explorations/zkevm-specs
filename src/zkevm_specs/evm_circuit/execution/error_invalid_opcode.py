@@ -7,4 +7,4 @@ def error_invalid_opcode(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
     instruction.responsible_opcode_lookup(opcode)
 
-    instruction.constrain_error_state(1 + instruction.curr.reversible_write_counter.n)
+    instruction.constrain_error_state(instruction.curr.reversible_write_counter.n)

@@ -70,6 +70,7 @@ class Opcode(IntEnum):
     MSIZE = 0x59
     GAS = 0x5A
     JUMPDEST = 0x5B
+    PUSH0 = 0x5F
     PUSH1 = 0x60
     PUSH2 = 0x61
     PUSH3 = 0x62
@@ -158,7 +159,12 @@ class Opcode(IntEnum):
     def bytes(self) -> bytes:
         return bytes([self])
 
+    # Returns true if opcode is a PUSHn (including PUSH0).
     def is_push(self) -> bool:
+        return Opcode.PUSH0 <= self <= Opcode.PUSH32
+
+    # Returns true if opcode is a PUSH1 .. PUSH32 (excluding PUSH0).
+    def is_push_with_data(self) -> bool:
         return Opcode.PUSH1 <= self <= Opcode.PUSH32
 
     def is_dup(self) -> bool:
@@ -269,6 +275,7 @@ OPCODE_INFO_MAP: Final[Dict[Opcode, OpcodeInfo]] = dict(
         Opcode.MSIZE: OpcodeInfo(1, 1024, GAS_COST_QUICK),
         Opcode.GAS: OpcodeInfo(1, 1024, GAS_COST_QUICK),
         Opcode.JUMPDEST: OpcodeInfo(0, 1024, GAS_COST_ONE),
+        Opcode.PUSH0: OpcodeInfo(1, 1024, GAS_COST_QUICK),
         Opcode.PUSH1: OpcodeInfo(1, 1024, GAS_COST_FASTEST),
         Opcode.PUSH2: OpcodeInfo(1, 1024, GAS_COST_FASTEST),
         Opcode.PUSH3: OpcodeInfo(1, 1024, GAS_COST_FASTEST),
@@ -416,11 +423,11 @@ def jump_opcodes() -> List[Opcode]:
     return [Opcode.JUMP, Opcode.JUMPI]
 
 
-# Checks if the passed in byte is a PUSH op
-def is_push(op) -> bool:
+# Checks if the passed in byte is a PUSH1 .. PUSH32 opcode (excluding PUSH0).
+def is_push_with_data(op) -> bool:
     return op in range(Opcode.PUSH1, Opcode.PUSH32 + 1)
 
 
 # Returns how many bytes the opcode pushes
 def get_push_size(op) -> int:
-    return op - Opcode.PUSH1 + 1 if is_push(op) else 0
+    return op - Opcode.PUSH0 if is_push_with_data(op) else 0

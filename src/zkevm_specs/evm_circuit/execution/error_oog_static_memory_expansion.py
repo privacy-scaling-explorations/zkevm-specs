@@ -29,5 +29,5 @@ def error_oog_static_memory_expansion(instruction: Instruction):
     instruction.constrain_equal(insufficient_gas, FQ(1))
 
     instruction.constrain_error_state(
-        instruction.rw_counter_offset + instruction.curr.reversible_write_counter + 1
+        instruction.rw_counter_offset + instruction.curr.reversible_write_counter
     )

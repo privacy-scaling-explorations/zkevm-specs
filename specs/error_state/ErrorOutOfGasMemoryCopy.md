@@ -27,7 +27,7 @@ else:
     constant_gas = 2600
 ```
 
-They are also same for dynamic gas calculation. As each of `CALLDATACOPY`, `CODECOPY` and `RETURNDATACOPY` has `3` stack read values as `destination_offset`, `source_offset` and `copy_byte_size`. `EXTCODECOPY` also has these `3` stack read values (and `1` extra `external_address`). The dynamic gas is calculated as:
+They are also same for dynamic gas calculation. As each of `CALLDATACOPY`, `CODECOPY` and `RETURNDATACOPY` has `3` stack read values as `memory_offset`, `source_offset` and `copy_byte_size`. `EXTCODECOPY` also has these `3` stack read values (and `1` extra `external_address`). The dynamic gas is calculated as:
 
 ```
 copy_word_size = (copy_byte_size + 31) // 32
@@ -69,7 +69,7 @@ else:
 
 `5` basic bus-mapping lookups:
 
-. `3` stack pop `destination_offset`, `source_offset` and `copy_byte_size`.
+. `3` stack pop `memory_offset`, `source_offset` and `copy_byte_size`.
 . `2` call context lookups for `is_success` and `rw_counter_end_of_reversion`.
 
 `EXTCODECOPY` has extra `3` bus-mapping lookups:
@@ -82,4 +82,4 @@ And restore context lookups for non-root call.
 
 ## Code
 
-TODO: add after circuit merge first.
+Please refer to `src/zkevm_specs/evm/execution/error_oog_memory_copy.py`.

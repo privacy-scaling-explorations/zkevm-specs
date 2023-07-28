@@ -31,7 +31,7 @@ TESTING_INVALID_CODES = [
     [0xFB],
     [0xFE],
     # Multiple invalid opcodes
-    [0x5C, 0x5D, 0x5E, 0x5F],
+    [0x5C, 0x5D, 0x5E],
     # Many duplicate invalid opcodes
     [0x22] * 256,
 ]

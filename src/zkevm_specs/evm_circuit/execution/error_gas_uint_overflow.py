@@ -157,5 +157,4 @@ def error_gas_uint_overflow(instruction: Instruction):
     )
     instruction.constrain_not_zero(FQ(is_overflow))
 
-    # There is one rw lookup in `constrain_error_state`
-    instruction.constrain_error_state(instruction.rw_counter_offset + 1)
+    instruction.constrain_error_state(instruction.rw_counter_offset)
