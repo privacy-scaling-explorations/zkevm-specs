@@ -57,6 +57,9 @@ def test_error_code_store(execution_state: ExecutionState, size: int, gas_left: 
     # Only need `size` from RETURN opcode
     rw_table = RWDictionary(rw_counter).stack_read(current_call_id, stack_pointer + 1, Word(size))
 
+    # current call context must not be static
+    rw_table.call_context_read(current_call_id, CallContextFieldTag.IsStatic, 0)
+
     rw_table.call_context_read(current_call_id, CallContextFieldTag.IsSuccess, 0)
 
     if not is_root:
