@@ -1,4 +1,4 @@
-from zkevm_specs.evm_circuit.table import RW, CallContextFieldTag
+from zkevm_specs.evm_circuit.table import RW
 from zkevm_specs.util.param import (
     INVALID_FIRST_BYTE_CONTRACT_CODE,
     N_BYTES_MEMORY_ADDRESS,
@@ -9,8 +9,9 @@ from ..opcode import Opcode
 
 
 def error_invalid_creation_code(instruction: Instruction):
-    # retrieve op code associated to oog constant error
     opcode = instruction.opcode_lookup(True)
+
+    # opcode mut be `RETURN`
     instruction.constrain_equal(opcode, Opcode.RETURN)
 
     # the call must be coming from CREATE or CREATE2
@@ -19,12 +20,10 @@ def error_invalid_creation_code(instruction: Instruction):
     # pop offset from stack only
     return_offset = instruction.word_to_fq(instruction.stack_pop(), N_BYTES_MEMORY_ADDRESS)
 
-    call_id = instruction.call_context_lookup(CallContextFieldTag.CallerId)
-
     # lookup the first byte of deployed bytecode from memory
-    first_byte = instruction.memory_lookup(RW.Read, return_offset, call_id)
+    first_byte = instruction.memory_lookup(RW.Read, return_offset)
 
-    # verify if the first byte is `0xEF`
+    # verify if the first byte is `0xEF`, which is introduced in EIP-3541
     instruction.constrain_equal(first_byte, FQ(INVALID_FIRST_BYTE_CONTRACT_CODE))
 
     instruction.constrain_error_state(

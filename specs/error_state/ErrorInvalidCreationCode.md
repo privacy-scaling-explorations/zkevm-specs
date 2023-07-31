@@ -14,7 +14,7 @@ Even though this error occurs in `CREATE` or `CREATE2`, this error should be con
 
 Overall it looks as the following:
 
-- Pop EVM word `offset` and `length` from the stack.
+- Pop EVM word `offset` from the stack.
 - Go to `ErrorInvalidCreationCode` state when the current call context is `CREATE` or `CREATE2` and the first byte of the deployed bytecode is `0xEF`.
 
 ### Constraints
