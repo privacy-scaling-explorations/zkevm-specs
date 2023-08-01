@@ -60,3 +60,7 @@ For SSTORE, the OOG error occurs when the gas left is less than or equal to `SST
 3. 1 account storage access list read.
 4. Only for SSTORE, 1 stack read for `value_to_store`.
 5. Only for SSTORE, 1 account storage read.
+
+## Code
+
+Please refer to `src/zkevm_specs/evm/execution/error_oog_sload_sstore.py`.
