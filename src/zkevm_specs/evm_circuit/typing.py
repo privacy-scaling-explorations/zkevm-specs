@@ -299,9 +299,9 @@ class Bytecode:
             except KeyError:
                 raise ValueError(f"Invalid opcode {name}")
 
-            if opcode.is_push():
+            if opcode.is_push_with_data():
                 assert len(args) == 1
-                self.push(args[0], opcode - Opcode.PUSH1 + 1)
+                self.push(args[0], opcode - Opcode.PUSH0)
             elif opcode.is_dup() or opcode.is_swap():
                 assert len(args) == 0
                 self.code.append(opcode)
@@ -331,9 +331,9 @@ class Bytecode:
         else:
             raise NotImplementedError(f"Value of type {type(value)} is not yet supported")
 
-        assert 0 < len(value) <= n_bytes, ValueError("Too many bytes as data portion of PUSH*")
+        assert 0 <= len(value) <= n_bytes, ValueError("Too many bytes as data portion of PUSH*")
 
-        opcode = Opcode.PUSH1 + n_bytes - 1
+        opcode = Opcode.PUSH0 + n_bytes
         self.code.append(opcode)
         self.is_code.append(True)
         self.code.extend(value.rjust(n_bytes, b"\x00"))
