@@ -82,6 +82,8 @@ GAS_COST_ACCESS_LIST_ADDRESS = 2400
 GAS_COST_ACCESS_LIST_STORAGE = 1900
 # Gas cost of storing a byte of bytecode at contract creation
 GAS_COST_CODE_DEPOSIT = 200
+# Gas cost of re-entrancy sentry check introduced in EIP2200
+GAS_COST_SSTORE_SENTRY_EIP2200 = 2300
 
 
 # Quotient for max refund of gas used
