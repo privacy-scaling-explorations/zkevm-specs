@@ -56,5 +56,5 @@ def error_oog_sload_sstore(instruction: Instruction):
         instruction.constrain_not_zero(lt_gas + eq_gas + insufficient_gas)
 
     instruction.constrain_error_state(
-        instruction.rw_counter_offset + instruction.curr.reversible_write_counter + 1
+        instruction.rw_counter_offset + instruction.curr.reversible_write_counter
     )
