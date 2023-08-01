@@ -4,7 +4,7 @@
 `ErrorCodeStore` is a combined error code and it's designed to handle code store related errors: `CodeStoreOutOfGas` and `MaxCodeSizeExceeded`. This type of error only occurs when executing `CREATE`/`CREATE2` opcode or a deployment transaction (tx.to = null).
 
 ### EVM behavior
-While handling a `CREATE`/`CREATE2` opcode, initial bytecode will be executed and then current call context is created. The contract bytecode will be returned through `RETURN` opcode as the execution result. `RETURN` returns a specified memory chunk [`offset`...`offset` + `length`] as bytecode. The gas cost for storing the bytecode is,
+While handling a `CREATE`/`CREATE2` opcode, initial bytecode will be executed and then current call context is created. The contract bytecode will be returned through `RETURN` opcode as the execution result. `RETURN` returns a specified memory chunk [`offset`...`offset` + `length`] as bytecode. The gas cost for storing the bytecode is:
 
 ```
 let CODE_DEPOSIT_BYTE_COST = 200
@@ -14,7 +14,7 @@ code_store_cost = CODE_DEPOSIT_BYTE_COST * len(bytecodes)
 - If `code_store_cost` > gas left, it is `CodeStoreOutOfGas` case.
 - If returned bytecode length > `MAXCODESIZE`, it is `MaxCodeSizeExceeded` case.  
 
-In circuit bus mapping side, check these two code store errors in [here](https://github.com/privacy-scaling-explorations/zkevm-circuits/blob/8a633f7c3de2da72f0817def57c1703241cced97/bus-mapping/src/circuit_input_builder/input_state_ref.rs#L1296-L1304). This error happens only when current opcode is `RETURN` and it's a `CREATE`/`CREATE2` call (`call.is_create == true`). We can't get contract bytecode length in `CREATE`/`CREATE2` opcodes and it's only available in `RETURN` opcode so we handle these two errors in `RETURN` opcode.
+On the circuit bus mapping side, the checks for these two code store errors are [here](https://github.com/privacy-scaling-explorations/zkevm-circuits/blob/8a633f7c3de2da72f0817def57c1703241cced97/bus-mapping/src/circuit_input_builder/input_state_ref.rs#L1296-L1304). This error happens only when current opcode is `RETURN` and it's a `CREATE`/`CREATE2` call (`call.is_create == true`). We can't get contract bytecode length in `CREATE`/`CREATE2` opcodes and it's only available in `RETURN` opcode so we handle these two errors in `RETURN` opcode.
 
 Overall it looks like the following:  
 - Pop EVM word `offset` and `length` from the stack, 
