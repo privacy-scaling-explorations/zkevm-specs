@@ -11,7 +11,7 @@ from ..opcode import Opcode
 def error_invalid_creation_code(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
 
-    # opcode mut be `RETURN`
+    # opcode must be `RETURN`
     instruction.constrain_equal(opcode, Opcode.RETURN)
 
     # the call must be coming from CREATE or CREATE2
