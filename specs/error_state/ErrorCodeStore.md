@@ -25,7 +25,7 @@ Overall it looks like the following:
 ### Constraints
 1. Current opcode is `RETURN` and `is_create` is `True`.
 2. `code_store_cost` > gas_left or `length` > `MAXCODESIZE`
-3. Current call must be failed.
+3. Current call fails.
 4. Current call is not static call.
 5. If it's a root call, it transits to `EndTx`
 6. if it is not root call, it restores caller's context by reading to `rw_table`, then does step state transition to it.
