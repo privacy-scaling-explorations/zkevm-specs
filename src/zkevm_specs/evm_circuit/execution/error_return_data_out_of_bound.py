@@ -1,5 +1,5 @@
 from zkevm_specs.evm_circuit.table import CallContextFieldTag, RW
-from zkevm_specs.util.param import N_BYTES_MEMORY_ADDRESS
+from zkevm_specs.util.param import MAX_N_BYTES
 from ..instruction import Instruction
 from ..opcode import Opcode
 
@@ -9,8 +9,8 @@ def error_return_data_out_of_bound(instruction: Instruction):
     instruction.constrain_equal(opcode, Opcode.RETURNDATACOPY)
 
     # skip first stack value, `memOffset`
-    data_offset = instruction.word_to_fq(instruction.stack_lookup(1), N_BYTES_MEMORY_ADDRESS)
-    length = instruction.word_to_fq(instruction.stack_lookup(2), N_BYTES_MEMORY_ADDRESS)
+    data_offset = instruction.word_to_fq(instruction.stack_lookup(RW.Read, 1), MAX_N_BYTES)
+    length = instruction.word_to_fq(instruction.stack_lookup(RW.Read, 2), MAX_N_BYTES)
 
     # get the length of last callee's return data
     return_data_length = instruction.call_context_lookup(
@@ -21,7 +21,7 @@ def error_return_data_out_of_bound(instruction: Instruction):
     end = data_offset + length
     is_data_offset_u64_overflow = instruction.is_u64_overflow(data_offset)
     is_end_u64_overflow = instruction.is_u64_overflow(end)
-    is_end_over_return_data_len, _ = instruction.compare(return_data_length, end)
+    is_end_over_return_data_len, _ = instruction.compare(return_data_length, end, MAX_N_BYTES)
 
     instruction.constrain_not_zero(
         is_data_offset_u64_overflow + is_end_u64_overflow + is_end_over_return_data_len
