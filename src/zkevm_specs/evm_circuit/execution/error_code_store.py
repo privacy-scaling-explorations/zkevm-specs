@@ -14,6 +14,9 @@ from ...util import N_BYTES_GAS
 def error_code_store(instruction: Instruction):
     # retrieve op code associated to oog constant error
     opcode = instruction.opcode_lookup(True)
+    # Even though these are `CREATE`/`CREATE2` errors, as we cannot get the contract bytecode length
+    # when processing these opcodes,
+    # we handle them in the `RETURN` opcode where the bytecode length is available.
     instruction.constrain_equal(opcode, Opcode.RETURN)
 
     # the call must be coming from CREATE or CREATE2
