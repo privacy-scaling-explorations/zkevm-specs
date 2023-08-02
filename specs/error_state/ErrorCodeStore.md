@@ -4,7 +4,7 @@
 `ErrorCodeStore` is a combined error code for handling the `CodeStoreOutOfGas` and `MaxCodeSizeExceeded` code store related errors. This type of error only occurs when executing `CREATE`/`CREATE2` opcode or a deployment transaction (tx.to = null).
 
 ### EVM behavior
-When handling either a CREATE` or a`CREATE2` opcode, the initial bytecode is executed and the current call context is created. The contract bytecode will then be returned through the `RETURN` opcode as the execution result. More particularly, the contract bytecode will be defined as the memory chunk of length `length` starting at offset `offset`, that is the memory located at [`offset`...`offset` + `length`] is stored in the state db. The gas cost for storing the bytecode is:
+When handling either a `CREATE` or a`CREATE2` opcode, the initial bytecode is executed and the current call context is created. The contract bytecode will then be returned through the `RETURN` opcode as the execution result. More particularly, the contract bytecode will be defined as the memory chunk of length `length` starting at offset `offset`, that is the memory located at [`offset`...`offset` + `length`] is stored in the state db. The gas cost for storing the bytecode is:
 
 ```
 let CODE_DEPOSIT_BYTE_COST = 200

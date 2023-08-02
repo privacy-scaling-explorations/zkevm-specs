@@ -6,7 +6,8 @@ InvalidCreationCode is an error related with code store. This error only occurs 
 
 ### EVM behavior
 
-When handling a contract creation transaction, initial bytecode are executed and the current call context is `CREATE` or `CREATE2`. The last opcode to store for new contract is `RETURN`. It returns `memory[offset...offset + length]` content as contract bytecode to store into state DB.
+When handling either a `CREATE` or a`CREATE2` opcode, the initial bytecode is executed and the current call context is created. The contract bytecode will then be returned through the `RETURN` opcode as the execution result. More particularly, the contract bytecode will be defined as the memory chunk of length `length` starting at offset `offset`, that is the memory located at [`offset`...`offset` + `length`] is stored in the state db.
+
 
 In bus-mapping, when the executing opcode is `RETURN` and the current call context is `CREATE` or `CREATE2`, check if the first byte of contract code is `0xEF` to identify this error.
 
