@@ -54,3 +54,6 @@ else:
 2. `2` call context lookups for `is_success` and `rw_counter_end_of_reversion`.
 
 And restore context lookups for non-root call.
+
+## Code
+   Please refer to `src/zkevm_specs/evm/execution/error_oog_static_memory_expansion.py`.
