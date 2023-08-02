@@ -22,10 +22,10 @@ TESTING_DATA = (
     (MAX_U64, 1, True),
     (1, MAX_U64, True),
     (0, MAX_U64 + 1, True),
-    # is_end_over_return_data_len, return_data_length is set to fixed 320
+    # is_end_over_return_data_len is True (as we set return_data_length to 320)
     (321, 0, True),
     (320, 1, True),
-    ## is_root is False
+    ## Same cases, with is_root set to False
     (MAX_U64 + 1, 0, False),
     (MAX_U64, 1, False),
     (1, MAX_U64, False),

@@ -13,7 +13,10 @@ The `RETURNDATACOPY` opcode pops `memOffset`,`dataOffset`, and `length` from the
 
 ### Constraints
 1. current opcode is `RETURNDATACOPY`
-2. at least one of above conditions happens.
+2. at least one of below conditions is met:
+   -  `dataOffset`is u64 overflow, 
+   - `dataOffset` + `length` is u64 overflow
+   - `dataOffset` + `length` is larger than the length of last callee's return data
 3. common error constraints: 
   - current call fails. 
   - constrain `rw_counter_end_of_reversion = rw_counter_end_of_step + reversible_counter`.
