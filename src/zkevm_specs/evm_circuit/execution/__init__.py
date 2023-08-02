@@ -68,7 +68,9 @@ from .error_oog_memory_copy import *
 from .error_oog_log import *
 from .error_write_protection import *
 from .error_oog_account_access import *
+from .error_code_store import *
 from .error_oog_exp import *
+from .error_oog_static_memory_expansion import *
 from .error_oog_sload_sstore import *
 
 
@@ -136,8 +138,11 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.ErrorOutOfGasMemoryCopy: error_oog_memory_copy,
     ExecutionState.ErrorOutOfGasLOG: error_oog_log,
     ExecutionState.ErrorWriteProtection: error_write_protection,
+    ExecutionState.ErrorMaxCodeSizeExceeded: error_code_store,
+    ExecutionState.ErrorOutOfGasCodeStore: error_code_store,
     ExecutionState.ErrorOutOfGasEXP: error_oog_exp,
     ExecutionState.ErrorOutOfGasAccountAccess: error_oog_account_access,
+    ExecutionState.ErrorOutOfGasStaticMemoryExpansion: error_oog_static_memory_expansion,
     ExecutionState.ErrorOutOfGasSloadSstore: error_oog_sload_sstore,
     # ExecutionState.ECRECOVER: ,
     # ExecutionState.SHA256: ,
