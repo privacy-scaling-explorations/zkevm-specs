@@ -1,7 +1,7 @@
 # ErrorCodeStore state
 
 ## Procedure
-`ErrorCodeStore` is a combined error code and it's designed to handle code store related errors: `CodeStoreOutOfGas` and `MaxCodeSizeExceeded`. This type of error only occurs when executing `CREATE`/`CREATE2` opcode or a deployment transaction (tx.to = null).
+`ErrorCodeStore` is a combined error code for handling the `CodeStoreOutOfGas` and `MaxCodeSizeExceeded` code store related errors. This type of error only occurs when executing `CREATE`/`CREATE2` opcode or a deployment transaction (tx.to = null).
 
 ### EVM behavior
 While handling a `CREATE`/`CREATE2` opcode, initial bytecode will be executed and then current call context is created. The contract bytecode will be returned through `RETURN` opcode as the execution result. `RETURN` returns a specified memory chunk [`offset`...`offset` + `length`] as bytecode. The gas cost for storing the bytecode is:
