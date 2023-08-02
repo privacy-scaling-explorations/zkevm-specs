@@ -13,7 +13,7 @@ code_store_cost = CODE_DEPOSIT_BYTE_COST * len(bytecodes)
 
 Which error are we handling?
 - If `code_store_cost` > gas left, `ErrorCodeStore` corresponds to `CodeStoreOutOfGas`;
-- If returned bytecode length > `MAXCODESIZE`, it is `MaxCodeSizeExceeded` case.  
+- If returned bytecode length > `MAXCODESIZE`, it corresponds to `MaxCodeSizeExceeded`.
 
 On the circuit bus mapping side, the checks for these two code store errors are [here](https://github.com/privacy-scaling-explorations/zkevm-circuits/blob/8a633f7c3de2da72f0817def57c1703241cced97/bus-mapping/src/circuit_input_builder/input_state_ref.rs#L1296-L1304). This error happens only when current opcode is `RETURN` and it's a `CREATE`/`CREATE2` call (`call.is_create == true`). We can't get contract bytecode length in `CREATE`/`CREATE2` opcodes and it's only available in `RETURN` opcode so we handle these two errors in `RETURN` opcode.
 
