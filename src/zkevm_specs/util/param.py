@@ -84,6 +84,8 @@ GAS_COST_ACCESS_LIST_STORAGE = 1900
 GAS_COST_CODE_DEPOSIT = 200
 # Gas cost of re-entrancy sentry check introduced in EIP2200
 GAS_COST_SSTORE_SENTRY_EIP2200 = 2300
+# Gas cost of initial bytecode per word defined in EIP-3860
+GAS_COST_INITCODE_WORD = 2
 
 
 # Quotient for max refund of gas used
