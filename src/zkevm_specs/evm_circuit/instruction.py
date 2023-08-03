@@ -1301,26 +1301,6 @@ class Instruction:
             if x.n > y.n:
                 return (x, FQ(0))
             return (y, FQ(0))
-        # elif (is_delegatecall + is_staticcall) == FQ(1):
-        #     self.stack_pop()
-        #     self.stack_pop()
-        #     cd_offset = self.stack_pop()
-        #     cd_length = self.stack_pop()
-        #     (x, overflow) = self.calc_mem_size64(
-        #         self.stack_pop(),
-        #         self.stack_pop(),
-        #     )
-        #     if overflow == FQ(1):
-        #         return (FQ(0), FQ(1))
-        #     (y, overflow) = self.calc_mem_size64(
-        #          cd_offset,
-        #         cd_length,
-        #     )
-        #     if overflow == FQ(1):
-        #         return (FQ(0), FQ(1))
-        #     if x.n > y.n:
-        #         return (x, FQ(0))
-        #     return (y, FQ(0))
 
     # calcMemSize64 calculates the required memory size, and returns
     # the size and whether the result overflowed uint64
