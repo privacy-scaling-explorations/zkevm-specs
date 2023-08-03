@@ -9,9 +9,11 @@ Handle the corresponding out of gas errors for `SHA3`.
 The `SHA3` gas cost is calculated as:
 
 ```
-minimum_word_size = (size + 31) // 32
+gas_cost = static_gas + dynamic_gas
 
 static_gas = 30
+
+minimum_word_size = (size + 31) // 32
 dynamic_gas = 6 * minimum_word_size + memory_expansion_cost
 ```
 
