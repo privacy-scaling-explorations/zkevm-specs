@@ -70,6 +70,7 @@ from .error_write_protection import *
 from .error_oog_account_access import *
 from .error_code_store import *
 from .error_oog_exp import *
+from .error_oog_sha3 import *
 from .error_oog_static_memory_expansion import *
 from .error_oog_sload_sstore import *
 
@@ -141,6 +142,7 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.ErrorMaxCodeSizeExceeded: error_code_store,
     ExecutionState.ErrorOutOfGasCodeStore: error_code_store,
     ExecutionState.ErrorOutOfGasEXP: error_oog_exp,
+    ExecutionState.ErrorOutOfGasSHA3: error_oog_sha3,
     ExecutionState.ErrorOutOfGasAccountAccess: error_oog_account_access,
     ExecutionState.ErrorOutOfGasStaticMemoryExpansion: error_oog_static_memory_expansion,
     ExecutionState.ErrorOutOfGasSloadSstore: error_oog_sload_sstore,
