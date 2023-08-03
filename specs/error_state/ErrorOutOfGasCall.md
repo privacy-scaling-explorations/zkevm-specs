@@ -35,4 +35,4 @@ gas_cost = (
 
 ## Code
 
-Please refer to `src/zkevm_specs/evm/execution/oog_call.py`.
+Please refer to `src/zkevm_specs/evm/execution/error_oog_call.py`.
