@@ -75,6 +75,7 @@ from .error_invalid_creation_code import *
 from .error_oog_sha3 import *
 from .error_oog_static_memory_expansion import *
 from .error_oog_sload_sstore import *
+from .error_oog_create import *
 
 
 EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
@@ -150,6 +151,7 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.ErrorOutOfGasStaticMemoryExpansion: error_oog_static_memory_expansion,
     ExecutionState.ErrorOutOfGasSloadSstore: error_oog_sload_sstore,
     ExecutionState.ErrorReturnDataOutOfBound: error_return_data_out_of_bound,
+    ExecutionState.ErrorOutOfGasCREATE2: error_oog_create,
     # ExecutionState.ECRECOVER: ,
     # ExecutionState.SHA256: ,
     # ExecutionState.RIPEMD160: ,

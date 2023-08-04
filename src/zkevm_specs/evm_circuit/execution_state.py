@@ -120,6 +120,7 @@ class ExecutionState(IntEnum):
     ErrorOutOfGasSloadSstore = auto()
     # For CALL, CALLCODE, DELEGATECALL and STATICCALL opcodes which may run out of gas.
     ErrorOutOfGasCall = auto()
+    # For CREATE and CREATE2 opcodes which may run out of gas.
     ErrorOutOfGasCREATE2 = auto()
     ErrorOutOfGasSELFDESTRUCT = auto()
 
