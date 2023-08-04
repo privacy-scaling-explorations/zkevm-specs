@@ -2,7 +2,7 @@
 
 ## Procedure
 
-Handle the corresponding out of gas errors for `CREATE` and `CREATE2` opcodes.
+Handle the corresponding out-of-gas error and the max size of initial bytecode error for `CREATE` and `CREATE2` opcodes.
 
 ### EVM behavior
 
@@ -38,10 +38,14 @@ else:
     )
 ```
 
+The limit of the max size of initial bytecode is `49,152` which is `2 * MAX_CODE_SIZE`
+
 ### Constraints
 
 1. Current opcode is `CREATE` or `CREATE2`.
-2. `gas_left < gas_cost`.
+2. At least one of below conditions is met:
+  - `gas_left < gas_cost`.
+  - `len(init_code) > MAX_INIT_CODE_SIZE`
 3. Current call fails.
 4. Common error constraints: 
   - Current call fails. 

@@ -12,6 +12,7 @@ from zkevm_specs.evm_circuit import (
     Opcode,
 )
 from zkevm_specs.util import Word
+from zkevm_specs.util.param import MAX_INIT_CODE_SIZE
 
 
 TESTING_DATA_IS_ROOT = (
@@ -21,6 +22,9 @@ TESTING_DATA_IS_ROOT = (
     (Opcode.CREATE2, 320, 320, 32139),
     (Opcode.CREATE, 320, 320, 32079),
     (Opcode.CREATE2, 320, 320, 32139),
+    # bytecode size exceeds MAX_INIT_CODE_SIZE
+    (Opcode.CREATE, 0, MAX_INIT_CODE_SIZE + 1, int(5e6)),
+    (Opcode.CREATE2, 0, MAX_INIT_CODE_SIZE + 1, int(5e6)),
 )
 
 
@@ -55,7 +59,7 @@ def test_error_oog_create(opcode: Opcode, offset: int, length: int, gas_left: in
         .call_context_read(1, CallContextFieldTag.CodeHash, bytecode_hash) \
         .call_context_read(1, CallContextFieldTag.ProgramCounter, pc + 1) \
         .call_context_read(1, CallContextFieldTag.StackPointer, 1024) \
-        .call_context_read(1, CallContextFieldTag.GasLeft, gas_left) \
+        .call_context_read(1, CallContextFieldTag.GasLeft, 0) \
         .call_context_read(1, CallContextFieldTag.MemorySize, 0) \
         .call_context_read(1, CallContextFieldTag.ReversibleWriteCounter, reversible_write_counter) \
         .call_context_write(1, CallContextFieldTag.LastCalleeId, 2) \
@@ -94,7 +98,7 @@ def test_error_oog_create(opcode: Opcode, offset: int, length: int, gas_left: in
                 code_hash=bytecode_hash,
                 program_counter=pc + 1,
                 stack_pointer=1024,
-                gas_left=gas_left,
+                gas_left=0,
                 memory_word_size=0,
                 reversible_write_counter=reversible_write_counter,
             ),

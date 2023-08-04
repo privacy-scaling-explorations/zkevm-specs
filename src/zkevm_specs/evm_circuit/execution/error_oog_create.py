@@ -4,27 +4,13 @@ from zkevm_specs.util.param import (
     GAS_COST_COPY_SHA3,
     GAS_COST_CREATE,
     GAS_COST_INITCODE_WORD,
+    MAX_INIT_CODE_SIZE,
     N_BYTES_GAS,
     N_BYTES_MEMORY_WORD_SIZE,
+    N_BYTES_U64,
 )
 from ..instruction import Instruction
 from ..table import RW
-
-
-# if root:
-#     gas_cost = TxGasContractCreation + tx_calldata_gas_cost (covered in uint64 overflow)
-# else:
-#     gas cost = GAS_COST_CREATE + memory expansion (moved from dynamic_mm_exp)
-# if create2:
-#     gas_cost += GAS_COST_COPY_SHA3 * memory_size
-# gas_cost += initcode_cost(init_code) (covered in uint64 overflow if root)
-
-# MAX_INITCODE_SIZE (moved to CREATE.py)
-
-# TODO
-# 1. remove create from error_oog_dynamic_memory_expansion
-# 2. support EIP 3860 in error_gas_uint_overflow
-# 3. add MAX_INITCODE_SIZE in create.py
 
 
 def error_oog_create(instruction: Instruction):
@@ -43,6 +29,9 @@ def error_oog_create(instruction: Instruction):
     (_, memory_expansion_gas_cost) = instruction.memory_expansion(offset, size)
     word_size, _ = instruction.constant_divmod(size + FQ(31), FQ(32), N_BYTES_MEMORY_WORD_SIZE)
 
+    # ErrMaxInitCodeSizeExceeded
+    is_exceed_max_initcode_size, _ = instruction.compare(FQ(MAX_INIT_CODE_SIZE), size, N_BYTES_U64)
+
     # gas cost
     # GAS_COST_INITCODE_WORD * word_size introduced in EIP-3860
     gas_cost = GAS_COST_CREATE + memory_expansion_gas_cost + GAS_COST_INITCODE_WORD * word_size
@@ -53,7 +42,7 @@ def error_oog_create(instruction: Instruction):
 
     insufficient_gas, _ = instruction.compare(instruction.curr.gas_left, gas_cost, N_BYTES_GAS)
 
-    instruction.constrain_equal(insufficient_gas, FQ(1))
+    instruction.constrain_not_zero(insufficient_gas + is_exceed_max_initcode_size)
     instruction.constrain_error_state(
         instruction.rw_counter_offset + instruction.curr.reversible_write_counter
     )
