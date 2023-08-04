@@ -57,13 +57,16 @@ The `gas_cost` for the step is:
 
 ```
 GAS_COST_CREATE := 32000
-KECCAK_WORD_GAS_COST : 6
+KECCAK_WORD_GAS_COST := 6
+GAS_COST_INITCODE_WORD := 2
 
 keccak_gas_cost = KECCAK_WORD_GAS_COST * size if op_id == CREATE2 else 0
+initcode_gas_cost = GAS_COST_INITCODE_WORD * size
 gas_cost = (
     GAS_COST_CREATE
     + memory_expansion_gas_cost
     + keccak_gas_cost
+    + initcode_gas_cost
 )
 ```
 

@@ -1,3 +1,4 @@
+from math import ceil
 import pytest
 import rlp
 from collections import namedtuple
@@ -20,7 +21,11 @@ from zkevm_specs.evm_circuit import (
 from zkevm_specs.evm_circuit.table import CopyDataTypeTag
 from zkevm_specs.evm_circuit.typing import CopyCircuit
 from zkevm_specs.util.hash import EMPTY_CODE_HASH, keccak256
-from zkevm_specs.util.param import GAS_COST_COPY_SHA3, GAS_COST_CREATE
+from zkevm_specs.util.param import (
+    GAS_COST_COPY_SHA3,
+    GAS_COST_CREATE,
+    GAS_COST_INITCODE_WORD,
+)
 from zkevm_specs.util import Word
 from zkevm_specs.util.typing import U256
 
@@ -89,9 +94,11 @@ def calc_gas_cost(
         - caller_ctx.memory_word_size * caller_ctx.memory_word_size
     ) // 512 + 3 * (next_memory_size - caller_ctx.memory_word_size)
 
+    init_code_gas_cost = ceil(size / 32) * GAS_COST_INITCODE_WORD
+
     # GAS_COST_CODE_DEPOSIT * (bytecode size) is not included here, it should be `return_revert``
     # extra gas cost for CREATE2
-    gas_cost = GAS_COST_CREATE + memory_expansion_gas_cost
+    gas_cost = GAS_COST_CREATE + memory_expansion_gas_cost + init_code_gas_cost
     if is_create2 == 1:
         gas_cost += GAS_COST_COPY_SHA3 * memory_size(0, size)
     gas_available = caller_ctx.gas_left - gas_cost

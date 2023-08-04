@@ -116,6 +116,9 @@ MAX_COPY_BYTES = 32
 # max bytecode size, 24576 bytes
 MAX_CODE_SIZE = 24576
 
+# max bytecode size, 49152 (2 * MAX_CODE_SIZE) bytes
+MAX_INIT_CODE_SIZE = MAX_CODE_SIZE * 2
+
 # Maximum depth of call/create stack
 CALL_CREATE_DEPTH = 1024
 
