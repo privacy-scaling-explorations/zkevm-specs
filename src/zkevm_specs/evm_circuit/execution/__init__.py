@@ -66,11 +66,13 @@ from .error_gas_uint_overflow import *
 from .error_oog_dynamic_memory_expansion import *
 from .error_oog_memory_copy import *
 from .error_oog_log import *
+from .error_return_data_out_of_bound import *
 from .error_write_protection import *
 from .error_oog_account_access import *
 from .error_code_store import *
 from .error_oog_exp import *
 from .error_invalid_creation_code import *
+from .error_oog_sha3 import *
 from .error_oog_static_memory_expansion import *
 from .error_oog_sload_sstore import *
 
@@ -143,9 +145,11 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.ErrorOutOfGasCodeStore: error_code_store,
     ExecutionState.ErrorOutOfGasEXP: error_oog_exp,
     ExecutionState.ErrorInvalidCreationCode: error_invalid_creation_code,
+    ExecutionState.ErrorOutOfGasSHA3: error_oog_sha3,
     ExecutionState.ErrorOutOfGasAccountAccess: error_oog_account_access,
     ExecutionState.ErrorOutOfGasStaticMemoryExpansion: error_oog_static_memory_expansion,
     ExecutionState.ErrorOutOfGasSloadSstore: error_oog_sload_sstore,
+    ExecutionState.ErrorReturnDataOutOfBound: error_return_data_out_of_bound,
     # ExecutionState.ECRECOVER: ,
     # ExecutionState.SHA256: ,
     # ExecutionState.RIPEMD160: ,
