@@ -17,18 +17,18 @@ from zkevm_specs.util import Word
 TESTING_DATA_IS_ROOT = (
     # gas cost: 32000 + 60 (memory expansion) + (320/32) * 2 = 32080
     # CREATE2 has extra keccak gas cost = (320/32) * 6 = 60
-    (True, Opcode.CREATE, 320, 320, 32079),
-    (True, Opcode.CREATE2, 320, 320, 32139),
-    (False, Opcode.CREATE, 320, 320, 32079),
-    (False, Opcode.CREATE2, 320, 320, 32139),
+    (Opcode.CREATE, 320, 320, 32079),
+    (Opcode.CREATE2, 320, 320, 32139),
+    (Opcode.CREATE, 320, 320, 32079),
+    (Opcode.CREATE2, 320, 320, 32139),
 )
 
 
-@pytest.mark.parametrize("is_root, opcode, offset, length, gas_left", TESTING_DATA_IS_ROOT)
-def test_error_oog_create(is_root: bool, opcode: Opcode, offset: int, length: int, gas_left: int):
+@pytest.mark.parametrize("opcode, offset, length, gas_left", TESTING_DATA_IS_ROOT)
+def test_error_oog_create(opcode: Opcode, offset: int, length: int, gas_left: int):
     reversible_write_counter = 2
-    rw_counter = 2 if is_root else 14
-    caller_id = 1 if is_root else 2
+    rw_counter = 14
+    caller_id = 2
     is_create2 = opcode == Opcode.CREATE2
     if is_create2:
         bytecode = Bytecode().push32(1).push32(offset).push32(length).push32(123).create2()
@@ -48,20 +48,19 @@ def test_error_oog_create(is_root: bool, opcode: Opcode, offset: int, length: in
     rw_table.call_context_read(caller_id, CallContextFieldTag.IsSuccess, 0)
 
     # fmt: off
-    if not is_root:
-        rw_table \
-            .call_context_read(2, CallContextFieldTag.CallerId, 1) \
-            .call_context_read(1, CallContextFieldTag.IsRoot, False) \
-            .call_context_read(1, CallContextFieldTag.IsCreate, True) \
-            .call_context_read(1, CallContextFieldTag.CodeHash, bytecode_hash) \
-            .call_context_read(1, CallContextFieldTag.ProgramCounter, pc + 1) \
-            .call_context_read(1, CallContextFieldTag.StackPointer, 1024) \
-            .call_context_read(1, CallContextFieldTag.GasLeft, gas_left) \
-            .call_context_read(1, CallContextFieldTag.MemorySize, 0) \
-            .call_context_read(1, CallContextFieldTag.ReversibleWriteCounter, reversible_write_counter) \
-            .call_context_write(1, CallContextFieldTag.LastCalleeId, 2) \
-            .call_context_write(1, CallContextFieldTag.LastCalleeReturnDataOffset, 0) \
-            .call_context_write(1, CallContextFieldTag.LastCalleeReturnDataLength, 0)
+    rw_table \
+        .call_context_read(2, CallContextFieldTag.CallerId, 1) \
+        .call_context_read(1, CallContextFieldTag.IsRoot, False) \
+        .call_context_read(1, CallContextFieldTag.IsCreate, True) \
+        .call_context_read(1, CallContextFieldTag.CodeHash, bytecode_hash) \
+        .call_context_read(1, CallContextFieldTag.ProgramCounter, pc + 1) \
+        .call_context_read(1, CallContextFieldTag.StackPointer, 1024) \
+        .call_context_read(1, CallContextFieldTag.GasLeft, gas_left) \
+        .call_context_read(1, CallContextFieldTag.MemorySize, 0) \
+        .call_context_read(1, CallContextFieldTag.ReversibleWriteCounter, reversible_write_counter) \
+        .call_context_write(1, CallContextFieldTag.LastCalleeId, 2) \
+        .call_context_write(1, CallContextFieldTag.LastCalleeReturnDataOffset, 0) \
+        .call_context_write(1, CallContextFieldTag.LastCalleeReturnDataLength, 0)
     # fmt: on
 
     tables = Tables(
@@ -78,7 +77,7 @@ def test_error_oog_create(is_root: bool, opcode: Opcode, offset: int, length: in
                 execution_state=ExecutionState.ErrorOutOfGasCREATE2,
                 rw_counter=rw_counter,
                 call_id=caller_id,
-                is_root=is_root,
+                is_root=False,
                 is_create=True,
                 code_hash=bytecode_hash,
                 program_counter=pc,
@@ -87,12 +86,6 @@ def test_error_oog_create(is_root: bool, opcode: Opcode, offset: int, length: in
                 reversible_write_counter=reversible_write_counter,
             ),
             StepState(
-                execution_state=ExecutionState.EndTx,
-                rw_counter=rw_table.rw_counter + reversible_write_counter,
-                call_id=1,
-            )
-            if is_root is True
-            else StepState(
                 execution_state=ExecutionState.STOP,
                 rw_counter=rw_table.rw_counter + reversible_write_counter,
                 call_id=1,
