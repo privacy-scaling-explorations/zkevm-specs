@@ -1,5 +1,3 @@
-from zkevm_specs.evm_circuit.table import RW
-from zkevm_specs.util.param import GAS_COST_CREATE
 from ...util import FQ
 from ..instruction import Instruction
 from ..opcode import Opcode

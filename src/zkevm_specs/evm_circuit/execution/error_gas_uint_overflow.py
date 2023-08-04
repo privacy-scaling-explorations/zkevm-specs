@@ -2,7 +2,6 @@ from zkevm_specs.util.param import (
     GAS_COST_INITCODE_WORD,
     GAS_COST_TX_CALL_DATA_PER_NON_ZERO_BYTE,
     GAS_COST_TX_CALL_DATA_PER_ZERO_BYTE,
-    N_BYTES_MEMORY_WORD_SIZE,
 )
 from ...util import (
     FQ,
@@ -11,7 +10,6 @@ from ...util import (
     N_BYTES_U64,
     TxGas,
     TxGasContractCreation,
-    TxDataZeroGas,
 )
 from ..instruction import Instruction
 from ..table import CallContextFieldTag
@@ -23,7 +21,7 @@ def error_gas_uint_overflow(instruction: Instruction):
 
     (
         is_call,
-        is_callcode,
+        _,
         is_delegatecall,
         is_staticcall,
         is_create_flag,
@@ -38,7 +36,7 @@ def error_gas_uint_overflow(instruction: Instruction):
         is_log3,
         is_log4,
         is_sha3,
-        is_exp,
+        _,
         is_mload,
         is_mstore,
         is_mstore8,
