@@ -65,10 +65,9 @@ def create(instruction: Instruction):
     # CREATE2 = gas cost of CREATE + GAS_COST_COPY_SHA3 * word_len
     # byte_code is only available in `return_revert`,
     # so the last part (GAS_COST_CODE_DEPOSIT * len(byte_code)) won't be calculated here
-    gas_left = instruction.curr.gas_left
-    gas_cost = GAS_COST_CREATE + memory_expansion_gas_cost
     word_len, _ = instruction.constant_divmod(size + FQ(31), FQ(32), N_BYTES_MEMORY_WORD_SIZE)
-    gas_cost += word_len * GAS_COST_INITCODE_WORD
+    gas_left = instruction.curr.gas_left
+    gas_cost = GAS_COST_CREATE + memory_expansion_gas_cost + word_len * GAS_COST_INITCODE_WORD
     if is_create2 == FQ(1):
         gas_cost += GAS_COST_COPY_SHA3 * word_len
     gas_available = gas_left - gas_cost

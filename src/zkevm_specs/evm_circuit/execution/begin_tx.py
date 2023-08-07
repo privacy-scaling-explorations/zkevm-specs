@@ -1,7 +1,9 @@
+from zkevm_specs.util.param import GAS_COST_INITCODE_WORD
 from ...util import (
     GAS_COST_TX,
     GAS_COST_CREATION_TX,
     EMPTY_CODE_HASH,
+    N_BYTES_U64,
     FQ,
     Word,
     WordOrValue,
@@ -67,7 +69,13 @@ def begin_tx(instruction: Instruction):
     #       G_transaction +
     #       sum([G_accesslistaddress + G_accessliststorage * len(TA[j]) for j in len(TA)])
     tx_calldata_gas_cost = instruction.tx_context_lookup(tx_id, TxContextFieldTag.CallDataGasCost)
-    tx_cost_gas = GAS_COST_CREATION_TX if tx_is_create == 1 else GAS_COST_TX
+    tx_cost_gas = GAS_COST_TX
+    if tx_is_create.expr() == FQ(1):
+        len_words, _ = instruction.constant_divmod(
+            tx_call_data_length + FQ(31), FQ(32), N_BYTES_U64
+        )
+        tx_cost_gas = GAS_COST_CREATION_TX + len_words * GAS_COST_INITCODE_WORD
+
     # TODO: Handle gas cost of tx level access list (EIP 2930)
     tx_accesslist_gas = instruction.tx_context_lookup(tx_id, TxContextFieldTag.AccessListGasCost)
     tx_intrinsic_gas = tx_calldata_gas_cost.expr() + tx_cost_gas + tx_accesslist_gas.expr()
