@@ -102,7 +102,7 @@ def test_error_oog_create(opcode: Opcode, offset: int, length: int, gas_left: in
         tables=tables,
         steps=[
             StepState(
-                execution_state=ExecutionState.ErrorOutOfGasCREATE2,
+                execution_state=ExecutionState.ErrorOutOfGasCREATE,
                 rw_counter=rw_counter,
                 call_id=caller_id,
                 is_root=is_root,

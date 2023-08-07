@@ -151,7 +151,7 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.ErrorOutOfGasStaticMemoryExpansion: error_oog_static_memory_expansion,
     ExecutionState.ErrorOutOfGasSloadSstore: error_oog_sload_sstore,
     ExecutionState.ErrorReturnDataOutOfBound: error_return_data_out_of_bound,
-    ExecutionState.ErrorOutOfGasCREATE2: error_oog_create,
+    ExecutionState.ErrorOutOfGasCREATE: error_oog_create,
     # ExecutionState.ECRECOVER: ,
     # ExecutionState.SHA256: ,
     # ExecutionState.RIPEMD160: ,

@@ -121,7 +121,7 @@ class ExecutionState(IntEnum):
     # For CALL, CALLCODE, DELEGATECALL and STATICCALL opcodes which may run out of gas.
     ErrorOutOfGasCall = auto()
     # For CREATE and CREATE2 opcodes which may run out of gas.
-    ErrorOutOfGasCREATE2 = auto()
+    ErrorOutOfGasCREATE = auto()
     ErrorOutOfGasSELFDESTRUCT = auto()
 
     # Precompile's successful cases
@@ -393,7 +393,7 @@ class ExecutionState(IntEnum):
             ExecutionState.ErrorOutOfGasSHA3,
             ExecutionState.ErrorOutOfGasSloadSstore,
             ExecutionState.ErrorOutOfGasCall,
-            ExecutionState.ErrorOutOfGasCREATE2,
+            ExecutionState.ErrorOutOfGasCREATE,
             ExecutionState.ErrorOutOfGasSELFDESTRUCT,
         ]
 
