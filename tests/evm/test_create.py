@@ -211,21 +211,7 @@ def test_create_create2(
         caller_ctx,
         stack,
     )
-
     nonce = caller.nonce
-    is_success = is_return
-    is_reverted_by_caller = not caller_ctx.is_persistent and is_success
-    is_reverted_by_callee = not is_success
-    callee_is_persistent = caller_ctx.is_persistent and is_success
-    callee_rw_counter_end_of_reversion = (
-        80
-        if is_reverted_by_callee
-        else (
-            caller_ctx.rw_counter_end_of_reversion - (caller_ctx.reversible_write_counter + 1)
-            if is_reverted_by_caller
-            else 0
-        )
-    )
 
     if is_create2 == 1:
         preimage = (
@@ -265,6 +251,20 @@ def test_create_create2(
 
     is_precheck_ok = (
         (caller_balance >= stack.value) and (nonce > nonce - 1) and (stack_depth <= 1024)
+    )
+
+    is_success = is_precheck_ok and not_address_collision
+    is_reverted_by_caller = not caller_ctx.is_persistent and is_success
+    is_reverted_by_callee = not is_success
+    callee_is_persistent = caller_ctx.is_persistent and is_success
+    callee_rw_counter_end_of_reversion = (
+        80
+        if is_reverted_by_callee
+        else (
+            caller_ctx.rw_counter_end_of_reversion - (caller_ctx.reversible_write_counter + 1)
+            if is_reverted_by_caller
+            else 0
+        )
     )
 
     src_data = dict(

@@ -224,6 +224,9 @@ def create(instruction: Instruction):
 
     # error cases
     if not is_precheck_ok or not not_address_collision or not has_init_code:
+        if not is_precheck_ok or not not_address_collision:
+            instruction.constrain_equal(is_success, FQ(0))
+
         for field_tag, expected_value in [
             (CallContextFieldTag.LastCalleeId, FQ(0)),
             (CallContextFieldTag.LastCalleeReturnDataOffset, FQ(0)),
