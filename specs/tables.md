@@ -2,7 +2,7 @@
 
 For the zkevm we use the following dynamic and fixed tables for lookups to the EVM circuit.  The validity of the dynamic tables contents is proved by their own associated circuit.
 
-Code spec at [table.py](../src/zkevm_specs/evm/table.py)
+Code spec at [table.py](../src/zkevm_specs/evm_circuit/table.py)
 
 Note: After the transition from encoding words as RLC to high and low parts,
 all the columns that used to contain word_rlc have been doubled to contain
