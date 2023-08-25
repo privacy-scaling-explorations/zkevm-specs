@@ -12,7 +12,7 @@ For the current `go-ethereum` code, the out of gas error may occur for `constant
 gas_cost = constant_gas + dynamic_gas
 
 ```
-Where `constant_gas` = 0 and `dynamic_gas` = memory_expansion_cost
+Where `constant_gas` = 0 and `dynamic_gas` = memory_expansion_cost.
 
 The memory expansion gas cost is calculated as:
 
