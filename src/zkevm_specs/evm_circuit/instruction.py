@@ -1210,6 +1210,7 @@ class Instruction:
             is_call,
             is_delegatecall,
             is_staticcall,
+            is_callcode,
             is_return,
             is_revert,
             is_log0,
@@ -1233,6 +1234,7 @@ class Instruction:
                 Opcode.CALL,
                 Opcode.DELEGATECALL,
                 Opcode.STATICCALL,
+                Opcode.CALLCODE,
                 Opcode.RETURN,
                 Opcode.REVERT,
                 Opcode.LOG0,
@@ -1278,8 +1280,8 @@ class Instruction:
                 offset,
                 size,
             )
-        elif (is_delegatecall + is_staticcall + is_call) == FQ(1):
-            if is_call == FQ(1):
+        elif (is_delegatecall + is_staticcall + is_call + is_callcode) == FQ(1):
+            if is_call + is_callcode == FQ(1):
                 self.stack_pop()
             self.stack_pop()
             self.stack_pop()

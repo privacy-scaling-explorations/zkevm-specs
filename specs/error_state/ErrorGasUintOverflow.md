@@ -26,7 +26,7 @@ The `ErrGasUintOverflow` happens in
 
 but when the `ErrGasUintOverflow` happens in [`dynamicGas`](https://github.com/ethereum/go-ethereum/blob/793f0f9ec860f6f51e0cec943a268c10863097c7/core/vm/interpreter.go#L218), the error turns out [`ErrOutOfGas`](https://github.com/ethereum/go-ethereum/blob/793f0f9ec860f6f51e0cec943a268c10863097c7/core/vm/interpreter.go#LL221C17-L221C28).
 
-so we only need to care about follows case.
+so we only need to care about following cases.
 
 - [IntrinsicGas](https://github.com/ethereum/go-ethereum/blob/b946b7a13b749c99979e312c83dce34cac8dd7b1/core/state_transition.go#L67)
 - [Run](https://github.com/ethereum/go-ethereum/blob/b946b7a13b749c99979e312c83dce34cac8dd7b1/core/vm/interpreter.go#L105)

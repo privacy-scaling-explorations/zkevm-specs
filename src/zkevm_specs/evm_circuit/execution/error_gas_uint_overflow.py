@@ -21,7 +21,7 @@ def error_gas_uint_overflow(instruction: Instruction):
 
     (
         is_call,
-        _,
+        is_callcode,
         is_delegatecall,
         is_staticcall,
         is_create_flag,
@@ -36,7 +36,6 @@ def error_gas_uint_overflow(instruction: Instruction):
         is_log3,
         is_log4,
         is_sha3,
-        _,
         is_mload,
         is_mstore,
         is_mstore8,
@@ -61,7 +60,6 @@ def error_gas_uint_overflow(instruction: Instruction):
             Opcode.LOG3,
             Opcode.LOG4,
             Opcode.SHA3,
-            Opcode.EXP,
             Opcode.MLOAD,
             Opcode.MSTORE,
             Opcode.MSTORE8,
@@ -77,6 +75,7 @@ def error_gas_uint_overflow(instruction: Instruction):
         + is_returndatacopy
         + is_sha3
         + is_call
+        + is_callcode
         + is_delegatecall
         + is_staticcall
         + is_create_flag
