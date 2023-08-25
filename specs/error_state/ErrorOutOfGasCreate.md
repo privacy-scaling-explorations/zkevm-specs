@@ -46,8 +46,7 @@ The limit of the max size of initial bytecode is `49,152` which is `2 * MAX_CODE
 2. At least one of below conditions is met:
   - `gas_left < gas_cost`.
   - `len(init_code) > MAX_INIT_CODE_SIZE`
-3. Current call fails.
-4. Common error constraints: 
+3. Common error constraints: 
   - Current call fails. 
   - Constrain `rw_counter_end_of_reversion = rw_counter_end_of_step + reversible_counter`.
   - If it's a root call, it transits to `EndTx`.
