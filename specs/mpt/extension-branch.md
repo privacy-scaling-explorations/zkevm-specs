@@ -1,5 +1,43 @@
 # Branch
 
+A branch consists of 21 rows. The struct that determines the row type is `ExtensionBranchRowType`:
+
+```
+pub(crate) enum ExtensionBranchRowType {
+    Mod,
+    Child0,
+    Child1,
+    Child2,
+    Child3,
+    Child4,
+    Child5,
+    Child6,
+    Child7,
+    Child8,
+    Child9,
+    Child10,
+    Child11,
+    Child12,
+    Child13,
+    Child14,
+    Child15,
+    Key, // Both (S and C) extension nodes have the same key - when it is different, we have a modified extension node case.
+    ValueS,
+    Nibbles, // The list of second nibbles (key byte = nibble1 * 16 + nibble2) that correspond to the key.
+    ValueC,
+    Count,
+}
+```
+
+`S` and `C` branches have the same children except for the one at index `modified_node`.
+The witness stores the 16 `S` children in `Child1`, ..., `Child15` rows and stores at `Mod` row
+the children of the `C` branch where the modification occurs (`C` children at index `modified_node`).
+
+The rows `Key`, `ValueS`, `Nibbles`, and `ValueC` are used only when the branch is an extension node.
+
+
+# Obsolete
+
 A branch occupies 19 rows:
 ```
 BRANCH.IS_INIT

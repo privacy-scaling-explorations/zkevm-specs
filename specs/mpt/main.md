@@ -104,7 +104,7 @@ MPT circuit supports the following proofs:
 The constraints are grouped according to different trie node types:
  * Account leaf: [account-leaf.md](account-leaf.md)
  * Storage leaf: [storage-leaf.md](storage-leaf.md)
- * Branch and extension node: [branch.md](extension_branch.md)
+ * Branch and extension node: [branch.md](extension-branch.md)
 
 There is a state machine `StateMachineConfig` that configures constraints for each of the nodes.
 ```
