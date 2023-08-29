@@ -9,7 +9,13 @@ from ...util import (
 from ..execution_state import ExecutionState
 from ..instruction import Instruction, Transition
 from ..precompile import Precompile
-from ..table import CallContextFieldTag, TxContextFieldTag, AccountFieldTag, CopyDataTypeTag
+from ..table import (
+    CallContextFieldTag,
+    TxContextFieldTag,
+    AccountFieldTag,
+    CopyDataTypeTag,
+    BlockContextFieldTag,
+)
 
 
 def begin_tx(instruction: Instruction):
@@ -24,6 +30,10 @@ def begin_tx(instruction: Instruction):
 
     if instruction.is_first_step:
         instruction.constrain_equal(tx_id, FQ(1))
+
+    # get coinbase address (EIP-3651, Warm COINBASE)
+    coinbase_word = instruction.block_context_lookup_word(BlockContextFieldTag.Coinbase)
+    coinbase = instruction.word_to_address(coinbase_word)
 
     tx_caller_address_word = instruction.tx_context_lookup_word(
         tx_id, TxContextFieldTag.CallerAddress
@@ -83,7 +93,8 @@ def begin_tx(instruction: Instruction):
 
     callee_address = contract_address if tx_is_create == 1 else tx_callee_address
 
-    # Prepare access list of caller and callee
+    # Prepare access list of caller, callee and coinbase
+    instruction.constrain_zero(instruction.add_account_to_access_list(tx_id, coinbase))
     instruction.constrain_zero(instruction.add_account_to_access_list(tx_id, tx_caller_address))
     instruction.constrain_zero(instruction.add_account_to_access_list(tx_id, callee_address))
 
@@ -115,7 +126,8 @@ def begin_tx(instruction: Instruction):
             # Do step state transition
             instruction.constrain_equal(instruction.next.execution_state, ExecutionState.EndTx)
             instruction.constrain_step_state_transition(
-                rw_counter=Transition.delta(9), call_id=Transition.to(call_id)
+                rw_counter=Transition.delta(instruction.rw_counter_offset),
+                call_id=Transition.to(call_id),
             )
         else:
             # Expected behabeur
@@ -180,7 +192,7 @@ def begin_tx(instruction: Instruction):
                 )
 
             instruction.step_state_transition_to_new_context(
-                rw_counter=Transition.delta(22),
+                rw_counter=Transition.delta(instruction.rw_counter_offset),
                 call_id=Transition.to(call_id),
                 is_root=Transition.to(True),
                 is_create=Transition.to(True),
@@ -204,7 +216,8 @@ def begin_tx(instruction: Instruction):
             # Do step state transition
             instruction.constrain_equal(instruction.next.execution_state, ExecutionState.EndTx)
             instruction.constrain_step_state_transition(
-                rw_counter=Transition.delta(10), call_id=Transition.to(call_id)
+                rw_counter=Transition.delta(instruction.rw_counter_offset),
+                call_id=Transition.to(call_id),
             )
         else:
             # Setup next call's context
@@ -235,7 +248,7 @@ def begin_tx(instruction: Instruction):
                 )
 
             instruction.step_state_transition_to_new_context(
-                rw_counter=Transition.delta(23),
+                rw_counter=Transition.delta(instruction.rw_counter_offset),
                 call_id=Transition.to(call_id),
                 is_root=Transition.to(True),
                 is_create=Transition.to(False),
