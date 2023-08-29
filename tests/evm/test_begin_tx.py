@@ -243,6 +243,7 @@ TESTING_DATA = (
 @pytest.mark.parametrize("tx, callee, is_success", TESTING_DATA)
 def test_begin_tx(tx: Transaction, callee: Account, is_success: bool):
     randomness_keccak = rand_fq()
+    block = Block()
 
     is_tx_valid = 1 - tx.invalid_tx
     is_tx_create = tx.callee_address == None
@@ -273,6 +274,7 @@ def test_begin_tx(tx: Transaction, callee: Account, is_success: bool):
         .call_context_read(1, CallContextFieldTag.IsPersistent, is_success)
         .call_context_read(1, CallContextFieldTag.IsSuccess, is_success)
         .account_write(tx.caller_address, AccountFieldTag.Nonce, caller_nonce_prev + is_tx_valid, caller_nonce_prev)
+        .tx_access_list_account_write(tx.id, block.coinbase, True, False)
         .tx_access_list_account_write(tx.id, tx.caller_address, True, False)
         .tx_access_list_account_write(tx.id, callee_address, True, False)
         .account_write(tx.caller_address, AccountFieldTag.Balance, Word(caller_balance), Word(caller_balance_prev), rw_counter_of_reversion=None if is_success else rw_counter_end_of_reversion)
@@ -354,7 +356,7 @@ def test_begin_tx(tx: Transaction, callee: Account, is_success: bool):
     # fmt: on
 
     tables = Tables(
-        block_table=set(Block().table_assignments()),
+        block_table=set(block.table_assignments()),
         tx_table=set(tx.table_assignments()),
         bytecode_table=set(callee.code.table_assignments()),
         rw_table=set(rw_dictionary.rws),
