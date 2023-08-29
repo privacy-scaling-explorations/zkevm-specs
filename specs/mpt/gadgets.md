@@ -53,6 +53,11 @@ assignf!(region, (self.fixed_table[5], offset) => is_very_long.scalar())?;
 Both, `RLPValueGadget` and `RLPListGadget` execute the lookup to ensure that the cells have the proper
 values.
 
+The MPT circuit instantiates the `RLPItemGadget` for each node in the MPT proof. However,
+the circuit instantiates the `RLPValueGadget` or `RLPListGadget` for every RLP item in the MPT
+proof - the node in most cases recursively contains multiple RLP items. For example, the branch
+node contains 16 children nodes, each of which is an RLP item.
+
 ### Constraints
 
 `MainRLPGadget` ensures that the values stored in the cells `num_bytes`, `len`, `mult_diff`,
@@ -304,6 +309,58 @@ are the same:
 config.wrong_rlp_key.key_value.len() = key_value.len()
 ```
 
+## RLPValueGadget and RLPListGadget
 
+The RLP item can be a value or a list of items. For the value RLP item, the `RLPValueGadget`
+is to be instantiated.
+
+```
+pub(crate) struct RLPValueGadget<F> {
+    pub(crate) is_short: Cell<F>,
+    pub(crate) is_long: Cell<F>,
+    pub(crate) is_very_long: Cell<F>,
+    pub(crate) is_list: Cell<F>,
+    pub(crate) bytes: Vec<Expression<F>>,
+}
+```
+
+
+The RLP item can be a value or a list of items. For the list of the RLP items, the `RLPListGadget`
+is to be instantiated.
+
+```
+pub(crate) struct RLPListGadget<F> {
+    pub(crate) is_short: Cell<F>,
+    pub(crate) is_long: Cell<F>,
+    pub(crate) is_very_long: Cell<F>,
+    pub(crate) is_string: Cell<F>,
+    pub(crate) bytes: Vec<Expression<F>>,
+}
+```
+
+The two gadgets ensure that the `is_short`, `is_long`, `is_very_long` fields are correctly assigned.
+These values are used to compute the RLP item properties like the length and the random linear
+combination of all the bytes in the item.
 
 ## ListKeyGadget
+
+```
+pub(crate) struct ListKeyGadget<F> {
+    pub(crate) rlp_list_bytes: [Cell<F>; 3],
+    pub(crate) rlp_list: RLPListGadget<F>,
+    pub(crate) key_value: RLPItemView<F>,
+    pub(crate) key: LeafKeyGadget<F>,
+}
+```
+
+`ListKeyGadget` is used for the account leaf, storage leaf, and extension node.
+In these cases, the RLP item is always a list (hence the name)
+The field `rlp_list_bytes` contains the bytes that specify the length of the (list) RLP item.
+
+For example, let us observe the storage leaf below.
+```
+[226 160 59 138 106 70 105 186 37 13 38 205 122 69 158 202 157 33 95 131 7 227 58 235 229 3 121 188 90 54 23 236 52 68]
+```
+
+The field `rlp_list_bytes` would be `[[226],[226]]`. Note that it contains the byte for each, `S`
+and `C` leaf.

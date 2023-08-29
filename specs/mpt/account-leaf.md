@@ -90,7 +90,7 @@ is_codehash_mod: IsEqualGadget<F>
 `rlp_key` stores two `ListKeyGadget` (one for `S` key, one for `C` key).
 It can be used to access the information about the key (length, number of nibbles, key RLC,
 RLC multiplier to be used after key, ...), but it also
-stores the first RLP bytes of the account leaf (that are stored in `list_rlp_bytes`).
+stores the first RLP bytes of the account leaf (that are stored in `rlp_list_bytes`).
 
 ```
 pub(crate) struct ListKeyGadget<F> {
