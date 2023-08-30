@@ -53,10 +53,56 @@ assignf!(region, (self.fixed_table[5], offset) => is_very_long.scalar())?;
 Both, `RLPValueGadget` and `RLPListGadget` execute the lookup to ensure that the cells have the proper
 values.
 
-The MPT circuit instantiates the `RLPItemGadget` for each node in the MPT proof. However,
-the circuit instantiates the `RLPValueGadget` or `RLPListGadget` for every RLP item in the MPT
-proof - the node in most cases recursively contains multiple RLP items. For example, the branch
-node contains 16 children nodes, each of which is an RLP item.
+The MPT circuit instantiates the `RLPItemGadget` for each RLP item in the MPT proof.
+The assignment code is in the main `assign` function in `mpt_circuit.rs`:
+
+```
+for (idx, (bytes, item_type)) in node.values.iter().zip(item_types.iter()).enumerate() {
+    cached_region.push_region(offset + idx, MPTRegion::RLP as usize);
+    let rlp_value = self.rlp_item.assign(
+        &mut cached_region,
+        offset + idx,
+        bytes,
+        *item_type,
+    )?;
+    rlp_values.push(rlp_value);
+    cached_region.pop_region();
+}
+```
+
+Each node has a list of values (for example branch children in branch node) and each value is an
+RLP item.
+
+Note that the `item_type` specifies one of the following types:
+
+```
+pub enum RlpItemType {
+    /// Node (string with len == 0 or 32, OR list with len <= 31)
+    Node,
+    /// Value (string with len <= 32)
+    Value,
+    /// Hash (string with len == 32)
+    Hash,
+    /// Key (string with len <= 33)
+    Key,
+    /// Nibbles
+    Nibbles,
+}
+```
+
+The constraints are triggered by using the `rlp_item` function as for example in `extension.rs`:
+
+```
+ctx.rlp_item(
+    meta,
+    cb,
+    ExtensionBranchRowType::Key as usize,
+    RlpItemType::Key,
+),
+```
+
+The third parameter specified the rotation (in the list of node's values), the fourth parameter
+specifies the item type.
 
 ### Constraints
 
