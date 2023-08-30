@@ -84,6 +84,8 @@ GAS_COST_ACCESS_LIST_STORAGE = 1900
 GAS_COST_CODE_DEPOSIT = 200
 # Gas cost of re-entrancy sentry check introduced in EIP2200
 GAS_COST_SSTORE_SENTRY_EIP2200 = 2300
+# Gas cost of initial bytecode per word defined in EIP-3860
+GAS_COST_INITCODE_WORD = 2
 
 
 # Quotient for max refund of gas used
@@ -113,6 +115,9 @@ MAX_COPY_BYTES = 32
 
 # max bytecode size, 24576 bytes
 MAX_CODE_SIZE = 24576
+
+# max bytecode size, 49152 (2 * MAX_CODE_SIZE) bytes
+MAX_INIT_CODE_SIZE = MAX_CODE_SIZE * 2
 
 # Maximum depth of call/create stack
 CALL_CREATE_DEPTH = 1024

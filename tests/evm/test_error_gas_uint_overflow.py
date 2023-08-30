@@ -92,10 +92,11 @@ def gen_testing_data():
         # CREATE/CREATE2
         Op(opcode=Opcode.CREATE, byte_code=Bytecode().create()),
         Op(opcode=Opcode.CREATE2, byte_code=Bytecode().create2()),
-        # CALL/DELEGATECALL/STATICCALL
-        # Op(opcode=Opcode.CALL, byte_code=Bytecode().call()),
+        # CALL/DELEGATECALL/STATICCALL/CALLCODE
+        Op(opcode=Opcode.CALL, byte_code=Bytecode().call()),
         Op(opcode=Opcode.DELEGATECALL, byte_code=Bytecode().delegatecall()),
         Op(opcode=Opcode.STATICCALL, byte_code=Bytecode().staticcall()),
+        Op(opcode=Opcode.CALLCODE, byte_code=Bytecode().callcode()),
     ]
     stacks = [
         Stack(gas=100, cd_offset=MAX_U64 + 1, cd_length=1, rd_offset=0, rd_length=32),
@@ -213,7 +214,7 @@ def test_error_gas_uint_overflow_root(
         .stack_read(caller_id, 1022, Word(stack.cd_length)) \
         .stack_read(caller_id, 1023, Word(salt))
         stack_pointer = 1020
-    elif opcode in [Opcode.CALL]:
+    elif opcode in [Opcode.CALL, Opcode.CALLCODE]:
         rw_table \
         .stack_read(caller_id, 1017, Word(stack.gas)) \
         .stack_read(caller_id, 1018, Word(any_address)) \

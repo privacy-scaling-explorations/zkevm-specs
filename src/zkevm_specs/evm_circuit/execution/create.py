@@ -4,6 +4,7 @@ from zkevm_specs.util.hash import EMPTY_CODE_HASH
 from zkevm_specs.util.param import (
     GAS_COST_COPY_SHA3,
     GAS_COST_CREATE,
+    GAS_COST_INITCODE_WORD,
     MAX_U64,
     N_BYTES_ACCOUNT_ADDRESS,
     N_BYTES_GAS,
@@ -60,17 +61,15 @@ def create(instruction: Instruction):
         size,
     )
 
-    # CREATE = GAS_COST_CREATE + memory expansion + GAS_COST_CODE_DEPOSIT * len(byte_code)
-    # CREATE2 = gas cost of CREATE + GAS_COST_COPY_SHA3 * memory_size
+    # CREATE = GAS_COST_CREATE + memory expansion + init code (EIP-3860) + GAS_COST_CODE_DEPOSIT * len(byte_code)
+    # CREATE2 = gas cost of CREATE + GAS_COST_COPY_SHA3 * word_len
     # byte_code is only available in `return_revert`,
     # so the last part (GAS_COST_CODE_DEPOSIT * len(byte_code)) won't be calculated here
+    word_len, _ = instruction.constant_divmod(size + FQ(31), FQ(32), N_BYTES_MEMORY_WORD_SIZE)
     gas_left = instruction.curr.gas_left
-    gas_cost = GAS_COST_CREATE + memory_expansion_gas_cost
-    if is_create2 == 1:
-        memory_size, _ = instruction.constant_divmod(
-            size + FQ(31), FQ(32), N_BYTES_MEMORY_WORD_SIZE
-        )
-        gas_cost += GAS_COST_COPY_SHA3 * memory_size
+    gas_cost = GAS_COST_CREATE + memory_expansion_gas_cost + word_len * GAS_COST_INITCODE_WORD
+    if is_create2 == FQ(1):
+        gas_cost += GAS_COST_COPY_SHA3 * word_len
     gas_available = gas_left - gas_cost
 
     # Apply EIP 150
@@ -225,6 +224,9 @@ def create(instruction: Instruction):
 
     # error cases
     if not is_precheck_ok or not not_address_collision or not has_init_code:
+        if not is_precheck_ok or not not_address_collision:
+            instruction.constrain_equal(is_success, FQ(0))
+
         for field_tag, expected_value in [
             (CallContextFieldTag.LastCalleeId, FQ(0)),
             (CallContextFieldTag.LastCalleeReturnDataOffset, FQ(0)),

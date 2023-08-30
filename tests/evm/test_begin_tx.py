@@ -186,7 +186,7 @@ TESTING_DATA = (
         Transaction(
             caller_address=0xFE,
             callee_address=None,
-            gas=100000,  # TODO(amb) make more precise gas
+            gas=53000,
         ),
         CALLEE_WITH_NOTHING,
         True,
@@ -196,7 +196,7 @@ TESTING_DATA = (
         Transaction(
             caller_address=0xFE,
             callee_address=None,
-            gas=100000,  # TODO(amb) make more precise gas
+            gas=53000,
             value=1,
         ),
         CALLEE_WITH_NOTHING,
@@ -207,7 +207,7 @@ TESTING_DATA = (
         Transaction(
             caller_address=0xFE,
             callee_address=None,
-            gas=53580,  # TODO(amb) make more precise gas
+            gas=53584,
             call_data=bytes(gen_bytecode(True, 0, True).code),
         ),
         CALLEE_WITH_NOTHING,
@@ -218,7 +218,7 @@ TESTING_DATA = (
         Transaction(
             caller_address=0xFE,
             callee_address=None,
-            gas=53580,
+            gas=53584,
             value=1,
             call_data=bytes(gen_bytecode(True, 0, True).code),
         ),
@@ -230,7 +230,7 @@ TESTING_DATA = (
         Transaction(
             caller_address=0xFE,
             callee_address=None,
-            gas=53580,
+            gas=53584,
             value=1,
             call_data=bytes(gen_bytecode(False, 0, True).code),
         ),

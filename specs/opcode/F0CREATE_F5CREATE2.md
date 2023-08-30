@@ -14,14 +14,14 @@ The following values are popped from the stack:
 3. `size` - The length of the initialization code, in bytes.
 4. `salt` - Only for `CREATE2`: salt for the hash that will determine the new address.
 
-If the initialization call is successful, the new address will be pushed to the stack.
-If not, 0 will be pushed instead.
+If the initialization call is successful, the new address will be pushed to the stack. If not, 0 will be pushed instead.
 
 The gadget does several things in the caller's call context:
-1. Expands memory
-2. Add `new_address` to the access list
-3. Calculate gas cost for this step.
-4. Uses EIP150 to calculate how much gas will remain in the caller's context.
+1. Perform the following pre-checks: check the stack depth, validate the sender's balance, verify the sender's nonce, and ensure the existence of the contract address. If any of these checks fail, restore the caller's context.
+2. Expands memory
+3. Add `new_address` to the access list
+4. Calculate gas cost for this step.
+5. Uses EIP150 to calculate how much gas will remain in the caller's context.
 
 The memory size is calculated as follows:
 
@@ -57,13 +57,16 @@ The `gas_cost` for the step is:
 
 ```
 GAS_COST_CREATE := 32000
-KECCAK_WORD_GAS_COST : 6
+KECCAK_WORD_GAS_COST := 6
+GAS_COST_INITCODE_WORD := 2  # EIP-3860
 
 keccak_gas_cost = KECCAK_WORD_GAS_COST * size if op_id == CREATE2 else 0
+initcode_gas_cost = GAS_COST_INITCODE_WORD * size
 gas_cost = (
     GAS_COST_CREATE
     + memory_expansion_gas_cost
     + keccak_gas_cost
+    + initcode_gas_cost
 )
 ```
 
@@ -87,11 +90,11 @@ The circuit takes the starting `rw_counter` as next call's `call_id` to make sur
 It pops 3 words for `CREATE` and 4 words for `CREATE2` from the stack.
 In both cases, it then pushes 1 word to the stack.
 
-It then checks that `callee.is_persistent = caller.is_persistent and caller.is_success`.
-If the caller is not persistent, we need to propagate the `rw_counter_end_of_reversion` to make sure every state update in the new call has a corresponding reversion.
-
-It stores the current call context by writing the current values `rw_table` and checks that the new call context is setup correctly by reading to `rw_table`, and then does a step state transition to the call and begins the execution o the initialization bytecode.
-
+If all the pre-checks pass, then
+  - It checks that `callee.is_persistent = caller.is_persistent and caller.is_success`.
+  - If the caller is not persistent, we need to propagate the `rw_counter_end_of_reversion` to make sure every state update in the new call has a corresponding reversion.
+  - It stores the current call context by writing the current values `rw_table` and checks that the new call context is setup correctly by reading to `rw_table`, and then does a step state transition to the call and begins the execution o the initialization bytecode.
+Otherwise, it restores the current call context.
 ## Code
 
 Please refer to `src/zkevm_specs/evm/execution/create.py`.

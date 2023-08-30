@@ -1,5 +1,3 @@
-from zkevm_specs.evm_circuit.table import RW
-from zkevm_specs.util.param import GAS_COST_CREATE
 from ...util import FQ
 from ..instruction import Instruction
 from ..opcode import Opcode
@@ -7,32 +5,22 @@ from ...util import N_BYTES_GAS
 
 
 def error_oog_dynamic_memory_expansion(instruction: Instruction):
-    # retrieve op code associated to oog constant error
+    # retrieve op code associated to oog error
     opcode = instruction.opcode_lookup(True)
-    is_create, is_create2, is_return, is_revert = instruction.multiple_select(
-        opcode, (Opcode.CREATE, Opcode.CREATE2, Opcode.RETURN, Opcode.REVERT)
-    )
+    is_return, is_revert = instruction.multiple_select(opcode, (Opcode.RETURN, Opcode.REVERT))
 
-    # Constrain opcode must be one of CREATE, CREATE2, RETURN or REVERT.
-    instruction.constrain_equal(is_create + is_create2 + is_return + is_revert, FQ(1))
-
-    constant_gas = 0
-    stack_offset = 0
-    if is_create + is_create2 == FQ(1):
-        constant_gas = GAS_COST_CREATE
-        # the first stack of CREATE/CREATE2 is `value`, so we plus 1 here.
-        # see specs/opcode/F0CREATE_F5CREATE2.md for more details.
-        stack_offset += 1
+    # Constrain opcode must be RETURN or REVERT.
+    instruction.constrain_equal(is_return + is_revert, FQ(1))
 
     # get gas cost of memory expansion
-    offset_word = instruction.stack_lookup(RW.Read, stack_offset)
-    size_word = instruction.stack_lookup(RW.Read, stack_offset + 1)
+    offset_word = instruction.stack_pop()
+    size_word = instruction.stack_pop()
     offset, size = instruction.memory_offset_and_length(offset_word, size_word)
     (_, memory_expansion_gas_cost) = instruction.memory_expansion(offset, size)
 
     # check gas left is less than total gas required
     gas_not_enough, _ = instruction.compare(
-        instruction.curr.gas_left, constant_gas + memory_expansion_gas_cost, N_BYTES_GAS
+        instruction.curr.gas_left, memory_expansion_gas_cost, N_BYTES_GAS
     )
     instruction.constrain_equal(gas_not_enough, FQ(1))
 
