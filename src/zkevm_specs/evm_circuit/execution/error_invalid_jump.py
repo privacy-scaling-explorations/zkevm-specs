@@ -29,5 +29,5 @@ def error_invalid_jump(instruction: Instruction):
         instruction.constrain_zero(is_code * FQ(is_jump_dest))
 
         instruction.constrain_error_state(
-            1 + is_jumpi.n + instruction.curr.reversible_write_counter.n
+            instruction.rw_counter_offset + instruction.curr.reversible_write_counter
         )

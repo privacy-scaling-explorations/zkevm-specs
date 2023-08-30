@@ -166,4 +166,6 @@ def error_gas_uint_overflow(instruction: Instruction):
     )
     instruction.constrain_not_zero(FQ(is_overflow))
 
-    instruction.constrain_error_state(instruction.rw_counter_offset)
+    instruction.constrain_error_state(
+        instruction.rw_counter_offset + instruction.curr.reversible_write_counter
+    )

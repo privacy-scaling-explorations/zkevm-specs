@@ -6,4 +6,6 @@ def error_stack(instruction: Instruction):
     opcode = instruction.opcode_lookup(True)
     instruction.responsible_opcode_lookup(opcode, instruction.curr.stack_pointer)
 
-    instruction.constrain_error_state(instruction.curr.reversible_write_counter.n)
+    instruction.constrain_error_state(
+        instruction.rw_counter_offset + instruction.curr.reversible_write_counter
+    )

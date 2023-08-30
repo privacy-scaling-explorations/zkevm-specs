@@ -65,4 +65,6 @@ def error_write_protection(instruction: Instruction):
         value = instruction.stack_lookup(RW.Read, 2)
         instruction.constrain_not_zero_word(value)
 
-    instruction.constrain_error_state(instruction.rw_counter_offset)
+    instruction.constrain_error_state(
+        instruction.rw_counter_offset + instruction.curr.reversible_write_counter
+    )
