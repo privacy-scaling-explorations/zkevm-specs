@@ -226,7 +226,7 @@ class ExecutionState(IntEnum):
                 Opcode.COINBASE,
                 Opcode.TIMESTAMP,
                 Opcode.NUMBER,
-                Opcode.DIFFICULTY,
+                Opcode.PREVRANDAO,
                 Opcode.GASLIMIT,
                 Opcode.BASEFEE,
                 Opcode.CHAINID,

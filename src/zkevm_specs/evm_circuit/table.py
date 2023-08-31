@@ -137,7 +137,7 @@ class BlockContextFieldTag(IntEnum):
     GasLimit = auto()
     Number = auto()
     Timestamp = auto()
-    Difficulty = auto()
+    PrevRandao = auto()
     BaseFee = auto()
     ChainId = auto()
     HistoryHash = auto()

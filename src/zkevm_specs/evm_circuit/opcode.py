@@ -53,7 +53,7 @@ class Opcode(IntEnum):
     COINBASE = 0x41
     TIMESTAMP = 0x42
     NUMBER = 0x43
-    DIFFICULTY = 0x44
+    PREVRANDAO = 0x44
     GASLIMIT = 0x45
     CHAINID = 0x46
     SELFBALANCE = 0x47
@@ -258,7 +258,7 @@ OPCODE_INFO_MAP: Final[Dict[Opcode, OpcodeInfo]] = dict(
         Opcode.COINBASE: OpcodeInfo(1, 1024, GAS_COST_QUICK),
         Opcode.TIMESTAMP: OpcodeInfo(1, 1024, GAS_COST_QUICK),
         Opcode.NUMBER: OpcodeInfo(1, 1024, GAS_COST_QUICK),
-        Opcode.DIFFICULTY: OpcodeInfo(1, 1024, GAS_COST_QUICK),
+        Opcode.PREVRANDAO: OpcodeInfo(1, 1024, GAS_COST_QUICK),
         Opcode.GASLIMIT: OpcodeInfo(1, 1024, GAS_COST_QUICK),
         Opcode.CHAINID: OpcodeInfo(1, 1024, GAS_COST_QUICK),
         Opcode.SELFBALANCE: OpcodeInfo(1, 1024, GAS_COST_FAST),

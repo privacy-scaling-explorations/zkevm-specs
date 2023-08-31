@@ -171,7 +171,7 @@ __Hence the addition inside of the block_table.__
 | GasLimit               | 0         | $value,0         |
 | BlockNumber            | 0         | $value,0         |
 | Time                   | 0         | $value,0         |
-| Difficulty             | 0         | $value{Lo,Hi}    |
+| PrevRandao             | 0         | $value{Lo,Hi}    |
 | BaseFee                | 0         | $value{Lo,Hi}    |
 | ChainID                | 0         | $value,0         |
 | BlockHash              | 0..256    | $value{Lo,Hi}    |

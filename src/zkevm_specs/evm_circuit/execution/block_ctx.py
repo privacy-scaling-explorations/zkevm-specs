@@ -15,8 +15,8 @@ def blockctx(instruction: Instruction):
         op = BlockContextFieldTag.Number
     elif opcode == Opcode.GASLIMIT:
         op = BlockContextFieldTag.GasLimit
-    elif opcode == Opcode.DIFFICULTY:
-        op = BlockContextFieldTag.Difficulty
+    elif opcode == Opcode.PREVRANDAO:
+        op = BlockContextFieldTag.PrevRandao
     elif opcode == Opcode.BASEFEE:
         op = BlockContextFieldTag.BaseFee
     elif opcode == Opcode.CHAINID:
