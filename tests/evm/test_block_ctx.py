@@ -79,7 +79,7 @@ TESTING_DATA_U256 = (0, 1, 2**256 - 1)
 def test_prev_randao(prev_randao: U256):
     block = Block(prev_randao=prev_randao)
 
-    bytecode = Bytecode().prev_randao()
+    bytecode = Bytecode().prevrandao()
 
     verify_block_ctx(
         block,
