@@ -75,16 +75,16 @@ def test_gaslimit(gaslimit: U64):
 TESTING_DATA_U256 = (0, 1, 2**256 - 1)
 
 
-@pytest.mark.parametrize("difficulty", TESTING_DATA_U256)
-def test_difficulty(difficulty: U256):
-    block = Block(difficulty=difficulty)
+@pytest.mark.parametrize("prev_randao", TESTING_DATA_U256)
+def test_prev_randao(prev_randao: U256):
+    block = Block(prev_randao=prev_randao)
 
-    bytecode = Bytecode().difficulty()
+    bytecode = Bytecode().prevrandao()
 
     verify_block_ctx(
         block,
         bytecode,
-        difficulty,
+        prev_randao,
     )
 
 

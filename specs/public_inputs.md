@@ -14,7 +14,7 @@ calculate a block and to define this calculated block.
     - TxHash: 256 bits (Txs Trie Root)
     - ReceiptHash: 256 bits (Receipts Trie Root)
     - Bloom: 256 bytes
-    - Difficulty: 256 bits
+    - PrevRandao: 256 bits
     - Number: 64 bits
     - GasLimit: 64 bits
     - GasUsed: 64 bits
@@ -33,7 +33,7 @@ calculate a block and to define this calculated block.
     - GasLimit
     - Number
     - Time
-    - Difficulty
+    - PrevRandao
     - BaseFee
 - State Circuit
     - Block.Root
@@ -128,7 +128,7 @@ of the previous block), we need at least the following data:
     - CallData: CallDataLength bytes
 - Block fields that affect EVM execution
     - Coinbase: 160 bits
-    - Difficulty: 256 bits
+    - PrevRandao: 256 bits
     - Number: 64 bits
     - GasLimit: 64 bits
     - Time: 64 bits

@@ -421,7 +421,7 @@ class Block:
     tx_hash: U256  # Txs Trie Root
     receipt_hash: U256  # Receipts Trie Root
     bloom: bytes  # 256 bytes
-    difficulty: U256
+    prev_randao: U256
     number: U64
     gas_limit: U64
     gas_used: U64
@@ -569,7 +569,7 @@ class PublicData:
         column.append(WordOrValue(FQ(self.block.gas_limit)))
         column.append(WordOrValue(FQ(self.block.number)))
         column.append(WordOrValue(FQ(self.block.time)))
-        column.append(WordOrValue(Word(self.block.difficulty)))
+        column.append(WordOrValue(Word(self.block.prev_randao)))
         column.append(WordOrValue(Word(self.block.base_fee)))
         column.append(WordOrValue(FQ(self.chain_id)))
         assert len(self.block_hashes) == 256
@@ -586,9 +586,9 @@ class PublicData:
         raw_block_value.append(self.block.gas_limit.to_bytes(8, "big"))
         raw_block_value.append(self.block.number.to_bytes(8, "big"))
         raw_block_value.append(self.block.time.to_bytes(8, "big"))
-        difficulty_lo, difficulty_hi = Word(self.block.difficulty).to_lo_hi()
-        raw_block_value.append(difficulty_lo.n.to_bytes(16, "big"))
-        raw_block_value.append(difficulty_hi.n.to_bytes(16, "big"))
+        prev_randao_lo, prev_randao_hi = Word(self.block.prev_randao).to_lo_hi()
+        raw_block_value.append(prev_randao_lo.n.to_bytes(16, "big"))
+        raw_block_value.append(prev_randao_hi.n.to_bytes(16, "big"))
         base_fee_lo, base_fee_hi = Word(self.block.base_fee).to_lo_hi()
         raw_block_value.append(base_fee_lo.n.to_bytes(16, "big"))
         raw_block_value.append(base_fee_hi.n.to_bytes(16, "big"))
@@ -706,7 +706,7 @@ N_BYTES_BLOCK = (
     + 8  # gas limit
     + 8  # block number
     + 8  # timestamp
-    + 32  # difficulty
+    + 32  # prev_randao
     + 32  # base_fee
     + 8  # chain_id
     + 32 * 256  # pre block hashes

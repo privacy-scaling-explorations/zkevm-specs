@@ -73,7 +73,7 @@ class Block:
     # (2**63 - 1, 9223372036854775807).
     number: U64
     timestamp: U64
-    difficulty: U256
+    prev_randao: U256
     base_fee: U256
 
     # Even ChainId is not a block parameter, since all txs of a block are meant
@@ -90,7 +90,7 @@ class Block:
         gas_limit: U64 = U64(int(15e6)),
         number: U64 = U64(0),
         timestamp: U64 = U64(0),
-        difficulty: U256 = U256(0),
+        prev_randao: U256 = U256(0),
         base_fee: U256 = U256(int(1e9)),
         chainid: U64 = U64(0x01),
         history_hashes: Sequence[U256] = [],
@@ -101,7 +101,7 @@ class Block:
         self.gas_limit = gas_limit
         self.number = number
         self.timestamp = timestamp
-        self.difficulty = difficulty
+        self.prev_randao = prev_randao
         self.base_fee = base_fee
         self.chainid = chainid
         self.history_hashes = history_hashes
@@ -114,7 +114,7 @@ class Block:
             BlockTableRow(FQ(BlockContextFieldTag.GasLimit), FQ(0), value(self.gas_limit)),
             BlockTableRow(FQ(BlockContextFieldTag.Number), FQ(0), value(self.number)),
             BlockTableRow(FQ(BlockContextFieldTag.Timestamp), FQ(0), value(self.timestamp)),
-            BlockTableRow(FQ(BlockContextFieldTag.Difficulty), FQ(0), word(self.difficulty)),
+            BlockTableRow(FQ(BlockContextFieldTag.PrevRandao), FQ(0), word(self.prev_randao)),
             BlockTableRow(FQ(BlockContextFieldTag.BaseFee), FQ(0), word(self.base_fee)),
             BlockTableRow(FQ(BlockContextFieldTag.ChainId), FQ(0), value(self.chainid)),
         ] + [

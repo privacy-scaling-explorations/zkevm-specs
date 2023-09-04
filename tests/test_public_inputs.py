@@ -83,7 +83,7 @@ def rand_block() -> Block:
         tx_hash=rand_u256(),
         receipt_hash=rand_u256(),
         bloom=randbytes(256),
-        difficulty=rand_u256(),
+        prev_randao=rand_u256(),
         number=rand_u64(),
         gas_limit=rand_u64(),
         gas_used=rand_u64(),
