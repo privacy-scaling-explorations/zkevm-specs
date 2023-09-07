@@ -26,9 +26,7 @@ For every withdrawal defined as the parameters `(withdrawal_index, validator_ind
 3. `withdrawal_index`, `validator_index` and `amount` are all `uint64` values.
 4. `amount_wei = amount * 1e9` and increases validator's balance by `amount_wei`
 
-- The rlp encoding of withdrawal parameters will be done using a
-  custom rlp encoding gadget, isolated from the rlp encoding used by the MPT
-  circuit.
+- The rlp encoding of withdrawal parameters will be done using a custom rlp encoding gadget,  isolated from the rlp encoding used by the MPT circuit.
 - The MPT root verification will be done in MPT circuit; the withdrawal circuit do a lookup to the MPT table.
 
 From this information the circuit builds the WDTable:
