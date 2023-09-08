@@ -29,18 +29,16 @@ For every withdrawal defined as the parameters `(withdrawal_index, validator_ind
 - The rlp encoding of withdrawal parameters will be done using a custom rlp encoding gadget,  isolated from the rlp encoding used by the MPT circuit.
 - The MPT root verification will be done in MPT circuit; the withdrawal circuit do a lookup to the MPT table.
 
-From this information the circuit builds the WDTable:
+From this information the circuit builds the WithdrawalTable:
 
 Where:
 
 - Address = validator's address
 - Amount = a nonzero amount of ether given in Gwei (1e9 wei)
 
-| 0 WithdrawalID | 1 Validator ID | 2 Tag               | 3 value       |
-| -----------    | -------------  | ----------------    | ------------- |             
-|                |                | *WDContextFieldTag* |               |
-| $WithdrawalID  | $ValidatorID   | Address             | $value{Lo,Hi} |
-| $WithdrawalID  | $ValidatorID   | Amount              | $value{Lo,Hi} |
+| 0 WithdrawalID | 1 Validator ID | 2 Address      | 3 Amount      |
+| -----------    | -------------  | -------------- | ------------- |             
+| $WithdrawalID  | $ValidatorID   | $value{Lo,Hi}  | $value{Lo,Hi} |
 
 There are some constraints on the shape of the table like:
 
