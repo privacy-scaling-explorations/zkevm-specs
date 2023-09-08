@@ -334,6 +334,7 @@ class MPTProofType(IntEnum):
     AccountDeleteMod = 5
     StorageMod = 6
     NonExistingStorageProof = 7
+    WithdrawalMod = 8
 
     @staticmethod
     def from_account_field_tag(field_tag: AccountFieldTag) -> MPTProofType:
