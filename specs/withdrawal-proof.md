@@ -2,7 +2,7 @@
 
 The withdrawals proof verifies the merkle patricia trie identified by the root `withdrawalsRoot` contains all the withdrawals.
 
-`Withdrawal` operation is introduced by EIP-4895 to provides a way for validator withdrawals made on the beacon chain to enter into the EVM. `Withdrawal` operation is a system-level operation and introduces a new field after the existing fields in the execution payload. Unlike transactions, there is no signature to verify and the main verification logic is to verify withdrawals MPT root.
+`Withdrawal` operation is introduced by EIP-4895 to provides a way for validator withdrawals made on the beacon chain to enter into the EVM. `Withdrawal` operation is a system-level operation and introduces a new field after the existing fields in the execution payload. Unlike transactions, there is no signature to verify and the main verification logic is to verify withdrawals MPT root which happens in MPT circuit. Since `withdrawal` is a system-level operation, the balance change is unconditional and won't fail.
 
 ## Withdrawal encoding
 
@@ -47,7 +47,7 @@ There are some constraints on the shape of the table like:
 - For every withdrawal, each tag must appear exactly once.
 - `WithdrawalID` is increased monotonically and sequentially for each withdrawal. Which means it won't be starting from 0 in most of cases.
 
-Since the withdrawal table is built from public inputs, the verifier (the L1 smart contract in the zkRollup for example) needs to validate that all rows of the table are properly built using the withdrawal data.  Since the table construction is validated outside of the circuit, there's no need to verify the same constraints inside of the circuit.
+The withdrawal table is built by public input circuit, the public input circuit would validate all rows of the table are properly built. Since the table construction is validated outside of the circuit, there's no need to verify the same constraints inside of the circuit.
 
 ### Withdrawal Trie
 
