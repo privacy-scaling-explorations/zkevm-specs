@@ -41,14 +41,14 @@ NOTE:
 Proved by the withdrawal circuit.
 
 This circuit 
-| 0 WithdrawalID | 1 Validator ID | 2 Tag               | 3 value       |
-| -----------    | -------------  | ----------------    | ------------- |             
-|                |                | *WDContextFieldTag* |               |
-| $WithdrawalID  | $ValidatorID   | Address             | $value{Lo,Hi} |
-| $WithdrawalID  | $ValidatorID   | Amount              | $value{Lo,Hi} |
+| 0 Withdrawal ID | 1 Validator ID | 2 Address      | 3 Amount      | 4 MPT root     |
+| -----------     | -------------  | -------------- | ------------- | -------------- |
+| $WithdrawalID   | $ValidatorID   | $value{Lo,Hi}  | $value{Lo,Hi} | $value{Lo,Hi}  |
 
 NOTE:
-- `Amount` is in Gwei
+- `Amount` is in Gwei, 64 bits
+- `WithdrawalID` is increased monotonically, 64 bits.
+- `ValidatorID`, 64 bits
 
 ## `rw_table`
 

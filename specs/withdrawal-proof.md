@@ -35,17 +35,18 @@ Where:
 
 - Address = validator's address
 - Amount = a nonzero amount of ether given in Gwei (1e9 wei)
+- MPT root = an incremental MPT root
 
-| 0 WithdrawalID | 1 Validator ID | 2 Address      | 3 Amount      |
-| -----------    | -------------  | -------------- | ------------- |             
-| $WithdrawalID  | $ValidatorID   | $value{Lo,Hi}  | $value{Lo,Hi} |
+| 0 Withdrawal ID | 1 Validator ID | 2 Address      | 3 Amount      | 4 MPT root     |
+| -----------     | -------------  | -------------- | ------------- | -------------- |
+| $WithdrawalID   | $ValidatorID   | $value{Lo,Hi}  | $value{Lo,Hi} | $value{Lo,Hi}  |
 
 There are some constraints on the shape of the table like:
 
-- For every withdrawal, each tag must appear exactly once.
 - `WithdrawalID` is increased monotonically and sequentially for each withdrawal. Which means it won't be starting from 0 in most of cases.
+- MPT root is used to lookup MPT table.
 
-The withdrawal table is built by public input circuit, the public input circuit would validate all rows of the table are properly built. Since the table construction is validated outside of the circuit, there's no need to verify the same constraints inside of the circuit.
+Except MPT root, the withdrawal table is built by public input circuit, the public input circuit would validate all rows of the table are properly built. MPT root is part of witness and the value is verified by MPT circuit. Since the table construction is validated outside of the circuit, there's no need to verify the same constraints inside of the circuit. 
 
 ### Withdrawal Trie
 
@@ -57,7 +58,7 @@ Each MPT update uses the following parameters:
 
 - Key = `rlp(withdrawal_index)`
 - Value = `rlp([withdrawal_index, validator_index, address, amount])`
-- ValuePrev = `0`
+- ValuePrev = `rlp([withdrawal_index_prev, validator_index_prev, address_prev, amount_prev])`
 
 NOTE: The MPT proof used for the Withdrawal Trie doesn't need deletion support.
 
