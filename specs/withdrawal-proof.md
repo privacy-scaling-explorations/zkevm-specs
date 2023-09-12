@@ -58,7 +58,7 @@ Each MPT update uses the following parameters:
 
 - Key = `rlp(withdrawal_index)`
 - Value = `rlp([withdrawal_index, validator_index, address, amount])`
-- ValuePrev = `rlp([withdrawal_index_prev, validator_index_prev, address_prev, amount_prev])`
+- ValuePrev = `0`
 
 NOTE: The MPT proof used for the Withdrawal Trie doesn't need deletion support.
 
