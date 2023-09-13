@@ -70,7 +70,7 @@ class MPTTable:
 
 
 class Witness(NamedTuple):
-    rows: List[Row]  # Transaction table rows
+    rows: List[Row]  # Withdrawal table rows
     mpt_table: MPTTable
 
 
@@ -138,7 +138,7 @@ def padding_withdrawal(withdrawal_id: int, root: U256) -> List[Row]:
     return [Row(FQ(withdrawal_id), FQ(0), Word(0), Word(0), root)]
 
 
-def tx2witness(withdrawal: Withdrawal) -> Row:
+def withdrawal2witness(withdrawal: Withdrawal) -> Row:
     """
     Generate the witness data for a single withdrawal: generate the withdrawal table rows
     """
@@ -152,7 +152,7 @@ def tx2witness(withdrawal: Withdrawal) -> Row:
     )
 
 
-def txs2witness(
+def withdrawals2witness(
     withdrawals: List[Withdrawal], MAX_WITHDRAWALS: int, mpt_table: MPTTable
 ) -> Witness:
     """
@@ -165,7 +165,7 @@ def txs2witness(
     last_root: U256 = 0
     rows: List[Row] = []
     for withdrawal in withdrawals:
-        withdrawal_row = tx2witness(withdrawal)
+        withdrawal_row = withdrawal2witness(withdrawal)
 
         last_withdrawal_id = withdrawal_row.withdrawal_id
         last_root = withdrawal_row.root

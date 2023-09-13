@@ -416,6 +416,14 @@ class TxTableRow(TableRow):
 
 
 @dataclass(frozen=True)
+class WithdrawalTableRow(TableRow):
+    id: Expression
+    validator_id: Expression
+    address: Word
+    amount: Expression
+
+
+@dataclass(frozen=True)
 class BytecodeTableRow(TableRow):
     bytecode_hash: Word
     field_tag: Expression
@@ -537,6 +545,7 @@ class Tables:
     fixed_table = set(chain(*[tag.table_assignments() for tag in list(FixedTableTag)]))
     block_table: Set[BlockTableRow]
     tx_table: Set[TxTableRow]
+    withdrawal_table: Set[WithdrawalTableRow]
     bytecode_table: Set[BytecodeTableRow]
     rw_table: Set[RWTableRow]
     copy_table: Set[CopyTableRow]
@@ -547,6 +556,7 @@ class Tables:
         self,
         block_table: Set[BlockTableRow],
         tx_table: Set[TxTableRow],
+        withdrawal_table: Set[WithdrawalTableRow],
         bytecode_table: Set[BytecodeTableRow],
         rw_table: Union[Set[Sequence[Expression]], Set[RWTableRow]],
         copy_circuit: Optional[Sequence[CopyCircuitRow]] = None,
@@ -555,6 +565,7 @@ class Tables:
     ) -> None:
         self.block_table = block_table
         self.tx_table = tx_table
+        self.withdrawal_table = withdrawal_table
         self.bytecode_table = bytecode_table
         self.rw_table = set(
             row if isinstance(row, RWTableRow) else RWTableRow(*row)  # type: ignore  # (RWTableRow input args)
@@ -646,6 +657,17 @@ class Tables:
             "call_data_index_or_zero": call_data_index,
         }
         return lookup(TxTableRow, self.tx_table, query)
+
+    def withdrawal_lookup(
+        self, id: Expression, validator_id: Expression, address: Word, amount: Expression
+    ) -> WithdrawalTableRow:
+        query = {
+            "id": id,
+            "validator_id": validator_id,
+            "address": address,
+            "amount": amount,
+        }
+        return lookup(WithdrawalTableRow, self.withdrawal_table, query)
 
     def bytecode_lookup(
         self,
