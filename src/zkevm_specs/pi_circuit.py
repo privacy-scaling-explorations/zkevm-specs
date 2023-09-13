@@ -139,11 +139,12 @@ class PublicInputs:
 
     pi_keccak: Word
 
-    # FIXME temporarily put block_hash state_root and pre_state_root here, since no table refer to those
-    # just temporarily place to carry data for copy constraints
+    # FIXME temporarily put block_hash, state_root, pre_state_root and withdrawals_root here,
+    # since no table refer to those. Just temporarily place to carry data for copy constraints
     block_hash: Word
     state_root: Word
     state_root_prev: Word
+    withdrawals_root: Word
 
 
 @is_circuit_code
@@ -392,6 +393,11 @@ def verify_circuit(
     hi_le = copy_constrains.pop(0)[::-1]
     assert public_inputs.state_root_prev.lo.expr() == bytes_to_fq(lo_le)
     assert public_inputs.state_root_prev.hi.expr() == bytes_to_fq(hi_le)
+
+    lo_le = copy_constrains.pop(0)[::-1]
+    hi_le = copy_constrains.pop(0)[::-1]
+    assert public_inputs.withdrawals_root.lo.expr() == bytes_to_fq(lo_le)
+    assert public_inputs.withdrawals_root.hi.expr() == bytes_to_fq(hi_le)
 
     # constrain tx table `id``, `index`, value lo/hi per row, and all rows equals witness rpi bytes in vertical order
     tx_len = TX_LEN * MAX_TXS + 1
@@ -837,7 +843,8 @@ N_BYTES_BLOCK = (
     + 8  # chain_id
     + 32 * 256  # pre block hashes
 )
-N_BYTES_EXTRA_VALUE = N_BYTES_WORD * 3
+# block.hash, block.state_root, state_root_prev and withdrawals_root
+N_BYTES_EXTRA_VALUE = N_BYTES_WORD * 4
 byte_pow_base = FQ(255)
 evm_rand = FQ(255)
 keccak_rand = FQ(255)
@@ -856,6 +863,7 @@ def public_data2witness(
     #   # Extra Fields
     #   [state_root.lo, state_root.hi] # 2
     #   [state_root_prev.lo, state_root_prev.hi] # 2
+    #   [withdrawals_root.lo, withdrawals_root.hi] # 2
     #   # Tx Table, `value.hi` is optional depends on the original value bits size.
     #   [0, 0, 0] // empty row
     #   + [tx_table.id, tx_table.index, tx_table.value.lo, (tx_table.value.hi)]... # TX_LEN * MAX_TXS + 1
@@ -880,6 +888,9 @@ def public_data2witness(
     state_root_prev_lo, state_root_prev_hi = Word(public_data.state_root_prev).to_lo_hi()
     rpi_byte_values.append(state_root_prev_lo.n.to_bytes(16, "big"))
     rpi_byte_values.append(state_root_prev_hi.n.to_bytes(16, "big"))
+    withdrawals_root_lo, withdrawals_root_hi = Word(public_data.block.withdrawals_root).to_lo_hi()
+    rpi_byte_values.append(withdrawals_root_lo.n.to_bytes(16, "big"))
+    rpi_byte_values.append(withdrawals_root_hi.n.to_bytes(16, "big"))
     assert flatten_len(rpi_byte_values) == N_BYTES_ONE + N_BYTES_BLOCK + N_BYTES_EXTRA_VALUE
 
     # Tx Table
@@ -965,11 +976,13 @@ def public_data2witness(
                 assert i < len(block_table_value_col)
                 block_table.add(block_table_value_col[i])
 
-            # FIXME: extra value not used in any place. Here add 2 copy constraint in block table just for aligment
+            # FIXME: extra value not used in any place. Here add 3 copy constraints in block table just for alignment
             if i == BLOCK_LEN // 2 + 1:
                 block_table.add(WordOrValue(Word(public_data.block.state_root)))
             if i == BLOCK_LEN // 2 + 2:
                 block_table.add(WordOrValue(Word(public_data.state_root_prev)))
+            if i == BLOCK_LEN // 2 + 3:
+                block_table.add(WordOrValue(Word(public_data.block.withdrawals_root)))
 
             q_tx_table = FQ.zero()
             q_tx_calldata = FQ.zero()
@@ -1068,6 +1081,7 @@ def public_data2witness(
         block_hash=Word(public_data.block.hash),
         state_root=Word(public_data.block.state_root),
         state_root_prev=Word(public_data.state_root_prev),
+        withdrawals_root=Word(public_data.block.withdrawals_root)
     )
     keccak_table.add(bytes(rpi_bytes), keccak_rand)
 
