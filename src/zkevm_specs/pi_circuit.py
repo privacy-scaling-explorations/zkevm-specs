@@ -317,7 +317,8 @@ def check_row(
         lookup(TxCallDataGasCostAccRow, calldata_gas_cost_table, query)
 
     if row.q_withdrawal_table != zero:
-        assert row_next.withdrawal_table.id == row.withdrawal_table.id + one
+        if row_next.q_withdrawal_table != zero:
+            assert row_next.withdrawal_table.id == row.withdrawal_table.id + one
         assert row.withdrawal_table.amount != zero
 
 
@@ -612,40 +613,24 @@ class Transaction:
 class Withdrawal:
     id: U64
     validator_id: U64
-    address: U256
+    address: U160
     amount: U64
 
     @classmethod
     def default(cls):
-        return Withdrawal(U64(0), U64(0), U256(0), U64(0))
+        return Withdrawal(U64(0), U64(0), U160(0), U64(0))
 
     def withdrawal_raw_bytes(self, id: int) -> List[bytes]:
         raw_byte: List[bytes] = []
 
-        self.append_raw_byte_with_id_index(raw_byte, id, self.validator_id.to_bytes(8, "big"))
-        self.append_raw_byte_with_id_index(raw_byte, id, self.amount.to_bytes(8, "big"))
-
         address_lo, address_hi = Word(self.address).to_lo_hi()
-        self.append_raw_byte_with_id_index(
-            raw_byte,
-            id,
-            address_lo.n.to_bytes(16, "big"),
-            address_hi.n.to_bytes(16, "big"),
-        )
+        raw_byte.append(U64(id).to_bytes(8, "big"))
+        raw_byte.append(U64(self.validator_id).to_bytes(8, "big"))
+        raw_byte.append(address_lo.n.to_bytes(16, "big"))
+        raw_byte.append(address_hi.n.to_bytes(16, "big"))
+        raw_byte.append(U64(self.amount).to_bytes(8, "big"))
 
         return raw_byte
-
-    def append_raw_byte_with_id_index(
-        self,
-        raw_byte_value_col: List[bytes],
-        id: int,
-        value_lo: bytes,
-        value_hi: bytes = bytes(0),
-    ):
-        raw_byte_value_col.append(U64(id).to_bytes(8, "big"))
-        raw_byte_value_col.append(value_lo)
-        if value_hi != bytes(0):
-            raw_byte_value_col.append(value_hi)
 
 
 @dataclass
@@ -706,7 +691,7 @@ class PublicData:
             if i < len(self.withdrawals):
                 withdrawal = self.withdrawals[i]
             table_raw_bytes.extend(
-                [withdrawal_bytes for withdrawal_bytes in withdrawal.withdrawal_raw_bytes(i + 1)]
+                [withdrawal_bytes for withdrawal_bytes in withdrawal.withdrawal_raw_bytes(i)]
             )
         return table_raw_bytes
 
@@ -724,10 +709,10 @@ class PublicData:
             if i < len(self.withdrawals):
                 withdrawal = self.withdrawals[i]
 
-            id_col.extend(withdrawal.id)
-            validator_id_col.extend(withdrawal.validator_id)
-            address_col.extend(withdrawal.address)
-            amount_col.extend(withdrawal.amount)
+            id_col.append(FQ(withdrawal.id))
+            validator_id_col.append(FQ(withdrawal.validator_id))
+            address_col.append(Word(withdrawal.address))
+            amount_col.append(FQ(withdrawal.amount))
 
         return (id_col, validator_id_col, address_col, amount_col)
 
@@ -832,7 +817,9 @@ class PublicData:
 N_BYTES_ONE = 1
 N_BYTES_U64 = 8
 N_BYTES_TX = 176
-N_BYTES_WITHDRAWAL = 48
+# (id, validator_id, address_lo, address_hi, amount)
+# address_hi/lo is 16 bytes, others are 8 bytes
+N_BYTES_WITHDRAWAL = 56
 N_BYTES_BLOCK = (
     +20  # coinbase
     + 8  # gas limit
@@ -855,7 +842,6 @@ def public_data2witness(
     MAX_TXS: int,
     MAX_CALLDATA_BYTES: int,
     MAX_WITHDRAWALS: int,
-    rand_rpi: FQ,
 ) -> Witness:
     # Layout of raw_public_inputs:
     #   # Block Table. `value.hi` is optional depends on the original value bits size.
@@ -901,33 +887,6 @@ def public_data2witness(
     tx_table_raw_bytes = public_data.tx_table_raw_bytes(MAX_TXS)
     rpi_byte_values.extend(tx_table_raw_bytes)
 
-    # Withdrawal Table
-    withdrawal_table_cols = public_data.withdrawal_table_cols(MAX_WITHDRAWALS)
-    Withdrawal_raw_bytes = public_data.withdrawal_table_raw_bytes(MAX_WITHDRAWALS)
-    rpi_byte_values.extend(Withdrawal_raw_bytes)
-
-    keccak_table = KeccakTable()
-    block_table = BlockTable()
-    tx_table = TxTable()
-    withdrawal_table = WithdrawalTable()
-
-    assert flatten_len(rpi_byte_values) == (
-        N_BYTES_ONE  # empty block row
-        + N_BYTES_BLOCK  # block
-        + N_BYTES_EXTRA_VALUE  # extra value
-        + N_BYTES_U64 * TX_LEN * MAX_TXS
-        + N_BYTES_U64  # tx_id + first empty
-        + N_BYTES_U64 * TX_LEN * MAX_TXS
-        + N_BYTES_U64  # txindex + first empty
-        + N_BYTES_TX * MAX_TXS
-        + N_BYTES_ONE  # tx value
-        + N_BYTES_WITHDRAWAL * MAX_WITHDRAWALS
-    )
-
-    # Tx Calldata
-    tx_table_calldata_raw_bytes = public_data.tx_table_calldata_raw_bytes(MAX_CALLDATA_BYTES)
-    rpi_byte_values.extend(tx_table_calldata_raw_bytes)
-
     circuit_len = (
         N_BYTES_ONE  # empty block row
         + N_BYTES_BLOCK  # block
@@ -938,10 +897,28 @@ def public_data2witness(
         + N_BYTES_U64  # txindex + first empty
         + N_BYTES_TX * MAX_TXS
         + N_BYTES_ONE  # tx value
-        + MAX_CALLDATA_BYTES
-        + N_BYTES_WITHDRAWAL * MAX_WITHDRAWALS
     )
     assert flatten_len(rpi_byte_values) == circuit_len
+
+    # Tx Calldata
+    tx_table_calldata_raw_bytes = public_data.tx_table_calldata_raw_bytes(MAX_CALLDATA_BYTES)
+    rpi_byte_values.extend(tx_table_calldata_raw_bytes)
+
+    circuit_len += MAX_CALLDATA_BYTES
+    assert flatten_len(rpi_byte_values) == circuit_len
+
+    # Withdrawal Table
+    withdrawal_table_cols = public_data.withdrawal_table_cols(MAX_WITHDRAWALS)
+    withdrawal_raw_bytes = public_data.withdrawal_table_raw_bytes(MAX_WITHDRAWALS)
+    rpi_byte_values.extend(withdrawal_raw_bytes)
+
+    circuit_len += N_BYTES_WITHDRAWAL * MAX_WITHDRAWALS
+    assert flatten_len(rpi_byte_values) == circuit_len
+
+    keccak_table = KeccakTable()
+    block_table = BlockTable()
+    tx_table = TxTable()
+    withdrawal_table = WithdrawalTable()
 
     rows: List[Row] = []
     calldata_gas_cost_table = [TxCallDataGasCostAccRow(FQ.zero(), FQ.zero(), FQ.zero())]
@@ -1036,10 +1013,11 @@ def public_data2witness(
             # fill withdrawal table
             wd_row = WithdrawalTableRow(FQ(0), FQ(0), Word(0), FQ(0))
             if i >= tx_and_calldata_len and i < tx_and_calldata_len + MAX_WITHDRAWALS:
-                id = withdrawal_table_cols[0][i]
-                validator_id = withdrawal_table_cols[1][i]
-                address = withdrawal_table_cols[2][i]
-                amount = withdrawal_table_cols[3][i]
+                j = i - tx_and_calldata_len
+                id = withdrawal_table_cols[0][j]
+                validator_id = withdrawal_table_cols[1][j]
+                address = withdrawal_table_cols[2][j]
+                amount = withdrawal_table_cols[3][j]
 
                 q_withdrawal_table = FQ(1)
                 wd_row = WithdrawalTableRow(id, validator_id, address, amount)
@@ -1052,12 +1030,12 @@ def public_data2witness(
                 q_tx_calldata_start,
                 q_rpi_keccak_lookup,
                 q_rpi_value_start,
-                q_withdrawal_table,
                 tx_id_inv,
                 tx_value_lo_inv,
                 tx_id_diff_inv,
                 calldata_gas_cost,
                 is_final,
+                q_withdrawal_table,
                 FQ(rpi_bytes[-1]),
                 rpi_bytes_keccakrlc[-1],
                 rpi_value_lc[-1],
@@ -1081,7 +1059,7 @@ def public_data2witness(
         block_hash=Word(public_data.block.hash),
         state_root=Word(public_data.block.state_root),
         state_root_prev=Word(public_data.state_root_prev),
-        withdrawals_root=Word(public_data.block.withdrawals_root)
+        withdrawals_root=Word(public_data.block.withdrawals_root),
     )
     keccak_table.add(bytes(rpi_bytes), keccak_rand)
 
