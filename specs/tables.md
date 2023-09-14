@@ -36,6 +36,20 @@ NOTE:
 - `TxInvalid` is a flag to tell the circuit which tx is invalid and should not be executed. We check `balance`, `nonce`, and `intrinsic gas` within `begin_tx`, `end_tx`, and `end_block` steps to make sure all txs being processed are valid, and all others are invalid and not executed. Invalid transactions go from the `begin_tx` state directly to the `end_tx` state and do not have any side effects.
 - `AccessListGasCost` is the `accessList` gas cost of the tx, which equals to `sum([G_accesslistaddress + G_accessliststorage * len(TA[j]) for j in len(TA)])` (EIP 2930).
 
+## `withdrawal_table`
+
+Proved by the withdrawal circuit.
+
+This circuit 
+| 0 Withdrawal ID | 1 Validator ID | 2 Address      | 3 Amount      | 4 MPT root     |
+| -----------     | -------------  | -------------- | ------------- | -------------- |
+| $WithdrawalID   | $ValidatorID   | $value{Lo,Hi}  | $value{Lo,Hi} | $value{Lo,Hi}  |
+
+NOTE:
+- `Amount` is in Gwei, 64 bits
+- `WithdrawalID` is increased monotonically, 64 bits.
+- `ValidatorID`, 64 bits
+
 ## `rw_table`
 
 There are 14 columns in `rw_table`.

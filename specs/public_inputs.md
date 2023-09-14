@@ -23,6 +23,7 @@ calculate a block and to define this calculated block.
     - MixDigest: 256 bits
     - Nonce: 64 bits
     - BaseFee: 256 bits (BaseFee was added by EIP-1559 and is ignored in legacy headers.)
+    - WithdrawalsRoot: 256 bits (Withdrawals Trie Root)
 
 ### Circuits
 
@@ -37,6 +38,8 @@ calculate a block and to define this calculated block.
     - BaseFee
 - State Circuit
     - Block.Root
+- Withdrawal Circuit
+    - Block.WithdrawalsRoot
 
 ## Previous Blocks
 
@@ -49,6 +52,8 @@ calculate a block and to define this calculated block.
     - block[-1..-257].Hash
 - State Circuit
     - block[-1].Root
+- Withdrawal Circuit
+    - block[-1].WithdrawalsRoot
 
 ## Globals
 
@@ -105,6 +110,18 @@ Fields used for RLP for TxHash:
 ### Circuits
 
 - TxCircuit
+    - All Fields
+
+## Withdrawals
+
+- WithdrawalIndex: 64 bits
+- ValidatorIndex: 64 bits
+- Address: 160 bits
+- Amount: 64 bits
+
+### Circuits
+
+- WithdrawalCircuit
     - All Fields
 
 # Necessary public Data

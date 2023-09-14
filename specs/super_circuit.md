@@ -4,8 +4,7 @@ The zkEVM is composed of many circuits, each of which is responsible for checkin
 These circuits need to be aggregated or combined together somehow. We could say that the Super
 Circuit is one of the possible strategies to combine all other sub-circuits.
 
-The Super Circuit approach is quite simple, all sub-circuits are put together and their tables are
-shared among all of them. It contains the following circuits:
+The Super Circuit approach is quite simple, all sub-circuits are put together and their tables are shared among all of them. It contains the following circuits:
  - [x] EVM Circuit
  - [x] State Circuit
  - [ ] MPT Circuit
@@ -15,6 +14,7 @@ shared among all of them. It contains the following circuits:
  - [x] Copy Circuit
  - [ ] Block Circuit
  - [x] PublicInputs Circuit
+ - [x] Withdrawal Circuit
 
  and the following tables:
  - [x] RW Table
@@ -24,8 +24,10 @@ shared among all of them. It contains the following circuits:
  - [x] Bytecode Table
  - [x] Copy Table
  - [x] Block Table
+ - [x] Withdrawal Table
 
 The following diagram shows the relation between these circuits and tables:
+
 ![](./super_circuit.png)
 
 **Note**: There are some smaller sub-circuits, like the ECDSA circuit and opcode related
