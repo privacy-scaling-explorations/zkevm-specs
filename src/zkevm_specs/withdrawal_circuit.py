@@ -12,7 +12,7 @@ from .util import (
 )
 import rlp  # type: ignore
 from .evm_circuit import lookup
-
+from eth_utils import keccak
 
 class Row:
     """
@@ -21,14 +21,14 @@ class Row:
 
     withdrawal_id: FQ
     validator_id: FQ
-    address: Word
+    address: FQ
     amount: Word
 
     # MPT root
     root: Word
 
     def __init__(
-        self, withdrawal_id: FQ, validator_id: FQ, address: Word, amount: Word, root: Word
+        self, withdrawal_id: FQ, validator_id: FQ, address: FQ, amount: Word, root: Word
     ):
         self.withdrawal_id = withdrawal_id
         self.validator_id = validator_id
@@ -81,7 +81,7 @@ class Withdrawal(NamedTuple):
 
     id: U64
     validator_id: U64
-    address: Union[None, U160]
+    address: U160
     amount: U64
 
     # MPT root
@@ -105,7 +105,7 @@ def verify_circuit(
         row = rows[row_index]
 
         # `amount` must not be zero in a normal withdrawal
-        is_not_padding = FQ(row.value != 0)
+        is_not_padding = FQ(row.amount != Word(0))
 
         # Check withdraw id if it's not the last row
         if not row_index == MAX_WITHDRAWALS - 1:
@@ -117,14 +117,16 @@ def verify_circuit(
 
         # mpt lookup
         encoded_withdrawal_data = rlp.encode(
-            [row.withdrawal_id, row.validator_id, row.address, row.amount]
+            [int(row.withdrawal_id), int(row.validator_id), int(row.address), row.amount.int_value()]
         )
+        # FIXME: using keccak_lookup
+        withdrawal_hash = keccak(encoded_withdrawal_data)
         witness.mpt_table.mpt_lookup(
             row.address,
-            is_not_padding * FQ(MPTProofType.NonExistingAccountProof)
-            + (1 - is_not_padding) * FQ(MPTProofType.WithdrawalMod),
-            row.withdrawal_id,
-            encoded_withdrawal_data,
+            is_not_padding * FQ(MPTProofType.WithdrawalMod)
+            + (1 - is_not_padding) * FQ(MPTProofType.NonExistingAccountProof),
+            Word(row.withdrawal_id),
+            Word(withdrawal_hash),
             Word(0),
             row.root,
             root_prev,
@@ -146,7 +148,7 @@ def withdrawal2witness(withdrawal: Withdrawal) -> Row:
     return Row(
         withdrawal.id,
         FQ(withdrawal.validator_id),
-        Word(withdrawal.address),
+        FQ(withdrawal.address),
         Word(withdrawal.amount),
         Word(withdrawal.root),
     )
