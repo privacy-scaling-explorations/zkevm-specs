@@ -14,6 +14,7 @@ import rlp  # type: ignore
 from .evm_circuit import lookup
 from eth_utils import keccak
 
+
 class Row:
     """
     Withdrawal circuit row
@@ -27,9 +28,7 @@ class Row:
     # MPT root
     root: Word
 
-    def __init__(
-        self, withdrawal_id: FQ, validator_id: FQ, address: FQ, amount: Word, root: Word
-    ):
+    def __init__(self, withdrawal_id: FQ, validator_id: FQ, address: FQ, amount: Word, root: Word):
         self.withdrawal_id = withdrawal_id
         self.validator_id = validator_id
         self.address = address
@@ -117,7 +116,12 @@ def verify_circuit(
 
         # mpt lookup
         encoded_withdrawal_data = rlp.encode(
-            [int(row.withdrawal_id), int(row.validator_id), int(row.address), row.amount.int_value()]
+            [
+                int(row.withdrawal_id),
+                int(row.validator_id),
+                int(row.address),
+                row.amount.int_value(),
+            ]
         )
         # FIXME: using keccak_lookup
         withdrawal_hash = keccak(encoded_withdrawal_data)
@@ -125,7 +129,7 @@ def verify_circuit(
             row.address,
             is_not_padding * FQ(MPTProofType.WithdrawalMod)
             + (1 - is_not_padding) * FQ(MPTProofType.NonExistingAccountProof),
-            Word(row.withdrawal_id),
+            Word(row.withdrawal_id.n),
             Word(withdrawal_hash),
             Word(0),
             row.root,
@@ -146,7 +150,7 @@ def withdrawal2witness(withdrawal: Withdrawal) -> Row:
     """
 
     return Row(
-        withdrawal.id,
+        FQ(withdrawal.id),
         FQ(withdrawal.validator_id),
         FQ(withdrawal.address),
         Word(withdrawal.amount),
