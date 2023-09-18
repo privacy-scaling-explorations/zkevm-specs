@@ -39,7 +39,6 @@ def verify(
         assert exception is not None
 
 
-
 # makes fake mpt updates for a list of rows.
 # the withdrawal root is incremented by 5 for each MPT update.
 def mock_mpt_update(
