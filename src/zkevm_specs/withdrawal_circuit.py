@@ -1,13 +1,10 @@
-from typing import NamedTuple, List, Set, Optional, Union, Mapping
-
+from typing import NamedTuple, List, Set, Optional, Union, Mapping, Tuple
 from zkevm_specs.evm_circuit.table import MPTProofType, MPTTableRow
-from zkevm_specs.util.typing import U256
 from .util import (
     FQ,
+    RLC,
     Word,
     Expression,
-    U160,
-    U64,
     is_circuit_code,
 )
 import rlp  # type: ignore
@@ -25,14 +22,20 @@ class Row:
     address: FQ
     amount: Word
 
+    # keccak of rlp encoding above fields
+    hash: Word
+
     # MPT root
     root: Word
 
-    def __init__(self, withdrawal_id: FQ, validator_id: FQ, address: FQ, amount: Word, root: Word):
+    def __init__(
+        self, withdrawal_id: FQ, validator_id: FQ, address: FQ, amount: Word, hash: Word, root: Word
+    ):
         self.withdrawal_id = withdrawal_id
         self.validator_id = validator_id
         self.address = address
         self.amount = amount
+        self.hash = hash
         self.root = root
 
 
@@ -68,29 +71,43 @@ class MPTTable:
         return lookup(MPTTableRow, self.table, query)
 
 
+class KeccakTable:
+    # The columns are: (is_enabled, input_rlc, input_len, output)
+    table: Set[Tuple[FQ, FQ, FQ, Word]]
+
+    def __init__(self):
+        self.table = set()
+        self.table.add((FQ(0), FQ(0), FQ(0), Word(0)))  # Add all 0s row
+
+    def add(self, input: bytes, keccak_randomness: FQ):
+        output = keccak(input)
+        self.table.add(
+            (
+                FQ(1),
+                RLC(bytes(reversed(input)), keccak_randomness, n_bytes=74).expr(),
+                FQ(len(input)),
+                Word(output),
+            )
+        )
+
+    def lookup(self, is_enabled: FQ, input_rlc: FQ, input_len: FQ, output: Word, assert_msg: str):
+        assert (is_enabled, input_rlc, input_len, output) in self.table, (
+            f"{assert_msg}: {(is_enabled, input_rlc, input_len, output)} "
+            + "not found in the lookup table"
+        )
+
+
 class Witness(NamedTuple):
     rows: List[Row]  # Withdrawal table rows
     mpt_table: MPTTable
-
-
-class Withdrawal(NamedTuple):
-    """
-    Ethereum Withdrawals
-    """
-
-    id: U64
-    validator_id: U64
-    address: U160
-    amount: U64
-
-    # MPT root
-    root: U256
+    keccak_table: KeccakTable
 
 
 @is_circuit_code
 def verify_circuit(
     witness: Witness,
     MAX_WITHDRAWALS: int,
+    keccak_randomness: FQ,
 ) -> None:
     """
     Entry level circuit verification function
@@ -98,6 +115,8 @@ def verify_circuit(
 
     rows = witness.rows
     root_prev = Word(0)
+    keccak_table = witness.keccak_table
+    mpt_table = witness.mpt_table
     for row_index in range(MAX_WITHDRAWALS):
         assert_msg = f"Constraints failed for withdrawal_index = {row_index}"
 
@@ -114,7 +133,6 @@ def verify_circuit(
                 + f"{row.withdrawal_id + 1}"
             )
 
-        # mpt lookup
         encoded_withdrawal_data = rlp.encode(
             [
                 int(row.withdrawal_id),
@@ -123,14 +141,25 @@ def verify_circuit(
                 row.amount.int_value(),
             ]
         )
-        # FIXME: using keccak_lookup
-        withdrawal_hash = keccak(encoded_withdrawal_data)
-        witness.mpt_table.mpt_lookup(
+
+        # keccak_lookup
+        withdrawal_hash = row.hash
+        keccak_table.lookup(
+            is_not_padding,
+            is_not_padding
+            * RLC(bytes(reversed(encoded_withdrawal_data)), keccak_randomness, n_bytes=74).expr(),
+            is_not_padding * FQ(74),
+            withdrawal_hash.select(is_not_padding),
+            assert_msg,
+        )
+
+        # mpt lookup
+        mpt_table.mpt_lookup(
             row.address,
             is_not_padding * FQ(MPTProofType.WithdrawalMod)
             + (1 - is_not_padding) * FQ(MPTProofType.NonExistingAccountProof),
             Word(row.withdrawal_id.n),
-            Word(withdrawal_hash),
+            withdrawal_hash,
             Word(0),
             row.root,
             root_prev,
@@ -138,46 +167,3 @@ def verify_circuit(
 
         # assign current root as previous one
         root_prev = rows[row_index].root
-
-
-def padding_withdrawal(withdrawal_id: int, root: U256) -> List[Row]:
-    return [Row(FQ(withdrawal_id), FQ(0), Word(0), Word(0), root)]
-
-
-def withdrawal2witness(withdrawal: Withdrawal) -> Row:
-    """
-    Generate the witness data for a single withdrawal: generate the withdrawal table rows
-    """
-
-    return Row(
-        FQ(withdrawal.id),
-        FQ(withdrawal.validator_id),
-        FQ(withdrawal.address),
-        Word(withdrawal.amount),
-        Word(withdrawal.root),
-    )
-
-
-def withdrawals2witness(
-    withdrawals: List[Withdrawal], MAX_WITHDRAWALS: int, mpt_table: MPTTable
-) -> Witness:
-    """
-    Generate the complete witness of the withdrawals for a fixed size circuit.
-    """
-
-    assert len(withdrawals) <= MAX_WITHDRAWALS
-
-    last_withdrawal_id = 0
-    last_root: U256 = 0
-    rows: List[Row] = []
-    for withdrawal in withdrawals:
-        withdrawal_row = withdrawal2witness(withdrawal)
-
-        last_withdrawal_id = withdrawal_row.withdrawal_id
-        last_root = withdrawal_row.root
-        rows.append(withdrawal_row)
-
-    for i in range(len(withdrawals), MAX_WITHDRAWALS):
-        rows.append(padding_withdrawal(last_withdrawal_id + i + 1 - len(withdrawals), last_root))
-
-    return Witness(rows, mpt_table)

@@ -1,14 +1,101 @@
-from typing import Union, List, Tuple
+from typing import List, Tuple
 import rlp  # type: ignore
 from zkevm_specs.withdrawal_circuit import *
-from zkevm_specs.util import FQ, U64
+from zkevm_specs.util import FQ, U64, U160, U256
 from random import randrange
 from eth_utils import keccak
+from common import rand_fq
+
+r = rand_fq()
+
+
+class Withdrawal(NamedTuple):
+    """
+    Ethereum Withdrawals
+    """
+
+    id: U64
+    validator_id: U64
+    address: U160
+    amount: U64
+
+
+def padding_withdrawal(withdrawal_id: int, root: U256) -> List[Row]:
+    return [Row(FQ(withdrawal_id), FQ(0), Word(0), Word(0), Word(0), root)]
+
+
+def withdrawal2witness(
+    withdrawal: Withdrawal,
+    keccak_table: KeccakTable,
+    keccak_randomness: FQ,
+    mpt_table_set: set,
+    root: U256,
+    prev_root: U256,
+) -> Row:
+    """
+    Generate the witness data for a single withdrawal: generate the withdrawal table rows
+    """
+    encoded_withdrawal_data = rlp.encode(
+        [
+            int(withdrawal.id),
+            int(withdrawal.validator_id),
+            int(withdrawal.address),
+            int(withdrawal.amount),
+        ]
+    )
+    keccak_table.add(encoded_withdrawal_data, keccak_randomness)
+
+    mpt_table_row = mock_mpt_update(
+        withdrawal.id, withdrawal.validator_id, withdrawal.address, withdrawal.amount, prev_root
+    )
+    mpt_table_set.add(mpt_table_row)
+
+    return Row(
+        FQ(withdrawal.id),
+        FQ(withdrawal.validator_id),
+        FQ(withdrawal.address),
+        Word(withdrawal.amount),
+        Word(bytes(keccak(encoded_withdrawal_data))),
+        Word(root),
+    )
+
+
+def withdrawals2witness(
+    withdrawals: List[Withdrawal],
+    MAX_WITHDRAWALS: int,
+    mpt_roots: List[U256],
+    keccak_randomness: FQ,
+) -> Witness:
+    """
+    Generate the complete witness of the withdrawals for a fixed size circuit.
+    """
+
+    assert len(withdrawals) <= MAX_WITHDRAWALS
+
+    last_withdrawal_id = 0
+    last_root: U256 = 0
+    rows: List[Row] = []
+    keccak_table = KeccakTable()
+    mpt_table_set = set()
+    for withdrawal, root in zip(withdrawals, mpt_roots):
+        withdrawal_row = withdrawal2witness(
+            withdrawal, keccak_table, keccak_randomness, mpt_table_set, root, last_root
+        )
+
+        last_withdrawal_id = withdrawal_row.withdrawal_id
+        last_root = root
+        rows.append(withdrawal_row)
+
+    for i in range(len(withdrawals), MAX_WITHDRAWALS):
+        rows.append(padding_withdrawal(last_withdrawal_id + i + 1 - len(withdrawals), last_root))
+
+    return Witness(rows, MPTTable(mpt_table_set), keccak_table)
 
 
 def verify(
-    withdrawals_or_witness: Union[List[Withdrawal], Witness],
+    witness: Witness,
     MAX_WITHDRAWALS: int,
+    keccak_randomness: FQ,
     success: bool = True,
 ):
     """
@@ -16,19 +103,11 @@ def verify(
     from the withdrawals).  If `success` is False, expect the verification to
     fail.
     """
-    witness = withdrawals_or_witness
-    if isinstance(withdrawals_or_witness, Witness):
-        witness = withdrawals_or_witness
-    else:
-        witness = withdrawals2witness(withdrawals_or_witness)
     assert len(witness.rows) == MAX_WITHDRAWALS
 
     exception = None
     try:
-        verify_circuit(
-            witness,
-            MAX_WITHDRAWALS,
-        )
+        verify_circuit(witness, MAX_WITHDRAWALS, keccak_randomness)
     except Exception as e:
         exception = e
     if success:
@@ -58,10 +137,11 @@ def mock_mpt_update(
     )
 
 
-def gen_withdrawals(num: int) -> Tuple[List[Withdrawal], set[MPTTableRow]]:
+def gen_withdrawals(num: int) -> Tuple[List[Withdrawal], List[U256]]:
     withdrawal_id = U64(randrange(0, 2**64))
 
     withdrawals = []
+    roots = []
     mpt_table = set()
     prev_root: int = 0
     for i in range(num):
@@ -71,22 +151,21 @@ def gen_withdrawals(num: int) -> Tuple[List[Withdrawal], set[MPTTableRow]]:
         mpt_table_row: MPTTableRow = mock_mpt_update(
             withdrawal_id + i, validator_id, address, amount, prev_root
         )
-        withdrawal = Withdrawal(
-            withdrawal_id + i, validator_id, address, amount, mpt_table_row.root.int_value()
-        )
+        withdrawal = Withdrawal(withdrawal_id + i, validator_id, address, amount)
 
         withdrawals.append(withdrawal)
+        roots.append(mpt_table_row.root.int_value())
         mpt_table.add(mpt_table_row)
         prev_root = mpt_table_row.root.int_value()
 
-    return withdrawals, mpt_table
+    return withdrawals, roots
 
 
-def test_verify_withdrawals2witness():
+def test_withdrawal_withdrawals2witness():
     MAX_WITHDRAWALS = 20
 
-    withdrawals, mpt_table = gen_withdrawals(MAX_WITHDRAWALS)
-    witness = withdrawals2witness(withdrawals, MAX_WITHDRAWALS, MPTTable(mpt_table))
+    withdrawals, mpt_roots = gen_withdrawals(MAX_WITHDRAWALS)
+    witness = withdrawals2witness(withdrawals, MAX_WITHDRAWALS, mpt_roots, r)
 
     # withdrawals.pop() pops from the last item, so we reverse here.
     withdrawals.reverse()
@@ -96,64 +175,54 @@ def test_verify_withdrawals2witness():
         assert wd.address == row.address.n
 
 
-def test_verify_withdrawal():
-    MAX_WITHDRAWALS = 20
-
-    withdrawals, mpt_table = gen_withdrawals(MAX_WITHDRAWALS)
-    witness = withdrawals2witness(withdrawals, MAX_WITHDRAWALS, MPTTable(mpt_table))
-    verify(witness, MAX_WITHDRAWALS)
-
-
-def test_id_not_incremental():
+def test_withdrawal_basic():
     MAX_WITHDRAWALS = 5
 
-    withdrawals, mpt_table = gen_withdrawals(MAX_WITHDRAWALS)
-    witness = withdrawals2witness(withdrawals, MAX_WITHDRAWALS, MPTTable(mpt_table))
-    row = witness.rows[1]
-    row.withdrawal_id = witness.rows[0].withdrawal_id
-    witness = Witness(witness.rows, MPTTable(mpt_table))
-    verify(witness, MAX_WITHDRAWALS, success=False)
+    withdrawals, mpt_roots = gen_withdrawals(MAX_WITHDRAWALS)
+    witness = withdrawals2witness(withdrawals, MAX_WITHDRAWALS, mpt_roots, r)
+    verify(witness, MAX_WITHDRAWALS, r)
 
 
-def test_inconsistent_id():
+def test_withdrawal_id_not_incremental():
     MAX_WITHDRAWALS = 5
 
-    withdrawals, mpt_table = gen_withdrawals(MAX_WITHDRAWALS)
-    witness = withdrawals2witness(withdrawals, MAX_WITHDRAWALS, MPTTable(mpt_table))
-    row = witness.rows[0]
-    row.withdrawal_id = 999
-    witness = Witness(witness.rows, MPTTable(mpt_table))
-    verify(witness, MAX_WITHDRAWALS, success=False)
+    withdrawals, mpt_roots = gen_withdrawals(MAX_WITHDRAWALS)
+    witness = withdrawals2witness(withdrawals, MAX_WITHDRAWALS, mpt_roots, r)
+    witness.rows[1].withdrawal_id -= 1
+    verify(witness, MAX_WITHDRAWALS, r, success=False)
 
 
-def test_inconsistent_validator_id():
+def test_withdrawal_inconsistent_id():
     MAX_WITHDRAWALS = 5
 
-    withdrawals, mpt_table = gen_withdrawals(MAX_WITHDRAWALS)
-    witness = withdrawals2witness(withdrawals, MAX_WITHDRAWALS, MPTTable(mpt_table))
-    row = witness.rows[0]
-    row.validator_id = 999
-    witness = Witness(witness.rows, MPTTable(mpt_table))
-    verify(witness, MAX_WITHDRAWALS, success=False)
+    withdrawals, mpt_roots = gen_withdrawals(MAX_WITHDRAWALS)
+    witness = withdrawals2witness(withdrawals, MAX_WITHDRAWALS, mpt_roots, r)
+    witness.rows[0].withdrawal_id = 999
+    verify(witness, MAX_WITHDRAWALS, r, success=False)
 
 
-def test_inconsistent_address():
+def test_withdrawal_inconsistent_validator_id():
     MAX_WITHDRAWALS = 5
 
-    withdrawals, mpt_table = gen_withdrawals(MAX_WITHDRAWALS)
-    witness = withdrawals2witness(withdrawals, MAX_WITHDRAWALS, MPTTable(mpt_table))
-    row = witness.rows[0]
-    row.address = 0xDEADBEEF
-    witness = Witness(witness.rows, MPTTable(mpt_table))
-    verify(witness, MAX_WITHDRAWALS, success=False)
+    withdrawals, mpt_roots = gen_withdrawals(MAX_WITHDRAWALS)
+    witness = withdrawals2witness(withdrawals, MAX_WITHDRAWALS, mpt_roots, r)
+    witness.rows[0].validator_id = 999
+    verify(witness, MAX_WITHDRAWALS, r, success=False)
 
 
-def test_inconsistent_amount():
+def test_withdrawal_inconsistent_address():
+    MAX_WITHDRAWALS = 5
+
+    withdrawals, mpt_roots = gen_withdrawals(MAX_WITHDRAWALS)
+    witness = withdrawals2witness(withdrawals, MAX_WITHDRAWALS, mpt_roots, r)
+    witness.rows[0].address = 0xDEADBEEF
+    verify(witness, MAX_WITHDRAWALS, r, success=False)
+
+
+def test_withdrawal_inconsistent_amount():
     MAX_WITHDRAWALS = 2
 
-    withdrawals, mpt_table = gen_withdrawals(MAX_WITHDRAWALS)
-    witness = withdrawals2witness(withdrawals, MAX_WITHDRAWALS, MPTTable(mpt_table))
-    row = witness.rows[0]
-    row.amount = 10
-    witness = Witness(witness.rows, MPTTable(mpt_table))
-    verify(witness, MAX_WITHDRAWALS, success=False)
+    withdrawals, mpt_roots = gen_withdrawals(MAX_WITHDRAWALS)
+    witness = withdrawals2witness(withdrawals, MAX_WITHDRAWALS, mpt_roots, r)
+    witness.rows[0].amount = 10
+    verify(witness, MAX_WITHDRAWALS, r, success=False)
