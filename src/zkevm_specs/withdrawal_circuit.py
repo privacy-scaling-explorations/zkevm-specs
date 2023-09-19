@@ -81,11 +81,12 @@ class KeccakTable:
 
     def add(self, input: bytes, keccak_randomness: FQ):
         output = keccak(input)
+        length = len(input)
         self.table.add(
             (
                 FQ(1),
-                RLC(bytes(reversed(input)), keccak_randomness, n_bytes=74).expr(),
-                FQ(len(input)),
+                RLC(bytes(reversed(input)), keccak_randomness, n_bytes=length).expr(),
+                FQ(length),
                 Word(output),
             )
         )
@@ -117,6 +118,7 @@ def verify_circuit(
     root_prev = Word(0)
     keccak_table = witness.keccak_table
     mpt_table = witness.mpt_table
+
     for row_index in range(MAX_WITHDRAWALS):
         assert_msg = f"Constraints failed for withdrawal_index = {row_index}"
 
@@ -141,14 +143,18 @@ def verify_circuit(
                 row.amount.int_value(),
             ]
         )
+        print(f"{bytes(encoded_withdrawal_data).hex()}")
 
         # keccak_lookup
         withdrawal_hash = row.hash
+        length = len(encoded_withdrawal_data)
         keccak_table.lookup(
             is_not_padding,
             is_not_padding
-            * RLC(bytes(reversed(encoded_withdrawal_data)), keccak_randomness, n_bytes=74).expr(),
-            is_not_padding * FQ(74),
+            * RLC(
+                bytes(reversed(encoded_withdrawal_data)), keccak_randomness, n_bytes=length
+            ).expr(),
+            is_not_padding * FQ(length),
             withdrawal_hash.select(is_not_padding),
             assert_msg,
         )
@@ -164,6 +170,8 @@ def verify_circuit(
             row.root,
             root_prev,
         )
+
+        # FIXME: convert amount (from 1e9 to 1e18) abd update validator's balance
 
         # assign current root as previous one
         root_prev = rows[row_index].root
