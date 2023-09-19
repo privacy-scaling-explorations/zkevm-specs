@@ -34,6 +34,7 @@ def test_not(a: int):
     tables = Tables(
         block_table=set(Block().table_assignments()),
         tx_table=set(),
+        withdrawal_table=set(),
         bytecode_table=set(bytecode.table_assignments()),
         rw_table=set(RWDictionary(9).stack_read(1, 1023, a).stack_write(1, 1023, b).rws),
     )

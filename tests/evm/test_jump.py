@@ -28,6 +28,7 @@ def test_jump(opcode: Opcode, dest: int):
     tables = Tables(
         block_table=set(block.table_assignments()),
         tx_table=set(),
+        withdrawal_table=set(),
         bytecode_table=set(bytecode.table_assignments()),
         rw_table=set(RWDictionary(9).stack_read(1, 1021, Word(dest)).rws),
     )

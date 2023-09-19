@@ -135,6 +135,7 @@ def test_returndatacopy(
     tables = Tables(
         block_table=set(),
         tx_table=set(),
+        withdrawal_table=set(),
         bytecode_table=set(code.table_assignments()),
         rw_table=set(rw_dictionary.rws),
         copy_circuit=copy_circuit.rows,

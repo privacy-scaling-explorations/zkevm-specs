@@ -140,6 +140,7 @@ def test_end_tx(
     tables = Tables(
         block_table=set(block.table_assignments()),
         tx_table=set(tx.table_assignments()),
+        withdrawal_table=set(),
         bytecode_table=set(),
         rw_table=set(rw_dictionary.rws),
     )

@@ -86,6 +86,7 @@ def test_end_block(
     tables = Tables(
         block_table=set(Block().table_assignments()),
         tx_table=set(tx_table),
+        withdrawal_table=set(),
         bytecode_table=set(),
         rw_table=set(rw_padding + rw_rows),
     )

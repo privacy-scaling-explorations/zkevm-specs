@@ -75,6 +75,7 @@ def test_is_root_not_create(
                 Transaction(id=tx.id + 1).table_assignments(),
             )
         ),
+        withdrawal_table=set(),
         bytecode_table=set(bytecode.table_assignments()),
         rw_table=set(
             RWDictionary(24)
@@ -230,6 +231,7 @@ def test_is_create(
                 Transaction(id=tx.id + 1).table_assignments(),
             )
         ),
+        withdrawal_table=set(),
         bytecode_table=set(init_bytecode.table_assignments()),
         rw_table=set(rw_dict.rws),
         copy_circuit=copy_circuit.rows,
@@ -398,6 +400,7 @@ def test_not_root_not_create(
                 callee_bytecode.table_assignments(),
             )
         ),
+        withdrawal_table=set(),
         rw_table=set(rw_dict.rws),
         copy_circuit=copy_circuit.rows,
     )

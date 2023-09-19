@@ -61,6 +61,7 @@ def test_error_invalid_creation_code(offset: int, is_root: bool):
     tables = Tables(
         block_table=set(Block().table_assignments()),
         tx_table=set(),
+        withdrawal_table=set(),
         bytecode_table=set(bytecode.table_assignments()),
         rw_table=set(rw_table.rws),
     )

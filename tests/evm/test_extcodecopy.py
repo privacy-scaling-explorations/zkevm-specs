@@ -174,6 +174,7 @@ def test_extcodecopy(
                 Bytecode(code).table_assignments(),
             )
         ),
+        withdrawal_table=set(),
         rw_table=rw_dictionary.rws,
         copy_circuit=copy_circuit.rows,
     )

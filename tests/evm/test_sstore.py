@@ -131,6 +131,7 @@ def test_sstore(
     tables = Tables(
         block_table=set(Block().table_assignments()),
         tx_table=set(tx.table_assignments()),
+        withdrawal_table=set(),
         bytecode_table=set(bytecode.table_assignments()),
         rw_table=set(
             # fmt: off

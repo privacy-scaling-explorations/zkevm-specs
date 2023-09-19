@@ -43,6 +43,7 @@ def test_blockhash(
     tables = Tables(
         block_table=set(block.table_assignments()),
         tx_table=set(),
+        withdrawal_table=set(),
         bytecode_table=set(bytecode.table_assignments()),
         rw_table=rw_table,
     )

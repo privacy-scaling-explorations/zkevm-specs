@@ -30,6 +30,7 @@ def test_caller(caller: U160):
     tables = Tables(
         block_table=set(),
         tx_table=set(),
+        withdrawal_table=set(),
         bytecode_table=set(bytecode.table_assignments()),
         rw_table=set(
             RWDictionary(9)

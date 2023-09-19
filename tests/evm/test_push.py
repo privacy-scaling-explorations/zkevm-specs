@@ -37,6 +37,7 @@ def test_push(value_be_bytes: bytes):
     tables = Tables(
         block_table=set(Block().table_assignments()),
         tx_table=set(),
+        withdrawal_table=set(),
         bytecode_table=set(bytecode.table_assignments()),
         rw_table=set(RWDictionary(8).stack_write(1, 1023, value).rws),
     )
