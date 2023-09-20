@@ -143,7 +143,6 @@ def verify_circuit(
                 row.amount.int_value(),
             ]
         )
-        print(f"{bytes(encoded_withdrawal_data).hex()}")
 
         # keccak_lookup
         withdrawal_hash = row.hash

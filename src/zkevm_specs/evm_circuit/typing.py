@@ -52,6 +52,7 @@ from .table import (
     CopyCircuitRow,
     KeccakTableRow,
     ExpCircuitRow,
+    WithdrawalTableRow,
 )
 from .opcode import get_push_size, Opcode
 
@@ -269,6 +270,39 @@ class Transaction:
                 enumerate(self.call_data),
             ),
         )
+
+
+class Withdrawal:
+    id: U64
+    validator_id: U64
+    address: U160
+    amount: U64
+
+    def __init__(
+        self,
+        id: U64 = U64(0),
+        validator_id: U64 = U64(0),
+        address: U160 = U160(0xCAFE),
+        amount: U64 = U64(int(1e9)),
+    ) -> None:
+        self.id = id
+        self.validator_id = validator_id
+        self.address = address
+        self.amount = amount
+
+    @classmethod
+    def padding(obj, id: int):
+        return obj(id, U64(0), U160(0), U64(0))
+
+    def table_assignments(self) -> Iterator[WithdrawalTableRow]:
+        return [
+            WithdrawalTableRow(
+                FQ(self.id),
+                FQ(self.validator_id),
+                FQ(self.address),
+                FQ(self.amount),
+            )
+        ]
 
 
 def init_is_code(code: bytearray) -> MutableSequence[bool]:

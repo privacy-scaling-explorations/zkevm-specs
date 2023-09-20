@@ -419,7 +419,7 @@ class TxTableRow(TableRow):
 class WithdrawalTableRow(TableRow):
     id: Expression
     validator_id: Expression
-    address: Word
+    address: Expression
     amount: Expression
 
 
