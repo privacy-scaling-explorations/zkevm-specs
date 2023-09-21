@@ -20,7 +20,7 @@ class Row:
     withdrawal_id: FQ
     validator_id: FQ
     address: FQ
-    amount: Word
+    amount: FQ
 
     # keccak of rlp encoding above fields
     hash: Word
@@ -29,7 +29,7 @@ class Row:
     root: Word
 
     def __init__(
-        self, withdrawal_id: FQ, validator_id: FQ, address: FQ, amount: Word, hash: Word, root: Word
+        self, withdrawal_id: FQ, validator_id: FQ, address: FQ, amount: FQ, hash: Word, root: Word
     ):
         self.withdrawal_id = withdrawal_id
         self.validator_id = validator_id
@@ -125,7 +125,7 @@ def verify_circuit(
         row = rows[row_index]
 
         # `amount` must not be zero in a normal withdrawal
-        is_not_padding = FQ(row.amount != Word(0))
+        is_not_padding = FQ(row.amount != FQ(0))
 
         # Check withdraw id if it's not the last row
         if not row_index == MAX_WITHDRAWALS - 1:
@@ -140,7 +140,7 @@ def verify_circuit(
                 int(row.withdrawal_id),
                 int(row.validator_id),
                 int(row.address),
-                row.amount.int_value(),
+                int(row.amount),
             ]
         )
 
@@ -169,8 +169,6 @@ def verify_circuit(
             row.root,
             root_prev,
         )
-
-        # FIXME: convert amount (from 1e9 to 1e18) abd update validator's balance
 
         # assign current root as previous one
         root_prev = rows[row_index].root

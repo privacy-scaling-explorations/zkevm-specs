@@ -21,7 +21,7 @@ class Withdrawal(NamedTuple):
 
 
 def padding_withdrawal(withdrawal_id: int, root: U256) -> List[Row]:
-    return [Row(FQ(withdrawal_id), FQ(0), Word(0), Word(0), Word(0), root)]
+    return [Row(FQ(withdrawal_id), FQ(0), FQ(0), FQ(0), Word(0), root)]
 
 
 def withdrawal2witness(
@@ -54,7 +54,7 @@ def withdrawal2witness(
         FQ(withdrawal.id),
         FQ(withdrawal.validator_id),
         FQ(withdrawal.address),
-        Word(withdrawal.amount),
+        FQ(withdrawal.amount),
         Word(bytes(keccak(encoded_withdrawal_data))),
         Word(root),
     )
@@ -147,7 +147,7 @@ def gen_withdrawals(num: int) -> Tuple[List[Withdrawal], List[U256]]:
     for i in range(num):
         validator_id = U64(randrange(0, 2**64))
         address = U160(randrange(1, 2**160))
-        amount = U256(randrange(1, 2**256))
+        amount = U64(randrange(1, 2**64))
         mpt_table_row: MPTTableRow = mock_mpt_update(
             withdrawal_id + i, validator_id, address, amount, prev_root
         )

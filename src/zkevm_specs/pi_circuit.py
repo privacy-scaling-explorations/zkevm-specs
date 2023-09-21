@@ -48,7 +48,7 @@ class TxTable:
 class WithdrawalTableRow:
     id: FQ
     validator_id: FQ
-    address: Word
+    address: FQ
     amount: FQ  # amount is a 64 bits value
 
 
@@ -59,7 +59,7 @@ class WithdrawalTable:
     def __init__(self):
         self.table = []
 
-    def add(self, id: FQ, validator_id: FQ, address: Word, amount: FQ):
+    def add(self, id: FQ, validator_id: FQ, address: FQ, amount: FQ):
         self.table.append(WithdrawalTableRow(id, validator_id, address, amount))
 
 
