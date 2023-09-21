@@ -43,7 +43,7 @@ Proved by the withdrawal circuit.
 This circuit 
 | 0 Withdrawal ID | 1 Validator ID | 2 Address      | 3 Amount      |
 | -----------     | -------------  | -------------- | ------------- |
-| $WithdrawalID   | $ValidatorID   | $value{Lo,Hi}  | $value{Lo,Hi} |
+| $WithdrawalID   | $ValidatorID   | $value{Lo,Hi}  | $value |
 
 NOTE:
 - `WithdrawalID` is increased monotonically, 64 bits.
