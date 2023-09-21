@@ -20,14 +20,14 @@ from typing import Set
 # C. The number of txs processed by the EVM Circuit match the number of txs in
 # the TxTable
 #
-# D. The number of balance updates due to withdrawal operation in rw_table
-# match the number of withdrawals in the WithdrawalTable
-#
 # As an extra point:
-# E. We need to prove that at least one EndBlock state exists
+# D. We need to prove that at least one EndBlock state exists
 #
 # Also:
-# F. We need to prove that CumulativeGasCost does not exceed the gas limit
+# E. We need to prove that CumulativeGasCost does not exceed the gas limit
+#
+# F. The number of balance updates due to withdrawal operation in rw_table
+# match the number of withdrawals in the WithdrawalTable
 #
 # We prove (A) by constraining the transition rule that after an EndBlock
 # state, only an EndBlock state can follow.
@@ -42,18 +42,20 @@ from typing import Set
 # corresponds to a padding tx in the TxTable, which enforces that once a
 # padding txs appears in the table, the rest will also be padding.  This way,
 # we know that if a padding tx with tx_id exist, then at most there are tx_id-1
-# non-padding txs.  In case we have exhausted the TxTable with txs, we won't
+# non-padding txs. In case we have exhausted the TxTable with txs, we won't
 # have any padding txs; so we skip the lookup.
 #
-# We prove (E) in the circuit implementation by constraining that the last
+# We prove (D) in the circuit implementation by constraining that the last
 # execution step at the end of the EVM circuit is an EndBlock.  When the number
 # of steps is less than the EVM circuit height, we pad at the end with
 # EndBlock.  This will require the EndBlock to have height = 1 in the circuit,
 # which can be achieved after reducing the number of cells used in the state
 # selector.
 #
-# We prove (F) by querying the block table for the gas limit and the rw table for
+# We prove (E) by querying the block table for the gas limit and the rw table for
 # the cumulative gas and ensuring CumulativeGasCost <= GasLimit.
+#
+# We prove (F) by verifying the balance update in the rw table.
 
 
 # Count the max number of txs that the TxTable can hold by counting rows of
@@ -90,7 +92,7 @@ def end_block(instruction: Instruction):
         )
     )
 
-    # a valid withdrawal should have non-zero amount
+    # a valid withdrawal should have non-zero amount for step 3 and 5 verification
     total_withdrawals = FQ(
         len(
             [
@@ -113,7 +115,21 @@ def end_block(instruction: Instruction):
             instruction.constrain_equal(total_valid_txs, FQ(0))
             instruction.constrain_equal(total_withdrawals, FQ(0))
         else:
-            # 2. verify balance update for validators' withdrawals
+            # 1b. total_txs matches the tx_id that corresponds to the final step.
+            instruction.constrain_equal(
+                instruction.call_context_lookup(CallContextFieldTag.TxId), total_txs
+            )
+
+            # 4. Verify that CumulativeGasUsed does not exceed the block gas limit.
+            gas_limit = instruction.block_context_lookup(BlockContextFieldTag.GasLimit)
+            cumulative_gas = instruction.tx_receipt_read(
+                total_txs,
+                TxReceiptFieldTag.CumulativeGasUsed,
+            )
+            limit_exceeded, _ = instruction.compare(gas_limit, cumulative_gas, N_BYTES_GAS)
+            instruction.constrain_equal(limit_exceeded, FQ(0))
+
+            # 5. verify balance update for validators' withdrawals
             padding_wds = 0
             # withdrawal table is a set of `WithdrawalTableRow` which is not sorted by order
             # which means smaller `id` is not prior than bigger `id`
@@ -124,26 +140,12 @@ def end_block(instruction: Instruction):
                 else:
                     padding_wds += 1
 
-            # 3a. If max_withdrawals == total_withdrawals, we know we have covered all withdrawals
+            # 5a. If max_withdrawals == total_withdrawals, we know we have covered all withdrawals
             # from the withdrawal_table.
             # If not, we need to check the reset of withdrawals in the table are padding.
             instruction.constrain_equal(FQ(padding_wds), FQ(max_withdrawals - total_withdrawals))
 
-            # 1b. total_txs matches the tx_id that corresponds to the final step.
-            instruction.constrain_equal(
-                instruction.call_context_lookup(CallContextFieldTag.TxId), total_txs
-            )
-
-            # 5. Verify that CumulativeGasUsed does not exceed the block gas limit.
-            gas_limit = instruction.block_context_lookup(BlockContextFieldTag.GasLimit)
-            cumulative_gas = instruction.tx_receipt_read(
-                total_txs,
-                TxReceiptFieldTag.CumulativeGasUsed,
-            )
-            limit_exceeded, _ = instruction.compare(gas_limit, cumulative_gas, N_BYTES_GAS)
-            instruction.constrain_equal(limit_exceeded, FQ(0))
-
-        # 3. If total_txs == max_txs, we know we have covered all txs from the tx_table.
+        # 2. If total_txs == max_txs, we know we have covered all txs from the tx_table.
         # If not, we need to check that the rest of txs in the table are padding.
         if total_txs != max_txs:
             # Verify that there are at most total_txs meaningful txs in the tx_table, by
@@ -160,7 +162,7 @@ def end_block(instruction: Instruction):
             # meaningful txs in the tx_table. We conclude that the number of
             # meaningful txs in the tx_table is total_tx.
 
-        # 4. Verify rw_counter counts to the same number of meaningful rows in
+        # 3. Verify rw_counter counts to the same number of meaningful rows in
         # rw_table to ensure there is no malicious insertion.
         # Verify that there are at most total_rws meaningful entries in the rw_table
         instruction.rw_table_start_lookup(FQ(1))

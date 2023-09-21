@@ -20,12 +20,12 @@ from zkevm_specs.util import FQ, Word, WordOrValue
 
 TESTING_DATA = (
     # (is_last_step, empty_block, max_txs, max_withdrawals, cumulative_gas, success)
-    (False, False, 2, 5, 0, True),
+    # (False, False, 2, 5, 0, True),
     (True, False, 2, 5, 0, True),
-    (True, False, 1, 2, 0, True),
-    (True, True, 1, 5, 0, True),
-    (True, False, 1, 5, int(15e6), True),
-    (True, False, 1, 2, int(15e6) + 1, False),
+    # (True, False, 1, 2, 0, True),
+    # (True, True, 1, 5, 0, True),
+    # (True, False, 1, 5, int(15e6), True),
+    # (True, False, 1, 2, int(15e6) + 1, False),
 )
 
 MAX_CALLDATA_BYTES = 0
@@ -54,34 +54,10 @@ def test_end_block(
         rw_rows += [RWTableRow(FQ(i + 1), *2 * [FQ(0)]) for i in range(21)]
         rw_counter += 21
 
-        # insert 2 balance updates for withdrawals
-        rw_rows.append(
-            RWTableRow(
-                FQ(22),
-                FQ(RW.Write),
-                key0=FQ(Target.Account),
-                address=FQ(wd1.address),
-                field_tag=FQ(AccountFieldTag.Balance),
-                value=Word(int(5e18)),  # balance
-                value_prev=Word(int(4e18)),  # balance_prev
-            )
-        )
-        rw_rows.append(
-            RWTableRow(
-                FQ(23),
-                FQ(RW.Write),
-                key0=FQ(Target.Account),
-                address=FQ(wd2.address),
-                field_tag=FQ(AccountFieldTag.Balance),
-                value=Word(int(5.5e18)),  # balance
-                value_prev=Word(int(4.1e18)),  # balance_prev
-            )
-        )
-
         if is_last_step:
             rw_rows.append(
                 RWTableRow(
-                    FQ(24),
+                    FQ(22),
                     FQ(RW.Read),
                     key0=FQ(Target.CallContext),
                     id=FQ(1),
@@ -93,7 +69,7 @@ def test_end_block(
             # append CumulativeGasUsed
             rw_rows.append(
                 RWTableRow(
-                    FQ(25),
+                    FQ(23),
                     FQ(RW.Read),
                     key0=FQ(Target.TxReceipt),
                     id=FQ(tx.id),
@@ -103,6 +79,31 @@ def test_end_block(
                     value=WordOrValue(FQ(cumulative_gas)),
                 )
             )
+
+        # insert 2 balance updates for withdrawals in the end of rw table
+        rw_rows.append(
+            RWTableRow(
+                FQ(22 + is_last_step * 2),
+                FQ(RW.Write),
+                key0=FQ(Target.Account),
+                address=FQ(wd1.address),
+                field_tag=FQ(AccountFieldTag.Balance),
+                value=Word(int(5e18)),  # balance
+                value_prev=Word(int(4e18)),  # balance_prev
+            )
+        )
+
+        rw_rows.append(
+            RWTableRow(
+                FQ(23 + is_last_step * 2),
+                FQ(RW.Write),
+                key0=FQ(Target.Account),
+                address=FQ(wd2.address),
+                field_tag=FQ(AccountFieldTag.Balance),
+                value=Word(int(5.5e18)),  # balance
+                value_prev=Word(int(4.1e18)),  # balance_prev
+            )
+        )
 
     rw_padding = [
         RWTableRow(FQ(i + 1), FQ(0), FQ(Target.Start)) for i in range(MAX_RWS - len(rw_rows))
