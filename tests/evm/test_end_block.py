@@ -20,12 +20,12 @@ from zkevm_specs.util import FQ, Word, WordOrValue
 
 TESTING_DATA = (
     # (is_last_step, empty_block, max_txs, max_withdrawals, cumulative_gas, success)
-    # (False, False, 2, 5, 0, True),
+    (False, False, 2, 5, 0, True),
     (True, False, 2, 5, 0, True),
-    # (True, False, 1, 2, 0, True),
-    # (True, True, 1, 5, 0, True),
-    # (True, False, 1, 5, int(15e6), True),
-    # (True, False, 1, 2, int(15e6) + 1, False),
+    (True, False, 1, 2, 0, True),
+    (True, True, 1, 5, 0, True),
+    (True, False, 1, 5, int(15e6), True),
+    (True, False, 1, 2, int(15e6) + 1, False),
 )
 
 MAX_CALLDATA_BYTES = 0
