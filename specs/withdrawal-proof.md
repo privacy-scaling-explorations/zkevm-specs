@@ -23,9 +23,9 @@ For every withdrawal defined as the parameters `(withdrawal_index, validator_ind
 
 1. `withdrawalsData: bytes = rlp([withdrawal_index, validator_index, address, amount])`
 2. `withdrawalDataHash: word = keccak(withdrawalsData)`
-2. `withdrawalsRoot: word = mpt(withdrawalDataHash)`
-3. `withdrawal_index`, `validator_index` and `amount` are all `uint64` values.
-4. `amount_wei = amount * 1e9` and increases validator's balance by `amount_wei`
+3. `withdrawalsRoot: word = mpt(withdrawalDataHash)`
+4. `withdrawal_index`, `validator_index` and `amount` are all `uint64` values.
+5. `amount_wei = amount * 1e9` and increases validator's balance by `amount_wei`
 
 - The rlp encoding of withdrawal parameters will be done using a custom rlp encoding gadget, isolated from the rlp encoding used by the MPT circuit.
 - The keccak hash of rlp encoded data verification will be done in the keccak circuit; the withdrawal circuit will do a single lookup to the keccak table.
