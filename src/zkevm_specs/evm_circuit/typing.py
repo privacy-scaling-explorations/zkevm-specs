@@ -81,6 +81,9 @@ class Block:
     # to use the same chain_id, we set it as as a block parameter.
     chainid: U64
 
+    # mpt root of withdrawals in a block
+    withdrawal_root: U256
+
     # It contains most recent 256 block hashes in history, where the lastest
     # one is at history_hashes[-1].
     history_hashes: Sequence[U256]
@@ -94,6 +97,7 @@ class Block:
         prev_randao: U256 = U256(0),
         base_fee: U256 = U256(int(1e9)),
         chainid: U64 = U64(0x01),
+        withdrawal_root: U256 = U256(0),
         history_hashes: Sequence[U256] = [],
     ) -> None:
         assert len(history_hashes) <= min(256, number)
@@ -106,6 +110,7 @@ class Block:
         self.base_fee = base_fee
         self.chainid = chainid
         self.history_hashes = history_hashes
+        self.withdrawal_root = withdrawal_root
 
     def table_assignments(self) -> List[BlockTableRow]:
         value = lambda v: WordOrValue(FQ(v))
@@ -118,6 +123,9 @@ class Block:
             BlockTableRow(FQ(BlockContextFieldTag.PrevRandao), FQ(0), word(self.prev_randao)),
             BlockTableRow(FQ(BlockContextFieldTag.BaseFee), FQ(0), word(self.base_fee)),
             BlockTableRow(FQ(BlockContextFieldTag.ChainId), FQ(0), value(self.chainid)),
+            BlockTableRow(
+                FQ(BlockContextFieldTag.WithdrawalRoot), FQ(0), value(self.withdrawal_root)
+            ),
         ] + [
             BlockTableRow(
                 FQ(BlockContextFieldTag.HistoryHash),

@@ -141,6 +141,7 @@ class BlockContextFieldTag(IntEnum):
     BaseFee = auto()
     ChainId = auto()
     HistoryHash = auto()
+    WithdrawalRoot = auto()
 
 
 class TxContextFieldTag(IntEnum):
