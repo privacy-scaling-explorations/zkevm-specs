@@ -20,8 +20,8 @@ class Withdrawal(NamedTuple):
     amount: U64
 
 
-def padding_withdrawal(withdrawal_id: int, root: U256) -> List[Row]:
-    return [Row(FQ(withdrawal_id), FQ(0), FQ(0), FQ(0), Word(0), root)]
+def padding_withdrawal(root: U256) -> List[Row]:
+    return [Row(FQ(0), FQ(0), FQ(0), FQ(0), Word(0), root)]
 
 
 def withdrawal2witness(
@@ -72,24 +72,26 @@ def withdrawals2witness(
 
     assert len(withdrawals) <= MAX_WITHDRAWALS
 
-    last_withdrawal_id = 0
     last_root: U256 = 0
     rows: List[Row] = []
     keccak_table = KeccakTable()
     mpt_table_set = set()
+    block_table_set = set()
+
     for withdrawal, root in zip(withdrawals, mpt_roots):
         withdrawal_row = withdrawal2witness(
             withdrawal, keccak_table, keccak_randomness, mpt_table_set, root, last_root
         )
 
-        last_withdrawal_id = withdrawal_row.withdrawal_id
         last_root = root
         rows.append(withdrawal_row)
 
     for i in range(len(withdrawals), MAX_WITHDRAWALS):
-        rows.append(padding_withdrawal(last_withdrawal_id + i + 1 - len(withdrawals), last_root))
+        rows.append(padding_withdrawal(last_root))
 
-    return Witness(rows, MPTTable(mpt_table_set), keccak_table)
+    block_table_set.add(BlockTableRow(FQ(BlockContextFieldTag.WithdrawalRoot), FQ(0), Word(last_root)))
+    
+    return Witness(rows, MPTTable(mpt_table_set), keccak_table, BlockTable(block_table_set))
 
 
 def verify(

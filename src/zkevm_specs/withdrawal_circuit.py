@@ -1,5 +1,10 @@
 from typing import NamedTuple, List, Set, Optional, Union, Mapping, Tuple
-from zkevm_specs.evm_circuit.table import MPTProofType, MPTTableRow
+from zkevm_specs.evm_circuit.table import (
+    MPTProofType,
+    MPTTableRow,
+    BlockTableRow,
+    BlockContextFieldTag,
+)
 from .util import (
     FQ,
     RLC,
@@ -71,6 +76,20 @@ class MPTTable:
         return lookup(MPTTableRow, self.table, query)
 
 
+class BlockTable:
+    table: Set[BlockTableRow]
+
+    def __init__(self, block_table: Set[BlockTableRow]):
+        self.table = block_table
+
+    def block_lookup(self, field_tag: Expression, value: Word) -> BlockTableRow:
+        query: Mapping[str, Optional[Union[FQ, Expression, Word]]] = {
+            "field_tag": field_tag,
+            "value": value,
+        }
+        return lookup(BlockTableRow, self.table, query)
+
+
 class KeccakTable:
     # The columns are: (is_enabled, input_rlc, input_len, output)
     table: Set[Tuple[FQ, FQ, FQ, Word]]
@@ -102,6 +121,7 @@ class Witness(NamedTuple):
     rows: List[Row]  # Withdrawal table rows
     mpt_table: MPTTable
     keccak_table: KeccakTable
+    block_table: BlockTable
 
 
 @is_circuit_code
@@ -118,6 +138,7 @@ def verify_circuit(
     root_prev = Word(0)
     keccak_table = witness.keccak_table
     mpt_table = witness.mpt_table
+    block_table = witness.block_table
 
     for row_index in range(MAX_WITHDRAWALS):
         assert_msg = f"Constraints failed for withdrawal_index = {row_index}"
@@ -125,6 +146,7 @@ def verify_circuit(
         row = rows[row_index]
 
         # `amount` must not be zero in a normal withdrawal
+        # so we use `amount == 0` for padding withdrawals
         is_not_padding = FQ(row.amount != FQ(0))
 
         # Check withdraw id if it's not the last row
@@ -172,3 +194,6 @@ def verify_circuit(
 
         # assign current root as previous one
         root_prev = rows[row_index].root
+
+    # final mpt root should be equal withdrawal_root in block header
+    block_table.block_lookup(FQ(BlockContextFieldTag.WithdrawalRoot), rows[MAX_WITHDRAWALS - 1].root)
