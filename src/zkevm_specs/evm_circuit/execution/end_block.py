@@ -93,6 +93,7 @@ def end_block(instruction: Instruction):
     )
 
     # a valid withdrawal should have non-zero amount for step 3 and 5 verification
+    # we use amount=0 for padding withdrawals
     total_withdrawals = FQ(
         len(
             [
