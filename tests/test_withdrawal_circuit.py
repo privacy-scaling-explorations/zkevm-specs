@@ -89,8 +89,10 @@ def withdrawals2witness(
     for i in range(len(withdrawals), MAX_WITHDRAWALS):
         rows.append(padding_withdrawal(last_root))
 
-    block_table_set.add(BlockTableRow(FQ(BlockContextFieldTag.WithdrawalRoot), FQ(0), Word(last_root)))
-    
+    block_table_set.add(
+        BlockTableRow(FQ(BlockContextFieldTag.WithdrawalRoot), FQ(0), Word(last_root))
+    )
+
     return Witness(rows, MPTTable(mpt_table_set), keccak_table, BlockTable(block_table_set))
 
 

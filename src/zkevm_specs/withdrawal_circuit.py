@@ -196,4 +196,6 @@ def verify_circuit(
         root_prev = rows[row_index].root
 
     # final mpt root should be equal withdrawal_root in block header
-    block_table.block_lookup(FQ(BlockContextFieldTag.WithdrawalRoot), rows[MAX_WITHDRAWALS - 1].root)
+    block_table.block_lookup(
+        FQ(BlockContextFieldTag.WithdrawalRoot), rows[MAX_WITHDRAWALS - 1].root
+    )
