@@ -83,6 +83,7 @@ def test_extcodehash(address: U160, code: bytes, exists: bool, is_warm: bool, is
     tables = Tables(
         block_table=Block(),
         tx_table=set(),
+        withdrawal_table=set(),
         bytecode_table=set(bytecode.table_assignments()),
         rw_table=rw_table,
     )

@@ -216,6 +216,7 @@ def test_single_log(topics: list, mstart: U64, msize: U64, is_persistent: bool):
     tables = Tables(
         block_table=set(Block().table_assignments()),
         tx_table=set(tx.table_assignments()),
+        withdrawal_table=set(),
         bytecode_table=set(bytecode.table_assignments()),
         rw_table=set(rw_dictionary.rws),
         copy_circuit=copy_circuit.rows,
@@ -296,6 +297,7 @@ def test_multi_logs(log_entries):
     tables = Tables(
         block_table=set(Block().table_assignments()),
         tx_table=set(tx.table_assignments()),
+        withdrawal_table=set(),
         bytecode_table=set(bytecode.table_assignments()),
         rw_table=set(rw_dictionary.rws),
         copy_circuit=copy_circuit.rows,

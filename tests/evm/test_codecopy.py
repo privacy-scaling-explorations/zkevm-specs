@@ -163,6 +163,7 @@ def test_codecopy(src_addr: U64, dst_addr: U64, length: U64):
     tables = Tables(
         block_table=set(),
         tx_table=set(),
+        withdrawal_table=set(),
         bytecode_table=set(code.table_assignments()),
         rw_table=set(rw_dictionary.rws),
         copy_circuit=copy_circuit.rows,

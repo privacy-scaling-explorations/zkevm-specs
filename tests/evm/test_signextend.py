@@ -40,6 +40,7 @@ def test_pop(b: U256, x: U256, y: U256):
     tables = Tables(
         block_table=set(),
         tx_table=set(),
+        withdrawal_table=set(),
         bytecode_table=set(bytecode.table_assignments()),
         rw_table=set(
             RWDictionary(1)

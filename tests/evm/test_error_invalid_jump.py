@@ -36,6 +36,7 @@ def test_invalid_jump_root(opcode: Opcode, dest_bytes: bytes):
     tables = Tables(
         block_table=set(block.table_assignments()),
         tx_table=set(),
+        withdrawal_table=set(),
         bytecode_table=set(bytecode.table_assignments()),
         rw_table=set(
             RWDictionary(9)
@@ -88,6 +89,7 @@ def test_invalid_jump_not_root(caller_ctx: CallContext, dest_bytes: bytes):
     tables = Tables(
         block_table=set(Block().table_assignments()),
         tx_table=set(),
+        withdrawal_table=set(),
         bytecode_table=set(
             chain(
                 caller_bytecode.table_assignments(),

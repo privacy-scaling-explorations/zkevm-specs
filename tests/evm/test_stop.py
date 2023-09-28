@@ -38,6 +38,7 @@ def test_stop_is_root(tx: Transaction, bytecode: Bytecode):
                 Transaction(id=tx.id + 1).table_assignments(),
             )
         ),
+        withdrawal_table=set(),
         bytecode_table=set(bytecode.table_assignments()),
         rw_table=set(RWDictionary(24).call_context_read(1, CallContextFieldTag.IsSuccess, 1).rws),
     )
@@ -83,6 +84,7 @@ def test_stop_not_root(caller_ctx: CallContext, callee_bytecode: Bytecode):
     tables = Tables(
         block_table=set(Block().table_assignments()),
         tx_table=set(),
+        withdrawal_table=set(),
         bytecode_table=set(
             chain(
                 caller_bytecode.table_assignments(),

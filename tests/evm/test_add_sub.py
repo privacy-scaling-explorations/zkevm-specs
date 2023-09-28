@@ -36,6 +36,7 @@ def test_add_sub(opcode: Opcode, a: int, b: int):
     tables = Tables(
         block_table=set(Block().table_assignments()),
         tx_table=set(),
+        withdrawal_table=set(),
         bytecode_table=set(bytecode.table_assignments()),
         rw_table=set(
             RWDictionary(9)

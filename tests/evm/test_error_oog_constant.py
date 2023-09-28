@@ -35,6 +35,7 @@ def test_oog_constant_root(tx: Transaction, bytecode: Bytecode):
                 Transaction(id=tx.id + 1).table_assignments(),
             )
         ),
+        withdrawal_table=set(),
         bytecode_table=set(bytecode.table_assignments()),
         rw_table=set(RWDictionary(24).call_context_read(1, CallContextFieldTag.IsSuccess, 0).rws),
     )
@@ -85,6 +86,7 @@ def test_oog_constant_not_root(caller_ctx: CallContext, callee_bytecode: Bytecod
                 callee_bytecode.table_assignments(),
             )
         ),
+        withdrawal_table=set(),
         rw_table=set(
             # fmt: off
             RWDictionary(69)

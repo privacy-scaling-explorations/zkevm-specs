@@ -44,6 +44,25 @@ class TxTable:
         self.table.append(TxTableRow(tx_id, tag, index, value))
 
 
+@dataclass
+class WithdrawalTableRow:
+    id: FQ
+    validator_id: FQ
+    address: FQ
+    amount: FQ  # amount is a 64 bits value
+
+
+@dataclass
+class WithdrawalTable:
+    table: List[WithdrawalTableRow]
+
+    def __init__(self):
+        self.table = []
+
+    def add(self, id: FQ, validator_id: FQ, address: FQ, amount: FQ):
+        self.table.append(WithdrawalTableRow(id, validator_id, address, amount))
+
+
 @dataclass(frozen=True)
 class TxCallDataGasCostAccRow(TableRow):
     tx_id: Expression
@@ -100,6 +119,8 @@ class Row:
     calldata_gas_cost: FQ
     is_final: FQ
 
+    q_withdrawal_table: FQ
+
     rpi_bytes: FQ
     rpi_bytes_keccakrlc: FQ
     rpi_value_lc: FQ
@@ -109,6 +130,7 @@ class Row:
 
     keccak_table: KeccakTable
     tx_table: TxTableRow
+    withdrawal_table: WithdrawalTableRow
 
 
 @dataclass
@@ -117,8 +139,8 @@ class PublicInputs:
 
     pi_keccak: Word
 
-    # FIXME temporarily put block_hash state_root and pre_state_root here, since no table refer to those
-    # just temporarily place to carry data for copy constraints
+    # FIXME temporarily put block_hash, state_root, pre_state_root and withdrawals_root here,
+    # since no table refer to those. Just temporarily place to carry data for copy constraints
     block_hash: Word
     state_root: Word
     state_root_prev: Word
@@ -293,6 +315,11 @@ def check_row(
         }
         lookup(TxCallDataGasCostAccRow, calldata_gas_cost_table, query)
 
+    if row.q_withdrawal_table != zero:
+        if row_next.q_withdrawal_table != zero:
+            assert row_next.withdrawal_table.id == row.withdrawal_table.id + one
+        assert row.withdrawal_table.amount != zero
+
 
 @dataclass
 class Witness:
@@ -302,6 +329,7 @@ class Witness:
     keccak_table: KeccakTable
     block_table: BlockTable
     tx_table: TxTable
+    withdrawal_table: WithdrawalTable
     circuit_len: int
     copy_constrains: List[bytes]
 
@@ -311,6 +339,7 @@ def verify_circuit(
     witness: Witness,
     MAX_TXS: int,
     MAX_CALLDATA_BYTES: int,
+    MAX_WITHDRAWALS: int,
 ) -> None:
     """
     Entry level circuit verification function
@@ -322,6 +351,7 @@ def verify_circuit(
     keccak_table = witness.keccak_table
     block_table = witness.block_table
     tx_table = witness.tx_table
+    withdrawal_table = witness.withdrawal_table
     copy_constrains = witness.copy_constrains
 
     fixed_u16_table = set([FixedU16Row(FQ(i)) for i in range(1 << 16)])
@@ -382,7 +412,7 @@ def verify_circuit(
         assert value.lo.expr() == bytes_to_fq(lo_le)
         assert value.hi.expr() == bytes_to_fq(hi_le)
 
-    # constrain tx calldata value lo/hi euqal to equals witness rpi bytes in vertical order
+    # constrain tx calldata value lo/hi to equal witness rpi bytes in vertical order
     calldata_len = MAX_CALLDATA_BYTES
     for i in range(calldata_len):
         value = tx_table.table[tx_len + i].value
@@ -394,6 +424,25 @@ def verify_circuit(
             hi_le = bytes(0)
         assert value.lo.expr() == bytes_to_fq(lo_le)
         assert value.hi.expr() == bytes_to_fq(hi_le)
+
+    # constrain withdrawal table `id``, `validator_id`, `address` and `amount` per row, and all rows equals witness rpi bytes in vertical order
+    withdrawal_len = MAX_WITHDRAWALS
+    for i in range(withdrawal_len):
+        wd_row: WithdrawalTableRow = withdrawal_table.table[i]
+
+        lo_le = copy_constrains.pop(0)[::-1]
+        assert wd_row.id == bytes_to_fq(lo_le)
+
+        lo_le = copy_constrains.pop(0)[::-1]
+        assert wd_row.validator_id == bytes_to_fq(lo_le)
+
+        lo_le = copy_constrains.pop(0)[::-1]
+        hi_le = copy_constrains.pop(0)[::-1]
+        assert wd_row.address.lo.expr() == bytes_to_fq(lo_le)
+        assert wd_row.address.hi.expr() == bytes_to_fq(hi_le)
+
+        lo_le = copy_constrains.pop(0)[::-1]
+        assert wd_row.amount == bytes_to_fq(lo_le)
 
     # check gates constrains
     for i in range(len(rows)):
@@ -430,6 +479,7 @@ class Block:
     mix_digest: U256
     nonce: U64
     base_fee: U256  # NOTE: BaseFee was added by EIP-1559 and is ignored in legacy headers.
+    withdrawals_root: U256  # WithdrawalsRoot was introduced by EIP-4895
 
 
 @dataclass
@@ -554,12 +604,37 @@ class Transaction:
 
 
 @dataclass
+class Withdrawal:
+    id: U64
+    validator_id: U64
+    address: U160
+    amount: U64
+
+    @classmethod
+    def default(cls):
+        return Withdrawal(U64(0), U64(0), U160(0), U64(0))
+
+    def withdrawal_raw_bytes(self, id: int) -> List[bytes]:
+        raw_byte: List[bytes] = []
+
+        address_lo, address_hi = Word(self.address).to_lo_hi()
+        raw_byte.append(U64(id).to_bytes(8, "big"))
+        raw_byte.append(U64(self.validator_id).to_bytes(8, "big"))
+        raw_byte.append(address_lo.n.to_bytes(16, "big"))
+        raw_byte.append(address_hi.n.to_bytes(16, "big"))
+        raw_byte.append(U64(self.amount).to_bytes(8, "big"))
+
+        return raw_byte
+
+
+@dataclass
 class PublicData:
     chain_id: U64
     block: Block
     state_root_prev: U256
     block_hashes: List[U256]  # 256 previous block hashes
     txs: List[Transaction]
+    withdrawals: List[Withdrawal]
 
     def block_table_value_column(self) -> List[WordOrValue]:
         """Return the block table value column including the first 0 row"""
@@ -572,6 +647,7 @@ class PublicData:
         column.append(WordOrValue(Word(self.block.prev_randao)))
         column.append(WordOrValue(Word(self.block.base_fee)))
         column.append(WordOrValue(FQ(self.chain_id)))
+        column.append(WordOrValue(Word(self.block.withdrawals_root)))
         assert len(self.block_hashes) == 256
         for block_hash in self.block_hashes:
             column.append(WordOrValue(Word(block_hash)))  # offset = 8
@@ -593,12 +669,50 @@ class PublicData:
         raw_block_value.append(base_fee_lo.n.to_bytes(16, "big"))
         raw_block_value.append(base_fee_hi.n.to_bytes(16, "big"))
         raw_block_value.append(self.chain_id.to_bytes(8, "big"))
+        withdrawals_root_lo, withdrawals_root_hi = Word(self.block.withdrawals_root).to_lo_hi()
+        raw_block_value.append(withdrawals_root_lo.n.to_bytes(16, "big"))
+        raw_block_value.append(withdrawals_root_hi.n.to_bytes(16, "big"))
         assert len(self.block_hashes) == 256
         for block_hash in self.block_hashes:
             block_hash_lo, block_hash_hi = Word(block_hash).to_lo_hi()
             raw_block_value.append(block_hash_lo.n.to_bytes(16, "big"))
             raw_block_value.append(block_hash_hi.n.to_bytes(16, "big"))
         return raw_block_value
+
+    def withdrawal_table_raw_bytes(self, MAX_WITHDRAWALS: int) -> List[bytes]:
+        """Return the withdrawal table bytes, traverse in row oriented and including first 0 row"""
+        table_raw_bytes = []
+        assert len(self.withdrawals) > 0
+        assert len(self.withdrawals) <= MAX_WITHDRAWALS
+        for i in range(MAX_WITHDRAWALS):
+            withdrawal = Withdrawal.default()
+            if i < len(self.withdrawals):
+                withdrawal = self.withdrawals[i]
+            table_raw_bytes.extend(
+                [withdrawal_bytes for withdrawal_bytes in withdrawal.withdrawal_raw_bytes(i)]
+            )
+        return table_raw_bytes
+
+    def withdrawal_table_cols(
+        self, MAX_WITHDRAWALS: int
+    ) -> Tuple[List[FQ], List[FQ], List[Word], List[FQ]]:
+        """Return the withdrawal table, static section with withdrawal fields"""
+        id_col = []
+        validator_id_col = []
+        address_col = []
+        amount_col = []
+        assert len(self.withdrawals) <= MAX_WITHDRAWALS
+        for i in range(MAX_WITHDRAWALS):
+            withdrawal = Withdrawal.default()
+            if i < len(self.withdrawals):
+                withdrawal = self.withdrawals[i]
+
+            id_col.append(FQ(withdrawal.id))
+            validator_id_col.append(FQ(withdrawal.validator_id))
+            address_col.append(Word(withdrawal.address))
+            amount_col.append(FQ(withdrawal.amount))
+
+        return (id_col, validator_id_col, address_col, amount_col)
 
     def tx_table_raw_bytes(self, MAX_TXS: int) -> List[bytes]:
         """Return the tx table bytes, traverse in row oriented and including first 0 row"""
@@ -701,6 +815,9 @@ class PublicData:
 N_BYTES_ONE = 1
 N_BYTES_U64 = 8
 N_BYTES_TX = 176
+# (id, validator_id, address_lo, address_hi, amount)
+# address_hi/lo is 16 bytes, others are 8 bytes
+N_BYTES_WITHDRAWAL = 56
 N_BYTES_BLOCK = (
     +20  # coinbase
     + 8  # gas limit
@@ -709,8 +826,10 @@ N_BYTES_BLOCK = (
     + 32  # prev_randao
     + 32  # base_fee
     + 8  # chain_id
+    + 32  # withdrawals root
     + 32 * 256  # pre block hashes
 )
+# block.hash, block.state_root and state_root_prev
 N_BYTES_EXTRA_VALUE = N_BYTES_WORD * 3
 byte_pow_base = FQ(255)
 evm_rand = FQ(255)
@@ -718,18 +837,23 @@ keccak_rand = FQ(255)
 
 
 def public_data2witness(
-    public_data: PublicData, MAX_TXS: int, MAX_CALLDATA_BYTES: int, rand_rpi: FQ
+    public_data: PublicData,
+    MAX_TXS: int,
+    MAX_CALLDATA_BYTES: int,
+    MAX_WITHDRAWALS: int,
 ) -> Witness:
     # Layout of raw_public_inputs:
-    #   # Block Table. `value.hi` is optional dependes on the original value bits size.
+    #   # Block Table. `value.hi` is optional depends on the original value bits size.
     #   [0] + [block_table.value.lo, (block_table.value.hi)]...
     #   # Extra Fields
     #   [state_root.lo, state_root.hi] # 2
     #   [state_root_prev.lo, state_root_prev.hi] # 2
-    #   # Tx Table, `value.hi` is optional dependes on the original value bits size.
+    #   # Tx Table, `value.hi` is optional depends on the original value bits size.
     #   [0, 0, 0] // empty row
     #   + [tx_table.id, tx_table.index, tx_table.value.lo, (tx_table.value.hi)]... # TX_LEN * MAX_TXS + 1
     #   [tx_table.calldata.lo] # MAX_CALLDATA_BYTES
+    #   # Withdrawal Table,
+    #   + [withdrawal_table.id, withdrawal_table.validator_id, withdrawal_table.address.lo, withdrawal_table.address.hi, withdrawal_table.amount]... # MAX_WITHDRAWALS
 
     rpi_byte_values: List[bytes] = []
 
@@ -758,25 +882,6 @@ def public_data2witness(
     tx_table_raw_bytes = public_data.tx_table_raw_bytes(MAX_TXS)
     rpi_byte_values.extend(tx_table_raw_bytes)
 
-    keccak_table = KeccakTable()
-    block_table = BlockTable()
-    tx_table = TxTable()
-    assert flatten_len(rpi_byte_values) == (
-        N_BYTES_ONE  # empty block row
-        + N_BYTES_BLOCK  # block
-        + N_BYTES_EXTRA_VALUE  # extra value
-        + N_BYTES_U64 * TX_LEN * MAX_TXS
-        + N_BYTES_U64  # tx_id + first empty
-        + N_BYTES_U64 * TX_LEN * MAX_TXS
-        + N_BYTES_U64  # txindex + first empty
-        + N_BYTES_TX * MAX_TXS
-        + N_BYTES_ONE  # tx value
-    )
-
-    # Tx Calldata
-    tx_table_calldata_raw_bytes = public_data.tx_table_calldata_raw_bytes(MAX_CALLDATA_BYTES)
-    rpi_byte_values.extend(tx_table_calldata_raw_bytes)
-
     circuit_len = (
         N_BYTES_ONE  # empty block row
         + N_BYTES_BLOCK  # block
@@ -787,9 +892,28 @@ def public_data2witness(
         + N_BYTES_U64  # txindex + first empty
         + N_BYTES_TX * MAX_TXS
         + N_BYTES_ONE  # tx value
-        + MAX_CALLDATA_BYTES
     )
     assert flatten_len(rpi_byte_values) == circuit_len
+
+    # Tx Calldata
+    tx_table_calldata_raw_bytes = public_data.tx_table_calldata_raw_bytes(MAX_CALLDATA_BYTES)
+    rpi_byte_values.extend(tx_table_calldata_raw_bytes)
+
+    circuit_len += MAX_CALLDATA_BYTES
+    assert flatten_len(rpi_byte_values) == circuit_len
+
+    # Withdrawal Table
+    withdrawal_table_cols = public_data.withdrawal_table_cols(MAX_WITHDRAWALS)
+    withdrawal_raw_bytes = public_data.withdrawal_table_raw_bytes(MAX_WITHDRAWALS)
+    rpi_byte_values.extend(withdrawal_raw_bytes)
+
+    circuit_len += N_BYTES_WITHDRAWAL * MAX_WITHDRAWALS
+    assert flatten_len(rpi_byte_values) == circuit_len
+
+    keccak_table = KeccakTable()
+    block_table = BlockTable()
+    tx_table = TxTable()
+    withdrawal_table = WithdrawalTable()
 
     rows: List[Row] = []
     calldata_gas_cost_table = [TxCallDataGasCostAccRow(FQ.zero(), FQ.zero(), FQ.zero())]
@@ -824,15 +948,18 @@ def public_data2witness(
                 assert i < len(block_table_value_col)
                 block_table.add(block_table_value_col[i])
 
-            # FIXME: extra value not used in any place. Here add 2 copy constraint in block table just for aligment
+            # FIXME: extra value not used in any place. Here add 3 copy constraints in block table just for alignment
             if i == BLOCK_LEN // 2 + 1:
-                block_table.add(WordOrValue(Word(public_data.block.state_root)))
+                block_table.add(WordOrValue(Word(public_data.block.hash)))
             if i == BLOCK_LEN // 2 + 2:
+                block_table.add(WordOrValue(Word(public_data.block.state_root)))
+            if i == BLOCK_LEN // 2 + 3:
                 block_table.add(WordOrValue(Word(public_data.state_root_prev)))
 
             q_tx_table = FQ.zero()
             q_tx_calldata = FQ.zero()
             q_tx_calldata_start = FQ.zero()
+            q_withdrawal_table = FQ.zero()
 
             tx_id_inv = FQ.zero()
             tx_value_lo_inv = FQ.zero()
@@ -841,7 +968,8 @@ def public_data2witness(
             is_final = FQ.zero()
             tx_row = TxTableRow(FQ.zero(), FQ.zero(), FQ.zero(), WordOrValue(FQ.zero()))
             tx_table_len = TX_LEN * MAX_TXS + 1
-            if i < tx_table_len + MAX_CALLDATA_BYTES:
+            tx_and_calldata_len = tx_table_len + MAX_CALLDATA_BYTES
+            if i < tx_and_calldata_len:
                 tx_id = tx_table_cols[0][i]
                 index = tx_table_cols[1][i]
                 value = tx_table_cols[2][i]
@@ -863,7 +991,7 @@ def public_data2witness(
                     tx_id_inv = tx_id.inv()
                     tx_value_lo_inv = value.lo.expr().inv()
                     tx_id_next = FQ.zero()
-                    if i < tx_table_len + MAX_CALLDATA_BYTES - 1:
+                    if i < tx_and_calldata_len - 1:
                         tx_id_next = tx_table_cols[0][i + 1]
                     tx_id_diff_inv = (tx_id_next - tx_id).inv()
                     calldata_gas_cost = tx_table_tx_calldata[3][i - tx_table_len]
@@ -877,6 +1005,19 @@ def public_data2witness(
                 tx_row = TxTableRow(tx_id, tag, index, value)
                 tx_table.add(tx_id, tag, index, value)
 
+            # fill withdrawal table
+            wd_row = WithdrawalTableRow(FQ(0), FQ(0), Word(0), FQ(0))
+            if i >= tx_and_calldata_len and i < tx_and_calldata_len + MAX_WITHDRAWALS:
+                j = i - tx_and_calldata_len
+                id = withdrawal_table_cols[0][j]
+                validator_id = withdrawal_table_cols[1][j]
+                address = withdrawal_table_cols[2][j]
+                amount = withdrawal_table_cols[3][j]
+
+                q_withdrawal_table = FQ(1)
+                wd_row = WithdrawalTableRow(id, validator_id, address, amount)
+                withdrawal_table.add(id, validator_id, address, amount)
+
             row = Row(
                 q_bytes_last,
                 q_tx_table,
@@ -889,6 +1030,7 @@ def public_data2witness(
                 tx_id_diff_inv,
                 calldata_gas_cost,
                 is_final,
+                q_withdrawal_table,
                 FQ(rpi_bytes[-1]),
                 rpi_bytes_keccakrlc[-1],
                 rpi_value_lc[-1],
@@ -896,6 +1038,7 @@ def public_data2witness(
                 q_rpi_byte_enable,
                 keccak_table,
                 tx_row,
+                wd_row,
             )
             rows.append(row)
             i -= 1
@@ -916,6 +1059,7 @@ def public_data2witness(
 
     block_table.table.reverse()
     tx_table.table.reverse()
+    withdrawal_table.table.reverse()
     return Witness(
         rows,
         public_inputs,
@@ -923,6 +1067,7 @@ def public_data2witness(
         keccak_table,
         block_table,
         tx_table,
+        withdrawal_table,
         circuit_len,
         copy_constrains=rpi_byte_values,
     )

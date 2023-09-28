@@ -6,6 +6,7 @@ from zkevm_specs.pi_circuit import (
     verify_circuit,
     Block,
     Transaction,
+    Withdrawal,
 )
 from zkevm_specs.util import FQ, U64, U256, U160, WordOrValue, Word
 import random
@@ -28,7 +29,7 @@ def verify(
     public_data_or_witness: Union[PublicData, Witness],
     MAX_TXS: int,
     MAX_CALLDATA_BYTES: int,
-    rand_rpi: FQ,
+    MAX_WITHDRAWALS: int,
     success: bool = True,
 ):
     """
@@ -40,7 +41,9 @@ def verify(
     if isinstance(public_data_or_witness, Witness):
         pass
     else:
-        witness = public_data2witness(public_data_or_witness, MAX_TXS, MAX_CALLDATA_BYTES, rand_rpi)
+        witness = public_data2witness(
+            public_data_or_witness, MAX_TXS, MAX_CALLDATA_BYTES, MAX_WITHDRAWALS
+        )
 
     ok = True
     if success:
@@ -48,6 +51,7 @@ def verify(
             witness,
             MAX_TXS,
             MAX_CALLDATA_BYTES,
+            MAX_WITHDRAWALS,
         )
     else:
         try:
@@ -55,6 +59,7 @@ def verify(
                 witness,
                 MAX_TXS,
                 MAX_CALLDATA_BYTES,
+                MAX_WITHDRAWALS,
             )
         except AssertionError as e:
             ok = False
@@ -92,6 +97,7 @@ def rand_block() -> Block:
         mix_digest=rand_u256(),
         nonce=rand_u64(),
         base_fee=U256(0),
+        withdrawals_root=rand_u256(),
     )
 
 
@@ -108,7 +114,16 @@ def rand_tx(calldata_len: int) -> Transaction:
     )
 
 
-def rand_public_data(txs_len: int, MAX_CALLDATA_BYTES: int) -> PublicData:
+def rand_withdrawal(id: int) -> Withdrawal:
+    return Withdrawal(
+        id=id,
+        validator_id=rand_u64(),
+        address=rand_u160(),
+        amount=rand_u64(),
+    )
+
+
+def rand_public_data(txs_len: int, MAX_CALLDATA_BYTES: int, withdrawal_len: int) -> PublicData:
     chain_id = U64(randrange(1, 128))
     block = rand_block()
     state_root_prev = rand_u256()
@@ -116,7 +131,10 @@ def rand_public_data(txs_len: int, MAX_CALLDATA_BYTES: int) -> PublicData:
     txs = []
     for i in range(txs_len):
         txs.append(rand_tx(randrange(0, MAX_CALLDATA_BYTES // txs_len)))
-    return PublicData(chain_id, block, state_root_prev, block_hashes, txs)
+    withdrawals = []
+    for i in range(withdrawal_len):
+        withdrawals.append(rand_withdrawal(i))
+    return PublicData(chain_id, block, state_root_prev, block_hashes, txs, withdrawals)
 
 
 def test_basic():
@@ -124,9 +142,10 @@ def test_basic():
 
     MAX_TXS = 2
     MAX_CALLDATA_BYTES = 8
+    MAX_WITHDRAWALS = 2
 
-    public_data = rand_public_data(MAX_TXS - 1, MAX_CALLDATA_BYTES)
-    verify(public_data, MAX_TXS, MAX_CALLDATA_BYTES, rand_rpi)
+    public_data = rand_public_data(MAX_TXS - 1, MAX_CALLDATA_BYTES, MAX_WITHDRAWALS)
+    verify(public_data, MAX_TXS, MAX_CALLDATA_BYTES, MAX_WITHDRAWALS)
 
 
 def override_not_success(override: Callable[[Witness], None]):
@@ -134,11 +153,12 @@ def override_not_success(override: Callable[[Witness], None]):
 
     MAX_TXS = 2
     MAX_CALLDATA_BYTES = 8
+    MAX_WITHDRAWALS = 2
 
-    public_data = rand_public_data(MAX_TXS - 1, MAX_CALLDATA_BYTES)
-    witness = public_data2witness(public_data, MAX_TXS, MAX_CALLDATA_BYTES, rand_rpi)
+    public_data = rand_public_data(MAX_TXS - 1, MAX_CALLDATA_BYTES, MAX_WITHDRAWALS)
+    witness = public_data2witness(public_data, MAX_TXS, MAX_CALLDATA_BYTES, MAX_WITHDRAWALS)
     override(witness)
-    verify(witness, MAX_TXS, MAX_CALLDATA_BYTES, rand_rpi, success=False)
+    verify(witness, MAX_TXS, MAX_CALLDATA_BYTES, MAX_WITHDRAWALS, success=False)
 
 
 def test_bad_block_table():

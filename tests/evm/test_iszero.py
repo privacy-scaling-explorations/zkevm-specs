@@ -31,6 +31,7 @@ def test_iszero(value_be_bytes: bytes):
     tables = Tables(
         block_table=set(Block().table_assignments()),
         tx_table=set(),
+        withdrawal_table=set(),
         bytecode_table=set(bytecode.table_assignments()),
         rw_table=set(RWDictionary(9).stack_read(1, 1023, value).stack_write(1, 1023, result).rws),
     )

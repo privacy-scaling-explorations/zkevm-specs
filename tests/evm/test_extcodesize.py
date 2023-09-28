@@ -82,6 +82,7 @@ def test_extcodesize(address: U160, code: bytes, exists: bool, is_warm: bool, is
     tables = Tables(
         block_table=Block(),
         tx_table=set(),
+        withdrawal_table=set(),
         bytecode_table=set(
             chain(
                 bytecode.table_assignments(),

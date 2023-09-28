@@ -31,6 +31,7 @@ def test_gas(gas: int):
     tables = Tables(
         block_table=set(Block().table_assignments()),
         tx_table=set(tx.table_assignments()),
+        withdrawal_table=set(),
         bytecode_table=set(bytecode.table_assignments()),
         rw_table=set(RWDictionary(2).stack_write(1, 1023, Word(gas_left)).rws),
     )

@@ -22,11 +22,13 @@ execution_payload_body_rlp = RLP([transactions, [], withdrawals])
 For every withdrawal defined as the parameters `(withdrawal_index, validator_index, address, amount)` and the circuit verifies the followings:
 
 1. `withdrawalsData: bytes = rlp([withdrawal_index, validator_index, address, amount])`
-2. `withdrawalsRoot: word = mpt(withdrawalsData)`
-3. `withdrawal_index`, `validator_index` and `amount` are all `uint64` values.
-4. `amount_wei = amount * 1e9` and increases validator's balance by `amount_wei`
+2. `withdrawalDataHash: word = keccak(withdrawalsData)`
+3. `withdrawalsRoot: word = mpt(withdrawalDataHash)`
+4. `withdrawal_index`, `validator_index` and `amount` are all `uint64` values.
+5. `amount_wei = amount * 1e9` and increases validator's balance by `amount_wei`
 
-- The rlp encoding of withdrawal parameters will be done using a custom rlp encoding gadget,  isolated from the rlp encoding used by the MPT circuit.
+- The rlp encoding of withdrawal parameters will be done using a custom rlp encoding gadget, isolated from the rlp encoding used by the MPT circuit.
+- The keccak hash of rlp encoded data verification will be done in the keccak circuit; the withdrawal circuit will do a single lookup to the keccak table.
 - The MPT root verification will be done in MPT circuit; the withdrawal circuit do a lookup to the MPT table.
 
 From this information the circuit builds the WithdrawalTable:
@@ -56,8 +58,8 @@ For each withdrawal, the withdrawal circuit also must prepare the key and value 
 
 Each MPT update uses the following parameters:
 
-- Key = `rlp(withdrawal_index)`
-- Value = `rlp([withdrawal_index, validator_index, address, amount])`
+- Key = `withdrawal_index`
+- Value = `keccak(rlp([withdrawal_index, validator_index, address, amount]))`
 - ValuePrev = `0`
 
 NOTE: The MPT proof used for the Withdrawal Trie doesn't need deletion support.

@@ -157,6 +157,7 @@ def test_oog_call_root(
     tables = Tables(
         block_table=set(Block().table_assignments()),
         tx_table=set(),
+        withdrawal_table=set(),
         bytecode_table=set(
             chain(
                 caller_bytecode.table_assignments(),
@@ -245,6 +246,7 @@ def test_oog_call_not_root(
     tables = Tables(
         block_table=set(Block().table_assignments()),
         tx_table=set(),
+        withdrawal_table=set(),
         bytecode_table=set(
             chain(
                 caller_bytecode.table_assignments(),

@@ -24,7 +24,10 @@ from typing import Set
 # D. We need to prove that at least one EndBlock state exists
 #
 # Also:
-# E. We need to prove that CumulativeGasCost does not excee the gas limit
+# E. We need to prove that CumulativeGasCost does not exceed the gas limit
+#
+# F. The number of balance updates due to withdrawal operation in rw_table
+# match the number of withdrawals in the WithdrawalTable
 #
 # We prove (A) by constraining the transition rule that after an EndBlock
 # state, only an EndBlock state can follow.
@@ -39,7 +42,7 @@ from typing import Set
 # corresponds to a padding tx in the TxTable, which enforces that once a
 # padding txs appears in the table, the rest will also be padding.  This way,
 # we know that if a padding tx with tx_id exist, then at most there are tx_id-1
-# non-padding txs.  In case we have exhausted the TxTable with txs, we won't
+# non-padding txs. In case we have exhausted the TxTable with txs, we won't
 # have any padding txs; so we skip the lookup.
 #
 # We prove (D) in the circuit implementation by constraining that the last
@@ -49,8 +52,10 @@ from typing import Set
 # which can be achieved after reducing the number of cells used in the state
 # selector.
 #
-# We prove (E) by quering the block table for the gas limit and the rw table for
+# We prove (E) by querying the block table for the gas limit and the rw table for
 # the cumulative gas and ensuring CumulativeGasCost <= GasLimit.
+#
+# We prove (F) by verifying the balance update in the rw table.
 
 
 # Count the max number of txs that the TxTable can hold by counting rows of
@@ -62,6 +67,7 @@ def get_tx_table_max_txs(table: Set[TxTableRow]) -> int:
 def end_block(instruction: Instruction):
     max_txs = get_tx_table_max_txs(instruction.tables.tx_table)
     max_rws = len(instruction.tables.rw_table)
+    max_withdrawals = len(instruction.tables.withdrawal_table)
 
     total_txs = FQ(
         len(
@@ -85,6 +91,19 @@ def end_block(instruction: Instruction):
             ]
         )
     )
+
+    # a valid withdrawal should have non-zero amount for step 3 and 5 verification
+    # we use amount=0 for padding withdrawals
+    total_withdrawals = FQ(
+        len(
+            [
+                wd_row
+                for wd_row in instruction.tables.withdrawal_table
+                if wd_row.amount.expr() != FQ(0)
+            ]
+        )
+    )
+
     # Note that rw_counter starts at 1
     is_empty_block = instruction.is_zero(instruction.curr.rw_counter - 1)
     # If the block is not empty, we will do 1 call_context lookup
@@ -93,13 +112,15 @@ def end_block(instruction: Instruction):
     if instruction.is_last_step:
         # 1. Constraint total_valid_txs witness values depending on the empty block case.
         if is_empty_block == FQ(1):
-            # 1a. total_valid_txs is 0 in empty block
+            # 1a. total_valid_txs and total_withdrawals are 0 in empty block
             instruction.constrain_equal(total_valid_txs, FQ(0))
+            instruction.constrain_equal(total_withdrawals, FQ(0))
         else:
             # 1b. total_txs matches the tx_id that corresponds to the final step.
             instruction.constrain_equal(
                 instruction.call_context_lookup(CallContextFieldTag.TxId), total_txs
             )
+
             # 4. Verify that CumulativeGasUsed does not exceed the block gas limit.
             gas_limit = instruction.block_context_lookup(BlockContextFieldTag.GasLimit)
             cumulative_gas = instruction.tx_receipt_read(
@@ -109,9 +130,24 @@ def end_block(instruction: Instruction):
             limit_exceeded, _ = instruction.compare(gas_limit, cumulative_gas, N_BYTES_GAS)
             instruction.constrain_equal(limit_exceeded, FQ(0))
 
+            # 5. verify balance update for validators' withdrawals
+            padding_wds = 0
+            # withdrawal table is a set of `WithdrawalTableRow` which is not sorted by order
+            # which means smaller `id` is not prior than bigger `id`
+            # In this case, it'll violate the order of rw table
+            for wd in sorted(instruction.tables.withdrawal_table, key=lambda x: x.id.expr().n):
+                if wd.amount.expr() != FQ(0):
+                    instruction.add_balance(wd.address, [Word(int(wd.amount.expr().n) * int(1e9))])
+                else:
+                    padding_wds += 1
+
+            # 5a. If max_withdrawals == total_withdrawals, we know we have covered all withdrawals
+            # from the withdrawal_table.
+            # If not, we need to check the reset of withdrawals in the table are padding.
+            instruction.constrain_equal(FQ(padding_wds), FQ(max_withdrawals - total_withdrawals))
+
         # 2. If total_txs == max_txs, we know we have covered all txs from the tx_table.
-        # If not, we need to check that the rest of txs in the table are
-        # padding.
+        # If not, we need to check that the rest of txs in the table are padding.
         if total_txs != max_txs:
             # Verify that there are at most total_txs meaningful txs in the tx_table, by
             # showing that the Tx following the last processed one has
@@ -131,7 +167,7 @@ def end_block(instruction: Instruction):
         # rw_table to ensure there is no malicious insertion.
         # Verify that there are at most total_rws meaningful entries in the rw_table
         instruction.rw_table_start_lookup(FQ(1))
-        instruction.rw_table_start_lookup(max_rws - total_rws)
+        instruction.rw_table_start_lookup(max_rws - total_rws - total_withdrawals)
         # Since every lookup done in the EVM circuit must succeed and uses a unique
         # rw_counter, we know that at least there are total_rws meaningful entries
         # in the rw_table.

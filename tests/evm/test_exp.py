@@ -71,6 +71,7 @@ def test_exp(base_int: int, exponent_int: int):
     tables = Tables(
         block_table=set(Block().table_assignments()),
         tx_table=set(),
+        withdrawal_table=set(),
         bytecode_table=set(bytecode.table_assignments()),
         rw_table=set(rw_dict.rws),
         exp_circuit=exp_circuit.rows,

@@ -358,6 +358,7 @@ def test_begin_tx(tx: Transaction, callee: Account, is_success: bool):
     tables = Tables(
         block_table=set(block.table_assignments()),
         tx_table=set(tx.table_assignments()),
+        withdrawal_table=set(),
         bytecode_table=set(callee.code.table_assignments()),
         rw_table=set(rw_dictionary.rws),
         copy_circuit=copy_table,

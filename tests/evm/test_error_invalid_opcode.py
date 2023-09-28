@@ -53,6 +53,7 @@ def test_invalid_opcode_root(invalid_code):
                 Transaction(id=tx.id + 1).table_assignments(),
             )
         ),
+        withdrawal_table=set(),
         bytecode_table=set(bytecode.table_assignments()),
         rw_table=set(RWDictionary(24).call_context_read(1, CallContextFieldTag.IsSuccess, 0).rws),
     )
@@ -97,6 +98,7 @@ def test_invalid_opcode_internal(invalid_callee_code: list[int]):
     tables = Tables(
         block_table=set(Block().table_assignments()),
         tx_table=set(),
+        withdrawal_table=set(),
         bytecode_table=set(
             chain(
                 caller_bytecode.table_assignments(),
