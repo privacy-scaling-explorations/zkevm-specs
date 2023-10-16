@@ -1,6 +1,6 @@
 # Plookup Table
 
-We use the [halo2 lookup table](https://zcash.github.io/halo2/design/proving-system/lookup.html) as a primitive to check if some adviced values are a row of a table.
+We use the [halo2 lookup table](https://zcash.github.io/halo2/design/proving-system/lookup.html) as a primitive to check if some advised values are a row of a table.
 
 Example:
 

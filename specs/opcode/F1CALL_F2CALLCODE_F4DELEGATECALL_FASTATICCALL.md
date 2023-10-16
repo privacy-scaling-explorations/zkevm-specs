@@ -93,7 +93,7 @@ It pops 7 words for both `CALL` and `CALLCODE` opcodes and 6 words for both `DEL
 
 It then checks the new call `is_persistent` only if current `is_persistent` and `result` of execution is success. If the new call is not persistent is due to current's call is not persistent, we need to propagate the `rw_counter_end_of_reversion` to make sure every state update has a corresponding reversion.
 
-Finally it stores current call context by writting to `rw_table` and checks the new call context is setup correctly by reading to `rw_table`, then does step state transition to a initialized one and begin the execution.
+Finally it stores current call context by writing to `rw_table` and checks the new call context is setup correctly by reading to `rw_table`, then does step state transition to a initialized one and begin the execution.
 
 In the end of execution, the terminating `ExecutionState` like `RETURN`, `REVERT` will copy the `return_data` to caller specified chunk.
 

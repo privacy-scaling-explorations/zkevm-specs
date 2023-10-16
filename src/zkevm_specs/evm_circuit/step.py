@@ -41,7 +41,7 @@ class StepState:
     # not often used.
     log_id: FQ
 
-    # Auxilary witness data needed by gadgets
+    # Auxiliary witness data needed by gadgets
     aux_data: Any
 
     def __init__(
