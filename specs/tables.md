@@ -365,3 +365,17 @@ Row(is_step=1, identifier=rwc, is_last=0, base_limbs=[3, 0, 0, 0], exponent_lo_h
 ```
 Row(is_step=1, identifier=rwc, is_last=1, base_limbs=[3, 0, 0, 0], exponent_lo_hi=[2, 0], exponentiation_lo_hi=[9, 0])
 ```
+
+
+## `sig_table`
+
+Provided by the Signature circuit.
+
+The circuit verifies the correctness of signatures.
+
+| 0 msg_hash    | 1 sig_v | 2 sig_r       | 3 sig_s       | 4 recovered_addr | 5 is_valid |
+| ------------- | ------  | ------------- | ------------- | ---------------- | ---------- |
+| $value{Lo,Hi} |  bool   | $value{Lo,Hi} | $value{Lo,Hi} |   $value{Lo,Hi}  |   bool     |  
+
+NOTE:
+- `sig_v` is either 0 or 1 so boolean type is used here.
