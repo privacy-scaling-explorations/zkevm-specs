@@ -122,25 +122,43 @@ def test_sig_verify():
     verify(witness, r)
 
 
-def test_sig_bad_keccak():
+def test_sig_incorrect_keccak():
     witness = gen_witness()
     # Set empty keccak lookup table
     witness = Witness(witness.rows, KeccakTable())
     verify(witness, r, success=False)
 
 
-def test_sig_bad_signature():
+def test_sig_incorrect_signature():
     witness = gen_witness(10, False)
     verify(witness, r, success=False)
 
 
-def test_sig_bad_msg_hash():
+def test_sig_incorrect_signature_v():
+    witness = gen_witness(1)
+    witness.rows[0].sig_v = FQ(2)
+    verify(witness, r, success=False)
+
+
+def test_sig_incorrect_msg_hash():
     witness = gen_witness(1)
     witness.rows[0].msg_hash = Word(1)
     verify(witness, r, success=False)
 
 
-def test_sig_bad_address():
+def test_sig_inconsistent_msg_hash():
+    witness = gen_witness(1)
+    witness.rows[0].ecdsa_chip.msg_hash_bytes = Word(1)
+    verify(witness, r, success=False)
+
+
+def test_sig_inconsistent_pub_key_hash():
+    witness = gen_witness(1)
+    witness.rows[0].pub_key_hash = Word(1)
+    verify(witness, r, success=False)
+
+
+def test_sig_incorrect_address():
     witness = gen_witness(1)
     witness.rows[0].recovered_addr = FQ(1)
     verify(witness, r, success=False)
