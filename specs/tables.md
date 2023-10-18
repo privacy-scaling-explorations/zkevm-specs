@@ -375,7 +375,7 @@ The circuit verifies the correctness of signatures.
 
 | 0 msg_hash    | 1 sig_v | 2 sig_r       | 3 sig_s       | 4 recovered_addr | 5 is_valid |
 | ------------- | ------  | ------------- | ------------- | ---------------- | ---------- |
-| $value{Lo,Hi} |  bool   | $value{Lo,Hi} | $value{Lo,Hi} |   $value{Lo,Hi}  |   bool     |  
+| $value{Lo,Hi} |   0/1   | $value{Lo,Hi} | $value{Lo,Hi} |   $value{Lo,Hi}  |   bool     |  
 
 NOTE:
 - `sig_v` is either 0 or 1 so boolean type is used here.
