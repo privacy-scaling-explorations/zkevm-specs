@@ -268,7 +268,7 @@ This is because:
 
 # PublicInputs Circuit
 
-Before adapting advanced compression [EIP-4844](https://eips.ethereum.org/EIPS/eip-4844), the preliminary compresssion strategy is via keccak on public data, i.e. `keccak(PublicInputsCircuit:raw_public_inputs)`, and the final hash digest will be provided on verifier side as public input. Digest will be verified in public circuit via lookup. Hashing digest is in 256 bits, so it's splitted into 2 field value namely, `digest[0:128]` as `pi_keccak.lo()`,`digest[128:256]` as `pi_keccak.hi()` respectively.
+Before adapting advanced compression [EIP-4844](https://eips.ethereum.org/EIPS/eip-4844), the preliminary compression strategy is via keccak on public data, i.e. `keccak(PublicInputsCircuit:raw_public_inputs)`, and the final hash digest will be provided on verifier side as public input. Digest will be verified in public circuit via lookup. Hashing digest is in 256 bits, so it's splitted into 2 field value namely, `digest[0:128]` as `pi_keccak.lo()`,`digest[128:256]` as `pi_keccak.hi()` respectively.
 
 ## Setup
 

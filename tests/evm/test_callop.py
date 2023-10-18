@@ -133,7 +133,7 @@ def gen_testing_data():
         Stack(value=int(1e18), gas=100, cd_offset=64, cd_length=320, rd_offset=0, rd_length=32),
         Stack(cd_offset=0xFFFFFF, cd_length=0, rd_offset=0xFFFFFF, rd_length=0),
     ]
-    is_warm_accesss = [True, False]
+    is_warm_access = [True, False]
     depths = [1, 1024, 1025]
     return [
         (
@@ -158,7 +158,7 @@ def gen_testing_data():
             ),
         )
         for opcode, callee, call_context, stack, is_warm_access, depth in product(
-            opcodes, callees, call_contexts, stacks, is_warm_accesss, depths
+            opcodes, callees, call_contexts, stacks, is_warm_access, depths
         )
     ]
 
