@@ -20,7 +20,11 @@ A constant gas cost: 3000
 
 ## Constraints
 
-1. v is 27 or 28.
+1. If gas_left < gas_required, then is_success == false and return data is zero.
+1. v, r and s are valid
+  - v is 27 or 28 and the first 31 bytes of v is zero
+  - both of r and s are less than `secp256k1N (0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141)`
+  - both of r and s are greater than `1`
 2. `sig_table` lookups
 3. recovered address is zero if the signature can't be recovered.
 
