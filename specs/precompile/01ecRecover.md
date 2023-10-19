@@ -22,7 +22,7 @@ A constant gas cost: 3000
 
 1. If gas_left < gas_required, then is_success == false and return data is zero.
 1. v, r and s are valid
-  - v is 27 or 28 and the first 31 bytes of v is zero
+  - v is 27 or 28
   - both of r and s are less than `secp256k1N (0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141)`
   - both of r and s are greater than `1`
 2. `sig_table` lookups
