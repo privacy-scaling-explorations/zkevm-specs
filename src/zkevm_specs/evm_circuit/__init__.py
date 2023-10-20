@@ -7,3 +7,4 @@ from .step import *
 from .table import *
 from .typing import *
 from .util import *
+from .precompile import *

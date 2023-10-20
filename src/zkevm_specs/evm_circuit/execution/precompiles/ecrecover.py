@@ -1,5 +1,5 @@
-from instruction import Instruction, Transition
-from table import (
+from zkevm_specs.evm_circuit.instruction import Instruction
+from zkevm_specs.evm_circuit.table import (
     CallContextFieldTag,
     FixedTableTag,
     RW,
@@ -21,13 +21,13 @@ def ecRecover(instruction: Instruction):
     )
 
     # Get msg_hash, signature and recovered address from aux_data
-    msg_hash = instruction.curr.aux_data[0]
-    sig_v = instruction.curr.aux_data[1]
-    sig_r = instruction.curr.aux_data[2]
-    sig_s = instruction.curr.aux_data[3]
-    recovered_addr = instruction.curr.aux_data[4]
+    msg_hash: Word = instruction.curr.aux_data[0]
+    sig_v: Word = instruction.curr.aux_data[1]
+    sig_r: Word = instruction.curr.aux_data[2]
+    sig_s: Word = instruction.curr.aux_data[3]
+    recovered_addr: FQ = instruction.curr.aux_data[4]
 
-    is_recovered = FQ(instruction.is_zero_word(recovered_addr) != FQ(0))
+    is_recovered = FQ(instruction.is_zero(recovered_addr) != FQ(1))
 
     # if the address is recovered, this call should be success either
     instruction.constrain_equal(is_success, is_recovered)
@@ -49,7 +49,7 @@ def ecRecover(instruction: Instruction):
     if valid_r_s + valid_v == FQ(2):
         # sig table lookups
         instruction.sig_lookup(
-            msg_hash, sig_v - FQ(27).expr(), sig_r, sig_s, recovered_addr, is_recovered
+            msg_hash, sig_v.lo.expr() - FQ(27), sig_r, sig_s, recovered_addr, is_recovered
         )
     else:
         instruction.constrain_zero(is_recovered)
@@ -61,7 +61,7 @@ def ecRecover(instruction: Instruction):
     # Restore caller state to next StepState
     instruction.step_state_transition_to_restored_context(
         rw_counter_delta=instruction.rw_counter_offset,
-        return_data_offset=FQ(0),
-        return_data_length=32 if is_success == FQ(1) else 0,
-        gas_left=Transition.delta(-gas_cost),
+        return_data_offset=FQ.zero(),
+        return_data_length=FQ(32) if is_success == FQ(1) else FQ.zero(),
+        gas_left=instruction.curr.gas_left - gas_cost,
     )
