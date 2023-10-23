@@ -1,5 +1,5 @@
 from typing import List, NamedTuple
-from .util import FQ, RLC, Word, linear_combine_bytes, ECDSAVerifyChip, KeccakTable, is_circuit_code
+from .util import FQ, RLC, Word, ECDSAVerifyChip, KeccakTable, is_circuit_code
 from eth_keys import KeyAPI  # type: ignore
 from eth_utils import keccak
 
@@ -86,7 +86,7 @@ class Row:
         )
 
         # 3. Verify that the first 20 bytes of the pub_key_hash equals `recovered_addr`
-        addr_expr = linear_combine_bytes(list(reversed(self.pub_key_hash[-20:])), FQ(2**8))
+        addr_expr = FQ(int.from_bytes(bytes(self.pub_key_hash[-20:]), "big"))
         assert (
             addr_expr == self.recovered_addr
         ), f"{assert_msg}: {hex(addr_expr.n)} != {hex(self.recovered_addr.n)}"
