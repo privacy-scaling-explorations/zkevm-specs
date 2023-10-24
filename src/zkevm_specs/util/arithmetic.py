@@ -24,7 +24,7 @@ def linear_combine_bytes(seq: Sequence[Union[int, FQ]], base: FQ, range_check: b
     return result
 
 
-class FQ(bn128.FQ):
+class FQ(bn128.curve_order):
     def __init__(self, value: IntOrFQ) -> None:
         if isinstance(value, FQ):
             self.n = value.n
