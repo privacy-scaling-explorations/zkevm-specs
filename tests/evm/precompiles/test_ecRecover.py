@@ -40,11 +40,11 @@ def gen_testing_data():
     zero_addr = [CallContext(), msg_hash, v, r, s, bytes(0)]
     sig_r_over_ub = [CallContext(), msg_hash, v, SECP256K1N, s, bytes(0)]
     sig_s_over_ub = [CallContext(), msg_hash, v, r, SECP256K1N, bytes(0)]
-    sig_r_one = [CallContext(), msg_hash, v, 1, s, bytes(0)]
-    sig_s_one = [CallContext(), msg_hash, v, r, 1, bytes(0)]
+    sig_r_zero = [CallContext(), msg_hash, v, 0, s, bytes(0)]
+    sig_s_zero = [CallContext(), msg_hash, v, r, 0, bytes(0)]
     sig_v_29 = [CallContext(), msg_hash, v, SECP256K1N, s, bytes(0)]
 
-    return [normal, zero_addr, sig_r_over_ub, sig_s_over_ub, sig_r_one, sig_s_one, sig_v_29]
+    return [normal, zero_addr, sig_r_over_ub, sig_s_over_ub, sig_r_zero, sig_s_zero, sig_v_29]
 
 
 TESTING_DATA = gen_testing_data()
