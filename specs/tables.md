@@ -379,3 +379,14 @@ The circuit verifies the correctness of signatures.
 
 NOTE:
 - `sig_v` is either 0 or 1 so boolean type is used here.
+
+
+## Elliptic Curve Table
+
+Proved by the Elliptic Curve circuit.
+
+| 0 op_type | 1 input_a     | 2 input_b     | 3 output      | 4 is_valid |
+| --------- | ------------- | ------------- | ------------- |  ---------- |
+|   $tag    | $value{Lo,Hi} | $value{Lo,Hi} | $value{Lo,Hi} |    bool     |  
+
+- **tag**: supports `Add`, `Mul` and `Pairing`
