@@ -66,11 +66,11 @@ def test_ecRecover(
     callee_id = 2
     gas = Precompile.ECRECOVER.base_gas_cost()
 
-    success = True if len(address) != 0 else False
+    recovered = True if len(address) != 0 else False
     call_data_offset = 0
     call_data_length = 0x80
     return_data_offset = 0
-    return_data_length = 0x20 if success else 0
+    return_data_length = 0x20 if recovered else 0
 
     aux_data = [
         Word(msg_hash),
@@ -89,7 +89,7 @@ def test_ecRecover(
             Word(r),
             Word(s),
             FQ(int.from_bytes(address, "big")),
-            FQ(success),
+            FQ(recovered),
         )
     )
 
@@ -111,7 +111,7 @@ def test_ecRecover(
     rw_dictionary = (
         # fmt: off
         RWDictionary(1)
-        .call_context_read(callee_id, CallContextFieldTag.IsSuccess, success)
+        .call_context_read(callee_id, CallContextFieldTag.IsSuccess, FQ(1))
         .call_context_read(callee_id, CallContextFieldTag.CalleeAddress, Word(Precompile.ECRECOVER))
         # fmt: on
     )

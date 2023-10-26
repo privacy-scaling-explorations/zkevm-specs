@@ -47,7 +47,7 @@ def ecRecover(instruction: Instruction):
     is_equal_28 = instruction.is_equal_word(sig_v, Word(28))
     valid_v = instruction.is_equal(is_equal_27 + is_equal_28, FQ(1))
 
-    if valid_r_s + valid_v == FQ(3):
+    if valid_r_s + valid_v == FQ(2):
         # sig table lookups
         instruction.sig_lookup(
             msg_hash, sig_v.lo.expr() - FQ(27), sig_r, sig_s, recovered_addr, is_recovered
@@ -60,6 +60,6 @@ def ecRecover(instruction: Instruction):
     instruction.step_state_transition_to_restored_context(
         rw_counter_delta=instruction.rw_counter_offset,
         return_data_offset=FQ.zero(),
-        return_data_length=FQ(32),
+        return_data_length=FQ(32) if is_recovered == FQ(1) else FQ.zero(),
         gas_left=instruction.curr.gas_left - EcrecoverGas,
     )
