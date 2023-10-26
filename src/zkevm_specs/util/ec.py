@@ -79,8 +79,8 @@ class ECDSAVerifyChip:
         self.sig_s = signature[2]
         self.pub_key = pub_key
         self.msg_hash = msg_hash
-        self.pub_key_x_bytes = pub_key[0].to_be_bytes()
-        self.pub_key_y_bytes = pub_key[1].to_be_bytes()
+        self.pub_key_x_bytes = pub_key[0].to_le_bytes()
+        self.pub_key_y_bytes = pub_key[1].to_le_bytes()
         self.msg_hash_bytes = msg_hash.to_be_bytes()
         # NOTE: The circuit must constrain that all elements in the `*_bytes`
         # parameters  are in range 0..255 and that they represent the same

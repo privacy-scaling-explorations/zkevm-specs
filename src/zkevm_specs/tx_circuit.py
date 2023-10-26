@@ -226,7 +226,7 @@ class SignVerifyChip:
             assert_msg,
         )
 
-        # 2. Verify that the first 20 bytes of the pub_key_hash equal the address
+        # 2. Verify that the least significant 20 bytes of the pub_key_hash equal the address
         addr_expr = linear_combine_bytes(list(reversed(self.pub_key_hash[-20:])), FQ(2**8))
         assert (
             addr_expr == self.address

@@ -20,7 +20,7 @@ class KeccakTable:
         self.table.add(
             (
                 FQ(1),
-                RLC(input, keccak_randomness, n_bytes=64).expr(),
+                RLC(bytes(reversed(input)), keccak_randomness, n_bytes=64).expr(),
                 FQ(len(input)),
                 Word(output),
             )

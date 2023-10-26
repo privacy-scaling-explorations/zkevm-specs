@@ -76,16 +76,18 @@ class Row:
         # 2. Verify that keccak(pub_key_bytes) = pub_key_hash by keccak table
         # lookup, where pub_key_bytes is built from the pub_key in the
         # ecdsa_chip
-        pub_key_bytes = self.pub_key_x_bytes + self.pub_key_y_bytes
+        pub_key_bytes = bytes(reversed(self.pub_key_x_bytes)) + bytes(
+            reversed(self.pub_key_y_bytes)
+        )
         keccak_table.lookup(
             True,
-            RLC(pub_key_bytes, keccak_randomness, n_bytes=64).expr(),
+            RLC(bytes(reversed(pub_key_bytes)), keccak_randomness, n_bytes=64).expr(),
             FQ(64),
             Word(self.pub_key_hash),
             assert_msg,
         )
 
-        # 3. Verify that the first 20 bytes of the pub_key_hash equals `recovered_addr`
+        # 3. Verify that the least significant 20 bytes of the pub_key_hash equals `recovered_addr`
         addr_expr = FQ(int.from_bytes(bytes(self.pub_key_hash[-20:]), "big"))
         assert (
             addr_expr == self.recovered_addr
