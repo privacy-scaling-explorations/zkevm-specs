@@ -29,16 +29,17 @@ def ecRecover(instruction: Instruction):
 
     is_recovered = FQ(instruction.is_zero(recovered_addr) != FQ(1))
 
-    # if the address is recovered, this call should be success either
-    instruction.constrain_equal(is_success, is_recovered)
+    # is_success is always true
+    # ref: ref: https://github.com/ethereum/execution-specs/blob/master/src/ethereum/shanghai/vm/precompiled_contracts/ecrecover.py
+    instruction.constrain_equal(is_success, FQ(1))
 
     # verify r and s
     sig_r_upper_bound, _ = instruction.compare_word(sig_r, Word(SECP256K1N))
     sig_s_upper_bound, _ = instruction.compare_word(sig_s, Word(SECP256K1N))
-    sig_r_lower_bound, _ = instruction.compare_word(Word(1), sig_r)
-    sig_s_lower_bound, _ = instruction.compare_word(Word(1), sig_s)
+    sig_r_is_non_zero = FQ(instruction.is_zero_word(sig_r) != FQ(1))
+    sig_s_is_non_zero = FQ(instruction.is_zero_word(sig_s) != FQ(1))
     valid_r_s = instruction.is_equal(
-        sig_r_upper_bound + sig_s_upper_bound + sig_r_lower_bound + sig_s_lower_bound, FQ(4)
+        sig_r_upper_bound + sig_s_upper_bound + sig_r_is_non_zero + sig_s_is_non_zero, FQ(4)
     )
 
     # verify v
@@ -46,7 +47,7 @@ def ecRecover(instruction: Instruction):
     is_equal_28 = instruction.is_equal_word(sig_v, Word(28))
     valid_v = instruction.is_equal(is_equal_27 + is_equal_28, FQ(1))
 
-    if valid_r_s + valid_v == FQ(2):
+    if valid_r_s + valid_v == FQ(3):
         # sig table lookups
         instruction.sig_lookup(
             msg_hash, sig_v.lo.expr() - FQ(27), sig_r, sig_s, recovered_addr, is_recovered
@@ -55,13 +56,10 @@ def ecRecover(instruction: Instruction):
         instruction.constrain_zero(is_recovered)
         instruction.constrain_zero(recovered_addr)
 
-    # calculate gas cost
-    gas_cost = EcrecoverGas if is_success == FQ(1) else instruction.curr.gas_left
-
     # Restore caller state to next StepState
     instruction.step_state_transition_to_restored_context(
         rw_counter_delta=instruction.rw_counter_offset,
         return_data_offset=FQ.zero(),
-        return_data_length=FQ(32) if is_success == FQ(1) else FQ.zero(),
-        gas_left=instruction.curr.gas_left - gas_cost,
+        return_data_length=FQ(32),
+        gas_left=instruction.curr.gas_left - EcrecoverGas,
     )
