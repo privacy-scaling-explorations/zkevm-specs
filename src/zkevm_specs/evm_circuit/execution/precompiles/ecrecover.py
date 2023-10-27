@@ -30,7 +30,7 @@ def ecRecover(instruction: Instruction):
     is_recovered = FQ(instruction.is_zero(recovered_addr) != FQ(1))
 
     # is_success is always true
-    # ref: ref: https://github.com/ethereum/execution-specs/blob/master/src/ethereum/shanghai/vm/precompiled_contracts/ecrecover.py
+    # ref: https://github.com/ethereum/execution-specs/blob/master/src/ethereum/shanghai/vm/precompiled_contracts/ecrecover.py
     instruction.constrain_equal(is_success, FQ(1))
 
     # verify r and s

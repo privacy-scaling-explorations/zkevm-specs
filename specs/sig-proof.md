@@ -27,8 +27,8 @@ Constraints on the shape of the table is like:
 
 
 The Sig Circuit aims at proving the correctness of SigTable. This mainly includes the following type of constraints:
-- checking that the signature is obtained correctly. This is done by the ECDSA chip, and the correctness of `v` is checked separately;
-- checking that `msg_hash` is obtained correctly from Keccak hash function. This is done by lookup to Keccak table;
+- Checking that the signature is obtained correctly. This is done by the ECDSA chip, and the correctness of `v` is checked separately;
+- Checking that `msg_hash` is obtained correctly from Keccak hash function. This is done by lookup to Keccak table;
 
 
 ## Constraints
