@@ -1398,6 +1398,17 @@ class Instruction:
         exp_table_row = self.tables.exp_lookup(identifier, is_last, base_limbs, exponent)
         return exp_table_row.exponentiation
 
+    def sig_lookup(
+        self,
+        msg_hash: Word,
+        sig_v: Expression,
+        sig_r: Word,
+        sig_s: Word,
+        recovered_addr: FQ,
+        is_valid: Expression,
+    ) -> Word:
+        return self.tables.sig_lookup(msg_hash, sig_v, sig_r, sig_s, recovered_addr, is_valid)
+
     def constrain_error_state(self, rw_counter_delta: int):
         # Current call must fail.
         rw_counter_delta += 1

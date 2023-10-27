@@ -538,6 +538,16 @@ class ExpTableRow(TableRow):
     exponentiation: Word
 
 
+@dataclass(frozen=True)
+class SigTableRow(TableRow):
+    msg_hash: Word
+    sig_v: FQ
+    sig_r: Word
+    sig_s: Word
+    recovered_addr: FQ
+    is_valid: FQ
+
+
 class Tables:
     """
     A collection of lookup tables used in EVM circuit.
@@ -552,6 +562,7 @@ class Tables:
     copy_table: Set[CopyTableRow]
     keccak_table: Set[KeccakTableRow]
     exp_table: Set[ExpTableRow]
+    sig_table: Set[SigTableRow]
 
     def __init__(
         self,
@@ -563,6 +574,7 @@ class Tables:
         copy_circuit: Optional[Sequence[CopyCircuitRow]] = None,
         keccak_table: Optional[Sequence[KeccakTableRow]] = None,
         exp_circuit: Optional[Sequence[ExpCircuitRow]] = None,
+        sig_table: Optional[Sequence[SigTableRow]] = None,
     ) -> None:
         self.block_table = block_table
         self.tx_table = tx_table
@@ -578,6 +590,8 @@ class Tables:
             self.keccak_table = set(keccak_table)
         if exp_circuit is not None:
             self.exp_table = self._convert_exp_circuit_to_table(exp_circuit)
+        if sig_table is not None:
+            self.sig_table = set(sig_table)
 
     def _convert_copy_circuit_to_table(self, copy_circuit: Sequence[CopyCircuitRow]):
         rows: List[CopyTableRow] = []
@@ -767,6 +781,25 @@ class Tables:
             "exponent": exponent,
         }
         return lookup(ExpTableRow, self.exp_table, query)
+
+    def sig_lookup(
+        self,
+        msg_hash: Word,
+        sig_v: Expression,
+        sig_r: Word,
+        sig_s: Word,
+        recovered_addr: FQ,
+        is_valid: Expression,
+    ) -> SigTableRow:
+        query = {
+            "msg_hash": msg_hash,
+            "sig_v": sig_v,
+            "sig_r": sig_r,
+            "sig_s": sig_s,
+            "recovered_addr": recovered_addr,
+            "is_valid": is_valid,
+        }
+        return lookup(SigTableRow, self.sig_table, query)
 
 
 T = TypeVar("T", bound=TableRow)

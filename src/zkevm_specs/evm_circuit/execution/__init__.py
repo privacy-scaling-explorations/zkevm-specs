@@ -76,6 +76,7 @@ from .error_oog_sha3 import *
 from .error_oog_static_memory_expansion import *
 from .error_oog_sload_sstore import *
 from .error_oog_create import *
+from .precompiles.ecrecover import *
 
 
 EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
@@ -152,7 +153,7 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.ErrorOutOfGasSloadSstore: error_oog_sload_sstore,
     ExecutionState.ErrorReturnDataOutOfBound: error_return_data_out_of_bound,
     ExecutionState.ErrorOutOfGasCREATE: error_oog_create,
-    # ExecutionState.ECRECOVER: ,
+    ExecutionState.ECRECOVER: ecRecover,
     # ExecutionState.SHA256: ,
     # ExecutionState.RIPEMD160: ,
     ExecutionState.DATACOPY: dataCopy,
