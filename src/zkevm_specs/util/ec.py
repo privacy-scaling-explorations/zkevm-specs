@@ -33,10 +33,6 @@ class WrongFieldInteger:
     def to_be_bytes(self) -> bytes:
         return self.to_int_value().to_bytes(32, "big")
 
-    def add(self, other: WrongFieldInteger) -> int:
-        # Python will extend the size if it exceeds 32bytes. So, don't need to take care overflow here.
-        return self.to_int_value() + other.to_int_value()
-
 
 class Secp256k1BaseField(WrongFieldInteger):
     """

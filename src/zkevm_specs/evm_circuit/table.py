@@ -555,6 +555,7 @@ class SigTableRow(TableRow):
     sig_r: Word
     sig_s: Word
     recovered_addr: FQ
+    is_valid: FQ
 
 
 @dataclass(frozen=True)

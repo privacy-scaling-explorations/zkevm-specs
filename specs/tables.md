@@ -383,10 +383,10 @@ NOTE:
 
 ## Elliptic Curve Table
 
-Proved by the Elliptic Curve circuit.
+Proved by the ecc_circuit. The circuit verifies the correctness of ECC operations.
 
-| 0 op_type | 1 input_a     | 2 input_b     | 3 output      | 4 is_valid |
-| --------- | ------------- | ------------- | ------------- |  ---------- |
-|   $tag    | $value{Lo,Hi} | $value{Lo,Hi} | $value{Lo,Hi} |    bool     |  
+| 0 op_type | 1 px          | 2 py          | 3 qx          | 2 qy          | 2 outx        | 2 outy        | 4 is_valid |
+| --------- | ------------- | ------------- | ------------- | ------------- | ------------- | ------------- | ---------- |
+|   $tag    | $value{Lo,Hi} | $value{Lo,Hi} | $value{Lo,Hi} | $value{Lo,Hi} | $value{Lo,Hi} | $value{Lo,Hi} |    bool    |  
 
-- **tag**: supports `Add`, `Mul` and `Pairing`
+- tag: supports `Add`, `Mul` and `Pairing`
