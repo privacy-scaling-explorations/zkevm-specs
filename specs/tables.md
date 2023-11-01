@@ -385,8 +385,9 @@ NOTE:
 
 Proved by the ecc_circuit. The circuit verifies the correctness of ECC operations.
 
-| 0 op_type | 1 px          | 2 py          | 3 qx          | 2 qy          | 2 outx        | 2 outy        | 4 is_valid |
-| --------- | ------------- | ------------- | ------------- | ------------- | ------------- | ------------- | ---------- |
-|   $tag    | $value{Lo,Hi} | $value{Lo,Hi} | $value{Lo,Hi} | $value{Lo,Hi} | $value{Lo,Hi} | $value{Lo,Hi} |    bool    |  
+| 0 op_type | 1 px          | 2 py          | 3 qx          | 4 qy          | 5 input_rlc   | 6 outx        | 7 outy        | 8 is_valid |
+| --------- | ------------- | ------------- | ------------- | ------------- | ------------- | ------------- | ------------- | ---------- |
+|   $tag    | $value{Lo,Hi} | $value{Lo,Hi} | $value{Lo,Hi} | $value{Lo,Hi} | $input_rlc    | $value{Lo,Hi} | $value{Lo,Hi} |    bool    |  
 
 - tag: supports `Add`, `Mul` and `Pairing`
+- input_rlc: only has value when `op_type` is `Pairing`
