@@ -77,7 +77,7 @@ class EccCircuitRow:
             Word(self_p0_y),
             Word(self_p1_x),
             Word(self_p1_y),
-            Word(0),
+            FQ(0),
             Word(self_output_x),
             Word(self_output_y),
             FQ(is_valid),
@@ -91,7 +91,6 @@ class EccCircuitRow:
 
     @classmethod
     def assign_pairing(cls, p: List[Tuple[Word, Word]], out: Tuple[Word, Word]):
-        # do rlc of list `p`
         raise NotImplementedError("assign_pairing is not supported yet")
 
     def verify(
@@ -119,21 +118,48 @@ class EccCircuitRow:
             assert (
                 num_add <= max_add_ops
             ), f"exceeds max number of add operation, max_add_ops: {max_add_ops}"
-            cs.constrain_equal(FQ(self.ecc_chip.verify_add()), self.row.is_valid)
+            self.verify_add(cs)
 
         if is_mul == FQ(1):
             num_mul += 1
             assert (
                 num_mul <= max_mul_ops
             ), f"exceeds max number of mul operation, max_mul_ops: {max_mul_ops}"
-            cs.constrain_equal(FQ(self.ecc_chip.verify_mul()), self.row.is_valid)
+            self.verify_mul(cs)
 
         if is_pairing == FQ(1):
             num_pairing += 1
             assert (
                 num_pairing <= max_pairing_ops
             ), f"exceeds max number of pairing operation, max_pairing_ops: {max_pairing_ops}"
-            cs.constrain_equal(FQ(self.ecc_chip.verify_pairing()), self.row.is_valid)
+            self.verify_pairing(cs)
+
+    def verify_add(self, cs: ConstraintSystem):
+        # input_rlc is zero bcs it's only used in pairing
+        cs.constrain_zero(self.row.input_rlc)
+
+        cs.constrain_equal(FQ(self.ecc_chip.verify_add()), self.row.is_valid)
+
+    def verify_mul(self, cs: ConstraintSystem):
+        # input_rlc is zero bcs it's only used in pairing
+        cs.constrain_zero(self.row.input_rlc)
+        # qy is zero bcs q is scalar in ecMul so we only use qx
+        cs.constrain_zero(self.row.qy)
+
+        cs.constrain_equal(FQ(self.ecc_chip.verify_mul()), self.row.is_valid)
+
+    def verify_pairing(self, cs: ConstraintSystem):
+        # p and q are all zero. All input points are RLCed and stored in input_rlc
+        cs.constrain_zero(self.row.px)
+        cs.constrain_zero(self.row.py)
+        cs.constrain_zero(self.row.qx)
+        cs.constrain_zero(self.row.qy)
+        # output of pairing is either 0 or 1 and it stores in low part
+        cs.constrain_zero(self.row.out_x)
+        cs.constrain_bool(self.row.out_y)
+        cs.constrain_equal(self.row.out_y, self.row.is_valid)
+
+        cs.constrain_equal(FQ(self.ecc_chip.verify_pairing()), self.row.is_valid)
 
 
 class EcAdd(NamedTuple):
@@ -151,7 +177,7 @@ class EcMul(NamedTuple):
 class EcPairing(NamedTuple):
     g1_pts: List[Tuple[int, int]]
     g2_pts: List[Tuple[int, int, int, int]]
-    out: Tuple[int, int]
+    out: int
 
 
 class EccCircuit:
@@ -186,11 +212,7 @@ class EccCircuit:
         self.pairing_ops.append(op)
 
 
-def verify_circuit(circuit: EccCircuit) -> None:
-    """
-    Entry level circuit verification function
-    """
-    cs = ConstraintSystem()
+def circuit2rows(circuit: EccCircuit) -> List[EccCircuitRow]:
     rows: List[EccCircuitRow] = []
     for op in circuit.add_ops:
         row = EccCircuitRow.assign(
@@ -222,9 +244,18 @@ def verify_circuit(circuit: EccCircuit) -> None:
         row = EccCircuitRow.assign(
             EccOpTag.Pairing,
             points,
-            (Word(op.out[0]), Word(op.out[1])),
+            (Word(0), Word(op.out)),
         )
         rows.append(row)
 
+    return rows
+
+
+def verify_circuit(circuit: EccCircuit) -> None:
+    """
+    Entry level circuit verification function
+    """
+    cs = ConstraintSystem()
+    rows = circuit2rows(circuit)
     for row in rows:
         row.verify(cs, circuit.max_add_ops, circuit.max_mul_ops, circuit.max_pairing_ops)

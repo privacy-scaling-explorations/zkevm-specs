@@ -1,8 +1,9 @@
 import pytest
-from typing import Tuple, NamedTuple
-from zkevm_specs.ecc_circuit import EcAdd, EccCircuitRow, verify_circuit, EccCircuit
-from zkevm_specs.evm_circuit.table import EccOpTag
-from zkevm_specs.util import Word
+from zkevm_specs.ecc_circuit import (
+    EcAdd,
+    verify_circuit,
+    EccCircuit,
+)
 
 
 def verify(
@@ -28,8 +29,6 @@ def verify(
 
 
 def gen_ecAdd_testing_data():
-    op = EccOpTag.Add
-
     normal = (
         EcAdd(
             p=(1, 2),
@@ -83,7 +82,7 @@ TESTING_DATA = gen_ecAdd_testing_data()
     TESTING_DATA,
 )
 def test_ecc_add(ecc_ops: EcAdd, success: bool):
-    MAX_ECADD_OPS = 5
+    MAX_ECADD_OPS = 1
     MAX_ECMUL_OPS = 0
     MAX_ECPAIRING_OPS = 0
 

@@ -11,8 +11,8 @@ EccTable built inside zkevm-circuits is used to verify ECC operations. It has th
 - `qx`: x-coordinate of point 2 if `op_type` is `Add`. Scalar number if `op_type` is `Mul` otherwise it's zero
 - `qy`: y-coordinate of point 2 if `op_type` is `Add` otherwise it's zero
 - `input_rlc`: rlc of input data if `op_type` is `Pairing` otherwise it's zero
-- `outx`: x-coordinate of output
-- `outy`: y-coordinate of output
+- `outx`: x-coordinate of output if `op_type` is `Mul` or `Add` otherwise it's zero
+- `outy`: y-coordinate of output if `op_type` is `Mul` or `Add` otherwise it indicates pairing operation being successful or not
 - `is_valid`: Indicates whether the operation is valid or not.
 
 `Pairing` allows multiple input points, and `p` and `q` are not enough to represent multiple points so we introduce `input_rlc` to represent all the input points. Therefore, `input_rlc` is a non-zero value only when `op_type` is `Pairing` otherwise it should be zero.
