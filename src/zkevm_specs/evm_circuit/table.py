@@ -567,6 +567,9 @@ class EccTableRow(TableRow):
     qx: Word
     qy: Word
 
+    # only works when op_type is Pairing
+    input_rlc: FQ
+
     out_x: Word
     out_y: Word
     is_valid: FQ

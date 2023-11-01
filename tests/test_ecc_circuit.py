@@ -1,15 +1,8 @@
 import pytest
 from typing import Tuple, NamedTuple
-from zkevm_specs.ecc_circuit import EccCircuitRow, verify_circuit, EccCircuit
+from zkevm_specs.ecc_circuit import EcAdd, EccCircuitRow, verify_circuit, EccCircuit
 from zkevm_specs.evm_circuit.table import EccOpTag
 from zkevm_specs.util import Word
-
-
-class EccOps(NamedTuple):
-    op_type: EccOpTag
-    p: Tuple[int, int]
-    q: Tuple[int, int]
-    out: Tuple[int, int]
 
 
 def verify(
@@ -38,8 +31,7 @@ def gen_ecAdd_testing_data():
     op = EccOpTag.Add
 
     normal = (
-        EccOps(
-            op,
+        EcAdd(
             p=(1, 2),
             q=(1, 2),
             out=(
@@ -51,8 +43,7 @@ def gen_ecAdd_testing_data():
     )
     # p is not on the curve
     invalid_p = (
-        EccOps(
-            op,
+        EcAdd(
             p=(2, 3),
             q=(1, 2),
             out=(0, 0),
@@ -60,8 +51,7 @@ def gen_ecAdd_testing_data():
         True,
     )
     incorrect_out = (
-        EccOps(
-            op,
+        EcAdd(
             p=(1, 2),
             q=(1, 2),
             out=(
@@ -92,19 +82,13 @@ TESTING_DATA = gen_ecAdd_testing_data()
     "ecc_ops, success",
     TESTING_DATA,
 )
-def test_ecc_add(ecc_ops: EccOps, success: bool):
+def test_ecc_add(ecc_ops: EcAdd, success: bool):
     MAX_ECADD_OPS = 5
     MAX_ECMUL_OPS = 0
     MAX_ECPAIRING_OPS = 0
 
     circuit = EccCircuit(MAX_ECADD_OPS, MAX_ECMUL_OPS, MAX_ECPAIRING_OPS)
     ecc_ops = gen_ecAdd_testing_data()
-    for ec_op, success in ecc_ops:
-        row = EccCircuitRow.assign(
-            ec_op.op_type,
-            (Word(ec_op.p[0]), Word(ec_op.p[1])),
-            (Word(ec_op.q[0]), Word(ec_op.q[1])),
-            (Word(ec_op.out[0]), Word(ec_op.out[1])),
-        )
-        circuit.add(row)
+    for op, success in ecc_ops:
+        circuit.append_add(op)
         verify(circuit, success)

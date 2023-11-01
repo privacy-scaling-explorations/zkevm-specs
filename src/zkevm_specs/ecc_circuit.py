@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import List, Sequence, Tuple
+from typing import List, NamedTuple, Tuple
 from py_ecc.bn128.bn128_curve import is_inf, is_on_curve, b
 from .evm_circuit import EccTableRow
 from .util import ConstraintSystem, FQ, Word, ECCVerifyChip
@@ -25,14 +25,17 @@ class EccCircuitRow:
 
     @classmethod
     def assign(
-        cls, op_type: EccOpTag, p0: Tuple[Word, Word], p1: Tuple[Word, Word], out: Tuple[Word, Word]
+        cls,
+        op_type: EccOpTag,
+        p: List[Tuple[Word, Word]],
+        out: Tuple[Word, Word],
     ):
         if op_type == EccOpTag.Add:
-            return cls.assign_add(p0, p1, out)
+            return cls.assign_add(p[0], p[1], out)
         elif op_type == EccOpTag.Mul:
-            return cls.assign_add(p0, p1, out)
+            return cls.assign_mul(p[0], p[1], out)
         elif op_type == EccOpTag.Pairing:
-            return cls.assign_add(p0, p1, out)
+            return cls.assign_pairing(p, out)
         else:
             raise TypeError(f"Not supported type: {op_type}")
 
@@ -74,6 +77,7 @@ class EccCircuitRow:
             Word(self_p0_y),
             Word(self_p1_x),
             Word(self_p1_y),
+            Word(0),
             Word(self_output_x),
             Word(self_output_y),
             FQ(is_valid),
@@ -86,7 +90,8 @@ class EccCircuitRow:
         raise NotImplementedError("assign_mul is not supported yet")
 
     @classmethod
-    def assign_pairing(cls, p0: Tuple[Word, Word], p1: Tuple[Word, Word], out: Tuple[Word, Word]):
+    def assign_pairing(cls, p: List[Tuple[Word, Word]], out: Tuple[Word, Word]):
+        # do rlc of list `p`
         raise NotImplementedError("assign_pairing is not supported yet")
 
     def verify(
@@ -131,8 +136,29 @@ class EccCircuitRow:
             cs.constrain_equal(FQ(self.ecc_chip.verify_pairing()), self.row.is_valid)
 
 
+class EcAdd(NamedTuple):
+    p: Tuple[int, int]
+    q: Tuple[int, int]
+    out: Tuple[int, int]
+
+
+class EcMul(NamedTuple):
+    p: Tuple[int, int]
+    s: int
+    out: Tuple[int, int]
+
+
+class EcPairing(NamedTuple):
+    g1_pts: List[Tuple[int, int]]
+    g2_pts: List[Tuple[int, int, int, int]]
+    out: Tuple[int, int]
+
+
 class EccCircuit:
-    rows: List[EccCircuitRow]
+    add_ops: List[EcAdd]
+    mul_ops: List[EcMul]
+    pairing_ops: List[EcPairing]
+
     max_add_ops: int
     max_mul_ops: int
     max_pairing_ops: int
@@ -143,17 +169,21 @@ class EccCircuit:
         max_mul_ops: int,
         max_pairing_ops: int,
     ) -> None:
-        self.rows = []
+        self.add_ops = []
+        self.mul_ops = []
+        self.pairing_ops = []
         self.max_add_ops = max_add_ops
         self.max_mul_ops = max_mul_ops
         self.max_pairing_ops = max_pairing_ops
 
-    def table(self) -> Sequence[EccCircuitRow]:
-        return self.rows
+    def append_add(self, op: EcAdd):
+        self.add_ops.append(op)
 
-    def add(self, row: EccCircuitRow) -> EccCircuit:
-        self.rows.append(row)
-        return self
+    def append_mul(self, op: EcMul):
+        self.mul_ops.append(op)
+
+    def append_pairing(self, op: EcPairing):
+        self.pairing_ops.append(op)
 
 
 def verify_circuit(circuit: EccCircuit) -> None:
@@ -161,5 +191,40 @@ def verify_circuit(circuit: EccCircuit) -> None:
     Entry level circuit verification function
     """
     cs = ConstraintSystem()
-    for row in circuit.table():
+    rows: List[EccCircuitRow] = []
+    for op in circuit.add_ops:
+        row = EccCircuitRow.assign(
+            EccOpTag.Add,
+            [
+                (Word(op.p[0]), Word(op.p[1])),
+                (Word(op.q[0]), Word(op.q[1])),
+            ],
+            (Word(op.out[0]), Word(op.out[1])),
+        )
+        rows.append(row)
+    for op in circuit.mul_ops:
+        row = EccCircuitRow.assign(
+            EccOpTag.Mul,
+            [(Word(op.p[0]), Word(op.p[1])), (Word(op.s), Word(0))],
+            (Word(op.out[0]), Word(op.out[1])),
+        )
+        rows.append(row)
+    for op in circuit.pairing_ops:
+        points: List[Word] = []
+        for i, g1_pt in enumerate(op.g1_pts):
+            points.append(g1_pt[0])
+            points.append(g1_pt[1])
+            points.append(op.g2_pts[i][0])
+            points.append(op.g2_pts[i][1])
+            points.append(op.g2_pts[i][2])
+            points.append(op.g2_pts[i][3])
+
+        row = EccCircuitRow.assign(
+            EccOpTag.Pairing,
+            points,
+            (Word(op.out[0]), Word(op.out[1])),
+        )
+        rows.append(row)
+
+    for row in rows:
         row.verify(cs, circuit.max_add_ops, circuit.max_mul_ops, circuit.max_pairing_ops)
