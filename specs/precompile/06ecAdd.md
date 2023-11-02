@@ -1,18 +1,28 @@
 # ecAdd precompile
 
-Point addition (ADD) on the elliptic curve 'alt_bn128'. The point at infinity is encoded with both field x and y at 0.
+## Procedure
 
-## EVM behavior
+The `ecAdd` precompile add given two points and return result point over alt_bn128 curve. Firstly, the input is divided into four parts to get two points $x$ and $y$. Secondly, the alt_bn128 points are initialized with given pairs of $x$ and $y$. Finally, the result point is returned.
 
-#### Inputs
+### Circuit behavior
 
-The length of inputs is 128 bytes. The first 64 bytes is x coordinate and y coordinate of the first point. The second 64 bytes is x coordinate and y coordinate of the second point. Each coordinate (x or y) is a 32 bytes data.
+Two points are recovered from input. The field is expressed as `32` bytes for each and the input includes two points so the input size is `128` bytes.
 
-#### Output
+```
+input[0; 31] (32 bytes): x1
+input[32; 63] (32 bytes): y1
+input[64; 95] (32 bytes): x2
+input[96; 128] (32 bytes): y2
+```
 
-The length of output is 64 bytes. It's the addition result of two input points.
+These two points are added and the result is returned. The result size is `64` bytes and $x$ and $y$ are montgomery form.
 
-#### Gas cost
+```
+input[0; 31] (32 bytes): x
+input[32; 63] (32 bytes): y
+```
+
+### Gas cost
 
 A constant gas cost: 150
 

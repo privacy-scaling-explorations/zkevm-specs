@@ -832,6 +832,31 @@ class Tables:
         }
         return lookup(SigTableRow, self.sig_table, query)
 
+    def ecc_lookup(
+        self,
+        op_type: FQ,
+        px: Word,
+        py: Expression,
+        qx: Word,
+        qy: Word,
+        outx: FQ,
+        outy: FQ,
+        input_rlc: FQ,
+        is_valid: Expression,
+    ) -> EccTableRow:
+        query = {
+            "op_type": op_type,
+            "px": px,
+            "py": py,
+            "qx": qx,
+            "qy": qy,
+            "outx": outx,
+            "outy": outy,
+            "input_rlc": input_rlc,
+            "is_valid": is_valid,
+        }
+        return lookup(EccTableRow, self.ecc_table, query)
+
 
 T = TypeVar("T", bound=TableRow)
 

@@ -145,8 +145,6 @@ class ECCVerifyChip:
         return cls((p0[0], p0[1]), (p1[0], p1[1]), (output[0], output[1]))
 
     def verify_add(self) -> bool:
-        a = add(self.p0, self.p1)
-        print(f"{a[0].n}, {a[1].n}")
         return eq(add(self.p0, self.p1), self.output)
 
     def verify_mul(self) -> bool:

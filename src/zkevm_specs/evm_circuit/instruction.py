@@ -1406,8 +1406,22 @@ class Instruction:
         sig_s: Word,
         recovered_addr: FQ,
         is_valid: Expression,
-    ) -> Word:
-        return self.tables.sig_lookup(msg_hash, sig_v, sig_r, sig_s, recovered_addr, is_valid)
+    ):
+        self.tables.sig_lookup(msg_hash, sig_v, sig_r, sig_s, recovered_addr, is_valid)
+
+    def ecc_lookup(
+        self,
+        op_type: FQ,
+        px: Word,
+        py: Expression,
+        qx: Word,
+        qy: Word,
+        outx: FQ,
+        outy: FQ,
+        input_rlc: FQ,
+        is_valid: Expression,
+    ):
+        self.tables.ecc_lookup(op_type, px, py, qx, qy, outx, outy, input_rlc, is_valid)
 
     def constrain_error_state(self, rw_counter_delta: int):
         # Current call must fail.
