@@ -570,8 +570,8 @@ class EccTableRow(TableRow):
     # only works when op_type is Pairing
     input_rlc: FQ
 
-    out_x: Word
-    out_y: Word
+    out_x: FQ
+    out_y: FQ
     is_valid: FQ
 
 
@@ -839,9 +839,9 @@ class Tables:
         py: Expression,
         qx: Word,
         qy: Word,
+        input_rlc: FQ,
         outx: FQ,
         outy: FQ,
-        input_rlc: FQ,
         is_valid: Expression,
     ) -> EccTableRow:
         query = {
@@ -850,9 +850,9 @@ class Tables:
             "py": py,
             "qx": qx,
             "qy": qy,
-            "outx": outx,
-            "outy": outy,
             "input_rlc": input_rlc,
+            "out_x": outx,
+            "out_y": outy,
             "is_valid": is_valid,
         }
         return lookup(EccTableRow, self.ecc_table, query)

@@ -77,6 +77,7 @@ from .error_oog_static_memory_expansion import *
 from .error_oog_sload_sstore import *
 from .error_oog_create import *
 from .precompiles.ecrecover import *
+from .precompiles.ecadd import *
 
 
 EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
@@ -158,7 +159,7 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     # ExecutionState.RIPEMD160: ,
     ExecutionState.DATACOPY: dataCopy,
     # ExecutionState.BIGMODEXP: ,
-    # ExecutionState.BN254_ADD: ,
+    ExecutionState.BN256_ADD: ecAdd,
     # ExecutionState.BN254_SCALAR_MUL: ,
     # ExecutionState.BN254_PAIRING: ,
     # ExecutionState.BLAKE2F: ,

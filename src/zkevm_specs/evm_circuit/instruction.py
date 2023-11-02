@@ -1413,15 +1413,15 @@ class Instruction:
         self,
         op_type: FQ,
         px: Word,
-        py: Expression,
+        py: Word,
         qx: Word,
         qy: Word,
+        input_rlc: FQ,
         outx: FQ,
         outy: FQ,
-        input_rlc: FQ,
-        is_valid: Expression,
+        is_valid: FQ,
     ):
-        self.tables.ecc_lookup(op_type, px, py, qx, qy, outx, outy, input_rlc, is_valid)
+        self.tables.ecc_lookup(op_type, px, py, qx, qy, input_rlc, outx, outy, is_valid)
 
     def constrain_error_state(self, rw_counter_delta: int):
         # Current call must fail.

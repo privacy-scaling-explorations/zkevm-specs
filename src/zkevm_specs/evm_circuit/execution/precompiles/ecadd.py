@@ -27,24 +27,24 @@ def ecAdd(instruction: Instruction):
     outx: FQ = instruction.curr.aux_data[4]
     outy: FQ = instruction.curr.aux_data[5]
 
-    # a valid result if (outx, outy) is a non-zero pair
-    is_valid = FQ(instruction.is_zero(outx) != FQ(1) and instruction.is_zero(outy) != FQ(1))
-
-    instruction.constrain_equal(is_success, is_valid)
+    # if is_success is false, outx and outy are zero
+    if is_success == FQ.zero():
+        instruction.constrain_zero(outx)
+        instruction.constrain_zero(outy)
 
     # ecc table lookup
-    instruction.ecc_lookup(EccOpTag.Add, px, py, qx, qy, FQ.zero(), outx, outy, is_valid)
+    instruction.ecc_lookup(FQ(EccOpTag.Add), px, py, qx, qy, FQ.zero(), outx, outy, is_success)
 
     # consume gas
-    # consume all the gas if is_valid is false
+    # consume all the gas if is_success is false
     gas_left = FQ.zero()
-    if is_valid == FQ(1):
+    if is_success == FQ(1):
         gas_left = instruction.curr.gas_left - FQ(Bn256AddGas)
 
     # Restore caller state to next StepState
     instruction.step_state_transition_to_restored_context(
         rw_counter_delta=instruction.rw_counter_offset,
         return_data_offset=FQ.zero(),
-        return_data_length=FQ(64) if is_valid == FQ(1) else FQ.zero(),
+        return_data_length=FQ(64) if is_success == FQ(1) else FQ.zero(),
         gas_left=gas_left,
     )

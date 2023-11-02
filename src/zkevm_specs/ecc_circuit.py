@@ -28,7 +28,7 @@ class EccCircuitRow:
         cls,
         op_type: EccOpTag,
         p: List[Tuple[Word, Word]],
-        out: Tuple[Word, Word],
+        out: Tuple[FQ, FQ],
     ):
         if op_type == EccOpTag.Add:
             return cls.assign_add(p[0], p[1], out)
@@ -40,7 +40,7 @@ class EccCircuitRow:
             raise TypeError(f"Not supported type: {op_type}")
 
     @classmethod
-    def assign_add(cls, p0: Tuple[Word, Word], p1: Tuple[Word, Word], out: Tuple[Word, Word]):
+    def assign_add(cls, p0: Tuple[Word, Word], p1: Tuple[Word, Word], out: Tuple[FQ, FQ]):
         # 1. verify validity of input points p0 and p1
         precheck_p0x = cls.check_fq(p0[0].int_value())
         precheck_p0y = cls.check_fq(p0[1].int_value())
@@ -63,13 +63,11 @@ class EccCircuitRow:
         self_p0_y = p0[1].int_value()
         self_p1_x = p1[0].int_value()
         self_p1_y = p1[1].int_value()
-        self_output_x = out[0].int_value()
-        self_output_y = out[1].int_value()
 
         ecc_chip = ECCVerifyChip.assign(
             p0=(FQ(self_p0_x), FQ(self_p0_y)),
             p1=(FQ(self_p1_x), FQ(self_p1_y)),
-            output=(FQ(self_output_x), FQ(self_output_y)),
+            output=out,
         )
         ecc_table = EccTableRow(
             FQ(EccOpTag.Add),
@@ -77,9 +75,9 @@ class EccCircuitRow:
             Word(self_p0_y),
             Word(self_p1_x),
             Word(self_p1_y),
-            FQ(0),
-            Word(self_output_x),
-            Word(self_output_y),
+            FQ.zero(),
+            out[0],
+            out[1],
             FQ(is_valid),
         )
 
@@ -101,8 +99,8 @@ class EccCircuitRow:
         cs.constrain_equal_word(Word(self.ecc_chip.p0[1].n), self.row.py)
         cs.constrain_equal_word(Word(self.ecc_chip.p1[0].n), self.row.qx)
         cs.constrain_equal_word(Word(self.ecc_chip.p1[1].n), self.row.qy)
-        cs.constrain_equal_word(Word(self.ecc_chip.output[0].n), self.row.out_x)
-        cs.constrain_equal_word(Word(self.ecc_chip.output[1].n), self.row.out_y)
+        cs.constrain_equal(self.ecc_chip.output[0], self.row.out_x)
+        cs.constrain_equal(self.ecc_chip.output[1], self.row.out_y)
 
         is_add = cs.is_equal(self.row.op_type, FQ(EccOpTag.Add))
         is_mul = cs.is_equal(self.row.op_type, FQ(EccOpTag.Mul))
@@ -221,14 +219,14 @@ def circuit2rows(circuit: EccCircuit) -> List[EccCircuitRow]:
                 (Word(op.p[0]), Word(op.p[1])),
                 (Word(op.q[0]), Word(op.q[1])),
             ],
-            (Word(op.out[0]), Word(op.out[1])),
+            (FQ(op.out[0]), FQ(op.out[1])),
         )
         rows.append(row)
     for op in circuit.mul_ops:
         row = EccCircuitRow.assign(
             EccOpTag.Mul,
             [(Word(op.p[0]), Word(op.p[1])), (Word(op.s), Word(0))],
-            (Word(op.out[0]), Word(op.out[1])),
+            (FQ(op.out[0]), FQ(op.out[1])),
         )
         rows.append(row)
     for op in circuit.pairing_ops:
@@ -244,7 +242,7 @@ def circuit2rows(circuit: EccCircuit) -> List[EccCircuitRow]:
         row = EccCircuitRow.assign(
             EccOpTag.Pairing,
             points,
-            (Word(0), Word(op.out)),
+            (FQ(0), FQ(op.out)),
         )
         rows.append(row)
 
