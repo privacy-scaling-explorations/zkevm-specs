@@ -96,7 +96,7 @@ def test_ecAdd(
         Bytecode()
         .call(
             gas_left,
-            Precompile.BN256ADD,
+            Precompile.BN254ADD,
             0,
             call_data_offset,
             call_data_length,
@@ -111,7 +111,7 @@ def test_ecAdd(
         # fmt: off
         RWDictionary(1)
         .call_context_read(callee_id, CallContextFieldTag.IsSuccess, FQ(is_success))
-        .call_context_read(callee_id, CallContextFieldTag.CalleeAddress, Word(Precompile.BN256ADD))
+        .call_context_read(callee_id, CallContextFieldTag.CalleeAddress, Word(Precompile.BN254ADD))
         # fmt: on
     )
 
@@ -146,7 +146,7 @@ def test_ecAdd(
         tables,
         steps=[
             StepState(
-                execution_state=ExecutionState.BN256_ADD,
+                execution_state=ExecutionState.BN254_ADD,
                 rw_counter=1,
                 call_id=callee_id,
                 is_root=False,
@@ -166,7 +166,7 @@ def test_ecAdd(
                 program_counter=caller_ctx.program_counter,
                 stack_pointer=caller_ctx.stack_pointer,
                 memory_word_size=caller_ctx.memory_word_size,
-                gas_left=gas_left - Precompile.BN256ADD.base_gas_cost() if is_success else FQ(0),
+                gas_left=gas_left - Precompile.BN254ADD.base_gas_cost() if is_success else FQ(0),
             ),
         ],
     )

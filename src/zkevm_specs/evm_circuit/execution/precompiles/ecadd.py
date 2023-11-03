@@ -5,7 +5,7 @@ from zkevm_specs.evm_circuit.table import (
     FixedTableTag,
     RW,
 )
-from zkevm_specs.util import FQ, Word, Bn256AddGas
+from zkevm_specs.util import FQ, Word, Bn254AddGas
 
 
 def ecAdd(instruction: Instruction):
@@ -16,7 +16,7 @@ def ecAdd(instruction: Instruction):
         FixedTableTag.PrecompileInfo,
         FQ(instruction.curr.execution_state),
         address,
-        FQ(Bn256AddGas),
+        FQ(Bn254AddGas),
     )
 
     # Get p, q and out from aux_data
@@ -39,7 +39,7 @@ def ecAdd(instruction: Instruction):
     # consume all the gas if is_success is false
     gas_left = FQ.zero()
     if is_success == FQ(1):
-        gas_left = instruction.curr.gas_left - FQ(Bn256AddGas)
+        gas_left = instruction.curr.gas_left - FQ(Bn254AddGas)
 
     # Restore caller state to next StepState
     instruction.step_state_transition_to_restored_context(
