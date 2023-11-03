@@ -24,7 +24,26 @@ def linear_combine_bytes(seq: Sequence[Union[int, FQ]], base: FQ, range_check: b
     return result
 
 
+# Type for operation on base field.
+# We still need a type to operate on base field, such as precompiles ecAdd, ecMul and ecPairing.
+class FP(bn128.FQ):
+    def __init__(self, value: IntOrFQ) -> None:
+        if isinstance(value, FQ):
+            self.n = value.n
+        else:
+            super().__init__(value)
+
+    def expr(self) -> FP:
+        return FP(self)
+
+
+# Type for operation on scalar field.
 class FQ(bn128.FQ):
+    # Our calculation is based on scalar field so field_modulus is
+    # bn128.curve_order (21888242871839275222246405745257275088548364400416034343698204186575808495617)
+    # instead of bn128.FQ (21888242871839275222246405745257275088696311157297823662689037894645226208583)
+    field_modulus = bn128.curve_order
+
     def __init__(self, value: IntOrFQ) -> None:
         if isinstance(value, FQ):
             self.n = value.n

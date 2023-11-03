@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Tuple
 from eth_keys import KeyAPI  # type: ignore
-from .arithmetic import FQ
+from .arithmetic import FP, FQ
 from py_ecc.bn128.bn128_curve import add, eq
 
 
@@ -121,15 +121,15 @@ class ECCVerifyChip:
     https://github.com/privacy-scaling-explorations/halo2wrong/blob/master/ecc/src/general_field_ecc.rs
     """
 
-    p0: Tuple[FQ, FQ]
-    p1: Tuple[FQ, FQ]
-    output: Tuple[FQ, FQ]
+    p0: Tuple[FP, FP]
+    p1: Tuple[FP, FP]
+    output: Tuple[FP, FP]
 
     def __init__(
         self,
-        p0: Tuple[FQ, FQ],
-        p1: Tuple[FQ, FQ],
-        output: Tuple[FQ, FQ],
+        p0: Tuple[FP, FP],
+        p1: Tuple[FP, FP],
+        output: Tuple[FP, FP],
     ) -> None:
         self.p0 = p0
         self.p1 = p1
@@ -138,9 +138,9 @@ class ECCVerifyChip:
     @classmethod
     def assign(
         cls,
-        p0: Tuple[FQ, FQ],
-        p1: Tuple[FQ, FQ],
-        output: Tuple[FQ, FQ],
+        p0: Tuple[FP, FP],
+        p1: Tuple[FP, FP],
+        output: Tuple[FP, FP],
     ):
         return cls((p0[0], p0[1]), (p1[0], p1[1]), (output[0], output[1]))
 
