@@ -1,6 +1,6 @@
 # Ecc Proof
 
-EccCircuit supports three ECC operations which are addition, multiplication and pairing. This circuit provides the correctness of `EccTable`.
+EccCircuit supports three ECC operations and those are addition, multiplication and pairing. This circuit provides the correctness of `EccTable`.
 
 ## Circuit behavior
 
@@ -22,6 +22,10 @@ Constraints on the shape of the table is like:
 | 0 op_type | 1 px          | 2 py          | 3 qx          | 4 qy          | 5 input_rlc   | 6 outx        | 7 outy        | 8 is_valid |
 | --------- | ------------- | ------------- | ------------- | ------------- | ------------- | ------------- | ------------- | ---------- |
 |   $tag    | $value{Lo,Hi} | $value{Lo,Hi} | $value{Lo,Hi} | $value{Lo,Hi} | $input_rlc    | $value{Lo,Hi} | $value{Lo,Hi} |    bool    |  
+|...||||||||
+|   ADD    | $value{Lo,Hi} | $value{Lo,Hi} | $value{Lo,Hi} | $value{Lo,Hi} | 0   | $value{Lo,Hi} | $value{Lo,Hi} |    0/1    |  
+|   MUL    | $value{Lo,Hi} | $value{Lo,Hi} | $value{Lo,Hi} | 0 | 0   | $value{Lo,Hi} | $value{Lo,Hi} |    0/1    |  
+|  PAIRING | 0 | 0 | 0 | 0 | $value:rlc   | 0 | 0/1 |    0/1    |  
 
 - tag: `Add`, `Mul` and `Pairing`
 
@@ -30,8 +34,10 @@ Constraints on the shape of the table is like:
 
 This mainly includes the following type of constraints:
 - Checking `op_type` is one of `Add`, `Mul` or `Pairing`.
-- Checking p and q are valid curve points if `op_type` is `Add` or `Mul`, and `input_rlc` is zero.
-- Checking `input_rlc` is valid if `op_type` is `Pairing`, and p and q are zero.
+- Checking p and q are valid points if `op_type` is `Add` or `Mul`, and `input_rlc` is zero. A valid point means
+  - it's less than bn128.`FQ (30644E72E131A029B85045B68181585D97816A916871CA8D3C208C16D87CFD47)`.
+  - it's on the curve.
+- Checking `input_rlc` is valid if `op_type` is `Pairing`, and p, q and outx are zero.
 - Checking the correctness among p, q and out. This is done by `ECCVerifyChip`.
 
 

@@ -2,7 +2,7 @@
 
 ## Procedure
 
-The `ecAdd` precompile add given two points and return result point over alt_bn128 curve. Firstly, the input is divided into four parts to get two points $x$ and $y$. Secondly, the alt_bn128 points are initialized with given pairs of $x$ and $y$. Finally, the result point is returned.
+The `ecAdd` precompile add two given points and return result point over alt_bn128 curve. Firstly, the input is divided into four parts to get two points $x$ and $y$. Secondly, the alt_bn128 points are initialized with given pairs of $x$ and $y$. Finally, the result point is returned.
 
 ### Circuit behavior
 
