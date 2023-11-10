@@ -21,7 +21,7 @@ Even though these are `CREATE`/`CREATE2` errors, as we cannot get the contract b
 
 Overall it looks like the following:  
 - Pop EVM word `offset` and `length` from the stack, 
-- Go to `ErrorCodeStore` state when call context is being created & select which one of the followings occurs:
+- Go to `ErrorCodeStore` state when call context is being created & select which one of the following occurs:
   1. Storing `length` of bytecode runs out of gas.
   2. `length` of bytecode exceeds `MAXCODESIZE`.
 
@@ -29,7 +29,7 @@ Overall it looks like the following:
 1. Current opcode is `RETURN` and `is_create` is `True`.
 2. `code_store_cost` > gas_left or `length` > `MAXCODESIZE`
 3. Current call fails.
-4. Current call is not static call.
+4. Current call is not a static call.
 5. If it's a root call, it transits to `EndTx`
 6. if it is not root call, it restores caller's context by reading to `rw_table`, then does step state transition to it.
 
