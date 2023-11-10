@@ -1,6 +1,6 @@
 # Super Circuit
 
-The zkEVM is composed of many circuits, each of which is responsible for checking some EVM aspect.
+The zkEVM is composed of many circuits, each of which is responsible for checking some EVM aspects.
 These circuits need to be aggregated or combined together somehow. We could say that the Super
 Circuit is one of the possible strategies to combine all other sub-circuits.
 
