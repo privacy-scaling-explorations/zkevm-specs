@@ -174,7 +174,7 @@ In the case of an account without code, it can still have a row in the bytecode 
 
 Proved by the block circuit.
 
-__Note that a generalisation is done by storing the ChainId field inside the block_table__
+__Note that a generalization is done by storing the ChainId field inside the block_table__
 __when it should indeed live inside of the chain configuration section (which we don't have).__
 __Hence the addition inside of the block_table.__
 
