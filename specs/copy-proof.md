@@ -23,7 +23,7 @@ In addition to the columns in the copy table, copy circuit adds a few auxiliary 
 
 The constraints are divided into four groups.
 
-First, the circuit adds common constraints that applied to every rows in the circuit:
+First, the circuit adds common constraints that applied to every row in the circuit:
 
 - Boolean check for `is_first`, and `is_last`.
 - Check `is_first == 0` when `q_step == 0`.
@@ -34,7 +34,7 @@ First, the circuit adds common constraints that applied to every rows in the cir
     - `addr` increase by 1 in the next copy step.
 - The transition constraints for `rw_counter` and `rwc_inc_left` column.
     - define `rw_diff` to be 1 if the `tag` is `Memory` or `TxLog` and `Padding` is 0 in the current row; otherwise 0.
-    - when it's not the last row in a copy event (`is_last == 0`), `rw_counter` increases by `rw_diff` and `rwc_inc_left` decrases by `rw_diff`.
+    - when it's not the last row in a copy event (`is_last == 0`), `rw_counter` increases by `rw_diff` and `rwc_inc_left` decreases by `rw_diff`.
     - over all rows, the `rlc_acc` remains the same.
     - when it's the last row in a copy event (`is_last == 1`), `rwc_inc_left` is equal to `rw_diff`.
     - when it's the last row of a copy event (`is_last == 1`) and `is_rlc_acc == 1`, the row `value` should equal the row `rlc_acc`.

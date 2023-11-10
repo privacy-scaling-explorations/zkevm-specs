@@ -35,7 +35,7 @@ From https://eips.ethereum.org/EIPS/eip-1559 and https://eips.ethereum.org/EIPS/
 
 Hashed data to sign: TODO
 
-## Circuit behaviour
+## Circuit behavior
 
 Using the following public inputs: `chain_id`, `transactionsRoot`.
 
@@ -234,7 +234,7 @@ The extended random linear combination gate requires one extra column in second 
 - Skip verification of hash of RLC of transaction to obtain the hash of the message to sign
 - Add TxSignHash Tag to the tx table (set from public input calculated in L1 smart contract)
 - Instead of verifying ECDSA signatures by doing lookups to an ECDSA table, use ECDSA chip directly.
-  - This requires rearangement of the tx table so that for each transaction we
+  - This requires rearrangement of the tx table so that for each transaction we
     can find its CallerAddress Value and TxSignHash value at fixed offset to do
     a copy constraint to a signature verification gadget.  For this we move the
     CallData tags of all transactions to the end of the table, and we define
