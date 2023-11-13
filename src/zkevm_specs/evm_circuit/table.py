@@ -356,7 +356,7 @@ class EccOpTag(IntEnum):
     """
 
     Add = auto()  # elliptic curve point addition
-    Mul = auto()  # multiplication of two EC points
+    Mul = auto()  # elliptic curve scalar multiplication
     Pairing = auto()  # pairing of two EC points
 
 
