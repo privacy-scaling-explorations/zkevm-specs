@@ -563,7 +563,7 @@ class EccTableRow(TableRow):
     op_type: FQ
     px: Word
     py: Word
-    # qx is the scalar and qy must be zero if op_type is multiple
+    # qx is the scalar and qy must be zero if op_type is Mul
     qx: Word
     qy: Word
 
