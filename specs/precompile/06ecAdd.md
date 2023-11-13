@@ -15,7 +15,7 @@ input[64; 95] (32 bytes): x2
 input[96; 128] (32 bytes): y2
 ```
 
-These two points are added and the result is returned. The result size is `64` bytes and $x$ and $y$ are montgomery form.
+These two points are added and the result is returned. The result size is `64` bytes and $x$ and $y$ are in Montgomery.
 
 ```
 input[0; 31] (32 bytes): x

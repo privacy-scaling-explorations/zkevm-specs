@@ -154,7 +154,7 @@ class EccCircuitRow:
         cs.constrain_zero(self.row.py)
         cs.constrain_zero(self.row.qx)
         cs.constrain_zero(self.row.qy)
-        # output of pairing is either 0 or 1 and it stores in low part
+        # output of pairing is either 0 or 1 and stored in the lower part
         cs.constrain_zero(self.row.out_x)
         cs.constrain_bool(self.row.out_y)
         cs.constrain_equal(self.row.out_y, self.row.is_valid)
