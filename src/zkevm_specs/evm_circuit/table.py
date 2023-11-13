@@ -357,7 +357,7 @@ class EccOpTag(IntEnum):
 
     Add = auto()  # elliptic curve point addition
     Mul = auto()  # elliptic curve scalar multiplication
-    Pairing = auto()  # pairing of two EC points
+    Pairing = auto()  # bilinear map over elliptic curve points in G1 and G2
 
 
 class WrongQueryKey(Exception):
