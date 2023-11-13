@@ -355,7 +355,7 @@ class EccOpTag(IntEnum):
     Tag for EccTable that specifies the operation over ECC
     """
 
-    Add = auto()  # addition of two EC points
+    Add = auto()  # elliptic curve point addition
     Mul = auto()  # multiplication of two EC points
     Pairing = auto()  # pairing of two EC points
 
