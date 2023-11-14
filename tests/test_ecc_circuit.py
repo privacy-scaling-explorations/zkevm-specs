@@ -61,17 +61,15 @@ def gen_ecAdd_testing_data():
         False,
     )
     # q = -p
-    # py_ecc doesn't support this case, it returns (0x30644E72E131A029B85045B68181585D97816A916871CA8D3C208C16D87CFD45, 1)
-    # p_plus_neg_p = (
-    #     EccOps(
-    #         op,
-    #         p=(1, 2),
-    #         q=(1, 0x30644E72E131A029B85045B68181585D97816A916871CA8D3C208C16D87CFD45),
-    #         out=(0, 0),
-    #     ),
-    #     True,
-    # )
-    return [normal, invalid_p, incorrect_out]
+    p_plus_neg_p = (
+        EcAdd(
+            p=(1, 2),
+            q=(1, 0x30644E72E131A029B85045B68181585D97816A916871CA8D3C208C16D87CFD45),
+            out=(0, 0),
+        ),
+        True,
+    )
+    return [normal, invalid_p, p_plus_neg_p, incorrect_out]
 
 
 TESTING_DATA = gen_ecAdd_testing_data()

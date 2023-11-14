@@ -145,7 +145,9 @@ class ECCVerifyChip:
         return cls((p0[0], p0[1]), (p1[0], p1[1]), (output[0], output[1]))
 
     def verify_add(self) -> bool:
-        return eq(add(self.p0, self.p1), self.output)
+        result = add(self.p0, self.p1)
+        result = (0, 0) if result is None else result
+        return eq(result, self.output)
 
     def verify_mul(self) -> bool:
         raise NotImplementedError("verify_mul is not supported yet")
