@@ -35,7 +35,6 @@ def ecAdd(instruction: Instruction):
     # ecc table lookup
     instruction.ecc_lookup(FQ(EccOpTag.Add), px, py, qx, qy, FQ.zero(), outx, outy, is_success)
 
-    # consume gas
     # consume all the gas if is_success is false
     gas_left = FQ.zero()
     if is_success == FQ(1):

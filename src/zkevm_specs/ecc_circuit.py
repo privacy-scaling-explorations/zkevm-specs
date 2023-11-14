@@ -51,11 +51,7 @@ class EccCircuitRow:
 
         point0 = (FP(p0[0].int_value()), FP(p0[1].int_value()))
         point1 = (FP(p1[0].int_value()), FP(p1[1].int_value()))
-        is_valid_p0 = is_on_curve(point0, b)
-        is_valid_p1 = is_on_curve(point1, b)
-        is_infinite_p0 = is_inf(point0)
-        is_infinite_p1 = is_inf(point1)
-        is_valid_points = (is_valid_p0 or is_infinite_p0) and (is_valid_p1 or is_infinite_p1)
+        is_valid_points = is_on_curve(point0, b) and is_on_curve(point1, b)
 
         is_valid = (
             precheck_p0x and precheck_p0y and precheck_p1x and precheck_p1y and is_valid_points
@@ -157,6 +153,8 @@ class EccCircuitRow:
         # output of pairing is either 0 or 1 and stored in the lower part
         cs.constrain_zero(self.row.out_x)
         cs.constrain_bool(self.row.out_y)
+        # TODO: fixing it in ecPairing PR
+        # see https://github.com/privacy-scaling-explorations/zkevm-specs/pull/500#discussion_r1383072583
         cs.constrain_equal(self.row.out_y, self.row.is_valid)
 
         cs.constrain_equal(FQ(self.ecc_chip.verify_pairing()), self.row.is_valid)
