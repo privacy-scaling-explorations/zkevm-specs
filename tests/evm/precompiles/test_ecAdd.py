@@ -33,6 +33,15 @@ def gen_testing_data():
         ),
         True,
     )
+    infinite_p = (
+        CallContext(),
+        EcAdd(
+            p=(0, 0),
+            q=(1, 2),
+            out=(1, 2),
+        ),
+        True,
+    )
     invalid_pts = (
         CallContext(),
         EcAdd(
@@ -42,7 +51,8 @@ def gen_testing_data():
         ),
         False,
     )
-    return [normal, invalid_pts]
+
+    return [normal, infinite_p, invalid_pts]
 
 
 TESTING_DATA = gen_testing_data()

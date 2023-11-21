@@ -145,7 +145,12 @@ class ECCVerifyChip:
         return cls((p0[0], p0[1]), (p1[0], p1[1]), (output[0], output[1]))
 
     def verify_add(self) -> bool:
-        result = add(self.p0, self.p1)
+        # (0, 0) represents an infinite point
+        # and we convert to `None` to fit infinite point check in `add`
+        p0 = None if self.p0 == (0, 0) else self.p0
+        p1 = None if self.p1 == (0, 0) else self.p1
+
+        result = add(p0, p1)
         result = (0, 0) if result is None else result
         return eq(result, self.output)
 

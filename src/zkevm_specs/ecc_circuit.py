@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import List, NamedTuple, Tuple
-from py_ecc.bn128.bn128_curve import is_inf, is_on_curve, b
+from py_ecc.bn128.bn128_curve import is_on_curve, b
 
 from zkevm_specs.util.arithmetic import FP
 from .evm_circuit import EccTableRow
@@ -49,8 +49,21 @@ class EccCircuitRow:
         precheck_p1x = cls.check_fq(p1[0].int_value())
         precheck_p1y = cls.check_fq(p1[1].int_value())
 
-        point0 = (FP(p0[0].int_value()), FP(p0[1].int_value()))
-        point1 = (FP(p1[0].int_value()), FP(p1[1].int_value()))
+        # We use (0, 0) to represent an infinite point in the circuit
+        # and there is no way to represent as `None` in the circuit
+        # (values in Halo2 cell should be a FQ so `None` is impossible).
+        # However, `None` represents a infinite point in `is_on_curve`.
+        # Therefore, we have the following type conversion.
+        point0 = (
+            None
+            if p0[0].int_value() == 0 and p0[1].int_value() == 0
+            else (FP(p0[0].int_value()), FP(p0[1].int_value()))
+        )
+        point1 = (
+            None
+            if p1[0].int_value() == 0 and p1[1].int_value() == 0
+            else (FP(p1[0].int_value()), FP(p1[1].int_value()))
+        )
         is_valid_points = is_on_curve(point0, b) and is_on_curve(point1, b)
 
         is_valid = (
