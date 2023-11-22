@@ -73,7 +73,7 @@ mult = mult * r
 
 `num_nibbles` is set to `0`. This value stores the number of branch / extension node nibbles that appeared up
 to the current row. It is incremented by `1` in a branch node and by the number of extension node nibbles
-in an extension node.
+in an extension node (plus `1` due to the position in branch).
 
 `is_odd` is set to `false`. This value stores the information whether `num_nibbles` is odd or even.
 This information is needed because the compact encoding of the remaining nibbles in the leaf is affected by

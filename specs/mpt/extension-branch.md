@@ -1,6 +1,6 @@
 # Branch
 
-A branch consists of 21 rows. The struct that determines the row type is `ExtensionBranchRowType`:
+A branch consists of 21 rows. The enumerator with the branch row types is `ExtensionBranchRowType`:
 
 ```
 pub(crate) enum ExtensionBranchRowType {
@@ -29,12 +29,38 @@ pub(crate) enum ExtensionBranchRowType {
 }
 ```
 
-`S` and `C` branches have the same children except for the one at index `modified_node`.
+`S` and `C` branches have the same children except for the one at the index `modified_node`.
 The witness stores the 16 `S` children in `Child1`, ..., `Child15` rows and stores at `Mod` row
-the children of the `C` branch where the modification occurs (`C` children at index `modified_node`).
+the children of the `C` branch where the modification occurs (child of `C` proof at index `modified_node`).
 
 The rows `Key`, `ValueS`, `Nibbles`, and `ValueC` are used only when the branch is an extension node.
 
+The circuit handles extension node as a special case branch - branch
+with a path elongated by one or more nibbles.
+An example of the extension node returned by `get_Proof`:
+```
+[226 24 160 194 200 39 82 205 97 69 91 92 98 218 180 101 42 171 150 75 251 147 154 59 215 26 164 201 90 199 185 190 205 167 64]
+```
+
+The first byte (`226`) represents the length of the RLP stream (`226 - 192 = 34`). The second byte represents the nibble - (only one
+nibble in that case:  `24 - 16 = 8`).
+
+The byte `160` represents the length (`32 = 160 - 128`) of the RLP substream that represents the hash of the branch.
+
+To preserve the branch layout in the case of extension nodes, the branch
+witness contains the extension node rows with information about
+nibbles (`Key` row), `S` branch hash (`ValueS` row), `C` branch hash (`ValueC` row), and second nibbles (`Nibbles`).
+
+The witness for second nibbles is necessary for the cases as below:
+```
+[228, 130, 16 + 3, 9*16 + 5, 0, ...]
+```
+In this case, there are three nibbles: `3`, `9`, `5`. With
+the knowledge of the second nibble `5`, the circuit can compute
+the first nibble `9`.
+
+Note that in some cases the number of nibbles is different in `S` and
+`C` proofs. These cases are handles by `ModExtensionGadget`.
 
 # Obsolete
 

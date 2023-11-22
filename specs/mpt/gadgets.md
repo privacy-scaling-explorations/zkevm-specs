@@ -410,3 +410,13 @@ For example, let us observe the storage leaf below.
 
 The field `rlp_list_bytes` would be `[[226],[226]]`. Note that it contains the byte for each, `S`
 and `C` leaf.
+
+For example, the following constraint ensures that the lengths in the RLP encoding are
+consistent:
+```
+require!(rlp_key.rlp_list.len() => rlp_key.key_value.num_bytes() + rlp_value[is_s.idx()].num_bytes());
+```
+
+Above, the `rlp_key` is of type `ListKeyGadget` - it contains information about the leaf
+key. The `rlp_value` and `rlp_key.key_value` are of type `RLPItemView` - instantiated by
+the call `rlp_item` (see above).
