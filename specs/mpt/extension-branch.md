@@ -51,7 +51,7 @@ To preserve the branch layout in the case of extension nodes, the branch
 witness contains the extension node rows with information about
 nibbles (`Key` row), `S` branch hash (`ValueS` row), `C` branch hash (`ValueC` row), and second nibbles (`Nibbles`).
 
-The witness for second nibbles is necessary for the cases as below:
+The witness for the second nibbles is necessary for the cases as below:
 ```
 [228, 130, 16 + 3, 9*16 + 5, 0, ...]
 ```
@@ -60,7 +60,29 @@ the knowledge of the second nibble `5`, the circuit can compute
 the first nibble `9`.
 
 Note that in some cases the number of nibbles is different in `S` and
-`C` proofs. These cases are handles by `ModExtensionGadget`.
+`C` proofs. These cases are handles by
+[`ModExtensionGadget`](mod_extension.md).
+
+## ExtensionBranchConfig
+
+```
+pub(crate) struct ExtensionBranchConfig<F> {
+    key_data: KeyData<F>,
+    parent_data: [ParentData<F>; 2],
+    is_placeholder: [Cell<F>; 2],
+    is_extension: Cell<F>,
+    extension: ExtensionGadget<F>,
+    branch: BranchGadget<F>,
+}
+```
+
+`ExtensionBranchConfig` is an abstraction of the extension nodes and branches. It contains information whether the branch:
+
+ * is a placeholder (`is_placeholder`): at most one of the two branches (`S` and `C`) is a placeholder,
+ * is an extension (`is_extension`): both branches are extension nodes or none.
+
+
+
 
 # Obsolete
 
