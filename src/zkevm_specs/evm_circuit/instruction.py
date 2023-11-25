@@ -255,7 +255,7 @@ class Instruction:
                 )
             elif transition.kind == TransitionKind.ToWord:
                 curr, next = cast(Word, curr), cast(Word, next)
-                # mypy gets confused here and thinkgs value must be FQ.
+                # mypy gets confused here and thinks value must be FQ.
                 value = cast(Word, transition.value)  # type: ignore
                 assert next.lo.expr() == value.lo.expr() and next.hi.expr() == value.hi.expr(), ConstraintUnsatFailure(  # type: ignore
                     f"State {key} should transit to {transition.value}, but got {next}"

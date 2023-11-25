@@ -195,6 +195,9 @@ class WordOrValue(Word):
             return f"Value({hex(self.lo.expr().n)})"
 
 
+IntOrFQOrWord = Union[int, FQ, Word]
+
+
 @runtime_checkable
 class Expression(Protocol):
     def expr(self) -> FQ:

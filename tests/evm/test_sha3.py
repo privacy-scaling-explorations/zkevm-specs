@@ -90,7 +90,7 @@ def test_sha3(offset: U64, length: U64):
         offset + length,
         FQ.zero(),
         length,
-        src_data,
+        src_data,  # type: ignore[arg-type]
     )
     assert rw_dictionary.rw_counter - rw_counter_interim == length
 

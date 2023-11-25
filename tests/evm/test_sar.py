@@ -72,11 +72,7 @@ TESTING_DATA = [
 def test_sar(shift: int, a: int):
     b = get_int_neg(-(-get_int_abs(a) >> shift)) if int_is_neg(a) else a >> shift
 
-    shift = Word(shift)
-    a = Word(a)
-    b = Word(b)
-
-    bytecode = Bytecode().sar(shift, a)
+    bytecode = Bytecode().sar(shift, Word(a))
     bytecode_hash = Word(bytecode.hash())
 
     tables = Tables(
@@ -86,9 +82,9 @@ def test_sar(shift: int, a: int):
         bytecode_table=set(bytecode.table_assignments()),
         rw_table=set(
             RWDictionary(9)
-            .stack_read(1, 1022, shift)
-            .stack_read(1, 1023, a)
-            .stack_write(1, 1023, b)
+            .stack_read(1, 1022, Word(shift))
+            .stack_read(1, 1023, Word(a))
+            .stack_write(1, 1023, Word(b))
             .rws
         ),
     )

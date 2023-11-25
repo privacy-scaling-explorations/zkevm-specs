@@ -5,7 +5,6 @@ from zkevm_specs.evm_circuit import (
     StepState,
     verify_steps,
     Tables,
-    Block,
     Bytecode,
     RWDictionary,
 )
@@ -26,17 +25,16 @@ NOT_TESTING_DATA = [
 @pytest.mark.parametrize("a", NOT_TESTING_DATA)
 def test_not(a: int):
     b = Word(a ^ ((1 << 256) - 1))
-    a = Word(a)
 
-    bytecode = Bytecode().not_(a).stop()
+    bytecode = Bytecode().not_(Word(a)).stop()
     bytecode_hash = Word(bytecode.hash())
 
     tables = Tables(
-        block_table=set(Block().table_assignments()),
+        block_table=set(),
         tx_table=set(),
         withdrawal_table=set(),
         bytecode_table=set(bytecode.table_assignments()),
-        rw_table=set(RWDictionary(9).stack_read(1, 1023, a).stack_write(1, 1023, b).rws),
+        rw_table=set(RWDictionary(9).stack_read(1, 1023, Word(a)).stack_write(1, 1023, b).rws),
     )
 
     verify_steps(

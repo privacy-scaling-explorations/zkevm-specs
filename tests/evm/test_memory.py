@@ -6,11 +6,10 @@ from zkevm_specs.evm_circuit import (
     Opcode,
     verify_steps,
     Tables,
-    Block,
     Bytecode,
     RWDictionary,
 )
-from zkevm_specs.util import Word
+from zkevm_specs.util import Word, U64
 from common import memory_expansion
 
 TESTING_DATA = (
@@ -58,7 +57,7 @@ def test_memory(opcode: Opcode, offset: int, value: int, memory: bytes):
     offset_word = Word(offset)
     value_word = Word(value)
     call_id = 1
-    curr_memory_word_size = 0
+    curr_memory_word_size = U64(0)
     length = offset
 
     is_mload = opcode == Opcode.MLOAD
@@ -95,15 +94,15 @@ def test_memory(opcode: Opcode, offset: int, value: int, memory: bytes):
                 rw_dictionary.memory_write(call_id, offset + idx, memory[idx])
 
     tables = Tables(
-        block_table=set(Block().table_assignments()),
+        block_table=set(),
         tx_table=set(),
         withdrawal_table=set(),
         bytecode_table=set(bytecode.table_assignments()),
-        rw_table=rw_dictionary.rws,
+        rw_table=set(rw_dictionary.rws),
     )
 
     address = offset + 1 + (is_not_mstore8 * 31)
-    next_mem_size, memory_gas_cost = memory_expansion(curr_memory_word_size, address)
+    next_mem_size, memory_gas_cost = memory_expansion(curr_memory_word_size, U64(address))
     gas = Opcode.MLOAD.constant_gas_cost() + memory_gas_cost
 
     rw_counter = 35 - (is_mstore8 * 31)
