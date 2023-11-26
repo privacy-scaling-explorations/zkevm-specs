@@ -96,7 +96,48 @@ class EccCircuitRow:
 
     @classmethod
     def assign_mul(cls, p0: Tuple[Word, Word], p1: Tuple[Word, Word], out: Tuple[Word, Word]):
-        raise NotImplementedError("assign_mul is not supported yet")
+        # verify validity of input point
+        precheck_px = cls.check_fq(p0[0].int_value())
+        precheck_py = cls.check_fq(p0[1].int_value())
+
+        # (0, 0) represents an infinite point
+        point0 = (
+            None
+            if p0[0].int_value() == 0 and p0[1].int_value() == 0
+            else (FP(p0[0].int_value()), FP(p0[1].int_value()))
+        )
+        is_valid_point = is_on_curve(point0, b)
+
+        # verify validity of input scalar
+        precheck_s = cls.check_fq(p1[0].int_value())
+        precheck_dummy_s = p1[1].int_value() == 0
+
+        is_valid = (
+            is_valid_point and precheck_s and precheck_dummy_s and precheck_px and precheck_py
+        )
+
+        self_p_x = p0[0].int_value()
+        self_p_y = p0[1].int_value()
+        self_s = p1[0].int_value()
+
+        ecc_chip = ECCVerifyChip.assign(
+            p0=(FP(self_p_x), FP(self_p_y)),
+            p1=(FP(self_s), FP.zero()),
+            output=out,
+        )
+        ecc_table = EccTableRow(
+            FQ(EccOpTag.Mul),
+            Word(self_p_x),
+            Word(self_p_y),
+            Word(self_s),
+            Word(0),
+            FQ.zero(),
+            out[0],
+            out[1],
+            FQ(is_valid),
+        )
+
+        return cls(ecc_table, ecc_chip)
 
     @classmethod
     def assign_pairing(cls, p: List[Tuple[Word, Word]], out: Tuple[Word, Word]):

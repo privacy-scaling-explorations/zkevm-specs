@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import Tuple
 from eth_keys import KeyAPI  # type: ignore
 from .arithmetic import FP, FQ
-from py_ecc.bn128.bn128_curve import add, eq
+from py_ecc.bn128.bn128_curve import add, multiply, eq
 
 
 class WrongFieldInteger:
@@ -155,7 +155,12 @@ class ECCVerifyChip:
         return eq(result, self.output)
 
     def verify_mul(self) -> bool:
-        raise NotImplementedError("verify_mul is not supported yet")
+        # (0, 0) represents an infinite point
+        p0 = None if self.p0 == (0, 0) else self.p0
+
+        result = multiply(p0, self.p1[0].n)
+        result = (0, 0) if result is None else result
+        return eq(result, self.output)
 
     def verify_pairing(self) -> bool:
         raise NotImplementedError("verify_pairing is not supported yet")
