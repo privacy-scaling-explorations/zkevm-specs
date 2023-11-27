@@ -108,13 +108,11 @@ class EccCircuitRow:
         )
         is_valid_point = is_on_curve(point0, b)
 
-        # verify validity of input scalar
-        precheck_s = cls.check_fq(p1[0].int_value())
-        precheck_dummy_s = p1[1].int_value() == 0
+        # We store multiplication scalar in the first 32 bytes of p1 so p1[1] is zero
+        # besides, there is no limit on scalar which means it can be larger than FP.field_modulus
+        precheck_s = p1[1].int_value() == 0
 
-        is_valid = (
-            is_valid_point and precheck_s and precheck_dummy_s and precheck_px and precheck_py
-        )
+        is_valid = is_valid_point and precheck_s and precheck_px and precheck_py
 
         self_p_x = p0[0].int_value()
         self_p_y = p0[1].int_value()
@@ -194,7 +192,7 @@ class EccCircuitRow:
         # input_rlc is zero bcs it's only used in pairing
         cs.constrain_zero(self.row.input_rlc)
         # qy is zero bcs q is scalar in ecMul so we only use qx
-        cs.constrain_zero(self.row.qy)
+        cs.constrain_zero_word(self.row.qy)
 
         cs.constrain_equal(FQ(self.ecc_chip.verify_mul()), self.row.is_valid)
 
