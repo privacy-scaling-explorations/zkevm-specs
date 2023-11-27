@@ -5,6 +5,7 @@ from zkevm_specs.ecc_circuit import (
     verify_circuit,
     EccCircuit,
 )
+from zkevm_specs.util import FQ
 
 
 def verify(
@@ -108,9 +109,11 @@ def test_ecc_add(ecc_ops: EcAdd, success: bool):
         verify(circuit, success)
 
 
-###########################################
-###########################################
-SCALAR_FIELD_MODULUS = 21888242871839275222246405745257275088548364400416034343698204186575808495617
+############################
+# ec scalar multiplication #
+############################
+
+SCALAR_FIELD_MODULUS = FQ.field_modulus
 
 
 def gen_ecMul_testing_data():
@@ -149,6 +152,24 @@ def gen_ecMul_testing_data():
         ),
         True,
     )
+    # zero scalar
+    zero_s = (
+        EcMul(
+            p=(1, 2),
+            s=0,
+            out=(0, 0),
+        ),
+        True,
+    )
+    # p is a infinite point
+    infinite_p = (
+        EcMul(
+            p=(0, 0),
+            s=7,
+            out=(0, 0),
+        ),
+        True,
+    )
     # p is not on the curve
     invalid_p = (
         EcMul(
@@ -169,7 +190,7 @@ def gen_ecMul_testing_data():
         ),
         False,
     )
-    return [normal, over_field_size_s, negative_s, invalid_p, incorrect_out]
+    return [normal, over_field_size_s, negative_s, zero_s, infinite_p, invalid_p, incorrect_out]
 
 
 TESTING_DATA_MUL = gen_ecMul_testing_data()

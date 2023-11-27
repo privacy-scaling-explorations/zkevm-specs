@@ -191,7 +191,7 @@ class EccCircuitRow:
     def verify_mul(self, cs: ConstraintSystem):
         # input_rlc is zero bcs it's only used in pairing
         cs.constrain_zero(self.row.input_rlc)
-        # qy is zero bcs q is scalar in ecMul so we only use qx
+        # qy is zero bcs q is a scalar in ecMul and we only use qx
         cs.constrain_zero_word(self.row.qy)
 
         cs.constrain_equal(FQ(self.ecc_chip.verify_mul()), self.row.is_valid)
