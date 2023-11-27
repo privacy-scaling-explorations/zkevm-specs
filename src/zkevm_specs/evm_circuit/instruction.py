@@ -255,7 +255,7 @@ class Instruction:
                 )
             elif transition.kind == TransitionKind.ToWord:
                 curr, next = cast(Word, curr), cast(Word, next)
-                # mypy gets confused here and thinkgs value must be FQ.
+                # mypy gets confused here and thinks value must be FQ.
                 value = cast(Word, transition.value)  # type: ignore
                 assert next.lo.expr() == value.lo.expr() and next.hi.expr() == value.hi.expr(), ConstraintUnsatFailure(  # type: ignore
                     f"State {key} should transit to {transition.value}, but got {next}"
@@ -1406,8 +1406,22 @@ class Instruction:
         sig_s: Word,
         recovered_addr: FQ,
         is_valid: Expression,
-    ) -> Word:
-        return self.tables.sig_lookup(msg_hash, sig_v, sig_r, sig_s, recovered_addr, is_valid)
+    ):
+        self.tables.sig_lookup(msg_hash, sig_v, sig_r, sig_s, recovered_addr, is_valid)
+
+    def ecc_lookup(
+        self,
+        op_type: FQ,
+        px: Word,
+        py: Word,
+        qx: Word,
+        qy: Word,
+        input_rlc: FQ,
+        outx: FQ,
+        outy: FQ,
+        is_valid: FQ,
+    ):
+        self.tables.ecc_lookup(op_type, px, py, qx, qy, input_rlc, outx, outy, is_valid)
 
     def constrain_error_state(self, rw_counter_delta: int):
         # Current call must fail.

@@ -130,9 +130,9 @@ class ExecutionState(IntEnum):
     RIPEMD160 = auto()
     DATACOPY = auto()
     BIGMODEXP = auto()
-    BN256_ADD = auto()
-    BN256_SCALAR_MUL = auto()
-    BN256_PAIRING = auto()
+    BN254_ADD = auto()
+    BN254_SCALAR_MUL = auto()
+    BN254_PAIRING = auto()
     BLAKE2F = auto()
 
     def expr(self) -> FQ:
@@ -405,8 +405,8 @@ def precompile_execution_states() -> Sequence[ExecutionState]:
         ExecutionState.RIPEMD160,
         ExecutionState.DATACOPY,
         ExecutionState.BIGMODEXP,
-        ExecutionState.BN256_ADD,
-        ExecutionState.BN256_SCALAR_MUL,
-        ExecutionState.BN256_PAIRING,
+        ExecutionState.BN254_ADD,
+        ExecutionState.BN254_SCALAR_MUL,
+        ExecutionState.BN254_PAIRING,
         ExecutionState.BLAKE2F,
     ]

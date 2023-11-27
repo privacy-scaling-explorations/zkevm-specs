@@ -26,8 +26,8 @@ from zkevm_specs.util.param import (
     GAS_COST_CREATE,
     GAS_COST_INITCODE_WORD,
 )
-from zkevm_specs.util import Word
-from zkevm_specs.util.typing import U256
+from zkevm_specs.util import Word, U160, U256
+
 
 CreateContext = namedtuple(
     "CreateContext",
@@ -47,7 +47,7 @@ Stack = namedtuple(
 )
 
 
-CALLER = Account(address=0xFE, balance=int(1e20), nonce=10)
+CALLER = Account(address=U160(0xFE), balance=U256(int(1e20)), nonce=U256(10))
 
 
 def gen_bytecode(is_return: bool, offset: int, has_init_code: bool) -> Bytecode:
@@ -340,7 +340,7 @@ def test_create_create2(
                 stack.offset + stack.size,
                 0,
                 stack.size,
-                src_data,
+                src_data, # type: ignore[arg-type]
             )
 
             # caller's call context

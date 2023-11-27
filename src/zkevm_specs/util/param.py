@@ -148,13 +148,13 @@ IdentityBaseGas = 15
 IdentityPerWordGas = 3
 
 # Gas needed for an elliptic curve addition
-Bn256AddGas = 150
+Bn254AddGas = 150
 # Gas needed for an elliptic curve scalar multiplication
-Bn256ScalarMulGas = 6000
+Bn254ScalarMulGas = 6000
 # Base price for an elliptic curve pairing check
-Bn256PairingBaseGas = 45000
+Bn254PairingBaseGas = 45000
 # Per-point price for an elliptic curve pairing check
-Bn256PairingPerPointGas = 34000
+Bn254PairingPerPointGas = 34000
 
 BigModExpBaseGas = 0
 Blake2fBaseGas = 0

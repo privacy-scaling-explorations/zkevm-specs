@@ -350,6 +350,16 @@ class MPTProofType(IntEnum):
         raise Exception("Unexpected AccountFieldTag value")
 
 
+class EccOpTag(IntEnum):
+    """
+    Tag for EccTable that specifies the operation over ECC
+    """
+
+    Add = auto()  # elliptic curve point addition
+    Mul = auto()  # elliptic curve scalar multiplication
+    Pairing = auto()  # bilinear map over elliptic curve points in G1 and G2
+
+
 class WrongQueryKey(Exception):
     def __init__(self, table_name: str, diff: Set[str]) -> None:
         self.message = f"Lookup {table_name} with invalid keys {diff}"
@@ -548,6 +558,23 @@ class SigTableRow(TableRow):
     is_valid: FQ
 
 
+@dataclass(frozen=True)
+class EccTableRow(TableRow):
+    op_type: FQ
+    px: Word
+    py: Word
+    # qx is the scalar and qy must be zero if op_type is Mul
+    qx: Word
+    qy: Word
+
+    # only works when op_type is Pairing
+    input_rlc: FQ
+
+    out_x: FQ
+    out_y: FQ
+    is_valid: FQ
+
+
 class Tables:
     """
     A collection of lookup tables used in EVM circuit.
@@ -563,6 +590,7 @@ class Tables:
     keccak_table: Set[KeccakTableRow]
     exp_table: Set[ExpTableRow]
     sig_table: Set[SigTableRow]
+    ecc_table: Set[EccTableRow]
 
     def __init__(
         self,
@@ -575,6 +603,7 @@ class Tables:
         keccak_table: Optional[Sequence[KeccakTableRow]] = None,
         exp_circuit: Optional[Sequence[ExpCircuitRow]] = None,
         sig_table: Optional[Sequence[SigTableRow]] = None,
+        ecc_table: Optional[Sequence[EccTableRow]] = None,
     ) -> None:
         self.block_table = block_table
         self.tx_table = tx_table
@@ -592,6 +621,8 @@ class Tables:
             self.exp_table = self._convert_exp_circuit_to_table(exp_circuit)
         if sig_table is not None:
             self.sig_table = set(sig_table)
+        if ecc_table is not None:
+            self.ecc_table = set(ecc_table)
 
     def _convert_copy_circuit_to_table(self, copy_circuit: Sequence[CopyCircuitRow]):
         rows: List[CopyTableRow] = []
@@ -800,6 +831,31 @@ class Tables:
             "is_valid": is_valid,
         }
         return lookup(SigTableRow, self.sig_table, query)
+
+    def ecc_lookup(
+        self,
+        op_type: FQ,
+        px: Word,
+        py: Expression,
+        qx: Word,
+        qy: Word,
+        input_rlc: FQ,
+        outx: FQ,
+        outy: FQ,
+        is_valid: Expression,
+    ) -> EccTableRow:
+        query = {
+            "op_type": op_type,
+            "px": px,
+            "py": py,
+            "qx": qx,
+            "qy": qy,
+            "input_rlc": input_rlc,
+            "out_x": outx,
+            "out_y": outy,
+            "is_valid": is_valid,
+        }
+        return lookup(EccTableRow, self.ecc_table, query)
 
 
 T = TypeVar("T", bound=TableRow)

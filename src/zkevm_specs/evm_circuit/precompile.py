@@ -11,9 +11,9 @@ class Precompile(IntEnum):
     RIPEMD160 = 0x03
     DATACOPY = 0x04
     BIGMODEXP = 0x05
-    BN256ADD = 0x06
-    BN256SCALARMUL = 0x07
-    BN256PAIRING = 0x08
+    BN254ADD = 0x06
+    BN254SCALARMUL = 0x07
+    BN254PAIRING = 0x08
     BLAKE2F = 0x09
 
     def execution_state(self) -> ExecutionState:
@@ -47,11 +47,11 @@ PRECOMPILE_INFO_MAP: Final[Dict[Precompile, PrecompileInfo]] = dict(
         Precompile.RIPEMD160: PrecompileInfo(Ripemd160BaseGas, ExecutionState.RIPEMD160),
         Precompile.DATACOPY: PrecompileInfo(IdentityBaseGas, ExecutionState.DATACOPY),
         Precompile.BIGMODEXP: PrecompileInfo(BigModExpBaseGas, ExecutionState.BIGMODEXP),
-        Precompile.BN256ADD: PrecompileInfo(Bn256AddGas, ExecutionState.BN256_ADD),
-        Precompile.BN256SCALARMUL: PrecompileInfo(
-            Bn256ScalarMulGas, ExecutionState.BN256_SCALAR_MUL
+        Precompile.BN254ADD: PrecompileInfo(Bn254AddGas, ExecutionState.BN254_ADD),
+        Precompile.BN254SCALARMUL: PrecompileInfo(
+            Bn254ScalarMulGas, ExecutionState.BN254_SCALAR_MUL
         ),
-        Precompile.BN256PAIRING: PrecompileInfo(Bn256PairingBaseGas, ExecutionState.BN256_PAIRING),
+        Precompile.BN254PAIRING: PrecompileInfo(Bn254PairingBaseGas, ExecutionState.BN254_PAIRING),
         Precompile.BLAKE2F: PrecompileInfo(Blake2fBaseGas, ExecutionState.BLAKE2F),
     }
 )

@@ -128,6 +128,9 @@ def test_sstore(
                 else:
                     gas_refund = gas_refund + SSTORE_RESET_GAS - SLOAD_GAS
 
+    # workaround for mypy, it yells incompatible type
+    # bcs the type of callee_address is Optional[U160]
+    callee_addr = tx.callee_address or 0
     tables = Tables(
         block_table=set(Block().table_assignments()),
         tx_table=set(tx.table_assignments()),
@@ -140,11 +143,11 @@ def test_sstore(
             .call_context_read(1, CallContextFieldTag.IsStatic, 0)
             .call_context_read(1, CallContextFieldTag.RwCounterEndOfReversion, 0 if is_success else 14)
             .call_context_read(1, CallContextFieldTag.IsPersistent, is_success)
-            .call_context_read(1, CallContextFieldTag.CalleeAddress, Word(tx.callee_address))
+            .call_context_read(1, CallContextFieldTag.CalleeAddress, Word(callee_addr))
             .stack_read(1, 1022, Word(storage_key))
             .stack_read(1, 1023, Word(value))
-            .account_storage_write(tx.callee_address, Word(storage_key), Word(value), Word(value_prev), tx.id, Word(value_committed), rw_counter_of_reversion=None if is_success else 14)
-            .tx_access_list_account_storage_write(tx.id, tx.callee_address, Word(storage_key), True, True if warm else False, rw_counter_of_reversion=None if is_success else 13)
+            .account_storage_write(callee_addr, Word(storage_key), Word(value), Word(value_prev), tx.id, Word(value_committed), rw_counter_of_reversion=None if is_success else 14)
+            .tx_access_list_account_storage_write(tx.id, callee_addr, Word(storage_key), True, True if warm else False, rw_counter_of_reversion=None if is_success else 13)
             .tx_refund_write(tx.id, gas_refund, gas_refund_prev, rw_counter_of_reversion=None if is_success else 12)
             .rws
             # fmt: on
