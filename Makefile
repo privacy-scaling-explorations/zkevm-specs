@@ -14,7 +14,7 @@ lint: ## Check whether the code is formatted correctly
 	flake8 .
 
 type: ## Check the typing of the Python code
-	MYPATH=src mypy .
+	mypy src
 
 test: ## Run tests
 	pytest --doctest-modules
