@@ -73,7 +73,6 @@ def gen_testing_data():
         False,
     )
 
-    # return [infinite_p]
     return [normal, infinite_p, zero_s, over_field_size_s, invalid_pts]
 
 

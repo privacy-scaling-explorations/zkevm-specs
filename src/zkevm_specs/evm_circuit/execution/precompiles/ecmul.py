@@ -27,9 +27,9 @@ def ecMul(instruction: Instruction):
     outy: FQ = instruction.curr.aux_data[4]
 
     # output is zero if
-    # is_success is false,
-    # scalar is zero or
-    # p is an infinite point
+    #  - is_success is false,
+    #  - scalar is zero or
+    #  - p is an infinite point
     if (
         is_success == FQ.zero()
         or s.int_value() == 0

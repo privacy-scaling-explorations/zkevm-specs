@@ -108,8 +108,8 @@ class EccCircuitRow:
         )
         is_valid_point = is_on_curve(point0, b)
 
-        # We store multiplication scalar in the first 32 bytes of p1 so p1[1] is zero
-        # besides, there is no limit on scalar which means it can be larger than FP.field_modulus
+        # Scalar is stored in the first 32 bytes of p1 so the second part of p1 (aka. p[1]) is zero
+        # Besides, there is no limit on scalar `s` which means it can be larger than FP.field_modulus
         precheck_s = p1[1].int_value() == 0
 
         is_valid = is_valid_point and precheck_s and precheck_px and precheck_py

@@ -30,7 +30,9 @@ If the input is not valid, all gas provided is consumed.
 ## Constraints
 
 1. `ecc_table` lookup
-2. If `is_valid` is false,
+2. If `s` is zero or `p` is an infinite point
+  - output is zero
+3. If `is_valid` is false,
   - output is zero
   - consume all the remaining gas
 
