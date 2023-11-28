@@ -1,4 +1,4 @@
-# Extension node
+# Obsolete (to be updated)
 
 An extension node occupies 2 rows. Extension node is an extension to the branch and can be viewed
 as a special kind of branch. The branch / extension node layout is as follows:
