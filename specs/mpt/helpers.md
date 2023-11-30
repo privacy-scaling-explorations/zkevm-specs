@@ -1,4 +1,92 @@
-# Helper techniques
+# Helpers
+
+## RLPItemView
+
+```
+pub struct RLPItemView<F> {
+    is_big_endian: bool,
+    can_use_word: bool,
+    bytes: Vec<Expression<F>>,
+    num_bytes: Option<Expression<F>>,
+    len: Option<Expression<F>>,
+    mult: Option<Expression<F>>,
+    hash_rlc: Option<Expression<F>>,
+    rlc_rlp: Option<Expression<F>>,
+    is_short: Option<Expression<F>>,
+    is_long: Option<Expression<F>>,
+    word: Option<Word<Expression<F>>>,
+}
+```
+
+`RLPItemView` presents an entry point to the various item types. The types are given by the enumerator below:
+```
+pub enum RlpItemType {
+    /// Node (string with len == 0 or 32, OR list with len <= 31)
+    Node,
+    /// Value (string with len <= 32)
+    Value,
+    /// Hash (string with len == 32)
+    Hash,
+    /// Address (string with len == 20)
+    Address,
+    /// Key (string with len <= 33)
+    Key,
+    /// Nibbles (raw data)
+    Nibbles,
+}
+```
+
+Note that `RLPItemView::Node` is used for branch children and for the value of the extension node (representing the branch hash or raw extension node if length < 33).
+`RLPItemView::Value` is used for the value in the account and storage leaf.
+`RLPItemView::Hash` is used for the codehash and storage trie hash as well as for the hashed address and key.
+`RLPItemView::Address` is used for the non-hashed address.
+`RLPItemView::Key` is used for the non-hashed key.
+`RLPItemView::Nibbles` is used for the nibbles that are needed in the extension node.
+
+When an RLP item is to be used, the `RLPItemView` is created by using the following function:
+```
+impl<F: Field> MPTContext<F> {
+    pub(crate) fn rlp_item(
+        &self,
+        meta: &mut VirtualCells<F>,
+        cb: &mut MPTConstraintBuilder<F>,
+        idx: usize,
+        item_type: RlpItemType,
+    ) -> RLPItemView<F> {
+        self.rlp_item.create_view(meta, cb, idx, item_type)
+    }
+}
+```
+
+For example in the account leaf:
+```
+let key_items = [
+    ctx.rlp_item(meta, cb, AccountRowType::KeyS as usize, RlpItemType::Key),
+    ctx.rlp_item(meta, cb, AccountRowType::KeyC as usize, RlpItemType::Key),
+];
+```
+
+Now we have `RLPItemView` which can be used to retrieve the information such as the number of bytes or RLC the RLP item.
+
+Let's observe each of the `RLPItemView` fields:
+ * `is_big_endian` determines whether the data is stored in little endian or big endian. Little endian makes it much easier to decode the lo/hi split representation. Big endian is used in the case of `RlpItemType::Key` and `RlpItemType::Nibbles`.
+
+<!--
+    is_big_endian: bool,
+    can_use_word: bool,
+    bytes: Vec<Expression<F>>,
+    num_bytes: Option<Expression<F>>,
+    len: Option<Expression<F>>,
+    mult: Option<Expression<F>>,
+    hash_rlc: Option<Expression<F>>,
+    rlc_rlp: Option<Expression<F>>,
+    is_short: Option<Expression<F>>,
+    is_long: Option<Expression<F>>,
+    word: Option<Word<Expression<F>>>,
+-->
+
+
+# Obsolete (to be updated)
 
 ## Zeros in s_main/c_main after substream ends
 

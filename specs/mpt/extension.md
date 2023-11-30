@@ -1,3 +1,22 @@
+# Extension node
+
+`ExtensionGadget` computes the state (key RLC, key multiplier, number of nibbles) after the extension node nibbles.
+
+```
+pub(crate) struct ExtensionGadget<F> {
+    rlp_key: ListKeyGadget<F>,
+    is_not_hashed: LtGadget<F, 2>,
+    is_key_part_odd: Cell<F>,
+    mult_key: Cell<F>,
+
+    // Post extension state
+    post_state: Option<ExtState<F>>,
+}
+```
+
+
+
+
 # Obsolete (to be updated)
 
 An extension node occupies 2 rows. Extension node is an extension to the branch and can be viewed
