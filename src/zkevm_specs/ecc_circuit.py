@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import List, NamedTuple, Tuple
-from py_ecc.bn128.bn128_curve import is_on_curve, b, b2
+from py_ecc.bn128.bn128_curve import is_on_curve, b, b2, multiply
 from py_ecc.bn128 import bn128_curve
 
 from zkevm_specs.util.arithmetic import FP, RLC
@@ -140,7 +140,17 @@ class EccCircuitRow:
             # (0, 0) represents an infinite point in the circuit
             point1_g1 = None if p_x == 0 and p_y == 0 else p_g1
             point2_g2 = None if q_x1 == 0 and q_x2 == 0 and q_y1 == 0 and q_y2 == 0 else q_g2
-            is_valid_points = is_on_curve(point1_g1, b) and is_on_curve(point2_g2, b2)
+
+            # 3.point * curve order == infinity
+            # ref: https://github.com/ethereum/execution-specs/blob/master/src/ethereum/paris/vm/precompiled_contracts/alt_bn128.py#L142-L149
+            result = multiply(point1_g1, bn128_curve.curve_order)
+            valid_p = True if result is None else False
+            result = multiply(point2_g2, bn128_curve.curve_order)
+            valid_q = True if result is None else False
+
+            is_valid_points = (
+                is_on_curve(point1_g1, b) and is_on_curve(point2_g2, b2) and valid_p and valid_q
+            )
 
             is_valid = is_valid and (
                 precheck_px
@@ -254,10 +264,19 @@ class EccCircuitRow:
         cs.constrain_zero(self.row.out_x)
         cs.constrain_equal(self.ecc_pairing_chip.output, self.row.out_y)
 
-        # constrain the value of input_rlc in a row equals the rlc value of cells in ecc_pairing_chip
         num_of_pairings = 0
         input_bytes = bytearray(b"")
         for p, q in zip(self.ecc_pairing_chip.p, self.ecc_pairing_chip.q):
+            pp = None if p[0].n == 0 and p[1].n == 0 else (p[0], p[1])
+            pq = None if q[0].coeffs == (0, 0) and q[1].coeffs == (0, 0) else (q[0], q[1])
+            # point * curve order == infinity
+            result = multiply(pp, bn128_curve.curve_order)
+            valid_p = FQ.one() if result is None else FQ.zero()
+            result = multiply(pq, bn128_curve.curve_order)
+            valid_q = FQ.one() if result is None else FQ.zero()
+            cs.constrain_equal(valid_p + valid_q, FQ(2))
+
+            # concatenate inputs points for rlc
             input_bytes.extend(p[0].n.to_bytes(32, "little"))
             input_bytes.extend(p[1].n.to_bytes(32, "little"))
             input_bytes.extend(q[0].coeffs[0].n.to_bytes(32, "little"))
@@ -265,6 +284,8 @@ class EccCircuitRow:
             input_bytes.extend(q[1].coeffs[0].n.to_bytes(32, "little"))
             input_bytes.extend(q[1].coeffs[1].n.to_bytes(32, "little"))
             num_of_pairings += 1
+
+        # constrain the value of input_rlc in a row equals the rlc value of cells in ecc_pairing_chip
         inputs_rlc = RLC(
             bytes(reversed(input_bytes)), keccak_randomness, n_bytes=num_of_pairings * 192
         ).expr()
