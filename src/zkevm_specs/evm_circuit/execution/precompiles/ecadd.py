@@ -3,13 +3,12 @@ from zkevm_specs.evm_circuit.table import (
     CallContextFieldTag,
     EccOpTag,
     FixedTableTag,
-    RW,
 )
 from zkevm_specs.util import FQ, Word, Bn254AddGas
 
 
 def ecAdd(instruction: Instruction):
-    is_success = instruction.call_context_lookup(CallContextFieldTag.IsSuccess, RW.Read)
+    is_success = instruction.call_context_lookup(CallContextFieldTag.IsSuccess)
     address_word = instruction.call_context_lookup_word(CallContextFieldTag.CalleeAddress)
     address = instruction.word_to_address(address_word)
     instruction.fixed_lookup(
