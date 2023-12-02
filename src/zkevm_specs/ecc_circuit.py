@@ -184,7 +184,12 @@ class EccCircuitRow:
         return cls(ecc_table, None, ecc_pairing_chip)
 
     def verify(
-        self, cs: ConstraintSystem, max_add_ops: int, max_mul_ops: int, max_pairing_ops: int
+        self,
+        cs: ConstraintSystem,
+        max_add_ops: int,
+        max_mul_ops: int,
+        max_pairing_ops: int,
+        keccak_randomness: FQ,
     ):
         is_add = cs.is_equal(self.row.op_type, FQ(EccOpTag.Add))
         is_mul = cs.is_equal(self.row.op_type, FQ(EccOpTag.Mul))
@@ -223,7 +228,7 @@ class EccCircuitRow:
             assert (
                 num_pairing <= max_pairing_ops
             ), f"exceeds max number of pairing operation, max_pairing_ops: {max_pairing_ops}"
-            self.verify_pairing(cs)
+            self.verify_pairing(cs, keccak_randomness)
 
     def verify_add(self, cs: ConstraintSystem):
         # input_rlc is zero bcs it's only used in pairing
@@ -239,7 +244,7 @@ class EccCircuitRow:
 
         cs.constrain_equal(FQ(self.ecc_chip.verify_mul()), self.row.is_valid)
 
-    def verify_pairing(self, cs: ConstraintSystem):
+    def verify_pairing(self, cs: ConstraintSystem, keccak_randomness: FQ):
         # p and q are all zero. All input points are RLCed and stored in input_rlc
         cs.constrain_zero_word(self.row.px)
         cs.constrain_zero_word(self.row.py)
@@ -249,6 +254,22 @@ class EccCircuitRow:
         cs.constrain_zero(self.row.out_x)
         cs.constrain_bool(self.row.out_y)
         cs.constrain_bool(self.row.is_valid)
+
+        # constrain the value of input_rlc in a row equals rlc value of cells in ecc_pairing_chip
+        num_of_pairings = 0
+        input_bytes = bytearray(b"")
+        for p, q in zip(self.ecc_pairing_chip.p, self.ecc_pairing_chip.q):
+            input_bytes.extend(p[0].n.to_bytes(32, "little"))
+            input_bytes.extend(p[1].n.to_bytes(32, "little"))
+            input_bytes.extend(q[0].coeffs[0].n.to_bytes(32, "little"))
+            input_bytes.extend(q[0].coeffs[1].n.to_bytes(32, "little"))
+            input_bytes.extend(q[1].coeffs[0].n.to_bytes(32, "little"))
+            input_bytes.extend(q[1].coeffs[1].n.to_bytes(32, "little"))
+            num_of_pairings += 1
+        inputs_rlc = RLC(
+            bytes(reversed(input_bytes)), keccak_randomness, n_bytes=num_of_pairings * 192
+        ).expr()
+        cs.constrain_equal(self.row.input_rlc, inputs_rlc)
 
         cs.constrain_equal(FQ(self.ecc_pairing_chip.verify_pairing()), self.row.out_y)
 
@@ -349,4 +370,6 @@ def verify_circuit(circuit: EccCircuit, randomness_keccak: FQ) -> None:
     cs = ConstraintSystem()
     rows = circuit2rows(circuit, randomness_keccak)
     for row in rows:
-        row.verify(cs, circuit.max_add_ops, circuit.max_mul_ops, circuit.max_pairing_ops)
+        row.verify(
+            cs, circuit.max_add_ops, circuit.max_mul_ops, circuit.max_pairing_ops, randomness_keccak
+        )
