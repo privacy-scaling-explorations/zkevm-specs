@@ -2,7 +2,9 @@ from __future__ import annotations
 from typing import Tuple
 from eth_keys import KeyAPI  # type: ignore
 from .arithmetic import FP, FQ
+from py_ecc.bn128 import bn128_curve
 from py_ecc.bn128.bn128_curve import add, eq
+from py_ecc.bn128.bn128_pairing import pairing
 
 
 class WrongFieldInteger:
@@ -157,5 +159,33 @@ class ECCVerifyChip:
     def verify_mul(self) -> bool:
         raise NotImplementedError("verify_mul is not supported yet")
 
+
+class ECCPairingVerifyChip:
+    p: list[Tuple[FP, FP]]
+    q: list[Tuple[bn128_curve.FQ2, bn128_curve.FQ2]]
+    output: FQ
+
+    def __init__(
+        self,
+        p: list[Tuple[FP, FP]],
+        q: list[Tuple[bn128_curve.FQ2, bn128_curve.FQ2]],
+        output: FQ,
+    ) -> None:
+        self.p = p
+        self.q = q
+        self.output = output
+
+    @classmethod
+    def assign(
+        cls,
+        p: list[Tuple[FP, FP]],
+        q: list[Tuple[bn128_curve.FQ2, bn128_curve.FQ2]],
+        output: FQ,
+    ):
+        return cls(p, q, output)
+
     def verify_pairing(self) -> bool:
-        raise NotImplementedError("verify_pairing is not supported yet")
+        result = bn128_curve.FQ12.one()
+        for p, q in zip(self.p, self.q):
+            result = result * pairing(q, p)
+        return result == bn128_curve.FQ12.one()

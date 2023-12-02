@@ -1,10 +1,11 @@
 from __future__ import annotations
 from typing import List, NamedTuple, Tuple
-from py_ecc.bn128.bn128_curve import is_on_curve, b
+from py_ecc.bn128.bn128_curve import is_on_curve, b, b2
+from py_ecc.bn128 import bn128_curve
 
-from zkevm_specs.util.arithmetic import FP
+from zkevm_specs.util.arithmetic import FP, RLC
 from .evm_circuit import EccTableRow
-from .util import ConstraintSystem, FQ, Word, ECCVerifyChip
+from .util import ConstraintSystem, FQ, Word, ECCVerifyChip, ECCPairingVerifyChip
 from zkevm_specs.evm_circuit.table import EccOpTag
 
 
@@ -17,9 +18,14 @@ class EccCircuitRow:
 
     ecc_chip: ECCVerifyChip
 
-    def __init__(self, row: EccTableRow, ecc_chip: ECCVerifyChip) -> None:
+    ecc_pairing_chip: ECCPairingVerifyChip
+
+    def __init__(
+        self, row: EccTableRow, ecc_chip: ECCVerifyChip, ecc_pairing_chip: ECCPairingVerifyChip
+    ) -> None:
         self.row = row
         self.ecc_chip = ecc_chip
+        self.ecc_pairing_chip = ecc_pairing_chip
 
     @classmethod
     def check_fq(cls, value: int) -> bool:
@@ -36,8 +42,6 @@ class EccCircuitRow:
             return cls.assign_add(p[0], p[1], out)
         elif op_type == EccOpTag.Mul:
             return cls.assign_mul(p[0], p[1], out)
-        elif op_type == EccOpTag.Pairing:
-            return cls.assign_pairing(p, out)
         else:
             raise TypeError(f"Not supported type: {op_type}")
 
@@ -92,32 +96,110 @@ class EccCircuitRow:
             FQ(is_valid),
         )
 
-        return cls(ecc_table, ecc_chip)
+        return cls(ecc_table, ecc_chip, None)
 
     @classmethod
     def assign_mul(cls, p0: Tuple[Word, Word], p1: Tuple[Word, Word], out: Tuple[Word, Word]):
         raise NotImplementedError("assign_mul is not supported yet")
 
     @classmethod
-    def assign_pairing(cls, p: List[Tuple[Word, Word]], out: Tuple[Word, Word]):
-        raise NotImplementedError("assign_pairing is not supported yet")
+    def assign_pairing(
+        cls, pts: List[Tuple[Word, Word, Word, Word, Word, Word]], out: Word, keccak_randomness: FQ
+    ):
+        ps_g1 = []
+        qs_g2 = []
+        input_bytes = bytearray(b"")
+        num_of_pairings = 0
+        for p in pts:
+            p_x = p[0].int_value()
+            p_y = p[1].int_value()
+            q_x1 = p[3].int_value()
+            q_x2 = p[2].int_value()
+            q_y1 = p[5].int_value()
+            q_y2 = p[4].int_value()
+
+            ### verify validity of input points
+            # 1. values of p0, p1 and p2 are within FQ.field_modulus
+            precheck_px = cls.check_fq(p_x)
+            precheck_py = cls.check_fq(p_y)
+            precheck_qx1 = cls.check_fq(q_x1)
+            precheck_qx2 = cls.check_fq(q_x2)
+            precheck_qy1 = cls.check_fq(q_y1)
+            precheck_qy2 = cls.check_fq(q_y2)
+
+            # 2. p0 on G1, and p1 and p2 on G2 are all on the curve
+            # (0, 0) represents an infinite point in the circuit
+            p_g1 = None if p_x == 0 and p_y == 0 else (FP(p_x), FP(p_y))
+            q_g2 = (
+                None
+                if q_x1 == 0 and q_x2 == 0 and q_y1 == 0 and q_y2 == 0
+                else (
+                    bn128_curve.FQ2([q_x1, q_x2]),
+                    bn128_curve.FQ2([q_y1, q_y2]),
+                )
+            )
+            is_valid_points = is_on_curve(p_g1, b) and is_on_curve(q_g2, b2)
+
+            ps_g1.append(p_g1)
+            qs_g2.append(q_g2)
+
+            is_valid = (
+                precheck_px
+                and precheck_py
+                and precheck_qx1
+                and precheck_qx2
+                and precheck_qy1
+                and precheck_qy2
+                and is_valid_points
+            )
+
+            # construct input bytes for RLC
+            input_bytes.extend(p_x.to_bytes(32, "little"))
+            input_bytes.extend(p_y.to_bytes(32, "little"))
+            input_bytes.extend(q_x1.to_bytes(32, "little"))
+            input_bytes.extend(q_x2.to_bytes(32, "little"))
+            input_bytes.extend(q_y1.to_bytes(32, "little"))
+            input_bytes.extend(q_y2.to_bytes(32, "little"))
+            num_of_pairings += 1
+
+        ecc_pairing_chip = ECCPairingVerifyChip.assign(
+            p=ps_g1,
+            q=qs_g2,
+            output=FQ(is_valid),
+        )
+        ecc_table = EccTableRow(
+            FQ(EccOpTag.Pairing),
+            Word(0),
+            Word(0),
+            Word(0),
+            Word(0),
+            RLC(
+                bytes(reversed(input_bytes)), keccak_randomness, n_bytes=num_of_pairings * 192
+            ).expr(),
+            out.hi.expr(),
+            out.lo.expr(),
+            FQ(is_valid),
+        )
+
+        return cls(ecc_table, None, ecc_pairing_chip)
 
     def verify(
         self, cs: ConstraintSystem, max_add_ops: int, max_mul_ops: int, max_pairing_ops: int
     ):
-        # Copy constraints between EccTable and ECCVerifyChip
-        cs.constrain_equal_word(Word(self.ecc_chip.p0[0].n), self.row.px)
-        cs.constrain_equal_word(Word(self.ecc_chip.p0[1].n), self.row.py)
-        cs.constrain_equal_word(Word(self.ecc_chip.p1[0].n), self.row.qx)
-        cs.constrain_equal_word(Word(self.ecc_chip.p1[1].n), self.row.qy)
-        cs.constrain_equal(self.ecc_chip.output[0], self.row.out_x)
-        cs.constrain_equal(self.ecc_chip.output[1], self.row.out_y)
-
         is_add = cs.is_equal(self.row.op_type, FQ(EccOpTag.Add))
         is_mul = cs.is_equal(self.row.op_type, FQ(EccOpTag.Mul))
         is_pairing = cs.is_equal(self.row.op_type, FQ(EccOpTag.Pairing))
         # Must be one of above operations
         cs.constrain_equal(is_add + is_mul + is_pairing, FQ(1))
+
+        # Copy constraints between EccTable and ECCVerifyChip
+        if is_add == FQ.one() or is_mul == FQ.one():
+            cs.constrain_equal_word(Word(self.ecc_chip.p0[0].n), self.row.px)
+            cs.constrain_equal_word(Word(self.ecc_chip.p0[1].n), self.row.py)
+            cs.constrain_equal_word(Word(self.ecc_chip.p1[0].n), self.row.qx)
+            cs.constrain_equal_word(Word(self.ecc_chip.p1[1].n), self.row.qy)
+            cs.constrain_equal(self.ecc_chip.output[0], self.row.out_x)
+            cs.constrain_equal(self.ecc_chip.output[1], self.row.out_y)
 
         num_add = 0
         num_mul = 0
@@ -159,18 +241,16 @@ class EccCircuitRow:
 
     def verify_pairing(self, cs: ConstraintSystem):
         # p and q are all zero. All input points are RLCed and stored in input_rlc
-        cs.constrain_zero(self.row.px)
-        cs.constrain_zero(self.row.py)
-        cs.constrain_zero(self.row.qx)
-        cs.constrain_zero(self.row.qy)
+        cs.constrain_zero_word(self.row.px)
+        cs.constrain_zero_word(self.row.py)
+        cs.constrain_zero_word(self.row.qx)
+        cs.constrain_zero_word(self.row.qy)
         # output of pairing is either 0 or 1 and stored in the lower part
         cs.constrain_zero(self.row.out_x)
         cs.constrain_bool(self.row.out_y)
-        # TODO: fixing it in ecPairing PR
-        # see https://github.com/privacy-scaling-explorations/zkevm-specs/pull/500#discussion_r1383072583
-        cs.constrain_equal(self.row.out_y, self.row.is_valid)
+        cs.constrain_bool(self.row.is_valid)
 
-        cs.constrain_equal(FQ(self.ecc_chip.verify_pairing()), self.row.is_valid)
+        cs.constrain_equal(FQ(self.ecc_pairing_chip.verify_pairing()), self.row.out_y)
 
 
 class EcAdd(NamedTuple):
@@ -223,7 +303,7 @@ class EccCircuit:
         self.pairing_ops.append(op)
 
 
-def circuit2rows(circuit: EccCircuit) -> List[EccCircuitRow]:
+def circuit2rows(circuit: EccCircuit, randomness_keccak: FQ) -> List[EccCircuitRow]:
     rows: List[EccCircuitRow] = []
     for op in circuit.add_ops:
         row = EccCircuitRow.assign(
@@ -243,30 +323,30 @@ def circuit2rows(circuit: EccCircuit) -> List[EccCircuitRow]:
         )
         rows.append(row)
     for op in circuit.pairing_ops:
-        points: List[Word] = []
+        points: List[Tuple[Word, Word, Word, Word, Word, Word]] = []
         for i, g1_pt in enumerate(op.g1_pts):
-            points.append(g1_pt[0])
-            points.append(g1_pt[1])
-            points.append(op.g2_pts[i][0])
-            points.append(op.g2_pts[i][1])
-            points.append(op.g2_pts[i][2])
-            points.append(op.g2_pts[i][3])
+            points.append(
+                (
+                    Word(g1_pt[0]),
+                    Word(g1_pt[1]),
+                    Word(op.g2_pts[i][0]),
+                    Word(op.g2_pts[i][1]),
+                    Word(op.g2_pts[i][2]),
+                    Word(op.g2_pts[i][3]),
+                )
+            )
 
-        row = EccCircuitRow.assign(
-            EccOpTag.Pairing,
-            points,
-            (FP(0), FP(op.out)),
-        )
+        row = EccCircuitRow.assign_pairing(points, Word(op.out), randomness_keccak)
         rows.append(row)
 
     return rows
 
 
-def verify_circuit(circuit: EccCircuit) -> None:
+def verify_circuit(circuit: EccCircuit, randomness_keccak: FQ) -> None:
     """
     Entry level circuit verification function
     """
     cs = ConstraintSystem()
-    rows = circuit2rows(circuit)
+    rows = circuit2rows(circuit, randomness_keccak)
     for row in rows:
         row.verify(cs, circuit.max_add_ops, circuit.max_mul_ops, circuit.max_pairing_ops)
