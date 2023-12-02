@@ -186,6 +186,9 @@ class ECCPairingVerifyChip:
 
     def verify_pairing(self) -> bool:
         result = bn128_curve.FQ12.one()
+
         for p, q in zip(self.p, self.q):
+            p = None if p == (0, 0) else p
+            q = None if q[0] == bn128_curve.FQ2.zero() and q[1] == bn128_curve.FQ2.zero() else q
             result = result * pairing(q, p)
         return result == bn128_curve.FQ12.one()

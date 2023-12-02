@@ -108,6 +108,7 @@ class EccCircuitRow:
     ):
         ps_g1 = []
         qs_g2 = []
+        is_valid = True
         input_bytes = bytearray(b"")
         num_of_pairings = 0
         for p in pts:
@@ -117,6 +118,14 @@ class EccCircuitRow:
             q_x2 = p[2].int_value()
             q_y1 = p[5].int_value()
             q_y2 = p[4].int_value()
+
+            p_g1 = (FP(p_x), FP(p_y))
+            q_g2 = (
+                bn128_curve.FQ2([q_x1, q_x2]),
+                bn128_curve.FQ2([q_y1, q_y2]),
+            )
+            ps_g1.append(p_g1)
+            qs_g2.append(q_g2)
 
             ### verify validity of input points
             # 1. values of p0, p1 and p2 are within FQ.field_modulus
@@ -129,21 +138,11 @@ class EccCircuitRow:
 
             # 2. p0 on G1, and p1 and p2 on G2 are all on the curve
             # (0, 0) represents an infinite point in the circuit
-            p_g1 = None if p_x == 0 and p_y == 0 else (FP(p_x), FP(p_y))
-            q_g2 = (
-                None
-                if q_x1 == 0 and q_x2 == 0 and q_y1 == 0 and q_y2 == 0
-                else (
-                    bn128_curve.FQ2([q_x1, q_x2]),
-                    bn128_curve.FQ2([q_y1, q_y2]),
-                )
-            )
-            is_valid_points = is_on_curve(p_g1, b) and is_on_curve(q_g2, b2)
+            point1_g1 = None if p_x == 0 and p_y == 0 else p_g1
+            point2_g2 = None if q_x1 == 0 and q_x2 == 0 and q_y1 == 0 and q_y2 == 0 else q_g2
+            is_valid_points = is_on_curve(point1_g1, b) and is_on_curve(point2_g2, b2)
 
-            ps_g1.append(p_g1)
-            qs_g2.append(q_g2)
-
-            is_valid = (
+            is_valid = is_valid and (
                 precheck_px
                 and precheck_py
                 and precheck_qx1
@@ -194,6 +193,7 @@ class EccCircuitRow:
         is_add = cs.is_equal(self.row.op_type, FQ(EccOpTag.Add))
         is_mul = cs.is_equal(self.row.op_type, FQ(EccOpTag.Mul))
         is_pairing = cs.is_equal(self.row.op_type, FQ(EccOpTag.Pairing))
+
         # Must be one of above operations
         cs.constrain_equal(is_add + is_mul + is_pairing, FQ(1))
 
@@ -205,6 +205,16 @@ class EccCircuitRow:
             cs.constrain_equal_word(Word(self.ecc_chip.p1[1].n), self.row.qy)
             cs.constrain_equal(self.ecc_chip.output[0], self.row.out_x)
             cs.constrain_equal(self.ecc_chip.output[1], self.row.out_y)
+            # input_rlc is zero bcs it's only used in pairing
+            cs.constrain_zero(self.row.input_rlc)
+        else:
+            # p and q are all zero. All input points are RLCed and stored in input_rlc
+            cs.constrain_zero_word(self.row.px)
+            cs.constrain_zero_word(self.row.py)
+            cs.constrain_zero_word(self.row.qx)
+            cs.constrain_zero_word(self.row.qy)
+
+        cs.constrain_bool(self.row.is_valid)
 
         num_add = 0
         num_mul = 0
@@ -231,31 +241,20 @@ class EccCircuitRow:
             self.verify_pairing(cs, keccak_randomness)
 
     def verify_add(self, cs: ConstraintSystem):
-        # input_rlc is zero bcs it's only used in pairing
-        cs.constrain_zero(self.row.input_rlc)
-
         cs.constrain_equal(FQ(self.ecc_chip.verify_add()), self.row.is_valid)
 
     def verify_mul(self, cs: ConstraintSystem):
-        # input_rlc is zero bcs it's only used in pairing
-        cs.constrain_zero(self.row.input_rlc)
         # qy is zero bcs q is scalar in ecMul so we only use qx
         cs.constrain_zero(self.row.qy)
 
         cs.constrain_equal(FQ(self.ecc_chip.verify_mul()), self.row.is_valid)
 
     def verify_pairing(self, cs: ConstraintSystem, keccak_randomness: FQ):
-        # p and q are all zero. All input points are RLCed and stored in input_rlc
-        cs.constrain_zero_word(self.row.px)
-        cs.constrain_zero_word(self.row.py)
-        cs.constrain_zero_word(self.row.qx)
-        cs.constrain_zero_word(self.row.qy)
-        # output of pairing is either 0 or 1 and stored in the lower part
+        # output of pairing is stored in row.outy
         cs.constrain_zero(self.row.out_x)
-        cs.constrain_bool(self.row.out_y)
-        cs.constrain_bool(self.row.is_valid)
+        cs.constrain_equal(self.ecc_pairing_chip.output, self.row.out_y)
 
-        # constrain the value of input_rlc in a row equals rlc value of cells in ecc_pairing_chip
+        # constrain the value of input_rlc in a row equals the rlc value of cells in ecc_pairing_chip
         num_of_pairings = 0
         input_bytes = bytearray(b"")
         for p, q in zip(self.ecc_pairing_chip.p, self.ecc_pairing_chip.q):
@@ -345,18 +344,17 @@ def circuit2rows(circuit: EccCircuit, randomness_keccak: FQ) -> List[EccCircuitR
         rows.append(row)
     for op in circuit.pairing_ops:
         points: List[Tuple[Word, Word, Word, Word, Word, Word]] = []
-        for i, g1_pt in enumerate(op.g1_pts):
+        for g1_pt, g2_pt in zip(op.g1_pts, op.g2_pts):
             points.append(
                 (
                     Word(g1_pt[0]),
                     Word(g1_pt[1]),
-                    Word(op.g2_pts[i][0]),
-                    Word(op.g2_pts[i][1]),
-                    Word(op.g2_pts[i][2]),
-                    Word(op.g2_pts[i][3]),
+                    Word(g2_pt[0]),
+                    Word(g2_pt[1]),
+                    Word(g2_pt[2]),
+                    Word(g2_pt[3]),
                 )
             )
-
         row = EccCircuitRow.assign_pairing(points, Word(op.out), randomness_keccak)
         rows.append(row)
 
