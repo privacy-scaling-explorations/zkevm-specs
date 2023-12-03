@@ -99,7 +99,7 @@ def gen_testing_data():
         True,
         True,
     )
-    # invalid p (1, 1)
+    # invalid p, (1, 1)
     invalid_input = (
         CallContext(),
         EcPairing(

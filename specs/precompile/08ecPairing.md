@@ -23,6 +23,8 @@ The output is the result of `ecPairing`, 1 if the pairing is successful, 0 other
 input[0; 31] (32 bytes): success
 ```
 
+The definition of `is_valid` here is the validity of input points (on the curve or at infinity). `is_valid` doesn't mean it's a successful call (`output` is 1) because we can give any valid points but it causes the result is not equal (e(p1, p2) != e(p3, p4)).
+
 ### Gas cost
 
 1. A constant gas cost: 45,000
@@ -32,10 +34,14 @@ If the input is not valid, all gas provided is consumed.
 
 ## Constraints
 
-1. The length of inputs must be a multiple of 192 bytes.
-1. `ecc_table` lookup
-2. If `is_valid` is false,
-  - output is zero
+1. If the length of the input is not a multiple of 192 bytes
+  - output is 0
+2. If the input is empty which means it's a successful call,
+  - `input_rlc` is zero
+  - output is 1
+3. `ecc_table` lookup
+4. If `is_valid` is false,
+  - output is 0
   - consume all the remaining gas
 
 ## Code
