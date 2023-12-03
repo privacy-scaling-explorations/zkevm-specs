@@ -23,24 +23,26 @@ def ecPairing(instruction: Instruction):
     )
 
     # Get input_rlc and result
-    input_rlc: Word = instruction.curr.aux_data[0]
+    input_rlc: FQ = instruction.curr.aux_data[0]
     input_pairs: FQ = instruction.curr.aux_data[1]
-    output: FQ = instruction.curr.aux_data[2]
+    is_valid_input: FQ = instruction.curr.aux_data[2]
+    output: FQ = instruction.curr.aux_data[3]
 
     # output indicates the pairing is successful or not
     instruction.constrain_equal(is_success.expr(), output)
 
     # invalid input data length
-    if calldata_len % BYTES_PER_PAIRING != 0:
+    if calldata_len.n % BYTES_PER_PAIRING != 0:
         instruction.constrain_equal(output, FQ.zero())
-    else:  # successful case
+        instruction.constrain_equal(is_valid_input, FQ.zero())
+    else:  # valid input length
         # data length is a multiple of 192 bytes
-        instruction.constrain_equal(calldata_len.expr(), input_pairs * BYTES_PER_PAIRING)
+        instruction.constrain_equal(calldata_len, FQ(input_pairs.n * BYTES_PER_PAIRING))
 
         # if an empty input which is allowed, then output is 1 and input_rlc is 0
         if calldata_len == FQ.zero():
             instruction.constrain_zero(input_pairs)
-            instruction.constrain_zero_word(input_rlc)
+            instruction.constrain_zero(input_rlc)
             instruction.constrain_equal(output, FQ.one())
 
     # ecc table lookup
@@ -53,7 +55,7 @@ def ecPairing(instruction: Instruction):
         input_rlc,
         FQ.zero(),
         output,
-        is_success,
+        is_valid_input,
     )
 
     # consume all the gas if is_success is false

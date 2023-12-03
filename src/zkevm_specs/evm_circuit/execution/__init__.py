@@ -78,6 +78,7 @@ from .error_oog_sload_sstore import *
 from .error_oog_create import *
 from .precompiles.ecrecover import *
 from .precompiles.ecadd import *
+from .precompiles.ecpairing import *
 
 
 EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
@@ -161,6 +162,6 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     # ExecutionState.BIGMODEXP: ,
     ExecutionState.BN254_ADD: ecAdd,
     # ExecutionState.BN254_SCALAR_MUL: ,
-    # ExecutionState.BN254_PAIRING: ,
+    ExecutionState.BN254_PAIRING: ecPairing,
     # ExecutionState.BLAKE2F: ,
 }
