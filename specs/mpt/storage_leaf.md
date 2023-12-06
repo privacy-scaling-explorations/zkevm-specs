@@ -1,5 +1,35 @@
 # Storage leaf
 
+An example of the storage leaf returned by `getProof` is:
+```
+[226,160,59,138,106,70,105,186,37,13,38,205,122,69,158,202,157,33,95,131,7,227,58,235,229,3,121,188,90,54,23,236,52,68,1]
+```
+
+The first byte (`226 = 192 + 34`) represents the length of the RLP stream - meaning there are `34` bytes after the first byte.
+The second byte `160 = 128 + 32`) represents the length of the RLP substream representing the key leaf - meaning there are `32` bytes after the
+second byte that represent the key.
+The last byte (`1`) is the leaf value - note that it does not have a RLP byte specifyng the length because it is only one byte.
+
+The substream represents
+`
+59,138,106,70,105,186,37,13,38,205,122,69,158,202,157,33,95,131,7,227,58,235,229,3,121,188,90,54,23,236,52,68,
+`
+represents the key. The key nibbles are:
+```
+11 (59 - 48)
+8
+10 (8 * 16 + 10 = 138)
+6
+10 (6 * 16 + 10 = 106)
+4
+6 (4 * 16 + 6 = 70)
+...
+```
+
+
+
+# Obsolete
+
 A storage leaf occupies 6 rows.
 Contrary as in the branch rows, the `S` and `C` leaves are not positioned parallel to each other.
 The rows are the following:

@@ -1,49 +1,14 @@
 # Extension node
 
-`ExtensionGadget` computes the state (key RLC, key multiplier, number of nibbles) after the extension node nibbles.
+## When is extension node added to the trie (and not a branch)
 
-```
-pub(crate) struct ExtensionGadget<F> {
-    rlp_key: ListKeyGadget<F>,
-    is_not_hashed: LtGadget<F, 2>,
-    is_key_part_odd: Cell<F>,
-    mult_key: Cell<F>,
-
-    // Post extension state
-    post_state: Option<ExtState<F>>,
-}
-```
-
-
-
-
-# Obsolete (to be updated)
-
-An extension node occupies 2 rows. Extension node is an extension to the branch and can be viewed
-as a special kind of branch. The branch / extension node layout is as follows:
-
-```
-IS_INIT
-IS_CHILD 0
-...
-IS_CHILD 15
-IS_EXTENSION_NODE_S
-IS_EXTENSION_NODE_C
-```
-
-Contrary as in the branch rows, the `S` and `C` extension nodes are not positioned parallel to each
-other. We have extension node for `S` proof in `IS_EXTENSION_NODE_S` row and extension node for `C` proof
-in `IS_EXTENSION_NODE_C` row.
-
-Let us observe the following example (similar to the on for
-[account-leaf.md](account-leaf.md)). We are adding a new account `A1` to the trie.
-Let us say that the account `A1` has the address
+Let us say we add a new account `A1` to the trie. Let the account `A1` have the address
 (in nibbles):
 ``` 
 [8, 15, 1, 8, 7, ...]
 ``` 
 
-And let us say there already exists an account `A` in the trie with the following nibbles:
+Let us say there already exists an account `A` in the trie with the following nibbles:
 ```
 [8, 15, 1, 8, 4, ...]
 ```
@@ -94,42 +59,92 @@ Extension node contains two parts: extension nibbles and hash of the underlying 
 In our case, the extension node would contain `[1, 8]` and `Branch2` hash. Note that before `A1` has been
 added, `Node_1_15` was the hash of `A`. After `A1` was added, `Node_1_15` is the hash of the extension node.
 
-## RLP encoding
+## getProof
 
-The RLP encoding of the extension node might look like as follows.
-1. Having only one nibble in the extension:
+The extension node returned by `getProof` contains the extension nibbles and the hash of the underlying branch.
+An example extension node returned by `getProof` might be:
 ```
-[226,16,160,172,105,12...
+[228 130 0 150 160 215 121 207 40 14 160 149 115 175 222 139 45 208 88 81 65 226 190 111 191 208 252 147 90 105 163 154 4 132 52 204 121]
 ```
-In this case `s_main.rlp2` denotes the nibble being `0 = 16 - 16`. `s_main.bytes[0]` denotes the length
-of the following string (`32 = 160 - 128`). The string `[172,105,12,...]` is hash of the underlying
-branch.
 
-2. Having only one nibble and the branch being shorter than 32 bytes (being non-hashed):
-```
-[223,16,221,198,132,32,0,0,0,1,198,132,32,0,0,0,1,128,128,128,128,128,128,128,128,128,128,128,128,128,128,128]
-```
-In this case `s_main.bytes[0]` marks the length of the non-hashed branch: `29 = 221 - 192`.
+The first byte in this example (`228 = 192 + 36`) denotes the length (`36`) of the RLP stream (number of bytes behind the first byte).
+The second byte (`130 = 128 + 2`) denotes the length of the bytes that contain the nibbles (`2`).
+The third and fourth bytes are (compressed) nibbles.
+The fifth byte (`160 = 128 + 32`) denotes the length of the hash of the underlying branch (`32`).
+The remaning bytes represent the hash of the underlying branch.
 
-Similar example but with more nibbles (note that if extension node contains up to 55 bytes,
-`s_main.rlp1` will be up to `247 = 192 + 55`).
+The compressed nibbles are `[0, 150]`.
+The nibbles of this extension node are: `[9, 4]` (`150 = 9 * 16 + 4`).
+When the number of nibbles is even, the first byte of the compressed nibbles is always `0`.
+When the number of nibbles is odd, the first byte is `16` + the first nibble.
+
+For example, in `[226,16,160,172,105,12...`
+we have only one nibble (`0`) and the compressed nibbles occupy only one byte (the second byte `16 = 16 + 0`).
+
+In
+`[223,16,221,198,132,32,0,0,0,1,198,132,32,0,0,0,1,128,128,128,128,128,128,128,128,128,128,128,128,128,128,128]`
+we again have only one nibble, but the branch RLP stream is shorter than 32 bytes and is thus not hashed.
+The third byte (`221 = 192 + 29`) denotes the length of the branch (`29).
+
+A similar example but with more nibbles is:
 ```
 [247,160,16,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,213,128,194,32,1,128,194,32,1,128,128,128,128,128,128,128,128,128,128,128,128,128]
 ```
+Note that here the compressed nibbles are: `[16,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]`,
+thus all nibbles are `0`.
 
-When the extension node contains more than 55 bytes:
+When the extension node contains more than `55` bytes:
 ```
 [248,58,159,16,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,217,128,196,130,32,0,1,128,196,130,32,0,1,128,128,128,128,128,128,128,128,128,128,128,128,128]
 ```
-In this case `s_main.rlp2` marks the length of the remaining stream, `s_main.bytes[0]` denotes the
-length of the bytes that store nibbles: `31 = 159 - 128`.
+In this case the second byte (`58`) denotes the length of the remaining stream. The third byte (`159 = 128 + 31`) denotes the
+length of the bytes that store nibbles (`31`).
 
-3. Having more than one nibble:
-``` 
-[228,130,0,149,160,114,253,150,133,18,192,156,19,241,162,51,210,24,1,151,16,48,7,177,42,60,49,34,230,254,242,79,132,165,90,75,249]
+## Witness
+
+Let us observe the following extension node:
 ```
-In this case `s_main.rlp2` marks the length of the bytes that store nibbles: `2 = 130 - 128`.
-The actual nibbles are `[9, 5]` as `149 = 9 * 16 + 5`.
+[228 130 0 150 160 215 121 207 40 14 160 149 115 175 222 139 45 208 88 81 65 226 190 111 191 208 252 147 90 105 163 154 4 132 52 204 121]
+[228 130 0 150 160 208 13 115 5 131 97 180 161 37 184 30 176 46 254 113 83 244 235 231 202 172 66 172 99 25 151 249 73 32 160 1 218]
+```
+
+The witness prepared
+```
+[130 0 150 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]
+[160 215 121 207 40 14 160 149 115 175 222 139 45 208 88 81 65 226 190 111 191 208 252 147 90 105 163 154 4 132 52 204 121 0]
+[0 0 6 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]
+[160 208 13 115 5 131 97 180 161 37 184 30 176 46 254 113 83 244 235 231 202 172 66 172 99 25 151 249 73 32 160 1 218 0]
+```
+
+The third row (`ExtensionBranchRowType::Nibbles`) contains the second nibbles of the key (the first row).
+The range check `0 - 15` is applied on the third row (`ExtensionBranchRowType::Nibbles`) in `MainRLPGadget`.
+
+
+TODO
+
+## ExtensionGadget
+
+`ExtensionGadget` (used in `ExtensionBranchConfig`) computes the state (key RLC, key multiplier, number of nibbles)
+after the extension node nibbles.
+
+```
+pub(crate) struct ExtensionGadget<F> {
+    rlp_key: ListKeyGadget<F>,
+    is_not_hashed: LtGadget<F, 2>,
+    is_key_part_odd: Cell<F>,
+    mult_key: Cell<F>,
+
+    // Post extension state
+    post_state: Option<ExtState<F>>,
+}
+```
+
+
+
+
+# Obsolete (to be updated)
+
+
 
 ## Extension node key constraints
 

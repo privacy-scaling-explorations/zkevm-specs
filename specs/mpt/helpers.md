@@ -85,6 +85,13 @@ Let's observe each of the `RLPItemView` fields:
     word: Option<Word<Expression<F>>>,
 -->
 
+TODO
+
+
+## Extension key RLC helper functions
+
+
+
 
 # Obsolete (to be updated)
 
