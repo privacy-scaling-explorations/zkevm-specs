@@ -217,7 +217,7 @@ class EccCircuitRow:
             cs.constrain_equal(self.ecc_chip.output[1], self.row.out_y)
             # input_rlc is zero bcs it's only used in pairing
             cs.constrain_zero(self.row.input_rlc)
-        else:
+        else:  # if is_pairing is true
             # p and q are all zero. All input points are RLCed and stored in input_rlc
             cs.constrain_zero_word(self.row.px)
             cs.constrain_zero_word(self.row.py)
@@ -276,7 +276,7 @@ class EccCircuitRow:
             valid_q = FQ.one() if result is None else FQ.zero()
             cs.constrain_equal(valid_p + valid_q, FQ(2))
 
-            # concatenate inputs points for rlc
+            # concatenate input points for rlc
             input_bytes.extend(p[0].n.to_bytes(32, "little"))
             input_bytes.extend(p[1].n.to_bytes(32, "little"))
             input_bytes.extend(q[0].coeffs[0].n.to_bytes(32, "little"))

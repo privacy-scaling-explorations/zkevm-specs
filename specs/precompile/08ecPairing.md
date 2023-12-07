@@ -6,7 +6,7 @@ The `ecPairing` precompile computes the bilinear map between two given points in
 
 ### Circuit behavior
 
-The inputs is a multiple of 6 32-byte values. One set of inputs is defined as follows
+The input is arbitrarily many pairs of elliptic curve points. Each pair is given as a six 32-bytes values and is constructed as follows
 
 ```
 input[0; 31] (32 bytes): x1
@@ -17,14 +17,17 @@ input[128; 159] (32 bytes): x3 (result)
 input[160; 192] (32 bytes): y3 (result)
 ```
 
-The output is the result of `ecPairing`, 1 if the pairing is successful, 0 otherwise.
+The first two 32-bytes values represent the first point (px, py) from group G1, the next four 32-bytes values represent the other point (qx, qy) from group G2.
+
+The bn254Pairing code first checks that a multiple of 6 elements have been sent, and then performs the pairings check(s). The check that is performed for two pairs is e(p1, q1) = e(-p2, q2) which is equivalent to the check e(p1, q1) * e(p2, q2) = 1.
+
+The output is 1 if all pairing checks were successful, otherwise it returns 0.
 
 ```
 input[0; 31] (32 bytes): success
 ```
 
-The definition of `is_valid` here is the validity of input points (on the curve or at infinity). `is_valid` doesn't mean it's a successful call (`output` is 1) because we can give any valid points but it causes the result is not equal (e(p1, p2) != e(p3, p4)).
-
+The pairing checks fail if not having a multiple of 6 32-bytes values or in the case of the points not being on the curve. In these cases all the provided gas is consumed. For these cases, the variable is_valid is set to 0. The variable output denotes whether the pairing checks were successful (in the case of is_valid = 1)
 ### Gas cost
 
 1. A constant gas cost: 45,000

@@ -28,7 +28,7 @@ def ecPairing(instruction: Instruction):
     is_valid_input: FQ = instruction.curr.aux_data[2]
     output: FQ = instruction.curr.aux_data[3]
 
-    # output indicates the pairing is successful or not
+    # output indicates whether the pairing is successful or not
     instruction.constrain_equal(is_success.expr(), output)
 
     # invalid input data length
