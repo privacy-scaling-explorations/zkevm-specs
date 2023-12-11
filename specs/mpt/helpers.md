@@ -192,7 +192,7 @@ Let us say we have nibbles `1, 7` up to this level and we have nibbles `5, 3, 2`
 The intermediate RLC is:
 ```
 RLC = (1 * 16 + 7) + (5 * 16 + 3) * r + 2 * 16 * r^2
-`
+```
 
 Note that we again need to know the nibbles `5, 3, 2` separately because they appear in different byte terms - `3` and `2` are compressed together in the witness, but the two appear in different byte terms in the computation of the RLC.
 
