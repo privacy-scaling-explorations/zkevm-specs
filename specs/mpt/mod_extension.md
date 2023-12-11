@@ -65,7 +65,7 @@ As mentioned above, additional witness data is added in the case of modified ext
 For example, if we have an extension node `E` with nibbles `1 2 3 4 5 6` and
 then a leaf `L` is added at the path `1 2 3 4 4`, a new extension node `E1` appears with nibbles `1 2 3 4`. The leaf `L` in in the underlying branch `B0` of `E1` at position `4`. At position `5` in `B0` we have the new extension node `E2` with one nibble `6`.
 
-The witness for `E` (long extension node) contains the information about nibbles (the first row: `18 = 1 * 16 + 2, 54 = 3 * 16 + 4, 86 = 5 * 16 + 6`), about second nibbles (the second row: `2 4 6`), and the hash of the branch (the third row): 
+The witness for `E` (long extension node) contains the information about nibbles (the first row: `18 = 1 * 16 + 2, 54 = 3 * 16 + 4, 86 = 5 * 16 + 6`), about second nibbles (the second row: `2 4 6`), and the hash of the branch (the third row):
 
 ```
 [132 0 18 52 86 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]
