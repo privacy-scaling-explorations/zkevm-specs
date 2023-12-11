@@ -20,6 +20,17 @@ def unroll(bytecode: bytes, randomness_keccak: FQ) -> UnrolledBytecode:
 # Verify the bytecode circuit with the given data
 def verify(k: int, bytecodes: Sequence[UnrolledBytecode], randomness_keccak: FQ, success: bool):
     rows = assign_bytecode_circuit(k, bytecodes, randomness_keccak)
+
+    for row in rows[:10]:
+        print(
+            {
+                "index": row.index,
+                "value": row.value,
+                "is_code": row.is_code,
+                "push_data_left": row.push_data_left,
+                "push_data_size": row.push_data_size,
+            }
+        )
     verify_rows(bytecodes, rows, success)
 
 
@@ -83,6 +94,11 @@ def test_bytecode_unrolling():
 
 def test_bytecode_empty():
     bytecodes = [unroll(bytes([]), randomness_keccak)]
+    verify(k, bytecodes, randomness_keccak, True)
+
+
+def test_bytecode_example():
+    bytecodes = [unroll(bytes([Opcode.PUSH3, 1, 2, 3]), randomness_keccak)]
     verify(k, bytecodes, randomness_keccak, True)
 
 
