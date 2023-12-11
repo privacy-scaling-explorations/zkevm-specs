@@ -17,7 +17,7 @@ The column `tag` (advice) makes the circuit behave as a state machine, selecting
 | `index`               | The position of the byte in the bytecode, starting from 0           |
 | `value`               | A bytecode byte if it's a `Byte` row. Length if it's a `Header` row.|
 | `is_code`             | `1` if the byte is code, `0` if the byte is PUSH data               |
-| `push_data_left`      | The number of left bytes data needs to be PUSHed                    |
+| `push_data_left`      | The number of bytes remaining to be pushed as data                  |
 | `value_rlc`           | The accumulator containing the current and previous bytes RLC       |
 | `length`              | The bytecode length, that could be 0 for empty bytecodes and padding|
 | `push_data_size`      | The number of bytes needs to be pushed if `is_code` is true         |

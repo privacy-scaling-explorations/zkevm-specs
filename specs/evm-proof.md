@@ -17,7 +17,7 @@ We define the following Python custom types for type hinting and readability:
 
 ## Random Accessible Data
 
-In EVM, the interpreter has ability to do any random access to data like account balance, account storage, or stack and memory in current scope, but it's hard EVM circuit to keep tracking these data to ensure their consistency from time to time. So EVM proof has the state proof to provide a valid list of random read-write access records indexed by the `GlobalCounter` as a lookup table to do random access at any moment.
+In EVM, the interpreter has ability to do any random access to data like account balance, account storage, or stack and memory in current scope, but it's hard for the EVM circuit to keep tracking these data to ensure their consistency from time to time. So EVM proof has the state proof to provide a valid list of random read-write access records indexed by the `GlobalCounter` as a lookup table to do random access at any moment.
 
 We call the list of random read-write access records `BusMapping` because it acts like the bus in computer which transfers data between components. Similarly, read-only data are loaded as a lookup table into circuit for random access.
 

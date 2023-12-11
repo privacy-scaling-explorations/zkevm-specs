@@ -1,6 +1,6 @@
 # Copy Proof
 
-The copy proof checks the values in the copy table and applies the lookup arguments to the corresponding tables to check if the value read from and write to data source is correct.
+The copy proof checks the values in the copy table and applies the lookup arguments to the corresponding tables to check if the value read from and written to the data source is correct.
 It also checks the padding behavior that the value read from an out-of-boundary address is 0.
 
 ## Circuit Layout

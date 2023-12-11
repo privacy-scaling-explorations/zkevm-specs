@@ -2,7 +2,7 @@
 
 ## Procedure
 
-The `GAS` opcode gets the amount of available gas, including the correspoding reduction for the cost of the instruction itself.
+The `GAS` opcode gets the amount of available gas, including the corresponding reduction for the cost of the instruction itself.
 
 ## EVM behaviour
 
