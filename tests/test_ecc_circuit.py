@@ -1,9 +1,11 @@
 import pytest
 from zkevm_specs.ecc_circuit import (
     EcAdd,
+    EcMul,
     verify_circuit,
     EccCircuit,
 )
+from zkevm_specs.util import FQ
 
 
 def verify(
@@ -104,4 +106,96 @@ def test_ecc_add(ecc_ops: EcAdd, success: bool):
     ecc_ops = gen_ecAdd_testing_data()
     for op, success in ecc_ops:
         circuit.append_add(op)
+        verify(circuit, success)
+
+
+############################
+# ec scalar multiplication #
+############################
+
+SCALAR_FIELD_MODULUS = FQ.field_modulus
+
+
+def gen_ecMul_testing_data():
+    normal = (
+        EcMul(
+            p=(1, 2),
+            s=7,
+            out=(
+                0x17072B2ED3BB8D759A5325F477629386CB6FC6ECB801BD76983A6B86ABFFE078,
+                0x168ADA6CD130DD52017BB54BFA19377AADFE3BF05D18F41B77809F7F60D4AF9E,
+            ),
+        ),
+        True,
+    )
+    # scalar is larger than SCALAR_FIELD_MODULUS
+    over_field_size_s = (
+        EcMul(
+            p=(1, 2),
+            s=SCALAR_FIELD_MODULUS + 7,
+            out=(
+                0x17072B2ED3BB8D759A5325F477629386CB6FC6ECB801BD76983A6B86ABFFE078,
+                0x168ADA6CD130DD52017BB54BFA19377AADFE3BF05D18F41B77809F7F60D4AF9E,
+            ),
+        ),
+        True,
+    )
+    # s == SCALAR_FIELD_MODULUS - 1, i.e. P == -R
+    negative_s = (
+        EcMul(
+            p=(1, 2),
+            s=SCALAR_FIELD_MODULUS - 1,
+            out=(
+                1,
+                0x30644E72E131A029B85045B68181585D97816A916871CA8D3C208C16D87CFD45,
+            ),
+        ),
+        True,
+    )
+    # zero scalar
+    zero_s = (
+        EcMul(
+            p=(1, 2),
+            s=0,
+            out=(0, 0),
+        ),
+        True,
+    )
+    # p is a infinite point
+    infinite_p = (
+        EcMul(
+            p=(0, 0),
+            s=7,
+            out=(0, 0),
+        ),
+        True,
+    )
+    # p is not on the curve
+    invalid_p = (
+        EcMul(
+            p=(1, 3),
+            s=7,
+            out=(0, 0),
+        ),
+        True,
+    )
+    return [normal, over_field_size_s, negative_s, zero_s, infinite_p, invalid_p]
+
+
+TESTING_DATA_MUL = gen_ecMul_testing_data()
+
+
+@pytest.mark.parametrize(
+    "ecc_ops, success",
+    TESTING_DATA_MUL,
+)
+def test_ecc_mul(ecc_ops: EcMul, success: bool):
+    MAX_ECADD_OPS = 0
+    MAX_ECMUL_OPS = 1
+    MAX_ECPAIRING_OPS = 0
+
+    circuit = EccCircuit(MAX_ECADD_OPS, MAX_ECMUL_OPS, MAX_ECPAIRING_OPS)
+    ecc_ops = gen_ecMul_testing_data()
+    for op, success in ecc_ops:
+        circuit.append_mul(op)
         verify(circuit, success)
