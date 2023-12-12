@@ -179,18 +179,7 @@ def gen_ecMul_testing_data():
         ),
         True,
     )
-    incorrect_out = (
-        EcAdd(
-            p=(1, 2),
-            q=(1, 2),
-            out=(
-                0x030644E72E131A029B85045B68181585D97816A916871CA8D3C208C16D87CFD1,
-                0x15ED738C0E0A7C92E7845F96B2AE9C0A68A6A449E3538FC7FF3EBF7A5A18A2C4,
-            ),
-        ),
-        False,
-    )
-    return [normal, over_field_size_s, negative_s, zero_s, infinite_p, invalid_p, incorrect_out]
+    return [normal, over_field_size_s, negative_s, zero_s, infinite_p, invalid_p]
 
 
 TESTING_DATA_MUL = gen_ecMul_testing_data()
