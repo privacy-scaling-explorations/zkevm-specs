@@ -79,6 +79,7 @@ from .error_oog_create import *
 from .precompiles.ecrecover import *
 from .precompiles.ecadd import *
 from .precompiles.ecpairing import *
+from .precompiles.ecmul import *
 
 
 EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
@@ -161,7 +162,7 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.DATACOPY: dataCopy,
     # ExecutionState.BIGMODEXP: ,
     ExecutionState.BN254_ADD: ecAdd,
-    # ExecutionState.BN254_SCALAR_MUL: ,
     ExecutionState.BN254_PAIRING: ecPairing,
+    ExecutionState.BN254_SCALAR_MUL: ecMul,
     # ExecutionState.BLAKE2F: ,
 }

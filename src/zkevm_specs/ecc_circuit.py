@@ -100,7 +100,46 @@ class EccCircuitRow:
 
     @classmethod
     def assign_mul(cls, p0: Tuple[Word, Word], p1: Tuple[Word, Word], out: Tuple[Word, Word]):
-        raise NotImplementedError("assign_mul is not supported yet")
+        # verify validity of input point
+        precheck_px = cls.check_fq(p0[0].int_value())
+        precheck_py = cls.check_fq(p0[1].int_value())
+
+        # (0, 0) represents an infinite point
+        point0 = (
+            None
+            if p0[0].int_value() == 0 and p0[1].int_value() == 0
+            else (FP(p0[0].int_value()), FP(p0[1].int_value()))
+        )
+        is_valid_point = is_on_curve(point0, b)
+
+        # Scalar is stored in the first 32 bytes of p1 so the second part of p1 (aka. p[1]) is zero
+        # Besides, there is no limit on scalar `s` which means it can be larger than FP.field_modulus
+        precheck_s = p1[1].int_value() == 0
+
+        is_valid = is_valid_point and precheck_s and precheck_px and precheck_py
+
+        self_p_x = p0[0].int_value()
+        self_p_y = p0[1].int_value()
+        self_s = p1[0].int_value()
+
+        ecc_chip = ECCVerifyChip.assign(
+            p0=(FP(self_p_x), FP(self_p_y)),
+            p1=(FP(self_s), FP.zero()),
+            output=out,
+        )
+        ecc_table = EccTableRow(
+            FQ(EccOpTag.Mul),
+            Word(self_p_x),
+            Word(self_p_y),
+            Word(self_s),
+            Word(0),
+            FQ.zero(),
+            out[0],
+            out[1],
+            FQ(is_valid),
+        )
+
+        return cls(ecc_table, ecc_chip, None)
 
     @classmethod
     def assign_pairing(
@@ -255,7 +294,7 @@ class EccCircuitRow:
 
     def verify_mul(self, cs: ConstraintSystem):
         # qy is zero bcs q is scalar in ecMul so we only use qx
-        cs.constrain_zero(self.row.qy)
+        cs.constrain_zero_word(self.row.qy)
 
         cs.constrain_equal(FQ(self.ecc_chip.verify_mul()), self.row.is_valid)
 
