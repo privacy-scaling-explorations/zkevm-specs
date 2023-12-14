@@ -71,6 +71,6 @@ def ecPairing(instruction: Instruction):
     instruction.step_state_transition_to_restored_context(
         rw_counter_delta=instruction.rw_counter_offset,
         return_data_offset=FQ.zero(),
-        return_data_length=FQ(32),
+        return_data_length=FQ(32) if is_valid_input == FQ(1) else FQ.zero(),
         gas_left=gas_left,
     )

@@ -14,7 +14,7 @@ input[32; 63] (32 bytes): y1
 input[64; 95] (32 bytes): x2
 input[96; 127] (32 bytes): y2
 input[128; 159] (32 bytes): x3 (result)
-input[160; 192] (32 bytes): y3 (result)
+input[160; 191] (32 bytes): y3 (result)
 ```
 
 The first two 32-bytes values represent the first point (px, py) from group G1, the next four 32-bytes values represent the other point (qx, qy) from group G2.
