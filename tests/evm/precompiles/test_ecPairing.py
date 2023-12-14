@@ -83,10 +83,10 @@ def gen_testing_data():
                     0x23A8EB0B0996252CB548A4487DA97B02422EBC0E834613F954DE6C7E0AFDC1FC,
                 ),
             ],
-            out=0,
+            out=1,
         ),
         True,
-        False,
+        True,
     )
     # valid input
     empty_input = (
