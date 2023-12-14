@@ -83,7 +83,7 @@ def gen_testing_data():
                     0x23A8EB0B0996252CB548A4487DA97B02422EBC0E834613F954DE6C7E0AFDC1FC,
                 ),
             ],
-            out=1,
+            out=0,
         ),
         True,
         True,
@@ -222,7 +222,7 @@ def test_ecPairing(
             Word(0),
             input_rlc,
             FQ.zero(),
-            FQ(is_success),
+            FQ(op.out),
             FQ(is_valid_data),
         )
     )
