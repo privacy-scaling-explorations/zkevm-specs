@@ -53,7 +53,6 @@ def gen_testing_data():
             out=1,
         ),
         True,
-        True,
     )
     # p and q are valid points but p[0] == p[1] which causes e(p[0], g2[0]) != e(p[0], g2[1])
     failure_with_valid_input = (
@@ -86,7 +85,6 @@ def gen_testing_data():
             out=0,
         ),
         True,
-        True,
     )
     # valid input
     empty_input = (
@@ -96,7 +94,6 @@ def gen_testing_data():
             g2_pts=[],
             out=1,
         ),
-        True,
         True,
     )
     # invalid p, (1, 1)
@@ -126,7 +123,6 @@ def gen_testing_data():
             ],
             out=0,
         ),
-        False,
         False,
     )
     # invalid_input_size, only 320 bytes data given (should be 192*n bytes)
@@ -158,7 +154,6 @@ def gen_testing_data():
             out=0,
         ),
         False,
-        False,
     )
 
     return [normal, failure_with_valid_input, empty_input, invalid_input, invalid_input_size]
@@ -170,14 +165,13 @@ randomness_keccak = rand_fq()
 
 
 @pytest.mark.parametrize(
-    "caller_ctx, op, is_valid_data, is_success",
+    "caller_ctx, op, is_valid_data",
     TESTING_DATA,
 )
 def test_ecPairing(
     caller_ctx: CallContext,
     op: EcPairing,
     is_valid_data: bool,
-    is_success: bool,
 ):
     call_id = 1
     callee_id = 2
@@ -245,7 +239,7 @@ def test_ecPairing(
     rw_dictionary = (
         # fmt: off
         RWDictionary(1)
-        .call_context_read(callee_id, CallContextFieldTag.IsSuccess, FQ(is_success))
+        .call_context_read(callee_id, CallContextFieldTag.IsSuccess, FQ(is_valid_data))
         .call_context_read(callee_id, CallContextFieldTag.CallDataLength, FQ(call_data_length))
         .call_context_read(callee_id, CallContextFieldTag.CalleeAddress, Word(Precompile.BN254PAIRING))
         # fmt: on
@@ -302,7 +296,7 @@ def test_ecPairing(
                 program_counter=caller_ctx.program_counter,
                 stack_pointer=caller_ctx.stack_pointer,
                 memory_word_size=caller_ctx.memory_word_size,
-                gas_left=gas_left - FQ(gas_cost) if is_success else FQ(0),
+                gas_left=gas_left - FQ(gas_cost) if is_valid_data else FQ(0),
             ),
         ],
     )
