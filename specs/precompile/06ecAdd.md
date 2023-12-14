@@ -12,7 +12,7 @@ Two points are recovered from input. The field is expressed as `32` bytes for ea
 input[0; 31] (32 bytes): x1
 input[32; 63] (32 bytes): y1
 input[64; 95] (32 bytes): x2
-input[96; 128] (32 bytes): y2
+input[96; 127] (32 bytes): y2
 ```
 
 These two points are added and the result is returned. The result size is `64` bytes and $x$ and $y$ are in Montgomery.
