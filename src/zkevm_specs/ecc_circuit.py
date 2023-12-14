@@ -213,7 +213,7 @@ class EccCircuitRow:
         ecc_pairing_chip = ECCPairingVerifyChip.assign(
             p=ps_g1,
             q=qs_g2,
-            output=FQ(is_valid),
+            output=out.lo.expr(),
         )
         ecc_table = EccTableRow(
             FQ(EccOpTag.Pairing),

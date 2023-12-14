@@ -275,6 +275,37 @@ def gen_ecPairing_testing_data():
         ),
         True,
     )
+    # p and q are valid points but p[0] == p[1] which causes e(p[0], g2[0]) != e(p[0], g2[1])
+    failed_pairing_with_valid_pnq = (
+        EcPairing(
+            g1_pts=[
+                (
+                    0x2CF44499D5D27BB186308B7AF7AF02AC5BC9EEB6A3D147C186B21FB1B76E18DA,
+                    0x2C0F001F52110CCFE69108924926E45F0B0C868DF0E7BDE1FE16D3242DC715F6,
+                ),
+                (
+                    0x2CF44499D5D27BB186308B7AF7AF02AC5BC9EEB6A3D147C186B21FB1B76E18DA,
+                    0x2C0F001F52110CCFE69108924926E45F0B0C868DF0E7BDE1FE16D3242DC715F6,
+                ),
+            ],
+            g2_pts=[
+                (
+                    0x1FB19BB476F6B9E44E2A32234DA8212F61CD63919354BC06AEF31E3CFAFF3EBC,
+                    0x22606845FF186793914E03E21DF544C34FFE2F2F3504DE8A79D9159ECA2D98D9,
+                    0x2BD368E28381E8ECCB5FA81FC26CF3F048EEA9ABFDD85D7ED3AB3698D63E4F90,
+                    0x2FE02E47887507ADF0FF1743CBAC6BA291E66F59BE6BD763950BB16041A0A85E,
+                ),
+                (
+                    0x1971FF0471B09FA93CAAF13CBF443C1AEDE09CC4328F5A62AAD45F40EC133EB4,
+                    0x091058A3141822985733CBDDDFED0FD8D6C104E9E9EFF40BF5ABFEF9AB163BC7,
+                    0x2A23AF9A5CE2BA2796C1F4E453A370EB0AF8C212D9DC9ACD8FC02C2E907BAEA2,
+                    0x23A8EB0B0996252CB548A4487DA97B02422EBC0E834613F954DE6C7E0AFDC1FC,
+                ),
+            ],
+            out=0,
+        ),
+        True,
+    )
     # p is not on the curve
     invalid_p = (
         EcPairing(
@@ -337,45 +368,15 @@ def gen_ecPairing_testing_data():
         ),
         False,
     )
-    # p and q are valid points but p[0] == p[1] which causes e(p[0], g2[0]) != e(p[0], g2[1])
-    failed_pairing_with_valid_pnq = (
-        EcPairing(
-            g1_pts=[
-                (
-                    0x2CF44499D5D27BB186308B7AF7AF02AC5BC9EEB6A3D147C186B21FB1B76E18DA,
-                    0x2C0F001F52110CCFE69108924926E45F0B0C868DF0E7BDE1FE16D3242DC715F6,
-                ),
-                (
-                    0x2CF44499D5D27BB186308B7AF7AF02AC5BC9EEB6A3D147C186B21FB1B76E18DA,
-                    0x2C0F001F52110CCFE69108924926E45F0B0C868DF0E7BDE1FE16D3242DC715F6,
-                ),
-            ],
-            g2_pts=[
-                (
-                    0x1FB19BB476F6B9E44E2A32234DA8212F61CD63919354BC06AEF31E3CFAFF3EBC,
-                    0x22606845FF186793914E03E21DF544C34FFE2F2F3504DE8A79D9159ECA2D98D9,
-                    0x2BD368E28381E8ECCB5FA81FC26CF3F048EEA9ABFDD85D7ED3AB3698D63E4F90,
-                    0x2FE02E47887507ADF0FF1743CBAC6BA291E66F59BE6BD763950BB16041A0A85E,
-                ),
-                (
-                    0x1971FF0471B09FA93CAAF13CBF443C1AEDE09CC4328F5A62AAD45F40EC133EB4,
-                    0x091058A3141822985733CBDDDFED0FD8D6C104E9E9EFF40BF5ABFEF9AB163BC7,
-                    0x2A23AF9A5CE2BA2796C1F4E453A370EB0AF8C212D9DC9ACD8FC02C2E907BAEA2,
-                    0x23A8EB0B0996252CB548A4487DA97B02422EBC0E834613F954DE6C7E0AFDC1FC,
-                ),
-            ],
-            out=1,
-        ),
-        False,
-    )
+
     return [
         normal,
         infinity_p,
         infinity_q,
         infinity_pnq,
+        failed_pairing_with_valid_pnq,
         invalid_p,
         invalid_q,
-        failed_pairing_with_valid_pnq,
     ]
 
 

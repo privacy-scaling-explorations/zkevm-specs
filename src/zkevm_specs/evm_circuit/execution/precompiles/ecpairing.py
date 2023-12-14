@@ -28,8 +28,10 @@ def ecPairing(instruction: Instruction):
     is_valid_input: FQ = instruction.curr.aux_data[2]
     output: FQ = instruction.curr.aux_data[3]
 
-    # output indicates whether the pairing is successful or not
-    instruction.constrain_equal(is_success.expr(), output)
+    # if input data is valid, then it's a successful call even the pairing is failed.
+    # ref: https://github.com/ethereum/execution-specs/blob/3fe6514f2d9d234e760d11af883a47c1263eff51/src/ethereum/shanghai/vm/precompiled_contracts/alt_bn128.py#L153-L156
+    # see above link, there is no any error returns, no matter the pairing result is 1 or 0
+    instruction.constrain_equal(is_success.expr(), is_valid_input)
 
     # invalid input data length
     if calldata_len.n % BYTES_PER_PAIRING != 0:
