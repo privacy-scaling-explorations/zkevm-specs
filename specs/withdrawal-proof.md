@@ -1,8 +1,8 @@
 # Withdrawals proof
 
-The withdrawals proof verifies the merkle patricia trie identified by the root `withdrawalsRoot` contains all the withdrawals.
+The withdrawals proof verifies the Merkle Patricia Trie identified by the root `withdrawalsRoot` contains all the withdrawals.
 
-`Withdrawal` operation is introduced by EIP-4895 to provides a way for validator withdrawals made on the beacon chain to enter into the EVM. `Withdrawal` operation is a system-level operation and introduces a new field after the existing fields in the execution payload. Unlike transactions, there is no signature to verify and the main verification logic is to verify withdrawals MPT root which happens in MPT circuit. Since `withdrawal` is a system-level operation, the balance change is unconditional and won't fail.
+`Withdrawal` operation is introduced by EIP-4895 to provide a way for validator withdrawals made on the beacon chain to enter into the EVM. `Withdrawal` operation is a system-level operation and introduces a new field after the existing fields in the execution payload. Unlike transactions, there is no signature to verify and the main verification logic is to verify withdrawals MPT root which happens in MPT circuit. Since `Withdrawal` is a system-level operation, the balance change is unconditional and won't fail.
 
 ## Withdrawal encoding
 
