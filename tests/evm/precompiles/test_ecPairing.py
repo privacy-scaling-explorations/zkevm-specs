@@ -200,7 +200,7 @@ def test_ecPairing(
     call_data_offset = 0
     call_data_length = input_size
     return_data_offset = 0
-    return_data_length = 32
+    return_data_length = 32 if is_valid_data else 0
     gas_cost = Precompile.BN254PAIRING.base_gas_cost() + pairs * Bn254PairingPerPointGas
 
     input_rlc = RLC(bytes(reversed(input_bytes)), randomness_keccak, n_bytes=input_size).expr()
