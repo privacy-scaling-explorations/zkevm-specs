@@ -74,4 +74,4 @@ The exponentiation circuit consists of the following columns:
 
 ## Code
 
-Please refer to [Exponentiation Circuit Verification](`src/zkevm-specs/exp_circuit.py`).
+Please refer to [Exponentiation Circuit Verification](../src/zkevm_specs/exp_circuit.py).
