@@ -135,6 +135,9 @@ class ExecutionState(IntEnum):
     BN254_PAIRING = auto()
     BLAKE2F = auto()
 
+    # OOG case of precompiles
+    ErrorOutofGasPrecompile = auto()
+
     def expr(self) -> FQ:
         return FQ(self)
 
