@@ -1,5 +1,27 @@
 # Account leaf
 
+An account leaf stores the information about the account nonce, balance, codehash (smart contract code hash), and hash of the account's storage trie.
+
+In the trie, when an account is added two things can happen:
+ 1. There exists another account which has the same address to the some point as the one that
+ is being added, including the position of this account in the branch.
+ In this case a new branch is added to the trie.
+ The existing account drifts down one level to the new branch. The newly
+ added account also appears in this branch. For example, let us say that there exists an account `A`
+ with address nibbles `[3, 12, 3]` in the trie. Let's say three branches are above `A` and to navigate to the account leaf, we need to choose the positions `3, 12, 3` in the three branches. We then add the account `A1` with address nibbles `[3, 12, 5]`
+ to the trie. The branch will appear (at position `[3, 12]`) which will have `A` at position `3`
+ and `A1` at position `5`. This means there will be an additional branch in `C` proof (or in `S`
+ proof when the situation is reversed - we are deleting the leaf instead of adding).
+ For this reason the MPT circuit uses a placeholder branch for `S` proof (for `C` proof in reversed situation)
+ to preserve the circuit layout.
+
+ 2. The branch where the new account is to be added has `nil` node at the position where the new account
+ is to be added. For example, let us have a branch at `[3, 12]`, we are adding a leaf with the
+ first three address nibbles being `[3, 12, 5]`, and the position `5` in our branch is not occupied.
+ In this case, the `getProof` response (before we add a leaf) does not end with a leaf, but with a branch.
+ To preserve the layout and to enable lookups, a placeholder account leaf is added in the `S` proof (in `C` proof in the delete scenario).
+
+
 An example account leaf RLP stream:
 <!--
 TestAccountAddPlaceholderExtension
@@ -8,12 +30,12 @@ TestAccountAddPlaceholderExtension
 [248 108 157 52 45 53 199 120 18 165 14 109 22 4 141 198 233 128 219 44 247 218 241 231 2 206 125 246 58 246 15 3 184 76 248 74 4 134 85 156 208 108 8 0 160 86 232 31 23 27 204 85 166 255 131 69 230 146 192 248 110 91 72 224 27 153 108 173 192 1 98 47 181 227 99 180 33 160 197 210 70 1 134 247 35 60 146 126 125 178 220 199 3 192 229 0 182 83 202 130 39 59 123 250 216 4 93 133 164 112]
 ```
 
-And after the balance is modified:
+If, for example, the balance is modified, we get the following RLP (only the substream representing the balance is modified):
 ```
 [248 101 156 58 168 111 115 58 191 32 139 53 139 168 184 7 8 29 109 70 164 7 116 82 56 174 242 193 51 253 77 184 70 248 68 4 23 160 86 232 31 23 27 204 85 166 255 131 69 230 146 192 248 110 91 72 224 27 153 108 173 192 1 98 47 181 227 99 180 33 160 197 210 70 1 134 247 35 60 146 126 125 178 220 199 3 192 229 0 182 83 202 130 39 59 123 250 216 4 93 133 164 112]
 ```
 
-In the circuit, the account leaf `Node` looks:
+In the circuit, the account leaf node looks as follows:
 ```
 {
 "address":[204,228,98,4,186,168,111,115,58,191,32,139,53,139,168,184,7,8,29,109,70,164,7,116,82,56,174,242,193,51,253,77],
@@ -46,123 +68,34 @@ In the circuit, the account leaf `Node` looks:
 
 The rows of `values` are:
 ```
-AccountKeyS
-AccountKeyC
-AccountNonceS
-AccountBalanceS
-AccountStorageS
-AccountCodehashS
-AccountNonceC
-AccountBalanceC
-AccountStorageC
-AccountCodehashC
-AccountDrifted
-AccountWrong	
+KeyS,
+KeyC,
+NonceS,
+BalanceS,
+StorageS,
+CodehashS,
+NonceC,
+BalanceC,
+StorageC,
+CodehashC,
+Drifted,
+Wrong,
+LongExtNodeKey, // only used when extension node nibbles are modified
+LongExtNodeNibbles, // only used when extension node nibbles are modified
+LongExtNodeValue, // only used when extension node nibbles are modified
+ShortExtNodeKey, // only used when extension node nibbles are modified
+ShortExtNodeNibbles, // only used when extension node nibbles are modified
+ShortExtNodeValue, // only used when extension node nibbles are modified
+Address, // account address
+Key, // hashed account address
 ```
 
-Each of the `values` is checked by [MainRLPGadget](gadgets.md) to ensure the RLP bytes correspond
-to the stream length. For example, the first value of the `values` above is `[157,52,45,53,...]`.
+Each of the `values` is checked by [MainRLPGadget](gadgets.md) to ensure that the RLP bytes correspond
+to the RLP stream length. For example, the first value of the `values` above is `[157,52,45,53,...]`.
 It needs to be checked that the length of the stream is `29 = 157 - 128`.
 
-We can reconstruct the `S` RLP stream if we start with `list_rlp_bytes[0]`, then append `AccountKeyS`,
-`value_rlp_bytes[0]`, `list_rlp_bytes[0]`, `AccountNonceS`, `AccountBalanceS`, `AccountStorageS`,
-and `AccountCodehashS`.
-
-## Gadgets
-
-`AccountLeafConfig` uses the following [gadgets](gadgets.md):
-
-```
-rlp_key: [ListKeyGadget<F>; 2],
-is_in_empty_trie: [IsEmptyTreeGadget<F>; 2],
-drifted: DriftedGadget<F>,
-wrong: WrongGadget<F>,
-is_non_existing_account_proof: IsEqualGadget<F>,
-is_account_delete_mod: IsEqualGadget<F>,
-is_nonce_mod: IsEqualGadget<F>,
-is_balance_mod: IsEqualGadget<F>,
-is_storage_mod: IsEqualGadget<F>,
-is_codehash_mod: IsEqualGadget<F>
-```
-
-### rlp_key
-
-`rlp_key` stores two `ListKeyGadget` (one for `S` key, one for `C` key).
-It can be used to access the information about the key (length, number of nibbles, key RLC,
-RLC multiplier to be used after key, ...), but it also
-stores the first RLP bytes of the account leaf (that are stored in `rlp_list_bytes`).
-
-```
-pub(crate) struct ListKeyGadget<F> {
-    pub(crate) rlp_list_bytes: [Cell<F>; 3],
-    pub(crate) rlp_list: RLPListGadget<F>,
-    pub(crate) key_value: RLPItemView<F>,
-    pub(crate) key: LeafKeyGadget<F>,
-}
-```
-
-`ListKeyGadget` contains `RLPListGadget` (as `MainRLPGadget` does) because the account leaf
-is always a list of RLP items (and `ListKeyGadget` does not contain only the key, but also
-the first bytes of the account leaf). Thus, for example, `rlp_list` can be used to access the
-number of bytes of the account leaf stream.
-
-### is_in_empty_trie
-
-The gadget [IsEmptyTreeGadget](gadgets.md) is used to check whether the trie is empty or there
-is no leaf in the branch at the modified position - this is to avoid triggering the account leaf 
-constraints when there is no account leaf.
-
-### drifted
-
-The gadget [DriftedGadget](gadgets.md) handles the leaf being moved from one branch to a newly created branch.
-`AccountDrifted` value contains the key of the leaf that drifted to a new branch - it is the same as the key
-before drifting, but with the first nibble (or nibbles if extension node) removed.
-
-The gadget is constructed as follows:
-
- * `key_rlc` contains the key RLC of the leaf before it drifted, this value needs to be checked in the 
- gadget to be the same as the key RLC of the leaf after it drifted (the nibble(s) moved from the leaf key
- to the nibbles that mark the path to the leaf)
- * `leaf_no_key_rlc` is the RLC of the leaf value (which does not change when the leaf drifts to a new
- branch)
- * `drifted_bytes` contains the `AccountDrifted` value.
-
-```
-config.drifted = DriftedGadget::construct(
-    cb,
-    &config.parent_data,
-    &config.key_data,
-    &key_rlc,
-    &leaf_no_key_rlc,
-    &drifted_bytes,
-    &ctx.r,
-);
-```
-
-### wrong
-
-The `AccountWrong` value has nonzero bytes only when there is an `AccountDoesNotExist` proof
-and when there is a leaf returned by `getProof` which does not correspond to the actual enquired address.
-[WrongGadget](gadgets.md) ensures there exists a leaf which has some
-number of the starting nibbles the same as the enquired address (the path through branches
-above the leaf), but at the same time the full address is not the same - the nibble that denotes the
-position in the last branch (above the leaf) is the same, but the remaining nibbles stored in the leaf
-differ.
-
-When this particular `AccountDoesNotExist` proof subtype occurs, the `AccountWrong` holds the value
-of the enquired address, while the wrong leaf address is stored in the `AccountKeyC` value.
-
-### Proof type gadgets
-
-The `IsEqualGadget` is used to check the type of the proof:
-```
-is_non_existing_account_proof: IsEqualGadget<F>,
-is_account_delete_mod: IsEqualGadget<F>,
-is_nonce_mod: IsEqualGadget<F>,
-is_balance_mod: IsEqualGadget<F>,
-is_storage_mod: IsEqualGadget<F>,
-is_codehash_mod: IsEqualGadget<F>
-```
+We can reconstruct the `S` RLP stream if we start with `list_rlp_bytes[0]`, then append `KeyS`,
+`value_rlp_bytes[0]`, `value_list_rlp_bytes[0]`, `NonceS`, `BalanceS`, `StorageS`, and `CodehashS`.
 
 ## Constraints
 
@@ -330,8 +263,6 @@ require!(key_rlc[true.idx()] => key_rlc[false.idx()]);
 
 Finally, the MPT table (for external lookups) is checked to contain the proper values.
 
-
-
 <!--
 Note that a new entry is stored in the lookup table with the field `is_below_account` set to `true`.
 
@@ -341,80 +272,103 @@ This serves to check that there is always an account leaf above the storage leaf
 the field `address_rlc` is allowed to be updated).
 -->
 
-# Old
+## Gadgets
 
-Note: the constraints that are covered in the new documentation (above) has been removed from below.
-
-An account leaf occupies 8 rows.
-Contrary as in the branch rows, the `S` and `C` leaves are not positioned parallel to each
-other. The rows are as follows:
+`AccountLeafConfig` uses the following [gadgets](gadgets.md):
 
 ```
-ACCOUNT_LEAF_KEY_S
-ACCOUNT_LEAF_KEY_C
-ACCOUNT_NON_EXISTING
-ACCOUNT_LEAF_NONCE_BALANCE_S
-ACCOUNT_LEAF_NONCE_BALANCE_C
-ACCOUNT_LEAF_STORAGE_CODEHASH_S
-ACCOUNT_LEAF_STORAGE_CODEHASH_C
-ACCOUNT_DRIFTED_LEAF
+rlp_key: [ListKeyGadget<F>; 2],
+is_in_empty_trie: [IsEmptyTreeGadget<F>; 2],
+drifted: DriftedGadget<F>,
+wrong: WrongGadget<F>,
+is_non_existing_account_proof: IsEqualGadget<F>,
+is_account_delete_mod: IsEqualGadget<F>,
+is_nonce_mod: IsEqualGadget<F>,
+is_balance_mod: IsEqualGadget<F>,
+is_storage_mod: IsEqualGadget<F>,
+is_codehash_mod: IsEqualGadget<F>
 ```
 
-Example:
+### rlp_key
+
+`rlp_key` stores two `ListKeyGadget` (one for `S` key, one for `C` key).
+It can be used to access the information about the key (length, number of nibbles, key RLC,
+RLC multiplier to be used after key, ...), but it also
+stores the first RLP bytes of the account leaf (that are stored in `rlp_list_bytes`).
+
 ```
-[248,106,161,32,252,237,52,8,133,130,180,167,143,97,28,115,102,25,94,62,148,249,8,6,55,244,16,75,187,208,208,127,251,120,61,73,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-
-[248,106,161,32,252,237,52,8,133,130,180,167,143,97,28,115,102,25,94,62,148,249,8,6,55,244,16,75,187,208,208,127,251,120,61,73,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-
-[0,0,0,32,252,237,52,8,133,130,180,167,143,97,28,115,102,25,94,62,148,249,8,6,55,244,16,75,187,208,208,127,251,120,61,73,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-
-[184,70,128,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,248,68,128,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-
-[184,70,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,248,68,128,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-
-[0,160,86,232,31,23,27,204,85,166,255,131,69,230,146,192,248,110,91,72,224,27,153,108,173,192,1,98,47,181,227,99,180,33,0,160,197,210,70,1,134,247,35,60,146,126,125,178,220,199,3,192,229,0,182,83,202,130,39,59,123,250,216,4,93,133,164,122]
-
-[0,160,86,232,31,23,27,204,85,166,255,131,69,230,146,192,248,110,91,72,224,27,153,108,173,192,1,98,47,181,227,99,180,33,0,160,197,210,70,1,134,247,35,60,146,126,125,178,220,199,3,192,229,0,182,83,202,130,39,59,123,250,216,4,93,133,164,122]
-
-[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-
-Lookups:
-We have nonce and balance in the same row - to enable lookups into the same columns (`value_prev`, `value`),
-we enable nonce lookup in `ACCOUNT_LEAF_NONCE_BALANCE_S` row and balance lookup in `ACCOUNT_LEAF_NONCE_BALANCE_C` row.
-This means we copy nonce C RLC to `ACCOUNT_LEAF_NONCE_BALANCE_S` row,
-and balance S RLC to `ACCOUNT_LEAF_NONCE_BALANCE_C` row.
-Constraints are added to ensure everything is properly copied.
+pub(crate) struct ListKeyGadget<F> {
+    pub(crate) rlp_list_bytes: [Cell<F>; 3],
+    pub(crate) rlp_list: RLPListGadget<F>,
+    pub(crate) key_value: RLPItemView<F>,
+    pub(crate) key: LeafKeyGadget<F>,
+}
 ```
 
-There are two main scenarios when an account is added to the trie:
- 1. There exists another account which has the same address to the some point as the one that
- is being added, including the position of this account in the branch.
- In this case a new branch is added to the trie.
- The existing account drifts down one level to the new branch. The newly
- added account will also appear in this branch. For example, let us say that we have the account `A`
- with nibbles `[3, 12, 3]` in the trie. We then add the account `A1` with nibbles `[3, 12, 5]`
- to the trie. The branch will appear (at position `[3, 12]`) which will have `A` at position 3
- and `A1` at position 5. This means there will be an additional branch in `C` proof (or in `S`
- proof when the situation is reversed - we are deleting the leaf instead of adding) and
- for this reason we add a placeholder branch for `S` proof (for `C` proof in reversed situation)
- to preserve the circuit layout (more details about this technicality are given below).
+`ListKeyGadget` contains `RLPListGadget` (as `MainRLPGadget` does) because the account leaf
+is always a list of RLP items (and `ListKeyGadget` does not contain only the key, but also
+the first bytes of the account leaf). Thus, for example, `rlp_list` can be used to access the
+number of bytes of the account leaf stream.
 
- 2. The branch where the new account is to be added has nil node at the position where the new account
- is to be added. For example, let us have a branch at `[3, 12]`, we are adding a leaf with the
- first three nibbles as `[3, 12, 5]`, and the position 5 in our branch is not occupied.
- There does not exist an account which has the same address to the some point.
- In this case, the `getProof` response does not end with a leaf, but with a branch.
- To preserve the layout, a placeholder account leaf is added.
+### is_in_empty_trie
 
-In what follows we present the constraints for the account leaf. These are grouped into five
-files:
- * `account_leaf_key.rs`
- * `account_leaf_nonce_balance.rs`
- * `account_leaf_storage_codehash.rs`
- * `account_leaf_key_in_added_branch.rs`
- * `account_non_existing.rs`
+The gadget [IsEmptyTreeGadget](gadgets.md) is used to check whether the trie is empty or there
+is no leaf in the branch at the modified position - this is to avoid triggering the account leaf 
+constraints when there is no account leaf.
 
-In the last section, we give an example of the nonce modification proof.
+### drifted
+
+The gadget [DriftedGadget](gadgets.md) handles the leaf being moved from one branch to a newly created branch.
+`AccountDrifted` value contains the key of the leaf that drifted to a new branch - it is the same as the key
+before drifting, but with the first nibble (or nibbles if extension node) removed.
+
+The gadget is constructed as follows:
+
+ * `key_rlc` contains the key RLC of the leaf before it drifted, this value needs to be checked in the 
+ gadget to be the same as the key RLC of the leaf after it drifted (the nibble(s) moved from the leaf key
+ to the nibbles that mark the path to the leaf)
+ * `leaf_no_key_rlc` is the RLC of the leaf value (which does not change when the leaf drifts to a new
+ branch)
+ * `drifted_bytes` contains the `AccountDrifted` value.
+
+```
+config.drifted = DriftedGadget::construct(
+    cb,
+    &config.parent_data,
+    &config.key_data,
+    &key_rlc,
+    &leaf_no_key_rlc,
+    &drifted_bytes,
+    &ctx.r,
+);
+```
+
+### wrong
+
+The `AccountWrong` value has nonzero bytes only when there is an `AccountDoesNotExist` proof
+and when there is a leaf returned by `getProof` which does not correspond to the actual enquired address.
+[WrongGadget](gadgets.md) ensures there exists a leaf which has some
+number of the starting nibbles the same as the enquired address (the path through branches
+above the leaf), but at the same time the full address is not the same - the nibble that denotes the
+position in the last branch (above the leaf) is the same, but the remaining nibbles stored in the leaf
+differ.
+
+When this particular `AccountDoesNotExist` proof subtype occurs, the `AccountWrong` holds the value
+of the enquired address, while the wrong leaf address is stored in the `AccountKeyC` value.
+
+### Proof type gadgets
+
+The `IsEqualGadget` is used to check the type of the proof:
+```
+is_non_existing_account_proof: IsEqualGadget<F>,
+is_account_delete_mod: IsEqualGadget<F>,
+is_nonce_mod: IsEqualGadget<F>,
+is_balance_mod: IsEqualGadget<F>,
+is_storage_mod: IsEqualGadget<F>,
+is_codehash_mod: IsEqualGadget<F>
+```
+
+# Account leaf (obsolete)
 
 ## Account key constraints
 
