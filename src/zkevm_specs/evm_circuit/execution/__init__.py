@@ -80,6 +80,7 @@ from .precompiles.ecrecover import *
 from .precompiles.ecadd import *
 from .precompiles.ecpairing import *
 from .precompiles.ecmul import *
+from .precompiles.error_oog_precompile import *
 
 
 EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
@@ -156,6 +157,8 @@ EXECUTION_STATE_IMPL: Dict[ExecutionState, Callable] = {
     ExecutionState.ErrorOutOfGasSloadSstore: error_oog_sload_sstore,
     ExecutionState.ErrorReturnDataOutOfBound: error_return_data_out_of_bound,
     ExecutionState.ErrorOutOfGasCREATE: error_oog_create,
+    ExecutionState.ErrorOutOfGasPrecompile: error_oog_precompile,
+    # Precompiles
     ExecutionState.ECRECOVER: ecRecover,
     # ExecutionState.SHA256: ,
     # ExecutionState.RIPEMD160: ,

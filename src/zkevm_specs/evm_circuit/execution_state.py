@@ -123,6 +123,8 @@ class ExecutionState(IntEnum):
     # For CREATE and CREATE2 opcodes which may run out of gas.
     ErrorOutOfGasCREATE = auto()
     ErrorOutOfGasSELFDESTRUCT = auto()
+    # OOG case of precompiles
+    ErrorOutOfGasPrecompile = auto()
 
     # Precompile's successful cases
     ECRECOVER = auto()
@@ -134,9 +136,6 @@ class ExecutionState(IntEnum):
     BN254_SCALAR_MUL = auto()
     BN254_PAIRING = auto()
     BLAKE2F = auto()
-
-    # OOG case of precompiles
-    ErrorOutofGasPrecompile = auto()
 
     def expr(self) -> FQ:
         return FQ(self)
