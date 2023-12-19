@@ -206,39 +206,6 @@ def callop(instruction: Instruction):
                 expected_value,
             )
 
-        ### copy table lookup here
-        ### is to rlc input and output to have an easy way to verify data in PrecompileGadget
-
-        # RLC precompile input from memory
-        input_copy_rwc_inc = input_rlc = FQ.zero()
-        if precompile_input_len != FQ(0):
-            input_copy_rwc_inc, input_rlc = instruction.copy_lookup(
-                instruction.curr.call_id,
-                CopyDataTypeTag.Memory,
-                callee_call_id,
-                CopyDataTypeTag.RlcAcc,
-                call.cd_offset,
-                call.cd_offset + precompile_input_len,
-                FQ.zero(),
-                precompile_input_len,
-                input_rwc,
-            )
-
-        # RLC precompile output from memory
-        output_copy_rwc_inc = output_rlc = FQ.zero()
-        if call.is_success == FQ.one() and precompile_return_length != FQ.zero():
-            output_copy_rwc_inc, output_rlc = instruction.copy_lookup(
-                callee_call_id,
-                CopyDataTypeTag.Memory,
-                callee_call_id,
-                CopyDataTypeTag.RlcAcc,
-                FQ.zero(),
-                precompile_return_length,
-                FQ.zero(),
-                precompile_return_length,
-                output_rwc,
-            )
-
         # Verify data copy from precompiles
         return_copy_rwc_inc = FQ.zero()
         if call.is_success == FQ.one() and precompile_return_length != FQ.zero():
@@ -258,12 +225,7 @@ def callop(instruction: Instruction):
         # Give gas stipend if value is not zero
         callee_gas_left += has_value * GAS_STIPEND_CALL_WITH_VALUE
 
-        rwc = (
-            instruction.rw_counter_offset
-            + input_copy_rwc_inc
-            + output_copy_rwc_inc
-            + return_copy_rwc_inc
-        )
+        rwc = instruction.rw_counter_offset + return_copy_rwc_inc
         instruction.step_state_transition_to_new_context(
             rw_counter=Transition.delta(rwc),
             call_id=Transition.to(callee_call_id),
@@ -275,7 +237,7 @@ def callop(instruction: Instruction):
             log_id=Transition.same(),
         )
 
-        PrecompileGadget(instruction, callee_address, input_rlc, output_rlc)
+        PrecompileGadget(instruction, callee_address, precompile_return_length, call.cd_length)
 
     else:  # precheck is ok and callee has code
         # Save caller's call state
