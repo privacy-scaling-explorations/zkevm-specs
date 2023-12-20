@@ -1,8 +1,7 @@
-from zkevm_specs.evm_circuit.precompile import Precompile
 from zkevm_specs.evm_circuit.util.call_gadget import CallGadget
 from zkevm_specs.evm_circuit.util.precompile_gadget import PrecompileGadget
 from zkevm_specs.util.hash import EMPTY_CODE_HASH
-from zkevm_specs.util.param import N_BYTES_GAS, N_BYTES_STACK
+from zkevm_specs.util.param import N_BYTES_GAS, N_BYTES_MEMORY_WORD_SIZE, N_BYTES_STACK
 from ...util import FQ, GAS_STIPEND_CALL_WITH_VALUE, Word, WordOrValue
 from ..instruction import Instruction, Transition
 from ..opcode import Opcode
@@ -117,11 +116,8 @@ def callop(instruction: Instruction):
     )
 
     # Make sure the state transition to ExecutionState for precompile if and
-    # only if the callee address is one of precompiles
-    is_zero_address = instruction.is_zero(callee_address)
-    # +1 is for convenience, we don't need to care the 2nd return (which is 'eq' case)
-    is_within_precompiles_addr, _ = instruction.compare(callee_address, Precompile.len() + 1, 2)
-    is_precompile = is_zero_address == FQ.zero() and is_within_precompiles_addr == FQ.one()
+    # only if the callee address is one of precompile
+    is_precompile = instruction.precompile(callee_address)
     instruction.constrain_equal(
         is_precompile, FQ(instruction.next.execution_state in precompile_execution_states())
     )
@@ -156,13 +152,8 @@ def callop(instruction: Instruction):
         )
     # precompiles call
     elif is_precheck_ok and is_precompile == FQ.one():
-        precompile_return_length: FQ = instruction.curr.aux_data[0]
-        precompile_input_len: FQ = instruction.curr.aux_data[1]
-        input_rwc: FQ = instruction.curr.aux_data[5]
-        output_rwc: FQ = instruction.curr.aux_data[6]
-        return_data_rwc: FQ = instruction.curr.aux_data[6]
-
-        min_rd_copy_size = min(precompile_return_length.n, call.rd_length)
+        precompile_return_length = instruction.curr.aux_data[0]
+        min_rd_copy_size = min(precompile_return_length, call.rd_length.n)
 
         # precompiles have on code
         instruction.constrain_equal(no_callee_code, FQ.one())
@@ -172,16 +163,16 @@ def callop(instruction: Instruction):
         # Setup next call's context.
         for field_tag, expected_value in [
             (CallContextFieldTag.IsSuccess, call.is_success),
-            (CallContextFieldTag.CalleeAddress, callee_address),
+            (CallContextFieldTag.CalleeAddress, callee_address_word),
             (CallContextFieldTag.CallerId, instruction.curr.call_id),
             (CallContextFieldTag.CallDataOffset, call.cd_offset),
             (CallContextFieldTag.CallDataLength, call.cd_length),
             (CallContextFieldTag.ReturnDataOffset, call.rd_offset),
             (CallContextFieldTag.ReturnDataLength, call.rd_length),
         ]:
-            instruction.constrain_equal(
-                instruction.call_context_lookup(field_tag, RW.Write),
-                expected_value,
+            instruction.constrain_equal_word(
+                instruction.call_context_lookup_word(field_tag, RW.Write),
+                WordOrValue(expected_value),
             )
 
         # Save caller's call state
@@ -215,26 +206,30 @@ def callop(instruction: Instruction):
                 instruction.curr.call_id,
                 CopyDataTypeTag.Memory,
                 FQ.zero(),
-                min_rd_copy_size,
+                FQ(min_rd_copy_size),
                 call.rd_offset,
-                min_rd_copy_size,
-                return_data_rwc,
+                FQ(min_rd_copy_size),
+                instruction.curr.rw_counter + instruction.rw_counter_offset,
             )
-        ###
+        precompile_memory_word_size, _ = instruction.constant_divmod(
+            FQ(min_rd_copy_size + 31), FQ(32), N_BYTES_MEMORY_WORD_SIZE
+        )
 
         # Give gas stipend if value is not zero
         callee_gas_left += has_value * GAS_STIPEND_CALL_WITH_VALUE
 
         rwc = instruction.rw_counter_offset + return_copy_rwc_inc
-        instruction.step_state_transition_to_new_context(
+        instruction.constrain_step_state_transition(
             rw_counter=Transition.delta(rwc),
             call_id=Transition.to(callee_call_id),
             is_root=Transition.to(False),
             is_create=Transition.to(False),
-            code_hash=Transition.to_word(EMPTY_CODE_HASH),
+            code_hash=Transition.to_word(Word(EMPTY_CODE_HASH)),
             gas_left=Transition.to(callee_gas_left),
             reversible_write_counter=Transition.to(2),
-            log_id=Transition.same(),
+            program_counter=Transition.delta(1),
+            stack_pointer=Transition.same(),
+            memory_word_size=Transition.to(precompile_memory_word_size),
         )
 
         PrecompileGadget(instruction, callee_address, precompile_return_length, call.cd_length)

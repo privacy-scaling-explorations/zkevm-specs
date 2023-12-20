@@ -14,6 +14,8 @@ from zkevm_specs.evm_circuit import (
     Tables,
     verify_steps,
 )
+from zkevm_specs.evm_circuit.table import CopyDataTypeTag
+from zkevm_specs.evm_circuit.typing import CopyCircuit
 from zkevm_specs.util import (
     EMPTY_CODE_HASH,
     GAS_COST_ACCOUNT_COLD_ACCESS,
@@ -24,7 +26,8 @@ from zkevm_specs.util import (
     Word,
     U256,
 )
-from common import CallContext
+from common import CallContext, rand_fq
+
 
 Stack = namedtuple(
     "Stack",
@@ -138,10 +141,7 @@ def gen_testing_data():
     return [
         (
             opcode,
-            CALLER,
             callee,
-            PARENT_CALLER,
-            PARENT_VALUE,
             call_context,
             stack,
             is_warm_access,
@@ -166,26 +166,23 @@ def gen_testing_data():
 TESTING_DATA = gen_testing_data()
 
 
-@pytest.mark.parametrize(
-    "opcode, caller, callee, parent_caller, parent_value, caller_ctx, stack, is_warm_access, depth, expected",
-    TESTING_DATA,
-)
-def test_callop(
+def callop_test_template(
     opcode: Opcode,
-    caller: Account,
     callee: Account,
-    parent_caller: Account,
-    parent_value: int,
     caller_ctx: CallContext,
     stack: Stack,
     is_warm_access: bool,
     depth: int,
+    is_precompile: bool,
     expected: Expected,
 ):
     is_call = 1 if opcode == Opcode.CALL else 0
     is_callcode = 1 if opcode == Opcode.CALLCODE else 0
     is_delegatecall = 1 if opcode == Opcode.DELEGATECALL else 0
-    is_staticcall = 1 if opcode == Opcode.STATICCALL else 0
+
+    caller = CALLER
+    parent_caller = PARENT_CALLER
+    parent_value = PARENT_VALUE
 
     # Set `is_static == 1` for both DELEGATECALL and STATICCALL opcodes, or when
     # `stack.value == 0` for both CALL and CALLCODE opcodes.
@@ -247,15 +244,13 @@ def test_callop(
             .stop()
         )
 
-    caller_bytecode_hash = Word(caller_bytecode.hash())
-
     callee_bytecode = callee.code
     callee_bytecode_hash = callee_bytecode.hash()
-    if not callee.is_empty():
+    if not callee.is_empty() and not is_precompile:
         is_empty_code_hash = callee_bytecode_hash == EMPTY_CODE_HASH
     else:
         is_empty_code_hash = True
-    callee_bytecode_hash = Word(callee_bytecode_hash if not callee.is_empty() else 0)
+    callee_bytecode_hash = Word(callee_bytecode_hash if not is_empty_code_hash else 0)
 
     # Only check balance and stack depth
     is_precheck_ok = caller.balance >= value and depth < 1025
@@ -346,11 +341,28 @@ def test_callop(
             .account_write(callee.address, AccountFieldTag.Balance, callee_balance, callee_balance_prev, rw_counter_of_reversion=None if callee_is_persistent else callee_rw_counter_end_of_reversion - 1)
 
 
-    if is_precheck_ok is False or is_empty_code_hash:
+    if (is_precheck_ok is False or is_empty_code_hash) and is_precompile is False:
         rw_dictionary \
         .call_context_write(1, CallContextFieldTag.LastCalleeId, 0) \
         .call_context_write(1, CallContextFieldTag.LastCalleeReturnDataOffset, 0) \
         .call_context_write(1, CallContextFieldTag.LastCalleeReturnDataLength, 0)
+    elif is_precompile:
+        rw_dictionary \
+        .call_context_write(1, CallContextFieldTag.IsSuccess, True) \
+        .call_context_write(1, CallContextFieldTag.CalleeAddress, Word(callee.address)) \
+        .call_context_write(1, CallContextFieldTag.CallerId, 1) \
+        .call_context_write(1, CallContextFieldTag.CallDataOffset, stack.cd_offset) \
+        .call_context_write(1, CallContextFieldTag.CallDataLength, stack.cd_length) \
+        .call_context_write(1, CallContextFieldTag.ReturnDataOffset, stack.rd_offset) \
+        .call_context_write(1, CallContextFieldTag.ReturnDataLength, stack.rd_length) \
+        .call_context_write(call_id, CallContextFieldTag.ProgramCounter, next_program_counter) \
+        .call_context_write(call_id, CallContextFieldTag.StackPointer, 1023) \
+        .call_context_write(call_id, CallContextFieldTag.GasLeft, expected.caller_gas_left) \
+        .call_context_write(call_id, CallContextFieldTag.MemorySize, expected.next_memory_size) \
+        .call_context_write(call_id, CallContextFieldTag.ReversibleWriteCounter, caller_ctx.reversible_write_counter + 1) \
+        .call_context_write(call_id, CallContextFieldTag.LastCalleeId, call_id) \
+        .call_context_write(call_id, CallContextFieldTag.LastCalleeReturnDataOffset, 0) \
+        .call_context_write(call_id, CallContextFieldTag.LastCalleeReturnDataLength, stack.rd_length)
     else:
         rw_dictionary \
         .call_context_write(1, CallContextFieldTag.ProgramCounter, next_program_counter) \
@@ -377,6 +389,48 @@ def test_callop(
         .call_context_read(call_id, CallContextFieldTag.IsCreate, False) \
         .call_context_read(call_id, CallContextFieldTag.CodeHash, callee_bytecode_hash)
     # fmt: on
+
+    return (
+        caller_bytecode,
+        callee_bytecode,
+        call_id,
+        next_program_counter,
+        stack_pointer,
+        rw_dictionary,
+        is_precheck_ok,
+        is_empty_code_hash,
+    )
+
+
+@pytest.mark.parametrize(
+    "opcode, callee, caller_ctx, stack, is_warm_access, depth, expected",
+    TESTING_DATA,
+)
+def test_callop(
+    opcode: Opcode,
+    callee: Account,
+    caller_ctx: CallContext,
+    stack: Stack,
+    is_warm_access: bool,
+    depth: int,
+    expected: Expected,
+):
+    (
+        caller_bytecode,
+        callee_bytecode,
+        call_id,
+        next_program_counter,
+        stack_pointer,
+        rw_dictionary,
+        is_precheck_ok,
+        is_empty_code_hash,
+    ) = callop_test_template(
+        opcode, callee, caller_ctx, stack, is_warm_access, depth, False, expected
+    )
+
+    caller_bytecode_hash = Word(caller_bytecode.hash())
+    callee_bytecode_hash = Word(callee_bytecode.hash() if not callee.is_empty() else 0)
+    rw_counter = call_id
 
     tables = Tables(
         block_table=set(Block().table_assignments()),
@@ -436,6 +490,156 @@ def test_callop(
                     gas_left=expected.callee_gas_left,
                     reversible_write_counter=2,
                 )
+            ),
+        ],
+    )
+
+
+def gen_precompile_testing_data():
+    opcodes = [
+        Opcode.CALL,
+        # Opcode.CALLCODE,
+        # Opcode.DELEGATECALL,
+        # Opcode.STATICCALL,
+    ]
+    precompiles = [
+        (
+            ExecutionState.ECRECOVER,
+            Account(
+                address=1,
+                code=Bytecode()
+                .push32(0x456E9AEA5E197A1F1AF7A3E85A3212FA4049A3BA34C2289B4C860FC0B0C64EF3)
+                .push1(0)
+                .mstore()
+                .push1(28)  # v
+                .push1(0x20)
+                .mstore()
+                .push32(0x9242685BF161793CC25603C231BC2F568EB630EA16AA137D2664AC8038825608)  # r
+                .push1(0x40)
+                .mstore()
+                .push32(0x4F8AE3BD7535248D0BD448298CC2E2071E56992D0774DC340C368AE950852ADA)  # s
+                .push1(0x60)
+                .mstore(),
+            ),
+            Stack(cd_offset=0, cd_length=0x80, rd_offset=0, rd_length=0x20),
+        )
+    ]
+
+    return [(opcode, callee) for opcode, callee in product(opcodes, precompiles)]
+
+
+PRECOMPILE_TESTING_DATA = gen_precompile_testing_data()
+
+PRECOMPILE_RETURN_DATA = [0x01] * 64
+
+
+@pytest.mark.parametrize(
+    "opcode, precompile",
+    PRECOMPILE_TESTING_DATA,
+)
+def test_callop_precompiles(opcode: Opcode, precompile: tuple[Account, Stack]):
+    randomness_keccak = rand_fq()
+
+    exe_state = precompile[0]
+    callee = precompile[1]
+    stack = precompile[2]
+    caller_ctx = CallContext(gas_left=100000)
+    expectation = expected(
+        opcode,
+        callee.code_hash(),
+        CALLER if opcode in [opcode.CALLCODE, Opcode.DELEGATECALL] else callee,
+        caller_ctx,
+        stack,
+        True,
+        True,
+    )
+
+    (
+        caller_bytecode,
+        callee_bytecode,
+        call_id,
+        next_program_counter,
+        stack_pointer,
+        rw_dictionary,
+        _,
+        _,
+    ) = callop_test_template(
+        opcode,
+        callee,
+        caller_ctx,
+        stack,
+        True,
+        1,
+        True,
+        expectation,
+    )
+
+    caller_bytecode_hash = Word(caller_bytecode.hash())
+    rw_counter = call_id
+
+    src_data = dict(
+        [
+            (i, PRECOMPILE_RETURN_DATA[i] if i < len(PRECOMPILE_RETURN_DATA) else 0)
+            for i in range(0, stack.rd_length)
+        ]
+    )
+    copy_circuit = CopyCircuit().copy(
+        randomness_keccak,
+        rw_dictionary,
+        call_id,
+        CopyDataTypeTag.Memory,
+        1,
+        CopyDataTypeTag.Memory,
+        0,
+        stack.rd_length,
+        0,
+        stack.rd_length,
+        src_data,
+    )
+
+    tables = Tables(
+        block_table=set(Block().table_assignments()),
+        tx_table=set(),
+        withdrawal_table=set(),
+        bytecode_table=set(
+            chain(
+                caller_bytecode.table_assignments(),
+                callee_bytecode.table_assignments(),
+            )
+        ),
+        rw_table=set(rw_dictionary.rws),
+        copy_circuit=copy_circuit.rows,
+    )
+
+    verify_steps(
+        tables=tables,
+        steps=[
+            StepState(
+                execution_state=ExecutionState.CALL_OP,
+                rw_counter=rw_counter,
+                call_id=1,
+                is_root=True,
+                is_create=False,
+                code_hash=caller_bytecode_hash,
+                program_counter=next_program_counter - 1,
+                stack_pointer=stack_pointer,
+                gas_left=caller_ctx.gas_left,
+                memory_word_size=caller_ctx.memory_word_size,
+                reversible_write_counter=caller_ctx.reversible_write_counter,
+                aux_data=[stack.rd_length],
+            ),
+            StepState(
+                execution_state=exe_state,
+                rw_counter=rw_dictionary.rw_counter,
+                call_id=call_id,
+                is_root=False,
+                is_create=False,
+                code_hash=Word(EMPTY_CODE_HASH),
+                program_counter=next_program_counter,
+                stack_pointer=stack_pointer,
+                gas_left=expectation.callee_gas_left,
+                reversible_write_counter=2,
+                memory_word_size=int((stack.rd_length + 31) / 32),
             ),
         ],
     )
