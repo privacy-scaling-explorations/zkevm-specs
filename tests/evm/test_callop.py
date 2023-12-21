@@ -14,6 +14,7 @@ from zkevm_specs.evm_circuit import (
     Tables,
     verify_steps,
 )
+from zkevm_specs.evm_circuit.precompile import Precompile
 from zkevm_specs.evm_circuit.table import CopyDataTypeTag
 from zkevm_specs.evm_circuit.typing import CopyCircuit
 from zkevm_specs.util import (
@@ -498,15 +499,15 @@ def test_callop(
 def gen_precompile_testing_data():
     opcodes = [
         Opcode.CALL,
-        # Opcode.CALLCODE,
-        # Opcode.DELEGATECALL,
-        # Opcode.STATICCALL,
+        Opcode.CALLCODE,
+        Opcode.DELEGATECALL,
+        Opcode.STATICCALL,
     ]
     precompiles = [
         (
             ExecutionState.ECRECOVER,
             Account(
-                address=1,
+                address=Precompile.ECRECOVER,
                 code=Bytecode()
                 .push32(0x456E9AEA5E197A1F1AF7A3E85A3212FA4049A3BA34C2289B4C860FC0B0C64EF3)
                 .push1(0)
@@ -522,7 +523,112 @@ def gen_precompile_testing_data():
                 .mstore(),
             ),
             Stack(cd_offset=0, cd_length=0x80, rd_offset=0, rd_length=0x20),
-        )
+        ),
+        (
+            ExecutionState.DATACOPY,
+            Account(
+                address=Precompile.DATACOPY,
+                code=Bytecode().push16(0x0123456789ABCDEF0123456789ABCDEF).push1(0).mstore(),
+            ),
+            Stack(cd_offset=0, cd_length=0x20, rd_offset=0, rd_length=0x20),
+        ),
+        (
+            ExecutionState.BN254_ADD,
+            Account(
+                address=Precompile.BN254ADD,
+                code=Bytecode()
+                .push1(1)  # x1
+                .push1(0)
+                .mstore()
+                .push1(2)  # y1
+                .push1(0x20)
+                .mstore()
+                .push1(1)  # x2
+                .push1(0x40)
+                .mstore()
+                .push1(2)  # y2
+                .push1(0x60)
+                .mstore(),
+            ),
+            Stack(cd_offset=0, cd_length=0x80, rd_offset=0, rd_length=0x40),
+        ),
+        (
+            ExecutionState.BN254_SCALAR_MUL,
+            Account(
+                address=Precompile.BN254SCALARMUL,
+                code=Bytecode()
+                .push1(1)  # x1
+                .push1(0)
+                .mstore()
+                .push1(2)  # y1
+                .push1(0x20)
+                .mstore()
+                .push1(2)  # s
+                .push1(0x40)
+                .mstore(),
+            ),
+            Stack(cd_offset=0, cd_length=0x60, rd_offset=0, rd_length=0x40),
+        ),
+        (
+            ExecutionState.BN254_PAIRING,
+            Account(
+                address=Precompile.BN254PAIRING,
+                code=Bytecode()
+                .push32(0x2CF44499D5D27BB186308B7AF7AF02AC5BC9EEB6A3D147C186B21FB1B76E18DA)  # g1 x1
+                .push1(0)
+                .mstore()
+                .push32(0x2C0F001F52110CCFE69108924926E45F0B0C868DF0E7BDE1FE16D3242DC715F6)  # g1 y1
+                .push1(0x20)
+                .mstore()
+                .push1(1)  # g1 x2
+                .push1(0x40)
+                .mstore()
+                .push32(0x30644E72E131A029B85045B68181585D97816A916871CA8D3C208C16D87CFD45)  # g1 y2
+                .push1(0x60)
+                .mstore()
+                .push32(
+                    0x1FB19BB476F6B9E44E2A32234DA8212F61CD63919354BC06AEF31E3CFAFF3EBC
+                )  # g2 x1_1
+                .push1(0x80)
+                .mstore()
+                .push32(
+                    0x22606845FF186793914E03E21DF544C34FFE2F2F3504DE8A79D9159ECA2D98D9
+                )  # g2 x1_2
+                .push1(0xA0)
+                .mstore()
+                .push32(
+                    0x2BD368E28381E8ECCB5FA81FC26CF3F048EEA9ABFDD85D7ED3AB3698D63E4F90
+                )  # g2 y1_1
+                .push1(0xC0)
+                .mstore()
+                .push32(
+                    0x2FE02E47887507ADF0FF1743CBAC6BA291E66F59BE6BD763950BB16041A0A85E
+                )  # g2 y1_2
+                .push1(0xE0)
+                .mstore()
+                .push32(
+                    0x1971FF0471B09FA93CAAF13CBF443C1AEDE09CC4328F5A62AAD45F40EC133EB4
+                )  # g2 x2_1
+                .push2(0x0100)
+                .mstore()
+                .push32(
+                    0x091058A3141822985733CBDDDFED0FD8D6C104E9E9EFF40BF5ABFEF9AB163BC7
+                )  # g2 x2_2
+                .push2(0x0120)
+                .mstore()
+                .push32(
+                    0x2A23AF9A5CE2BA2796C1F4E453A370EB0AF8C212D9DC9ACD8FC02C2E907BAEA2
+                )  # g2 y2_1
+                .push2(0x0140)
+                .mstore()
+                .push32(
+                    0x23A8EB0B0996252CB548A4487DA97B02422EBC0E834613F954DE6C7E0AFDC1FC
+                )  # g2 y2_2
+                .push2(0x0160)
+                .mstore(),
+            ),
+            Stack(cd_offset=0, cd_length=0x20, rd_offset=0, rd_length=0x160),
+        ),
     ]
 
     return [(opcode, callee) for opcode, callee in product(opcodes, precompiles)]

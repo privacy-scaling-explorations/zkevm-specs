@@ -117,7 +117,7 @@ def callop(instruction: Instruction):
 
     # Make sure the state transition to ExecutionState for precompile if and
     # only if the callee address is one of precompile
-    is_precompile = instruction.precompile(callee_address)
+    is_precompile = instruction.precompile(call.callee_address)
     instruction.constrain_equal(
         is_precompile, FQ(instruction.next.execution_state in precompile_execution_states())
     )
@@ -232,7 +232,9 @@ def callop(instruction: Instruction):
             memory_word_size=Transition.to(precompile_memory_word_size),
         )
 
-        PrecompileGadget(instruction, callee_address, precompile_return_length, call.cd_length)
+        PrecompileGadget(
+            instruction, call.callee_address, FQ(precompile_return_length), call.cd_length
+        )
 
     else:  # precheck is ok and callee has code
         # Save caller's call state

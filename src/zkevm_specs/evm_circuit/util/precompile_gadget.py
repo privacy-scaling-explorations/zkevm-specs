@@ -20,4 +20,4 @@ class PrecompileGadget:
         precompile = Precompile(callee_addr)
         if precompile == Precompile.DATACOPY:
             # input length is the same as return data length
-            instruction.constrain_equal(calldata_len, precompile_return_len)
+            instruction.constrain_equal(precompile_return_len, calldata_len)
