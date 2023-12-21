@@ -9,7 +9,7 @@
 - `DELEGATECALL` creates a new sub context as setting caller address to parent caller's and callee address to current caller's, but with the code of the given account (callee). In particular the current `sender` (parent caller) and `value` remain the same.
 - `STATICCALL` does not allow any state modifying instructions (is_static == 1) or sending ether to callee in the sub context.
 
-These are done by popping serveral words from stack:
+These are done by popping several words from stack:
 
 1. `gas` - The amount of gas caller want to give to callee (capped by rule in EIP150)
 2. `callee_address` - The ether recipient whose code is to be executed (by taking the 20 LSB of popped word)

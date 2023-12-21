@@ -107,66 +107,6 @@ def expected(
     )
 
 
-def gen_testing_data():
-    opcodes = [
-        Opcode.CALL,
-        Opcode.CALLCODE,
-        Opcode.DELEGATECALL,
-        Opcode.STATICCALL,
-    ]
-    callees = [
-        CALLEE_WITH_NOTHING,
-        CALLEE_WITH_STOP_BYTECODE_AND_BALANCE,
-        CALLEE_WITH_RETURN_BYTECODE,
-        CALLEE_WITH_REVERT_BYTECODE,
-    ]
-    call_contexts = [
-        CallContext(
-            gas_left=100000, is_persistent=True, memory_word_size=8, reversible_write_counter=5
-        ),
-        CallContext(
-            gas_left=100000,
-            is_persistent=False,
-            rw_counter_end_of_reversion=88,
-            reversible_write_counter=2,
-        ),
-    ]
-    stacks = [
-        Stack(),
-        Stack(value=int(1e18), gas=100000),
-        Stack(value=int(1e18), gas=100, cd_offset=64, cd_length=320, rd_offset=0, rd_length=32),
-        Stack(cd_offset=0xFFFFFF, cd_length=0, rd_offset=0xFFFFFF, rd_length=0),
-    ]
-    is_warm_access = [True, False]
-    depths = [1, 1024, 1025]
-    return [
-        (
-            opcode,
-            callee,
-            call_context,
-            stack,
-            is_warm_access,
-            depth,
-            expected(
-                opcode,
-                callee.code_hash(),
-                # `callee = caller` for both CALLCODE and DELEGATECALL opcodes.
-                CALLER if opcode in [opcode.CALLCODE, Opcode.DELEGATECALL] else callee,
-                call_context,
-                stack,
-                is_warm_access,
-                CALLER.balance >= stack.value and depth < 1025,
-            ),
-        )
-        for opcode, callee, call_context, stack, is_warm_access, depth in product(
-            opcodes, callees, call_contexts, stacks, is_warm_access, depths
-        )
-    ]
-
-
-TESTING_DATA = gen_testing_data()
-
-
 def callop_test_template(
     opcode: Opcode,
     callee: Account,
@@ -403,6 +343,69 @@ def callop_test_template(
     )
 
 
+#
+# testing for callop
+#
+def gen_testing_data():
+    opcodes = [
+        Opcode.CALL,
+        Opcode.CALLCODE,
+        Opcode.DELEGATECALL,
+        Opcode.STATICCALL,
+    ]
+    callees = [
+        CALLEE_WITH_NOTHING,
+        CALLEE_WITH_STOP_BYTECODE_AND_BALANCE,
+        CALLEE_WITH_RETURN_BYTECODE,
+        CALLEE_WITH_REVERT_BYTECODE,
+    ]
+    call_contexts = [
+        CallContext(
+            gas_left=100000, is_persistent=True, memory_word_size=8, reversible_write_counter=5
+        ),
+        CallContext(
+            gas_left=100000,
+            is_persistent=False,
+            rw_counter_end_of_reversion=88,
+            reversible_write_counter=2,
+        ),
+    ]
+    stacks = [
+        Stack(),
+        Stack(value=int(1e18), gas=100000),
+        Stack(value=int(1e18), gas=100, cd_offset=64, cd_length=320, rd_offset=0, rd_length=32),
+        Stack(cd_offset=0xFFFFFF, cd_length=0, rd_offset=0xFFFFFF, rd_length=0),
+    ]
+    is_warm_access = [True, False]
+    depths = [1, 1024, 1025]
+    return [
+        (
+            opcode,
+            callee,
+            call_context,
+            stack,
+            is_warm_access,
+            depth,
+            expected(
+                opcode,
+                callee.code_hash(),
+                # `callee = caller` for both CALLCODE and DELEGATECALL opcodes.
+                CALLER if opcode in [opcode.CALLCODE, Opcode.DELEGATECALL] else callee,
+                call_context,
+                stack,
+                is_warm_access,
+                CALLER.balance >= stack.value and depth < 1025,
+            ),
+        )
+        for opcode, callee, call_context, stack, is_warm_access, depth in product(
+            opcodes, callees, call_contexts, stacks, is_warm_access, depths
+        )
+    ]
+
+
+TESTING_DATA = gen_testing_data()
+
+
 @pytest.mark.parametrize(
     "opcode, callee, caller_ctx, stack, is_warm_access, depth, expected",
     TESTING_DATA,
@@ -496,6 +499,10 @@ def test_callop(
     )
 
 
+#
+# callop for precompiles
+#
+# TODO add testing data for SHA256, RIPEMD160, BIGMODEXP and BLAKE2F
 def gen_precompile_testing_data():
     opcodes = [
         Opcode.CALL,
@@ -635,7 +642,6 @@ def gen_precompile_testing_data():
 
 
 PRECOMPILE_TESTING_DATA = gen_precompile_testing_data()
-
 PRECOMPILE_RETURN_DATA = [0x01] * 64
 
 
@@ -656,8 +662,8 @@ def test_callop_precompiles(opcode: Opcode, precompile: tuple[Account, Stack]):
         CALLER if opcode in [opcode.CALLCODE, Opcode.DELEGATECALL] else callee,
         caller_ctx,
         stack,
-        True,
-        True,
+        True,  # is_warm
+        True,  # is_precheck_ok
     )
 
     (
@@ -674,9 +680,9 @@ def test_callop_precompiles(opcode: Opcode, precompile: tuple[Account, Stack]):
         callee,
         caller_ctx,
         stack,
-        True,
-        1,
-        True,
+        True,  # is_warm
+        1,  # stack depth
+        True,  # is_precompile
         expectation,
     )
 
@@ -724,7 +730,7 @@ def test_callop_precompiles(opcode: Opcode, precompile: tuple[Account, Stack]):
                 execution_state=ExecutionState.CALL_OP,
                 rw_counter=rw_counter,
                 call_id=1,
-                is_root=True,
+                is_root=False,
                 is_create=False,
                 code_hash=caller_bytecode_hash,
                 program_counter=next_program_counter - 1,

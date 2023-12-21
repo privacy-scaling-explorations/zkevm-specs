@@ -235,7 +235,6 @@ def callop(instruction: Instruction):
         PrecompileGadget(
             instruction, call.callee_address, FQ(precompile_return_length), call.cd_length
         )
-
     else:  # precheck is ok and callee has code
         # Save caller's call state
         for field_tag, expected_value in [
