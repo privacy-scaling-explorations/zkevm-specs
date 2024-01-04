@@ -420,3 +420,34 @@ require!(rlp_key.rlp_list.len() => rlp_key.key_value.num_bytes() + rlp_value[is_
 Above, the `rlp_key` is of type `ListKeyGadget` - it contains information about the leaf
 key. The `rlp_value` and `rlp_key.key_value` are of type `RLPItemView` - instantiated by
 the call `rlp_item` (see above).
+
+## IsPlaceholderLeafGadget
+
+`IsPlaceholderLeafGadget` is used to check whether the leaf is a placeholder.
+The placeholder leaf is used in the following scenarios:
+ * When the leaf has been added to the position in branch where there was no leaf - in this case `S` proof contains a placeholder leaf.
+ * When the leaf has been deleted from the branch and there is at least one other leaf in the branch (otherwise the branch is deleted) - in this case `C` proof constains a placeholder leaf.
+ * For the non-existence proofs (however, some non-existence proofs have a leaf - wrong leaf, see `WrongGadget`).
+
+To determine whether the leaf is placeholder or not, the gadget checks
+whether `ParentData hash` is a hash of an empty trie (when no leaf is in the trie):
+```
+let is_empty_trie = IsEqualWordGadget::construct(
+    &mut cb.base,
+    &parent_word,
+    &Word::<Expression<F>>::new([
+        Expression::Constant(empty_hash.lo()),
+        Expression::Constant(empty_hash.hi()),
+    ]),
+);
+```
+
+or whether `ParentData hash` is `nil`, meaning there is no leaf at the `modified_index` position in the parent branch: 
+```
+let is_nil_in_branch_at_mod_index = IsEqualWordGadget::construct(
+    &mut cb.base,
+    &parent_word,
+    &Word::<Expression<F>>::new([0.expr(), 0.expr()]),
+);
+```
+

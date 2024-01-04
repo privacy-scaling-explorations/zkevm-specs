@@ -97,6 +97,9 @@ It needs to be checked that the length of the stream is `29 = 157 - 128`.
 We can reconstruct the `S` RLP stream if we start with `list_rlp_bytes[0]`, then append `KeyS`,
 `value_rlp_bytes[0]`, `value_list_rlp_bytes[0]`, `NonceS`, `BalanceS`, `StorageS`, and `CodehashS`.
 
+We can reconstruct the `C` RLP stream if we start with `list_rlp_bytes[1]`, then append `KeyC`,
+`value_rlp_bytes[1]`, `value_list_rlp_bytes[1]`, `NonceC`, `BalanceC`, `StorageC`, and `CodehashC`.
+
 ## Constraints
 
 There is a [memory](main.md) mechanism that is used for `MainData`, `ParentData`, and `KeyData` -
@@ -106,10 +109,106 @@ correctly.
 `MainData` contains the following fields: `proof_type`, `is_below_account`, `address_rlc`, `root_prev`,
 and `root`. 
 
-`is_below_account` constraint:
+### Constraint 1
+
+Check with a lookup that the [memorized](main.md) values for `MainData` are correct:
+```
+config.main_data = MainData::load(cb, &mut ctx.memory[main_memory()], 0.expr());
+```
+
+Note that the key is used for a lookup (`0` in the case above means the current node) - the key is important because in different nodes there are different correct values.
+In each node, the circuit checks whether `MainData` is set correctly and
+stores it in the lookup table using `MainData::store` call.
+
+### Constraint 2
+
+Do not allow an account node to follow another account node:
 ```
 main_data.is_below_account = false
 ```
+
+Note that `is_below_account` is set to `false` in the start and storage leaf node (second parameter):
+``` 
+MainData::store(
+    cb,
+    &mut ctx.memory[main_memory()],
+    [
+        config.proof_type.expr(),
+        false.expr(),
+        0.expr(),
+        root[true.idx()].lo().expr(),
+        root[true.idx()].hi().expr(),
+        root[false.idx()].lo().expr(),
+        root[false.idx()].hi().expr(),
+    ],
+);
+```
+
+and is set to `true` in the account leaf node:
+```
+MainData::store(
+    cb,
+    &mut ctx.memory[main_memory()],
+    [
+        config.main_data.proof_type.expr(),
+        true.expr(),
+        address_item.word().lo()
+            + address_item.word().hi() * pow::value::<F>(256.scalar(), 16),
+        config.main_data.new_root.lo().expr(),
+        config.main_data.new_root.hi().expr(),
+        config.main_data.old_root.lo().expr(),
+        config.main_data.old_root.hi().expr(),
+    ],
+);
+```
+
+### Constraint 3
+
+Check with a lookup that the [memorized](main.md) values for `S ParentData` are correct:
+```
+parent_data[0] = ParentData::load(cb, &mut ctx.memory[parent_memory(true)], 0.expr());
+```
+
+### Constraint 4
+
+Check with a lookup that the [memorized](main.md) values for `C ParentData` are correct:
+```
+parent_data[1] = ParentData::load(cb, &mut ctx.memory[parent_memory(false)], 0.expr());
+```
+
+### Constraint 5
+
+Check with a lookup that the [memorized](main.md) values for `S KeyData` are correct:
+```
+key_data[0] = KeyData::load(cb, &mut ctx.memory[key_memory(true)], 0.expr());
+```
+
+### Constraint 6
+
+Check with a lookup that the [memorized](main.md) values for `C KeyData` are correct:
+```
+key_data[1] = KeyData::load(cb, &mut ctx.memory[key_memory(false)], 0.expr());
+```
+
+### Constraint 7
+
+`IsEqualGadget` (using `IsZeroGadget`) to determine the proof type:
+```
+config.is_non_existing_account_proof = IsEqualGadget::construct(
+    &mut cb.base,
+    config.main_data.proof_type.expr(),
+    MPTProofType::AccountDoesNotExist.expr(),
+);
+config.is_account_delete_mod = IsEqualGadget::construct(
+    &mut cb.base,
+    config.main_data.proof_type.expr(),
+    MPTProofType::AccountDestructed.expr(),
+);
+...
+```
+
+
+###
 
 Storage and codehash RLP constraints (the length of storage and codehash is always `32`):
 ```
@@ -356,17 +455,6 @@ differ.
 When this particular `AccountDoesNotExist` proof subtype occurs, the `AccountWrong` holds the value
 of the enquired address, while the wrong leaf address is stored in the `AccountKeyC` value.
 
-### Proof type gadgets
-
-The `IsEqualGadget` is used to check the type of the proof:
-```
-is_non_existing_account_proof: IsEqualGadget<F>,
-is_account_delete_mod: IsEqualGadget<F>,
-is_nonce_mod: IsEqualGadget<F>,
-is_balance_mod: IsEqualGadget<F>,
-is_storage_mod: IsEqualGadget<F>,
-is_codehash_mod: IsEqualGadget<F>
-```
 
 # Account leaf (obsolete)
 
