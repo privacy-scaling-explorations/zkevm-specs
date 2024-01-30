@@ -634,7 +634,7 @@ def gen_precompile_testing_data():
                 .push2(0x0160)
                 .mstore(),
             ),
-            Stack(cd_offset=0, cd_length=0x20, rd_offset=0, rd_length=0x160),
+            Stack(cd_offset=0, cd_length=0x180, rd_offset=0, rd_length=0x160),
         ),
     ]
 
