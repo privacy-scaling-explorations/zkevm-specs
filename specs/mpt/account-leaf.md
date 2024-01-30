@@ -207,6 +207,16 @@ config.is_account_delete_mod = IsEqualGadget::construct(
 ...
 ```
 
+### Constraint 8
+
+This and the following constraints are triggered only for the non modified extension node cases. The constraints for the non modified extension node cases are in `ModExtensionGadget`.
+
+
+```
+config.is_placeholder_leaf[is_s.idx()] =
+    IsPlaceholderLeafGadget::construct(cb, parent_data[is_s.idx()].hash.expr());
+```
+
 
 ###
 
