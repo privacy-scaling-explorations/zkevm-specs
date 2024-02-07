@@ -155,7 +155,7 @@ def callop(instruction: Instruction):
         precompile_return_length = instruction.curr.aux_data[0]
         min_rd_copy_size = min(precompile_return_length, call.rd_length.n)
 
-        # precompiles have on code
+        # precompiles have no code
         instruction.constrain_equal(no_callee_code, FQ.one())
         # precompiles address must be warm
         instruction.constrain_equal(is_warm_access, FQ.one())
