@@ -399,8 +399,25 @@ pub(crate) struct ListKeyGadget<F> {
 }
 ```
 
-`ListKeyGadget` is used for the account leaf, storage leaf, and extension node.
-In these cases, the RLP item is always a list (hence the name)
+`ListKeyGadget` is used for the account leaf, storage leaf, and extension node - it is used to check the key part (without
+leaf value).
+In these cases, the RLP item is always a list (hence the name), because the RLP stream contains multiple elements:
+the key and the value. However, note that the value part is not checked in this gadget, in fact `key_value` contains
+the actual leaf key and it is checked by `key: LeafKeyGadget`.
+
+For example, the RLC of the whole leaf is computed by concatenating the RLC obtained from `ListKeyGadget` and the RLC of the
+leaf value (see `account_leaf.rs`):
+```
+// Calculate the key RLC
+let rlp_key = &mut config.rlp_key[is_s.idx()];
+*rlp_key = ListKeyGadget::construct(cb, &key_items[is_s.idx()]);
+
+let leaf_rlc = rlp_key.rlc2(&cb.keccak_r).rlc_chain_rev((
+    leaf_no_key_rlc[is_s.idx()].expr(),
+    leaf_no_key_rlc_mult[is_s.idx()].expr(),
+));
+```
+
 The field `rlp_list_bytes` contains the bytes that specify the length of the (list) RLP item.
 
 For example, let us observe the storage leaf below.
@@ -411,15 +428,16 @@ For example, let us observe the storage leaf below.
 The field `rlp_list_bytes` would be `[[226],[226]]`. Note that it contains the byte for each, `S`
 and `C` leaf.
 
-For example, the following constraint ensures that the lengths in the RLP encoding are
+For example, the following constraint (in `extension.rs`) ensures that the lengths in the RLP encoding are
 consistent:
 ```
-require!(rlp_key.rlp_list.len() => rlp_key.key_value.num_bytes() + rlp_value[is_s.idx()].num_bytes());
+require!(config.rlp_key.rlp_list.len() => config.rlp_key.key_value.num_bytes() + rlp_value[is_s.idx()].num_bytes());
 ```
 
-Above, the `rlp_key` is of type `ListKeyGadget` - it contains information about the leaf
-key. The `rlp_value` and `rlp_key.key_value` are of type `RLPItemView` - instantiated by
-the call `rlp_item` (see above).
+Above, the `config.rlp_key` is of type `ListKeyGadget` - it contains information about the leaf
+key. The `config.rlp_key.key_value` and `rlp_value` are of type `RLPItemView` - instantiated by
+the call `rlp_item` (see above). The constraint checks whether the length of the key RLP stream (the whole length obtained from
+the `ListKeyGadget`) is the sum of the length of the key and the length of the value. 
 
 ## IsPlaceholderLeafGadget
 

@@ -209,14 +209,22 @@ config.is_account_delete_mod = IsEqualGadget::construct(
 
 ### Constraint 8
 
-This and the following constraints are triggered only for the non modified extension node cases. The constraints for the non modified extension node cases are in `ModExtensionGadget`.
+This and the following constraints are triggered only for the cases when there is no extension node with modified nibbles.
+The constraints for the modified extension node cases are in `ModExtensionGadget`.
 
-
+The constraint is used to check whether the leaf is a placeholder (the trie is empty or branch has a nil value
+at the position at the account address):
 ```
 config.is_placeholder_leaf[is_s.idx()] =
     IsPlaceholderLeafGadget::construct(cb, parent_data[is_s.idx()].hash.expr());
 ```
 
+### Constraint 9
+
+Check the leaf RLP and enable access to the functions like `rlc2`:
+```
+*rlp_key = ListKeyGadget::construct(cb, &key_items[is_s.idx()]);
+```
 
 ###
 
