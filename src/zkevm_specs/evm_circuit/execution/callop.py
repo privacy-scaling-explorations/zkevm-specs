@@ -171,7 +171,7 @@ def callop(instruction: Instruction):
             (CallContextFieldTag.ReturnDataLength, call.rd_length),
         ]:
             instruction.constrain_equal_word(
-                instruction.call_context_lookup_word(field_tag, RW.Write),
+                instruction.call_context_lookup_word(field_tag, RW.Write, callee_call_id),
                 WordOrValue(expected_value),
             )
 
@@ -193,7 +193,7 @@ def callop(instruction: Instruction):
             (CallContextFieldTag.LastCalleeReturnDataLength, FQ(precompile_return_length)),
         ]:
             instruction.constrain_equal(
-                instruction.call_context_lookup(field_tag, RW.Write, callee_call_id),
+                instruction.call_context_lookup(field_tag, RW.Write),
                 expected_value,
             )
 

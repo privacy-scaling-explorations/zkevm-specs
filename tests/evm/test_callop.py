@@ -289,21 +289,21 @@ def callop_test_template(
         .call_context_write(1, CallContextFieldTag.LastCalleeReturnDataLength, 0)
     elif is_precompile:
         rw_dictionary \
-        .call_context_write(1, CallContextFieldTag.IsSuccess, True) \
-        .call_context_write(1, CallContextFieldTag.CalleeAddress, Word(callee.address)) \
-        .call_context_write(1, CallContextFieldTag.CallerId, 1) \
-        .call_context_write(1, CallContextFieldTag.CallDataOffset, stack.cd_offset) \
-        .call_context_write(1, CallContextFieldTag.CallDataLength, stack.cd_length) \
-        .call_context_write(1, CallContextFieldTag.ReturnDataOffset, stack.rd_offset) \
-        .call_context_write(1, CallContextFieldTag.ReturnDataLength, stack.rd_length) \
-        .call_context_write(call_id, CallContextFieldTag.ProgramCounter, next_program_counter) \
-        .call_context_write(call_id, CallContextFieldTag.StackPointer, 1023) \
-        .call_context_write(call_id, CallContextFieldTag.GasLeft, expected.caller_gas_left) \
-        .call_context_write(call_id, CallContextFieldTag.MemorySize, expected.next_memory_size) \
-        .call_context_write(call_id, CallContextFieldTag.ReversibleWriteCounter, caller_ctx.reversible_write_counter + 1) \
-        .call_context_write(call_id, CallContextFieldTag.LastCalleeId, call_id) \
-        .call_context_write(call_id, CallContextFieldTag.LastCalleeReturnDataOffset, 0) \
-        .call_context_write(call_id, CallContextFieldTag.LastCalleeReturnDataLength, stack.rd_length)
+        .call_context_write(call_id, CallContextFieldTag.IsSuccess, True) \
+        .call_context_write(call_id, CallContextFieldTag.CalleeAddress, Word(callee.address)) \
+        .call_context_write(call_id, CallContextFieldTag.CallerId, 1) \
+        .call_context_write(call_id, CallContextFieldTag.CallDataOffset, stack.cd_offset) \
+        .call_context_write(call_id, CallContextFieldTag.CallDataLength, stack.cd_length) \
+        .call_context_write(call_id, CallContextFieldTag.ReturnDataOffset, stack.rd_offset) \
+        .call_context_write(call_id, CallContextFieldTag.ReturnDataLength, stack.rd_length) \
+        .call_context_write(1, CallContextFieldTag.ProgramCounter, next_program_counter) \
+        .call_context_write(1, CallContextFieldTag.StackPointer, 1023) \
+        .call_context_write(1, CallContextFieldTag.GasLeft, expected.caller_gas_left) \
+        .call_context_write(1, CallContextFieldTag.MemorySize, expected.next_memory_size) \
+        .call_context_write(1, CallContextFieldTag.ReversibleWriteCounter, caller_ctx.reversible_write_counter + 1) \
+        .call_context_write(1, CallContextFieldTag.LastCalleeId, call_id) \
+        .call_context_write(1, CallContextFieldTag.LastCalleeReturnDataOffset, 0) \
+        .call_context_write(1, CallContextFieldTag.LastCalleeReturnDataLength, stack.rd_length)
     else:
         rw_dictionary \
         .call_context_write(1, CallContextFieldTag.ProgramCounter, next_program_counter) \
@@ -481,9 +481,9 @@ def test_callop(
                 )
                 if is_empty_code_hash or is_precheck_ok is False
                 else StepState(
-                    execution_state=ExecutionState.STOP
-                    if callee.code == STOP_BYTECODE
-                    else ExecutionState.PUSH,
+                    execution_state=(
+                        ExecutionState.STOP if callee.code == STOP_BYTECODE else ExecutionState.PUSH
+                    ),
                     rw_counter=rw_dictionary.rw_counter,
                     call_id=call_id,
                     is_root=False,
