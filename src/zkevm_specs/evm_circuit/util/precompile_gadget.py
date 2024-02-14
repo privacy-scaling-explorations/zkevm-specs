@@ -22,8 +22,11 @@ class PrecompileGadget:
             # input length is the same as return data length
             instruction.constrain_equal(precompile_return_len, calldata_len)
         elif precompile == Precompile.ECRECOVER:
-            # input length is 128 bytes
-            instruction.constrain_equal(calldata_len, FQ(128))
+            # The input different from 128 is allowed and is then right padded with zeros
+            # We only ensure hat the return length is either 32 or 0.
+            is_128 = instruction.is_equal(precompile_return_len, FQ(32))
+            is_zero = instruction.is_equal(precompile_return_len, FQ.zero())
+            instruction.constrain_equal(is_128 + is_zero, FQ.one())
         elif precompile == Precompile.BN254ADD:
             # input length is 128 bytes
             instruction.constrain_equal(calldata_len, FQ(128))
@@ -32,5 +35,4 @@ class PrecompileGadget:
             instruction.constrain_equal(calldata_len, FQ(96))
         elif precompile == Precompile.BN254PAIRING:
             # input length is 192 * n bytes
-            print(f"{calldata_len}")
             instruction.constrain_equal(FQ(calldata_len.n % 192), FQ.zero())
