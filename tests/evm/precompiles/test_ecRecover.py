@@ -14,12 +14,13 @@ from zkevm_specs.evm_circuit import (
     Tables,
     verify_steps,
 )
-from zkevm_specs.evm_circuit.execution.precompiles.ecrecover import SECP256K1N
+from zkevm_specs.evm_circuit.execution.precompiles.ecrecover import PrecompileRlcData, SECP256K1N
 from zkevm_specs.util import (
     Word,
     FQ,
 )
 from zkevm_specs.evm_circuit.table import SigTableRow
+from zkevm_specs.util.arithmetic import RLC
 
 
 def gen_testing_data():
@@ -49,6 +50,8 @@ def gen_testing_data():
 
 TESTING_DATA = gen_testing_data()
 
+randomness_keccak = rand_fq()
+
 
 @pytest.mark.parametrize(
     "caller_ctx, msg_hash, v, r, s, address",
@@ -72,12 +75,24 @@ def test_ecRecover(
     return_data_offset = 0
     return_data_length = 0x20 if recovered else 0
 
+    input_bytes = bytearray(b"")
+    input_bytes.extend(msg_hash)
+    input_bytes.extend((v + 27).to_bytes(32, "little"))
+    input_bytes.extend(r.to_bytes(32, "little"))
+    input_bytes.extend(s.to_bytes(32, "little"))
+    input_rlc = RLC(bytes(reversed(input_bytes)), randomness_keccak, n_bytes=128).expr()
+    output_bytes = int.from_bytes(address, "big").to_bytes(32, "little")
+    output_rlc = RLC(bytes(reversed(output_bytes)), randomness_keccak, n_bytes=32).expr()
+    rlc_data = PrecompileRlcData(input_rlc, output_rlc)
+
     aux_data = [
         Word(msg_hash),
         Word(v + 27),
         Word(r),
         Word(s),
         FQ(int.from_bytes(address, "big")),
+        rlc_data,
+        randomness_keccak,
     ]
 
     # assign sig_table
