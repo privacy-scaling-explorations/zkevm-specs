@@ -152,7 +152,8 @@ def callop(instruction: Instruction):
         )
     # precompiles call
     elif is_precheck_ok and is_precompile == FQ.one():
-        precompile_return_length = instruction.curr.aux_data[0]
+        precompile_input_len: FQ = instruction.curr.aux_data[0]
+        precompile_return_length: FQ = instruction.curr.aux_data[1]
         min_rd_copy_size = min(precompile_return_length, call.rd_length.n)
 
         # precompiles have no code
@@ -197,6 +198,42 @@ def callop(instruction: Instruction):
                 expected_value,
             )
 
+        ### copy table lookup here
+        ### is to rlc input and output to have an easy way to verify data
+
+        # RLC precompile input from memory
+        rw_counter_inc = instruction.rw_counter_offset
+        input_copy_rwc_inc = FQ.zero()
+        if precompile_input_len != FQ(0):
+            input_copy_rwc_inc, _ = instruction.copy_lookup(
+                instruction.curr.call_id,
+                CopyDataTypeTag.Memory,
+                callee_call_id,
+                CopyDataTypeTag.RlcAcc,
+                call.cd_offset,
+                FQ(call.cd_offset + precompile_input_len),
+                FQ.zero(),
+                FQ(precompile_input_len),
+                instruction.curr.rw_counter + rw_counter_inc,
+            )
+            rw_counter_inc += input_copy_rwc_inc
+
+        # RLC precompile output from memory
+        output_copy_rwc_inc = FQ.zero()
+        if call.is_success == FQ.one() and precompile_return_length != FQ.zero():
+            output_copy_rwc_inc, _ = instruction.copy_lookup(
+                callee_call_id,
+                CopyDataTypeTag.Memory,
+                callee_call_id,
+                CopyDataTypeTag.RlcAcc,
+                FQ.zero(),
+                FQ(precompile_return_length),
+                FQ.zero(),
+                FQ(precompile_return_length),
+                instruction.curr.rw_counter + rw_counter_inc,
+            )
+            rw_counter_inc += output_copy_rwc_inc
+
         # Verify data copy from precompiles
         return_copy_rwc_inc = FQ.zero()
         if call.is_success == FQ.one() and precompile_return_length != FQ.zero():
@@ -209,8 +246,10 @@ def callop(instruction: Instruction):
                 FQ(min_rd_copy_size),
                 call.rd_offset,
                 FQ(min_rd_copy_size),
-                instruction.curr.rw_counter + instruction.rw_counter_offset,
+                instruction.curr.rw_counter + rw_counter_inc,
             )
+            rw_counter_inc += return_copy_rwc_inc
+
         precompile_memory_word_size, _ = instruction.constant_divmod(
             FQ(min_rd_copy_size + 31), FQ(32), N_BYTES_MEMORY_WORD_SIZE
         )
@@ -218,9 +257,8 @@ def callop(instruction: Instruction):
         # Give gas stipend if value is not zero
         callee_gas_left += has_value * GAS_STIPEND_CALL_WITH_VALUE
 
-        rwc = instruction.rw_counter_offset + return_copy_rwc_inc
         instruction.constrain_step_state_transition(
-            rw_counter=Transition.delta(rwc),
+            rw_counter=Transition.delta(rw_counter_inc),
             call_id=Transition.to(callee_call_id),
             is_root=Transition.to(False),
             is_create=Transition.to(False),

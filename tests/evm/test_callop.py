@@ -332,6 +332,7 @@ def callop_test_template(
     # fmt: on
 
     return (
+        is_success,
         caller_bytecode,
         callee_bytecode,
         call_id,
@@ -420,6 +421,7 @@ def test_callop(
     expected: Expected,
 ):
     (
+        _,
         caller_bytecode,
         callee_bytecode,
         call_id,
@@ -642,6 +644,8 @@ def gen_precompile_testing_data():
 
 
 PRECOMPILE_TESTING_DATA = gen_precompile_testing_data()
+PRECOMPILE_INPUT_DATA = [0x01] * 384
+PRECOMPILE_OUTPUT_DATA = [0x01] * 64
 PRECOMPILE_RETURN_DATA = [0x01] * 64
 
 
@@ -651,6 +655,7 @@ PRECOMPILE_RETURN_DATA = [0x01] * 64
 )
 def test_callop_precompiles(opcode: Opcode, precompile: tuple[Account, Stack]):
     randomness_keccak = rand_fq()
+    caller_id = 1
 
     exe_state = precompile[0]
     callee = precompile[1]
@@ -667,6 +672,7 @@ def test_callop_precompiles(opcode: Opcode, precompile: tuple[Account, Stack]):
     )
 
     (
+        is_success,
         caller_bytecode,
         callee_bytecode,
         call_id,
@@ -689,25 +695,68 @@ def test_callop_precompiles(opcode: Opcode, precompile: tuple[Account, Stack]):
     caller_bytecode_hash = Word(caller_bytecode.hash())
     rw_counter = call_id
 
-    src_data = dict(
-        [
-            (i, PRECOMPILE_RETURN_DATA[i] if i < len(PRECOMPILE_RETURN_DATA) else 0)
-            for i in range(0, stack.rd_length)
-        ]
-    )
-    copy_circuit = CopyCircuit().copy(
-        randomness_keccak,
-        rw_dictionary,
-        call_id,
-        CopyDataTypeTag.Memory,
-        1,
-        CopyDataTypeTag.Memory,
-        0,
-        stack.rd_length,
-        0,
-        stack.rd_length,
-        src_data,
-    )
+    if stack.cd_length != 0:
+        input_data = dict(
+            [
+                (i, PRECOMPILE_INPUT_DATA[i] if i < len(PRECOMPILE_INPUT_DATA) else 0)
+                for i in range(0, stack.cd_length)
+            ]
+        )
+        copy_input_rlc = CopyCircuit().copy(
+            randomness_keccak,
+            rw_dictionary,
+            caller_id,
+            CopyDataTypeTag.Memory,
+            call_id,
+            CopyDataTypeTag.RlcAcc,
+            stack.cd_offset,
+            stack.cd_offset + stack.cd_length,
+            0,
+            stack.cd_length,
+            input_data,
+        )
+
+    if is_success is True and stack.rd_length != 0:
+        output_data = dict(
+            [
+                (i, PRECOMPILE_OUTPUT_DATA[i] if i < len(PRECOMPILE_OUTPUT_DATA) else 0)
+                for i in range(0, stack.rd_length)
+            ]
+        )
+        copy_output_rlc = CopyCircuit().copy(
+            randomness_keccak,
+            rw_dictionary,
+            call_id,
+            CopyDataTypeTag.Memory,
+            call_id,
+            CopyDataTypeTag.RlcAcc,
+            stack.cd_offset,
+            stack.cd_offset + stack.rd_length,
+            0,
+            stack.rd_length,
+            output_data,
+        )
+
+    if is_success is True and stack.rd_length != 0:
+        return_data = dict(
+            [
+                (i, PRECOMPILE_RETURN_DATA[i] if i < len(PRECOMPILE_RETURN_DATA) else 0)
+                for i in range(0, stack.rd_length)
+            ]
+        )
+        copy_return_data = CopyCircuit().copy(
+            randomness_keccak,
+            rw_dictionary,
+            call_id,
+            CopyDataTypeTag.Memory,
+            caller_id,
+            CopyDataTypeTag.Memory,
+            0,
+            stack.rd_length,
+            0,
+            stack.rd_length,
+            return_data,
+        )
 
     tables = Tables(
         block_table=set(Block().table_assignments()),
@@ -720,8 +769,10 @@ def test_callop_precompiles(opcode: Opcode, precompile: tuple[Account, Stack]):
             )
         ),
         rw_table=set(rw_dictionary.rws),
-        copy_circuit=copy_circuit.rows,
+        copy_circuit=copy_input_rlc.rows + copy_output_rlc.rows + copy_return_data.rows,
     )
+
+    aux_data = [stack.cd_length, stack.rd_length]
 
     verify_steps(
         tables=tables,
@@ -729,7 +780,7 @@ def test_callop_precompiles(opcode: Opcode, precompile: tuple[Account, Stack]):
             StepState(
                 execution_state=ExecutionState.CALL_OP,
                 rw_counter=rw_counter,
-                call_id=1,
+                call_id=caller_id,
                 is_root=False,
                 is_create=False,
                 code_hash=caller_bytecode_hash,
@@ -738,7 +789,7 @@ def test_callop_precompiles(opcode: Opcode, precompile: tuple[Account, Stack]):
                 gas_left=caller_ctx.gas_left,
                 memory_word_size=caller_ctx.memory_word_size,
                 reversible_write_counter=caller_ctx.reversible_write_counter,
-                aux_data=[stack.rd_length],
+                aux_data=aux_data,
             ),
             StepState(
                 execution_state=exe_state,
