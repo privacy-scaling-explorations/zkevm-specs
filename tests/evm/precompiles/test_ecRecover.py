@@ -14,7 +14,7 @@ from zkevm_specs.evm_circuit import (
     Tables,
     verify_steps,
 )
-from zkevm_specs.evm_circuit.execution.precompiles.ecrecover import PrecompileRlcData, SECP256K1N
+from zkevm_specs.evm_circuit.execution.precompiles.ecrecover import PrecompileAuxData, SECP256K1N
 from zkevm_specs.util import (
     Word,
     FQ,
@@ -83,15 +83,18 @@ def test_ecRecover(
     input_rlc = RLC(bytes(reversed(input_bytes)), randomness_keccak, n_bytes=128).expr()
     output_bytes = int.from_bytes(address, "big").to_bytes(32, "little")
     output_rlc = RLC(bytes(reversed(output_bytes)), randomness_keccak, n_bytes=32).expr()
-    rlc_data = PrecompileRlcData(input_rlc, output_rlc)
-
-    aux_data = [
+    aux_data = PrecompileAuxData(
         Word(msg_hash),
         Word(v + 27),
         Word(r),
         Word(s),
         FQ(int.from_bytes(address, "big")),
-        rlc_data,
+        input_rlc,
+        output_rlc,
+    )
+
+    aux_data = [
+        aux_data,
         randomness_keccak,
     ]
 
