@@ -12,6 +12,7 @@ from .util import FQ, GAS_COST_TX_CALL_DATA_PER_NON_ZERO_BYTE, GAS_COST_TX_CALL_
 from .util import PUBLIC_INPUTS_BLOCK_LEN as BLOCK_LEN
 from .util import PUBLIC_INPUTS_TX_LEN as TX_LEN
 from .util import RLC, U8, U64, U160, U256, Expression, Word, WordOrValue, is_circuit_code
+from .util import KeccakTable
 
 
 @dataclass
@@ -73,32 +74,6 @@ class TxCallDataGasCostAccRow(TableRow):
 @dataclass(frozen=True)
 class FixedU16Row(TableRow):
     value: FQ
-
-
-class KeccakTable:
-    # The columns are: (is_enabled, input_rlc, input_len, output)
-    table: Set[Tuple[FQ, FQ, FQ, Word]]
-
-    def __init__(self):
-        self.table = set()
-        self.table.add((FQ.zero(), FQ.zero(), FQ.zero(), Word(0)))  # Add all 0s row
-
-    def add(self, input: bytes, keccak_randomness: FQ):
-        output = keccak(input)
-        self.table.add(
-            (
-                FQ.one(),
-                RLC(bytes(reversed(input)), keccak_randomness, n_bytes=len(input)).expr(),
-                FQ(len(input)),
-                Word(output),
-            )
-        )
-
-    def lookup(self, is_enabled: FQ, input_rlc: FQ, input_len: FQ, output: Word, assert_msg: str):
-        assert (is_enabled, input_rlc, input_len, output) in self.table, (
-            f"{assert_msg}: {(is_enabled, input_rlc, input_len, output)} "
-            + "not found in the lookup table"
-        )
 
 
 @dataclass

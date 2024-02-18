@@ -17,11 +17,12 @@ class KeccakTable:
 
     def add(self, input: bytes, keccak_randomness: FQ):
         output = keccak(input)
+        length = len(input)
         self.table.add(
             (
-                FQ(1),
-                RLC(bytes(reversed(input)), keccak_randomness, n_bytes=64).expr(),
-                FQ(len(input)),
+                FQ.one(),
+                RLC(bytes(reversed(input)), keccak_randomness, n_bytes=length).expr(),
+                FQ(length),
                 Word(output),
             )
         )

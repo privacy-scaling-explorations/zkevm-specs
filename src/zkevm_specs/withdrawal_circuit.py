@@ -11,6 +11,7 @@ from .util import (
     Word,
     Expression,
     is_circuit_code,
+    KeccakTable
 )
 import rlp  # type: ignore
 from .evm_circuit import lookup
@@ -88,33 +89,6 @@ class BlockTable:
             "value": value,
         }
         return lookup(BlockTableRow, self.table, query)
-
-
-class KeccakTable:
-    # The columns are: (is_enabled, input_rlc, input_len, output)
-    table: Set[Tuple[FQ, FQ, FQ, Word]]
-
-    def __init__(self):
-        self.table = set()
-        self.table.add((FQ(0), FQ(0), FQ(0), Word(0)))  # Add all 0s row
-
-    def add(self, input: bytes, keccak_randomness: FQ):
-        output = keccak(input)
-        length = len(input)
-        self.table.add(
-            (
-                FQ(1),
-                RLC(bytes(reversed(input)), keccak_randomness, n_bytes=length).expr(),
-                FQ(length),
-                Word(output),
-            )
-        )
-
-    def lookup(self, is_enabled: FQ, input_rlc: FQ, input_len: FQ, output: Word, assert_msg: str):
-        assert (is_enabled, input_rlc, input_len, output) in self.table, (
-            f"{assert_msg}: {(is_enabled, input_rlc, input_len, output)} "
-            + "not found in the lookup table"
-        )
 
 
 class Witness(NamedTuple):
