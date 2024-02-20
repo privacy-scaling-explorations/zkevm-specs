@@ -5,14 +5,7 @@ from zkevm_specs.evm_circuit.table import (
     BlockTableRow,
     BlockContextFieldTag,
 )
-from .util import (
-    FQ,
-    RLC,
-    Word,
-    Expression,
-    is_circuit_code,
-    KeccakTable
-)
+from .util import FQ, RLC, Word, Expression, is_circuit_code, KeccakTable
 import rlp  # type: ignore
 from .evm_circuit import lookup
 from eth_utils import keccak

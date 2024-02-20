@@ -18,6 +18,7 @@ import rlp  # type: ignore
 from eth_utils import keccak
 from .evm_circuit import TxContextFieldTag as Tag
 
+
 class Row:
     """
     Tx circuit row
