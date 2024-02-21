@@ -12,13 +12,14 @@ The operations recorded in the state proof are:
 2. `Memory`: Call's memory as a byte array
 3. `Stack`: Call's stack as RLC-encoded word array
 4. `Storage`: Account's storage as key-value mapping
-5. `CallContext`: Context of a Call
-6. `Account`: Account's state (nonce, balance, code hash)
-7. `TxRefund`: Value to refund to the tx sender
-8. `TxAccessListAccount`: State of the account access list
-9. `TxAccessListAccountStorage`: State of the account storage access list
-10. `TxLog`: State of the transaction log
-11. `TxReceipt`: State of the transaction receipt
+5. `TransientStorage`: Account's transient storage as key-value mapping
+6. `CallContext`: Context of a Call
+7. `Account`: Account's state (nonce, balance, code hash)
+8. `TxRefund`: Value to refund to the tx sender
+9. `TxAccessListAccount`: State of the account access list
+10. `TxAccessListAccountStorage`: State of the account storage access list
+11. `TxLog`: State of the transaction log
+12. `TxReceipt`: State of the transaction receipt
 
 Each operation uses different parameters for indexing.  See [RW Table](./tables.md#rw_table) for the complete details.
 
@@ -68,52 +69,56 @@ to not be in the table.
 ### Storage
 - 4.0. `field_tag` is 0
 - 4.1. MPT lookup for last access to (address, storage_key)
+- 
+### Transient Storage
+- 5.0. `field_tag` is 0
 
 ### Call Context
-- 5.0. `address` and `storage_key` are 0
-- 5.1. `field_tag` is in CallContextFieldTag range
-- 5.2. `value` is 0 if first access and READ
-- 5.3. `initial value` is 0
-- 5.4. `state root` is the same
+- 6.0. `address` and `storage_key` are 0
+- 6.1. `field_tag` is in CallContextFieldTag range
+- 6.2. `value` is 0 if first access and READ
+- 6.3. `initial value` is 0
+- 6.4. `state root` is the same
 
 ### Account
-- 6.0. `id` and `storage_key` are 0
-- 6.1. MPT storage lookup for last access to (address, field_tag)
+- 7.0. `id` and `storage_key` are 0
+- 7.1. MPT storage lookup for last access to (address, field_tag)
 
 ### Tx Refund
-- 7.0. `address`, `field_tag` and `storage_key` are 0
-- 7.1. `state root` is the same
-- 7.2. `initial_value` is 0
-- 7.3. First access for a set of all keys are 0 if `READ`
+- 8.0. `address`, `field_tag` and `storage_key` are 0
+- 8.1. `state root` is the same
+- 8.2. `initial_value` is 0
+- 8.3. First access for a set of all keys are 0 if `READ`
 
 ### Tx Access List Account
-- 8.0. `field_tag` and `storage_key` are 0
-- 8.1. `state root` is the same
-- 8.2. First access for a set of all keys are 0 if `READ`
-
-
-### Tx Access List Account Storage
-- 9.0. `field_tag` is 0
+- 9.0. `field_tag` and `storage_key` are 0
 - 9.1. `state root` is the same
 - 9.2. First access for a set of all keys are 0 if `READ`
 
-### Tx Log
-- 10.0. `is_write` is 1
+
+### Tx Access List Account Storage
+- 10.0. `field_tag` is 0
 - 10.1. `state root` is the same
+- 10.2. First access for a set of all keys are 0 if `READ`
+
+### Tx Log
+- 11.0. `is_write` is 1
+- 11.1. `state root` is the same
 
 ### Tx Receipt
-- 11.0. `address` and `storage_key` are 0
-- 11.1. `field_tag` is boolean (according to EIP-658)
-- 11.2. `tx_id` increases by 1 and `value` increases as well if `tx_id` changes 
-- 11.3. `tx_id` is 1 if it's the first row and `tx_id` is in 11 bits range
-- 11.4. `state root` is the same
+- 12.0. `address` and `storage_key` are 0
+- 12.1. `field_tag` is boolean (according to EIP-658)
+- 12.2. `tx_id` increases by 1 and `value` increases as well if `tx_id` changes 
+- 12.3. `tx_id` is 1 if it's the first row and `tx_id` is in 11 bits range
+- 12.4. `state root` is the same
 
 ## About Account and Storage accesses
 
 All account and storage reads and writes in the RwTable are linked to the Merkle
 Patricia Trie (MPT) Circuit.  This is because unlike the rest of entries, which
 are initialized at 0 in each block, account and storage persist during blocks via
-the Ethereum State and Storage Tries.
+the Ethereum State and Storage Tries. Transient storage is initialized at 0 in
+each transaction.
 
 In general we link the first and last accesses of each key (`[address,
 field_tag]` for Account, `[address, storage_key]` for Storage) to MPT proofs that
