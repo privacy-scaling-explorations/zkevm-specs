@@ -1,5 +1,11 @@
 # TLOAD & TSTORE opcodes
 
+## Variables definition
+
+| Name | Value |
+| - | - |
+| SLOAD_GAS | 100 |
+
 ## Constraints
 
 1. opcodeId checks
@@ -24,9 +30,9 @@
      - `TSTORE`: +1 (for transient storage)
    - gas:
      - `TLOAD`:
-       - gas + 100
+       - gas + SLOAD_GAS
      - `SSTORE`:
-       - gas + 100
+       - gas + SLOAD_GAS
 3. lookups:
    - `TLOAD`: 8 busmapping lookups
      - call_context:
