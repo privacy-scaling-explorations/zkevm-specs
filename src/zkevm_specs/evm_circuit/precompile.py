@@ -22,6 +22,10 @@ class Precompile(IntEnum):
     def base_gas_cost(self) -> int:
         return PRECOMPILE_INFO_MAP[self].base_gas
 
+    @classmethod
+    def len(cls) -> int:
+        return len(cls)
+
 
 class PrecompileInfo:
     """

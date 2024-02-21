@@ -1,9 +1,11 @@
 from zkevm_specs.evm_circuit.util.call_gadget import CallGadget
-from zkevm_specs.util.param import N_BYTES_GAS, N_BYTES_STACK
+from zkevm_specs.evm_circuit.util.precompile_gadget import PrecompileGadget
+from zkevm_specs.util.hash import EMPTY_CODE_HASH
+from zkevm_specs.util.param import N_BYTES_GAS, N_BYTES_MEMORY_WORD_SIZE, N_BYTES_STACK
 from ...util import FQ, GAS_STIPEND_CALL_WITH_VALUE, Word, WordOrValue
 from ..instruction import Instruction, Transition
 from ..opcode import Opcode
-from ..table import RW, CallContextFieldTag, AccountFieldTag
+from ..table import RW, CallContextFieldTag, AccountFieldTag, CopyDataTypeTag
 from ..execution_state import precompile_execution_states
 
 
@@ -115,13 +117,14 @@ def callop(instruction: Instruction):
 
     # Make sure the state transition to ExecutionState for precompile if and
     # only if the callee address is one of precompile
-    is_precompile = instruction.precompile(callee_address)
+    is_precompile = instruction.precompile(call.callee_address)
     instruction.constrain_equal(
         is_precompile, FQ(instruction.next.execution_state in precompile_execution_states())
     )
 
     stack_pointer_delta = 5 + is_call + is_callcode
     no_callee_code = call.is_empty_code_hash + call.callee_not_exists
+    # precheck fails or callee has no code
     if is_precheck_ok is False or (no_callee_code == FQ(1) and is_precompile == FQ(0)):
         # Empty return_data
         for field_tag, expected_value in [
@@ -147,7 +150,130 @@ def callop(instruction: Instruction):
             is_create=Transition.same(),
             code_hash=Transition.same_word(),
         )
-    else:
+    # precompiles call
+    elif is_precheck_ok and is_precompile == FQ.one():
+        precompile_input_len: FQ = instruction.curr.aux_data[0]
+        precompile_return_length: FQ = instruction.curr.aux_data[1]
+        min_rd_copy_size = min(precompile_return_length, call.rd_length.n)
+
+        # precompiles have no code
+        instruction.constrain_equal(no_callee_code, FQ.one())
+        # precompiles address must be warm
+        instruction.constrain_equal(is_warm_access, FQ.one())
+
+        # Setup next call's context.
+        for field_tag, expected_value in [
+            (CallContextFieldTag.IsSuccess, call.is_success),
+            (CallContextFieldTag.CalleeAddress, callee_address_word),
+            (CallContextFieldTag.CallerId, instruction.curr.call_id),
+            (CallContextFieldTag.CallDataOffset, call.cd_offset),
+            (CallContextFieldTag.CallDataLength, call.cd_length),
+            (CallContextFieldTag.ReturnDataOffset, call.rd_offset),
+            (CallContextFieldTag.ReturnDataLength, call.rd_length),
+        ]:
+            instruction.constrain_equal_word(
+                instruction.call_context_lookup_word(field_tag, RW.Write, callee_call_id),
+                WordOrValue(expected_value),
+            )
+
+        # Save caller's call state
+        for field_tag, expected_value in [
+            (CallContextFieldTag.ProgramCounter, instruction.curr.program_counter + 1),
+            (
+                CallContextFieldTag.StackPointer,
+                instruction.curr.stack_pointer + stack_pointer_delta,
+            ),
+            (CallContextFieldTag.GasLeft, instruction.curr.gas_left - gas_cost - callee_gas_left),
+            (CallContextFieldTag.MemorySize, call.next_memory_size),
+            (
+                CallContextFieldTag.ReversibleWriteCounter,
+                instruction.curr.reversible_write_counter + 1,
+            ),
+            (CallContextFieldTag.LastCalleeId, callee_call_id),
+            (CallContextFieldTag.LastCalleeReturnDataOffset, FQ.zero()),
+            (CallContextFieldTag.LastCalleeReturnDataLength, FQ(precompile_return_length)),
+        ]:
+            instruction.constrain_equal(
+                instruction.call_context_lookup(field_tag, RW.Write),
+                expected_value,
+            )
+
+        ### copy table lookup here
+        ### is to rlc input and output to have an easy way to verify data
+
+        # RLC precompile input from memory
+        rw_counter_inc = instruction.rw_counter_offset
+        input_copy_rwc_inc = FQ.zero()
+        if precompile_input_len != FQ(0):
+            input_copy_rwc_inc, _ = instruction.copy_lookup(
+                instruction.curr.call_id,
+                CopyDataTypeTag.Memory,
+                callee_call_id,
+                CopyDataTypeTag.RlcAcc,
+                call.cd_offset,
+                FQ(call.cd_offset + precompile_input_len),
+                FQ.zero(),
+                FQ(precompile_input_len),
+                instruction.curr.rw_counter + rw_counter_inc,
+            )
+            rw_counter_inc += input_copy_rwc_inc
+
+        # RLC precompile output from memory
+        output_copy_rwc_inc = FQ.zero()
+        if call.is_success == FQ.one() and precompile_return_length != FQ.zero():
+            output_copy_rwc_inc, _ = instruction.copy_lookup(
+                callee_call_id,
+                CopyDataTypeTag.Memory,
+                callee_call_id,
+                CopyDataTypeTag.RlcAcc,
+                FQ.zero(),
+                FQ(precompile_return_length),
+                FQ.zero(),
+                FQ(precompile_return_length),
+                instruction.curr.rw_counter + rw_counter_inc,
+            )
+            rw_counter_inc += output_copy_rwc_inc
+
+        # Verify data copy from precompiles
+        return_copy_rwc_inc = FQ.zero()
+        if call.is_success == FQ.one() and precompile_return_length != FQ.zero():
+            return_copy_rwc_inc, _ = instruction.copy_lookup(
+                callee_call_id,
+                CopyDataTypeTag.Memory,
+                instruction.curr.call_id,
+                CopyDataTypeTag.Memory,
+                FQ.zero(),
+                FQ(min_rd_copy_size),
+                call.rd_offset,
+                FQ(min_rd_copy_size),
+                instruction.curr.rw_counter + rw_counter_inc,
+            )
+            rw_counter_inc += return_copy_rwc_inc
+
+        precompile_memory_word_size, _ = instruction.constant_divmod(
+            FQ(min_rd_copy_size + 31), FQ(32), N_BYTES_MEMORY_WORD_SIZE
+        )
+
+        # Give gas stipend if value is not zero
+        callee_gas_left += has_value * GAS_STIPEND_CALL_WITH_VALUE
+
+        instruction.constrain_step_state_transition(
+            rw_counter=Transition.delta(rw_counter_inc),
+            call_id=Transition.to(callee_call_id),
+            is_root=Transition.to(False),
+            is_create=Transition.to(False),
+            code_hash=Transition.to_word(Word(EMPTY_CODE_HASH)),
+            gas_left=Transition.to(callee_gas_left),
+            reversible_write_counter=Transition.to(2),
+            program_counter=Transition.delta(1),
+            stack_pointer=Transition.same(),
+            memory_word_size=Transition.to(precompile_memory_word_size),
+        )
+
+        PrecompileGadget(
+            instruction, call.callee_address, FQ(precompile_return_length), call.cd_length
+        )
+    else:  # precheck is ok and callee has code
         # Save caller's call state
         for field_tag, expected_value in [
             (CallContextFieldTag.ProgramCounter, instruction.curr.program_counter + 1),
