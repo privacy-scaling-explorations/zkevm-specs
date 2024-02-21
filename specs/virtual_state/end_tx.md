@@ -28,32 +28,39 @@ Depending whether the transaction is a Create, calls a precompile or calls an ac
 9. if next execution step is EndBlock
     1. Constrain state transition with rw_counter =  9 - is_first_tx and same call_id
 
+### Lookups
 
+/!\ Precompiles are not handled yet
 
-### Lookups accesses
+#### RW accesses
 In common, for all cases: 
 - CallContext TxId
 - CallContext IsPersistent
-- TxContext TxInvalid
-- TxContext Gas
-- RWLookup TxRefund
-- TxContext CallerAddress
-- BlockContext BaseFee
-- BlockContext Coinbase
-- RWLookup TxReceipt.PostStateOrStatus
-- RWLookup TxReceipt.LogLength
+- RWLookup Read TxRefund
+- AccountWrite caller's balance
+- AccountWrite coinbase's balance
+- RWLookup Write TxReceipt.PostStateOrStatus
+- RWLookup Write TxReceipt.LogLength
+- RWLookup Write TxReceipt.CumulativeGasUsed
 
 If not first tx,
-- RWLookup TxReceipt.CumulativeGasUsed
+- RWLookup Read TxReceipt.CumulativeGasUsed
 
-If next execution state is begin_tx
+If next execution state is begin_tx,
 - CallContext TxId
 
+Hence, the rw_counter is: 8 + 1 * !is_first_tx + 1 * (next execution state = begin_tx)
+
+#### Other Lookups
+- TxContext TxInvalid
+- TxContext Gas    
+- TxContext CallerAddress
+- BlockContext BlockContext.BaseFee
+- BlockContext BlockContext.Coinbase
 
 ## Exceptions
 
-1. `NotImplementedError` when calling a precompile
 
 ## Code
 
-Please refer to [codesize.py](src/zkevm_specs/evm_circuit/execution/begin_tx.py).
+Please refer to [codesize.py](src/zkevm_specs/evm_circuit/execution/end_tx.py).
