@@ -6,11 +6,7 @@ The `begin_tx` gadget performs preliminary checks on a transaction and its calle
 
 More particularly, for all transactions, we make sure that the account nonce is incremented by 1 if the tx is valid, and that the caller address is not null. We also verify that a transaction is set as invalid if and only if there is either not enough gas, the tx's nonce is not the same as caller's account previous nonce or the balance is insufficient.
 
-Depending whether the transaction is a Create, calls a precompile or calls an account with or without code, we do the following,
-- isCreate = 1
-- calling Precompile
-- Call to account with empty code
-- Call to account with code
+Depending whether the transaction is a Create, calls a precompile or calls an account with or without code, the checks as well as the number of lookups vary.
 
 ## Constraints
 
@@ -43,63 +39,67 @@ Depending whether the transaction is a Create, calls a precompile or calls an ac
         1. Setup next call's context 
         2. Constrain state transition to new context 
 
+Consummed gas: 
 
-### Lookups accesses
+### Lookups
+
+/!\ Precompiles are not handled yet
+
+#### RW accesses
 In common, for all cases: 
 - CallContext TxId
+- CallContext RwCounterEndOfReversion (done through instruction.reversion_info)
+- CallContext IsPersistent (done through instruction.reversion_info)
 - CallContext IsSuccess
+- StateWrite adding caller's address to Tx access list
+- StateWrite adding callee's address to Tx access list
+- StateWrite adding coinbase address to Tx access list
+- AccountWrite caller's Nonce
+- AccountWrite caller's Balance (done through instruction.transfer_with_gas_fee) 
+- AccountWrite callee's Balance (done through instruction.transfer_with_gas_fee)
+
+If tx is not a Create, we do an additional
+- AccountRead AccountFieldTag.CodeHash
+
+Finally, if the tx is valid and either is a create with call data or the callee is a contract (that is callee.code_hash is not null), we do these extra checks:
+- CallContext Depth
+- CallContext CallerAddress
+- CallContext CalleeAddress
+- CallContext CallDataOffset
+- CallContext CallDataLength
+- CallContext Value
+- CallContext IsStatic
+- CallContext LastCalleeId
+- CallContext LastCalleeReturnDataOffset
+- CallContext LastCalleeReturnDataLength
+- CallContext IsRoot
+- CallContext IsCreate
+- CallContext CodeHash
+
+Hence, the rw_counter is
+- isCreate = 1
+    - invalid or tx_call_data_length = 0: 10
+    - otherwise: 23
+- isCreate = 0:
+    - invalid: 11
+    - otherwise: 24
+    
+#### Other Lookups
 - BlockContext Coinbase
-- TxContext CallerAddress
-- TxContext CalleeAddress
+- TxContext Caller Address
+- TxContext Callee Address
 - TxContext IsCreate
 - TxContext Value
 - TxContext CallDataLength
 - TxContext TxInvalid
 - TxContext Nonce
-- AccountWrite Nonce 
 - TxContext Gas
 - TxContext CallDataGasCost
 - TxContext AccessListGasCost
-
-if is Create, valid and data length != 0
-- copyLookup CopyDataTypeTag.RlcAcc
-- copyLookup CopyDataTypeTag.ByteCode
-- keccak_lookup CopyDataTypeTag.RlcAcc
-- CallContext Depth
-- CallContext CallerAddress
-- CallContext CalleeAddress
-- CallContext CallDataOffset
-- CallContext CallDataLength
-- CallContext Value
-- CallContext IsStatic
-- CallContext LastCalleeId
-- CallContext LastCalleeReturnDataOffset
-- CallContext LastCalleeReturnDataLength
-- CallContext IsRoot
-- CallContext IsCreate
-- CallContext CodeHash
-
-If not create nor precompile
-- Account read   AccountFieldTag.CodeHash
-if code hash not empty and tx valid 
-- CallContext Depth
-- CallContext CallerAddress
-- CallContext CalleeAddress
-- CallContext CallDataOffset
-- CallContext CallDataLength
-- CallContext Value
-- CallContext IsStatic
-- CallContext LastCalleeId
-- CallContext LastCalleeReturnDataOffset
-- CallContext LastCalleeReturnDataLength
-- CallContext IsRoot
-- CallContext IsCreate
-- CallContext CodeHash
-
+- CopyLookup TxCalldata - RlcAcc (if is not create)
+- CopyLookup TxCalldata - Bytecode (if is not create)
 
 ## Exceptions
-
-1. `NotImplementedError` when calling a precompile
 
 ## Code
 
