@@ -39,7 +39,7 @@ Depending whether the transaction is a Create, calls a precompile or calls an ac
         1. Setup next call's context 
         2. Constrain state transition to new context 
 
-Consummed gas: 
+Consummed gas: tx_calldata_gas_cost + tx_accesslist_gas + !is_create * GAS_COST_TX  + is_create * (GAS_COST_CREATION_TX + len_words * GAS_COST_INITCODE_WORD)
 
 ### Lookups
 
