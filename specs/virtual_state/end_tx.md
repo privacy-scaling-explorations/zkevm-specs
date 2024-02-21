@@ -28,6 +28,8 @@ Depending whether the transaction is a Create, calls a precompile or calls an ac
 9. if next execution step is EndBlock
     1. Constrain state transition with rw_counter =  9 - is_first_tx and same call_id
 
+Gas refund: it is capped to  gas_used // MAX_REFUND_QUOTIENT_OF_GAS_USED (c.f. EIP 3529)
+
 ### Lookups
 
 /!\ Precompiles are not handled yet
