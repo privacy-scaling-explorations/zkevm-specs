@@ -7,7 +7,7 @@ to use as the destination, which changes program counter to it.
 
 ### EVM behavior
 
-Pop one EVM word `dest` from the stack. then do the followings:
+Pop one EVM word `dest` from the stack. then do the following:
 
 - check `dest` is within code length range
 - check `dest` is a `JUMPDEST` and not data section of PUSH\*

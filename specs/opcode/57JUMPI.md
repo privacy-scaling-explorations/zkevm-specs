@@ -6,7 +6,7 @@ JUMPI is an op code regarding flow control of evm. it pops two values at the top
 
 ### EVM behavior
 
-Pop two EVM words `dest` and `cond` from the stack. then do the followings:
+Pop two EVM words `dest` and `cond` from the stack. then do the following:
 
 1. check `cond` is zero
 

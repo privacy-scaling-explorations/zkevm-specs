@@ -201,7 +201,7 @@ Then the table continues: for each transaction:
 |        | *TxContextFieldTag* |            |             |
 | $TxID  | CallData            | $ByteIndex | $value: raw |
 
-These rows are repeated `MAX_CALLDATA_BYTES` times.  When the total numer of
+These rows are repeated `MAX_CALLDATA_BYTES` times.  When the total number of
 bytes from all transactions' call data is less than `MAX_CALLDATA_BYTES`, the
 rows corresponding to unused transactions will use the `CallData` tag with
 `TxID = 0`.

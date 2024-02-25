@@ -100,7 +100,7 @@ class FixedTableTag(IntEnum):
                 for (execution_state, precompile_address, base_gas_cost) in precompile_info_pairs()
             ]
         else:
-            raise ValueError("Unreacheable")
+            raise ValueError("Unreachable")
 
     def range_table_tag(range: int) -> FixedTableTag:
         if range == 5:
@@ -242,7 +242,7 @@ class CallContextFieldTag(IntEnum):
     CalleeAddress = auto()
     CallDataOffset = auto()
     CallDataLength = auto()
-    ReturnDataOffset = auto()  # for callee to set return_data to caller's memeory
+    ReturnDataOffset = auto()  # for callee to set return_data to caller's memory
     ReturnDataLength = auto()
     Value = auto()
     IsSuccess = auto()  # to peek result in the future

@@ -2,7 +2,7 @@
 
 ## Procedure
 
-Swapx represents op codes of swap1....swap16. which swaps the top of the stack with the 'x+1'th last element. For example, SWAP3 means swaping the top of the stack with the 4th last element
+Swapx represents op codes of swap1....swap16. which swaps the top of the stack with the 'x+1'th last element. For example, SWAP3 means swapping the top of the stack with the 4th last element
 
 ## Constraints
 
@@ -12,7 +12,7 @@ Swapx represents op codes of swap1....swap16. which swaps the top of the stack w
    stack_pointer\
    pc + 1\
    gas + 3
-3. lookups: 1 range lookup + 4 bussmapping lookups:\
+3. lookups: 1 range lookup + 4 busmapping lookups:\
    position 'x' range from \[1..16\]\
    first operand must come from top of stack\
    second operand must come from position 'x+1' inside stack\

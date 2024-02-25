@@ -90,7 +90,7 @@ def begin_tx(instruction: Instruction):
     tx_accesslist_gas = instruction.tx_context_lookup(tx_id, TxContextFieldTag.AccessListGasCost)
     tx_intrinsic_gas = tx_calldata_gas_cost.expr() + tx_cost_gas + tx_accesslist_gas.expr()
 
-    # check instrinsic gas
+    # check intrinsic gas
     MAX_N_BYTES = 31
     gas_not_enough, _ = instruction.compare(tx_gas, tx_intrinsic_gas, MAX_N_BYTES)
     gas_left = tx_gas.expr() if gas_not_enough == 1 else tx_gas.expr() - tx_intrinsic_gas
@@ -138,8 +138,8 @@ def begin_tx(instruction: Instruction):
                 call_id=Transition.to(call_id),
             )
         else:
-            # Expected behabeur
-            # - If initcode does not RETRUN, contract is created empty and value transferred
+            # Expected behavior
+            # - If initcode does not RETURN, contract is created empty and value transferred
             # - If initcode is invalid bytecode or reverts, contract is not created and value not transferred
 
             # Get code hash of tx calldata
