@@ -20,7 +20,7 @@ Based on different opcode cases, we constrain the stack pops and pushes as follo
 
 The opcode circuit also adds some extra constraints:
 
-- contrain `shift == shift.cells[0]` when `divisor != 0`.
+- constrain `shift == shift.cells[0]` when `divisor != 0`.
 - use a `LtWordGadget` to constrain `remainder < divisor` when `divisor != 0`.
 - if the opcode is SHL, constrain `remainder == 0`.
 - if the opcode is SHR, constrain `overflow == 0` in `MulAddWordsGadget`.

@@ -230,7 +230,7 @@ def test_bytecode_invalid_is_code():
     )
     verify(k, [invalid], randomness_keccak, False)
 
-    # Mark the 4rd byte as data (is code)
+    # Mark the 4th byte as data (is code)
     invalid = deepcopy(unrolled)
     row = unrolled.rows[4]
     invalid.rows[4] = BytecodeTableRow(

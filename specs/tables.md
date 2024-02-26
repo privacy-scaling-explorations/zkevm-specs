@@ -336,7 +336,7 @@ The exponentiation table consist of 11 columns, namely:
 3. `is_last`: A boolean value to indicate the last row of the exponentiation trace's table assignments.
 4. `base_limb[i]`: Four 64-bit limbs representing the integer base of the exponentiation operation.
 5. `exponent_lo_hi[i]`: Two 128-bit low/high parts of an intermediate value that starts at the integer exponent.
-6. `exponentiation_lo_hi[i]`: Two 128-bit low/high parts of an intermediate value that starts at the result of the exponentation operation.
+6. `exponentiation_lo_hi[i]`: Two 128-bit low/high parts of an intermediate value that starts at the result of the exponentiation operation.
 
 The lookup entry is not a single row in the table, and not every row corresponds to a lookup entry. Instead, a lookup entry is constructed from the first 4 rows in each exponentiation event. For simplicity in the `specs` implementation, we combine all those rows into a single row. But in the `circuits` implementation, we try to lower the number of columns in exchange of increased number of rows.
 

@@ -77,7 +77,7 @@ $$
 
 ## Exceptions
 
-1. stack undeflow: `1022 <= stack_pointer <= 1024`.
+1. stack underflow: `1022 <= stack_pointer <= 1024`.
 2. out of gas: Remaining gas is not enough.
 
 See `src/zkevm_specs/opcode/mulmod.py`

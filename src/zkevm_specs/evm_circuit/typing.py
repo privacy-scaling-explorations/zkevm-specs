@@ -65,7 +65,7 @@ class Block:
     coinbase: U160
 
     # Gas needs a lot arithmetic operation or comparison in EVM circuit, so we
-    # assume gas limit in the near futuer will not exceed U64, to reduce the
+    # assume gas limit in the near future will not exceed U64, to reduce the
     # implementation complexity.
     gas_limit: U64
 
@@ -85,7 +85,7 @@ class Block:
     # mpt root of withdrawals in a block
     withdrawal_root: U256
 
-    # It contains most recent 256 block hashes in history, where the lastest
+    # It contains most recent 256 block hashes in history, where the latest
     # one is at history_hashes[-1].
     history_hashes: Sequence[U256]
 

@@ -19,7 +19,7 @@ execution_payload_body_rlp = RLP([transactions, [], withdrawals])
 
 ## Circuit behavior
 
-For every withdrawal defined as the parameters `(withdrawal_index, validator_index, address, amount)` and the circuit verifies the followings:
+For every withdrawal defined as the parameters `(withdrawal_index, validator_index, address, amount)` and the circuit verifies the following:
 
 1. `withdrawalsData: bytes = rlp([withdrawal_index, validator_index, address, amount])`
 2. `withdrawalDataHash: word = keccak(withdrawalsData)`

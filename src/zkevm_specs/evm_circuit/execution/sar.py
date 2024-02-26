@@ -98,7 +98,7 @@ def check_witness(
         a64s_hi_lt_p_hi, _ = instruction.compare(a64s_hi[idx], p_hi, 16)
         instruction.constrain_equal(a64s_hi_lt_p_hi, FQ(1))
 
-    # Merge contraints
+    # Merge constraints
     shf_div64_eq0 = shf_lt256 * instruction.is_zero(shf_div64)
     shf_div64_eq1 = shf_lt256 * instruction.is_zero(shf_div64 - 1)
     shf_div64_eq2 = shf_lt256 * instruction.is_zero(shf_div64 - 2)

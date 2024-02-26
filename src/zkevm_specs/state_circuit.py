@@ -330,7 +330,7 @@ def check_call_context(row: Row, row_prev: Row):
     assert row.address() == 0
     assert row.storage_key() == Word(0)
 
-    # 5.1. field_tag is in CallContexFieldTag range
+    # 5.1. field_tag is in CallContextFieldTag range
     assert_in_range(row.field_tag(), 0, MAX_FIELD_TAG)
 
     # 5.2. First access for a set of all keys
@@ -610,7 +610,7 @@ def check_state_row(row: Row, row_prev: Row, row_next: Row, tables: Tables):
     elif row.tag() == Tag.TxLog:
         check_tx_log(row, row_prev)
     else:
-        raise ValueError("Unreacheable")
+        raise ValueError("Unreachable")
 
 
 # State circuit operation superclass

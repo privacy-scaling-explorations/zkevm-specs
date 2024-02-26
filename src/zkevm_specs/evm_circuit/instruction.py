@@ -261,7 +261,7 @@ class Instruction:
                     f"State {key} should transit to {transition.value}, but got {next}"
                 )
             else:
-                raise ValueError("Unreacheable")
+                raise ValueError("Unreachable")
 
     def step_state_transition_to_new_context(
         self,
@@ -549,16 +549,16 @@ class Instruction:
         self.constrain_zero((x_abs_lo - x_lo) * (1 - is_neg))
         self.constrain_zero((x_abs_hi - x_hi) * (1 - is_neg))
 
-        # When `is_neg`, contrain `x + x_abs == 1 << 256`. Even if
+        # When `is_neg`, constrain `x + x_abs == 1 << 256`. Even if
         # `x = -(1 << 255)` that is signed overflow, and
         # `abs(-(1 << 255) = -(1 << 255)`.
         carry_lo, sum_lo = divmod(x_lo.n + x_abs_lo.n, 1 << 128)
         carry_hi, sum_hi = divmod(x_hi.n + x_abs_hi.n + carry_lo, 1 << 128)
 
-        # Contrain `sum([x_lo, x_abs_lo]) == sum_lo + carry_lo * 2^128`.
+        # Constrain `sum([x_lo, x_abs_lo]) == sum_lo + carry_lo * 2^128`.
         self.constrain_zero(FQ(sum_lo) + FQ(carry_lo) * FQ(1 << 128) - self.sum([x_lo, x_abs_lo]))
 
-        # Contrain `sum([x_hi, x_abs_hi]) + carry_lo == sum_hi + carry_hi * 2^128`.
+        # Constrain `sum([x_hi, x_abs_hi]) + carry_lo == sum_hi + carry_hi * 2^128`.
         self.constrain_zero(
             FQ(sum_hi) + FQ(carry_hi) * FQ(1 << 128) - FQ(carry_lo) - self.sum([x_hi, x_abs_hi])
         )

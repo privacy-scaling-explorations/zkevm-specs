@@ -7,7 +7,7 @@ This type of error only occurs when executing op code is `JUMP` or `JUMPI`.
 ### EVM behavior
 
 Pop one EVM word `dest` from the stack, then go to `ErrorInvalidJump` state when
-one of the followings occurs:
+one of the following occurs:
 
 -  `dest` is not within code length range
 -  `dest` is a not `JUMPDEST` code , or data section of PUSH*
