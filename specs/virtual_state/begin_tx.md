@@ -45,7 +45,7 @@ Consummed gas: tx_calldata_gas_cost + tx_accesslist_gas + !is_create * GAS_COST_
 ### Lookups
 
 #### RW accesses
-In all cases, we do these 9 + #transfer calls:
+In all cases, we bump read-write-counter by 9 + #transfer:
 - BeginTxHelper
     - CallContext TxId
 - CallContext RwCounterEndOfReversion (done through reversion_info)
@@ -61,10 +61,10 @@ In all cases, we do these 9 + #transfer calls:
     - AccountWrite caller's Balance 
     - AccountWrite callee's Balance
 
-If tx is CREATE, we do this 1 call:
+If tx is CREATE, we also bump read-write-counter by 1:
 - AccountWrite callee's Nonce (reversible)
 
-If tx is no a contract call with no code, we do these 13 calls:
+If tx is not a contract call with no code, we also bump read-write-counter by 13:
 - CallContext Depth
 - CallContext CallerAddress
 - CallContext CalleeAddress

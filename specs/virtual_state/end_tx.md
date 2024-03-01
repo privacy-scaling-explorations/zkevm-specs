@@ -16,16 +16,16 @@ The `end_tx` gadget handles refund and coinbase tip as well as cumulative gas wi
     2. Increase cumulative gas used by the gas used
     3. If the next execution state is BeginTx
         1. The next transaction's id is correctly incremented
-        2. Transition to new context (rw_counter =  8 + transfer.rw + is_first_tx)
+        2. Transition to new context (rw_counter =  9 + transfer.rw - is_first_tx)
     4. Elif the next execution step is EndBlock
-        1. Transition to new context (rw_counter =  8 + transfer.rw + is_first_tx, and same call id)
+        1. Transition to new context (rw_counter =  9 + transfer.rw - is_first_tx, and same call id)
 
 Gas refund: it is capped to  gas_used // MAX_REFUND_QUOTIENT_OF_GAS_USED (c.f. EIP 3529)
 
 ### Lookups
 
 #### RW accesses
-In common, for all cases: 
+In all cases, we bump read-write-counter by 9 + transfer.rw - is_first_tx:
 - CallContext TxId
 - CallContext IsPersistent
 - RWLookup Read TxRefund
