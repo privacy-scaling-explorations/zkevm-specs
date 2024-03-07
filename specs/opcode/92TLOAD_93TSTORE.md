@@ -34,7 +34,7 @@
      - `SSTORE`:
        - gas + SLOAD_GAS
 3. lookups:
-   - `TLOAD`: 8 busmapping lookups
+   - `TLOAD`: 7 busmapping lookups
      - call_context:
        - `tx_id`: Read the `tx_id` for this tx.
        - `rw_counter_end_of_reversion`: Read the `rw_counter_end` if this tx get reverted.
@@ -44,7 +44,7 @@
        - `key` is popped off the top of the stack
        - `value` is pushed on top of the stack
      - transient storage: The 32 bytes of `value` are read from storage at `key`
-   - `TSTORE`: 10 busmapping lookups
+   - `TSTORE`: 8 busmapping lookups
      - call_context:
        - `tx_id`: Read the `tx_id` for this tx.
        - `is_static`: Read the call's property `is_static`
