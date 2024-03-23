@@ -17,7 +17,7 @@ We define the following Python custom types for type hinting and readability:
 
 ## Random Accessible Data
 
-In EVM, the interpreter has ability to do any random access to data like account balance, account storage, or stack and memory in current scope, but it's hard for the EVM circuit to keep tracking these data to ensure their consistency from time to time. So EVM proof has the state proof to provide a valid list of random read-write access records indexed by the `GlobalCounter` as a lookup table to do random access at any moment.
+In EVM, the interpreter has ability to do any random access to data like account balance, account storage, account transient storage or stack and memory in current scope, but it's hard for the EVM circuit to keep tracking these data to ensure their consistency from time to time. So EVM proof has the state proof to provide a valid list of random read-write access records indexed by the `GlobalCounter` as a lookup table to do random access at any moment.
 
 We call the list of random read-write access records `BusMapping` because it acts like the bus in computer which transfers data between components. Similarly, read-only data are loaded as a lookup table into circuit for random access.
 
@@ -29,6 +29,7 @@ We call the list of random read-write access records `BusMapping` because it act
 | [`AccountBalance`](#AccountBalance)   | `{address}`       | `Read`, `Write` | Account's balance                                                  |
 | [`AccountCodeHash`](#AccountCodeHash) | `{address}`       | `Read`, `Write` | Account's code hash                                                |
 | [`AccountStorage`](#AccountStorage)   | `{address}.{key}` | `Read`, `Write` | Account's storage as a key-value mapping                           |
+| [`AccountTransientStorage`](#AccountTransientStorage)   | `{address}.{key}` | `Read`, `Write` | Account's transient storage as a key-value mapping                           |
 | [`Code`](#Code)                       | `{hash}.{index}`  | `Read`          | Executed code as a byte array                                      |
 | [`Call`](#Call)                       | `{id}.{enum}`     | `Read`          | Call's context decided by caller (includes EOA and internal calls) |
 | [`CallCalldata`](#CallCalldata)       | `{id}.{index}`    | `Read`          | Call's calldata as a byte array (only for EOA calls)               |
