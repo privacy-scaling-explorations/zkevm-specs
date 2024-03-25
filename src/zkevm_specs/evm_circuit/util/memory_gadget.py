@@ -24,6 +24,17 @@ class BufferReaderGadget:
                 diff, inst.select(self.bound_dist_is_zero[i - 1], FQ.zero(), FQ.one())
             )
 
+        for i in range(1, max_bytes):
+            inst.constrain_bool(self.selectors[i] - self.selectors[i - 1])
+            inst.constrain_zero((1 - self.selectors[i - 1]) * self)
+
+        """ 
+        constrain_bool 
+        min
+
+        """
+
+
     def constrain_byte(self, idx: int, byte: Expression):
         # bytes[idx] == 0 when selectors[idx] == 0
         self.instruction.constrain_zero(byte * (1 - self.selectors[idx]))
@@ -35,6 +46,10 @@ class BufferReaderGadget:
 
     def has_data(self, idx: int) -> FQ:
         return self.selectors[idx]
+
+    def byte(self, idx: int) -> Expression:
+        # TODO
+        return self.instruction.select(self.selectors[idx], FQ(0), FQ(1))
 
     def read_flag(self, idx: int) -> FQ:
         return self.selectors[idx] * (1 - self.bound_dist_is_zero[idx])
