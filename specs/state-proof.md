@@ -66,7 +66,7 @@ to not be in the table.
 - 3.2. Stack pointer is less than 1024
 - 3.3. Stack pointer increases 0 or 1 only
 - 3.4. `initial_value` is 0
-- 3.5. `state root` is the same
+- 3.5. `state_root` equals  `state_root_prev`
 - 3.6. `value_prev` equals `initial_value`
 
 ### Storage
