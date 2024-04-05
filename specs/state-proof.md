@@ -89,7 +89,7 @@ to not be in the table.
 - 7.0. `id` and `storage_key` are 0
 - 7.1. `field_tag` is in AccountFieldTag range
 - 7.2. MPT storage lookup for last access to (address, field_tag)
-- 7.3. `value_prev` equals `initial_value`
+- 7.3. `value` column at previous rotation equals `value_prev` at current rotation
 
 ### Tx Refund
 - 8.0. `address`, `field_tag` and `storage_key` are 0
