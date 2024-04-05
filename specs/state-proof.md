@@ -80,10 +80,9 @@ to not be in the table.
 ### Call Context
 - 6.0. `address` and `storage_key` are 0
 - 6.1. `field_tag` is in CallContextFieldTag range
-- 6.2. `value` is 0 if first access and READ
-- 6.3. `initial value` is 0
-- 6.4. `state_root` eqauls `state_root_prev`
-- 6.5. `value_prev` is 0
+- 6.2. `initial value` is 0
+- 6.3. `state_root` eqauls `state_root_prev`
+- 6.4. `value_prev` is 0
 
 ### Account
 - 7.0. `id` and `storage_key` are 0
@@ -110,8 +109,7 @@ to not be in the table.
 - 10.1. `value` is boolean
 - 10.2. `initial_value` is 0
 - 10.3. `state_root` eqauls `state_root_prev`
-- 10.4. First access for a set of all keys are 0 if `READ`
-- 10.5. `value` column at previous rotation equals `value_prev` at current rotation
+- 10.4. `value` column at previous rotation equals `value_prev` at current rotation
 
 ### Tx Log
 - 11.0. `is_write` is 1
