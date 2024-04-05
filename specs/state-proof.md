@@ -116,7 +116,7 @@ to not be in the table.
 ### Tx Log
 - 11.0. `is_write` is 1
 - 11.1. `initial_value` is 0
-- 11.2. `state root` is the same
+- 11.2. `state_root` eqauls `state_root_prev`
 - 11.3. `value_prev` equals `initial_value`
 
 ### Tx Receipt
