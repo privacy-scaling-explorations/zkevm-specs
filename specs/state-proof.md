@@ -108,8 +108,8 @@ to not be in the table.
 ### Tx Access List Account Storage
 - 10.0. `field_tag` is 0
 - 10.1. `value` is boolean
-- 10.2. `initial_value` is false
-- 10.3. `state root` is the same
+- 10.2. `initial_value` is 0
+- 10.3. `state_root` eqauls `state_root_prev`
 - 10.4. First access for a set of all keys are 0 if `READ`
 - 10.5. `value` column at previous rotation equals `value_prev` at current rotation
 
