@@ -82,7 +82,7 @@ to not be in the table.
 - 6.1. `field_tag` is in CallContextFieldTag range
 - 6.2. `value` is 0 if first access and READ
 - 6.3. `initial value` is 0
-- 6.4. `state root` is the same
+- 6.4. `state_root` eqauls `state_root_prev`
 - 6.5. `value_prev` is 0
 
 ### Account
