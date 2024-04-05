@@ -101,8 +101,7 @@ to not be in the table.
 - 9.1. `value` is boolean
 - 9.2. `initial_value` is 0
 - 9.3. `state_root` eqauls `state_root_prev`
-- 9.4. First access for a set of all keys are 0 if `READ`
-- 9.5. `value` column at previous rotation equals `value_prev` at current rotation
+- 9.4. `value` column at previous rotation equals `value_prev` at current rotation
 
 ### Tx Access List Account Storage
 - 10.0. `field_tag` is 0
