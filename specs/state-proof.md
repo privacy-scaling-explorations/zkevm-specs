@@ -125,7 +125,7 @@ to not be in the table.
 - 12.2. `tx_id` increases by 1 and `value` increases as well if `tx_id` changes 
 - 12.3. `tx_id` is 1 if it's the first row and `tx_id` is in 11 bits range
 - 12.4. `state root` is the same
-- 12.5. `value_prev_column` is 0
+- 12.5. `value_prev` is 0 and `initial_value` is 0
 
 ## About Account and Storage accesses
 
