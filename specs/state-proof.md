@@ -92,7 +92,7 @@ to not be in the table.
 
 ### Tx Refund
 - 8.0. `address`, `field_tag` and `storage_key` are 0
-- 8.1. `state root` is the same
+- 8.1. `state_root` eqauls `state_root_prev`
 - 8.2. `initial_value` is 0
 - 8.3. First access for a set of all keys are 0 if `READ`
 
