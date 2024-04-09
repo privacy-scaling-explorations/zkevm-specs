@@ -111,7 +111,7 @@ to not be in the table.
 - 10.4. `value` column at previous rotation equals `value_prev` at current rotation
 
 ### Tx Log
-- 11.0. `is_write` is 1
+- 11.0. `is_write` is true
 - 11.1. `initial_value` is 0
 - 11.2. `state_root` eqauls `state_root_prev`
 - 11.3. `value_prev` equals `initial_value`
