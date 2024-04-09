@@ -270,12 +270,20 @@ Instead, a lookup entry is constructed from the first two rows in each copy even
 `(is_first, id, addr, src_addr_end, bytes_left, rlc_acc, rw_counter, rwc_inc_left, tag)`, where `is_first` is 1 and `Column[1]` indicates the next row in the corresponding column.
 
 The table below lists all of copy pairs supported in the copy table:
-- Copy from Tx call data to memory (`CALLDATACOPY`).
-- Copy from caller/callee memory to callee/caller memory (`CALLDATACOPY`, `RETURN` (not create), `RETURNDATACOPY`, `REVERT`).
+
+- Copy from Tx call data to memory (`CALLDATACOPY` (root call)).
+- Copy from Tx call data to RlcAcc. `begin_tx` (create): We constrain the tx call data to initialization code.
+- Copy from caller/callee memory to callee/caller memory.
+  - `CALLDATACOPY` (not root call): copy from caller's memory to callee's
+  - `RETURN` (not create), `REVERT`, `CALLOP` (precompile return): copy from callee's memory to caller's
+  - `RETURNDATACOPY`, `MCOPY`: copy memory within current context
 - Copy from bytecode to memory (`CODECOPY`, `EXTCODECOPY`).
 - Copy from memory to bytecode (`CREATE`, `CREATE2`, `RETURN` (create))
 - Copy from memory to TxLog in the `rw_table` (`LOGX`)
-- Copy from memory to RlcAcc (`SHA3`)
+- Copy between memory and RlcAcc.
+  - `SHA3`: Constrain memory read to keccak lookup table input
+  - `CALLOP` (precompile input): Constrain caller's memory read to precompile's input bytes
+  - `CALLOP` (precompile output): Constrain precompile's output bytes to precompile's context memory
 
 | is_first   | id{Lo,Hi}        | addr             | src_addr_end     | bytes_left   | rlc_acc   | rw_counter   | rwc_inc_left   | tag          |
 | ---------- | -----------      | ---------------- | ---------------- | ------------ | --------- | ------------ | -------------- | ------------ |
