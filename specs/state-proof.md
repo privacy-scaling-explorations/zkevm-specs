@@ -42,6 +42,13 @@ found in the table, and a reverse ordering will make the difference to wrap
 around to a very high value (due to the field arithmetic), causing the result
 to not be in the table.
 
+### General rules
+
+- 0.0 `is_write` is boolean
+- 0.1 first access reads don't change value. `value` equals `initial_value`
+- 0.2 
+
+
 ### Start
 - 1.0. `field_tag`, `address` and `id`, `storage_key` are 0
 - 1.1. `rw counter` increases if it's not first row
