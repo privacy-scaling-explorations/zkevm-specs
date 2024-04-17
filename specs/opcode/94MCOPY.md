@@ -18,14 +18,21 @@ The gas cost of `MCOPY` opcode consists of two parts:
 
 2. State Transition
 
-   1.
-   2.
-   3.
+- rw_counter += 3 stack_reads + ???
+- stack_pointer += 3
+- pc += 1
+- gas += 3 + dynamic_gas_cost
+- reversible_write_counter += 1
+- memory_size
+  - `prev_memory_size` if `size = 0`
+  - `max(prev_memory_size, (offset + size + 31) / 32)` if `size > 0`
 
-3. Lookups
+3. Lookups: 4
 
-   1.
-   2.
+   1. `dest_offset` is at the 1st position of the stack
+   2. `offset` is at the 2nd position of the stack
+   3. `size` is at the 3rd position of the stack
+   4. CopyTable lookup
 
 ## Exceptions
 
