@@ -90,6 +90,8 @@ Address, // account address
 Key, // hashed account address
 ```
 
+Note that `Address` and `Key` are added in the method `load_proof` in `mpt_circuit.rs`.
+
 Each of the `values` is checked by [MainRLPGadget](gadgets.md) to ensure that the RLP bytes correspond
 to the RLP stream length. For example, the first value of the `values` above is `[157,52,45,53,...]`.
 It needs to be checked that the length of the stream is `29 = 157 - 128`.
@@ -225,6 +227,36 @@ Check the leaf RLP and enable access to the functions like `rlc2`:
 ```
 *rlp_key = ListKeyGadget::construct(cb, &key_items[is_s.idx()]);
 ```
+
+### Constraint 10:
+
+The total number of nibbles needs to be `KEY_LEN_IN_NIBBLES = 64`.
+To get all the nibbles we need to take the nibbles that are used for navigating
+through the branches / extension nodes (stored in `key_data`) and nibbles stored
+in the leaf.
+
+```
+let num_nibbles =
+    num_nibbles::expr(rlp_key.key_value.len(), key_data[is_s.idx()].is_odd.expr());
+require!(key_data[is_s.idx()].num_nibbles.expr() + num_nibbles.expr() => KEY_LEN_IN_NIBBLES);
+```
+
+### Constraint 11
+
+This constraint is enabled only for the non-placeholder leaf.
+
+Check that the hash of all bytes of the account leaf is in the parent.
+
+```
+let hash = parent_data[is_s.idx()].hash.expr();
+require!((1.expr(), leaf_rlc, rlp_key.rlp_list.num_bytes(), hash.lo(), hash.hi()) =>> @KECCAK);
+```
+
+Note that `hash` is the hash of the modified branch child in the parent branch.
+If the account leaf is in the first level (no branch above it), the variable `hash` obtained
+from `parent_data` contains the hash of the trie.
+
+
 
 ###
 

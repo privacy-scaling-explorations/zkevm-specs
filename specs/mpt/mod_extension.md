@@ -60,12 +60,65 @@ For this reason, `E2` is added after the leaf and is named `short` extension nod
 
 ## Witness
 
-As mentioned above, additional witness data is added in the case of modified extension node after the leaf node.
+The witness data is added in the rows of the leaf node. It would
+more naturally fit into the extension node / branch rows, but that
+would increase the number of rows for the proof significantly (there is only one leaf in the proof while in general there are multiple branches).
+ 
+The modified extension node witness is stored in the following
+rows of either storage or account leaf: `LongExtNodeKey`, `LongExtNodeNibbles`, `LongExtNodeValue`, `ShortExtNodeKey`,
+`ShortExtNodeNibbles`, and `ShortExtNodeValue`:
+
+```
+pub(crate) enum StorageRowType {
+    KeyS,
+    ValueS,
+    KeyC,
+    ValueC,
+    Drifted,
+    Wrong,
+    LongExtNodeKey,
+    LongExtNodeNibbles,
+    LongExtNodeValue,
+    ShortExtNodeKey,
+    ShortExtNodeNibbles,
+    ShortExtNodeValue,
+    Address,
+    Key,
+    Count,
+}
+
+pub(crate) enum AccountRowType {
+    KeyS,
+    KeyC,
+    NonceS,
+    BalanceS,
+    StorageS,
+    CodehashS,
+    NonceC,
+    BalanceC,
+    StorageC,
+    CodehashC,
+    Drifted,
+    Wrong,
+    LongExtNodeKey,      // only used when extension node nibbles are modified
+    LongExtNodeNibbles,  // only used when extension node nibbles are modified
+    LongExtNodeValue,    // only used when extension node nibbles are modified
+    ShortExtNodeKey,     // only used when extension node nibbles are modified
+    ShortExtNodeNibbles, // only used when extension node nibbles are modified
+    ShortExtNodeValue,   // only used when extension node nibbles are modified
+    Address,             // account address
+    Key,                 // hashed account address
+    Count,
+}
+```
+
+Note that these rows are used only in the case of the modified
+extension node.
 
 For example, if we have an extension node `E` with nibbles `1 2 3 4 5 6` and
-then a leaf `L` is added at the path `1 2 3 4 4`, a new extension node `E1` appears with nibbles `1 2 3 4`. The leaf `L` in in the underlying branch `B0` of `E1` at position `4`. At position `5` in `B0` we have the new extension node `E2` with one nibble `6`.
+then a leaf `L` is added at the path `1 2 3 4 4`, a new extension node `E1` appears with nibbles `1 2 3 4`. The leaf `L` is in the underlying branch `B0` of `E1` at position `4`. At position `5` in `B0` we have the new extension node `E2` with one nibble `6`.
 
-The witness for `E` (long extension node) contains the information about nibbles (the first row: `18 = 1 * 16 + 2, 54 = 3 * 16 + 4, 86 = 5 * 16 + 6`), about second nibbles (the second row: `2 4 6`), and the hash of the branch (the third row):
+The witness for `E` (long extension node) contains the information about nibbles (`LongExtNodeKey` row: `18 = 1 * 16 + 2, 54 = 3 * 16 + 4, 86 = 5 * 16 + 6`), about second nibbles (`LongExtNodeNibbles`: `2 4 6`), and the hash of the branch (`LongExtNodeValue`):
 
 ```
 [132 0 18 52 86 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]
@@ -73,7 +126,7 @@ The witness for `E` (long extension node) contains the information about nibbles
 [160 242 103 96 237 221 251 248 185 13 94 94 110 182 111 241 65 198 200 217 40 21 99 86 252 13 220 217 104 115 173 242 92 0]
 ```
 
-The witness for `E2` (short extension node) contains the information about nibbles (the first row: `22 = 16 + 6`), about second nibbles (the second row, but there are no second nibbles in this case), and the hash of the branch (the third row): 
+The witness for `E2` (short extension node) contains the information about nibbles (`ShortExtNodeKey`: `22 = 16 + 6`), about second nibbles (`ShortExtNodeNibbles`, however, there are no second nibbles in this case), and the hash of the branch (`ShortExtNodeValue`): 
 
 ```
 [22 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]
@@ -82,6 +135,34 @@ The witness for `E2` (short extension node) contains the information about nibbl
 ```
 
 ## Constraints
+
+The gadget `ModExtensionGadget` is instantiated in either storage or account leaf:
+
+```
+ifx! {or::expr(&[config.is_mod_extension[0].clone(), config.is_mod_extension[1].clone()]) => {
+    config.mod_extension = ModExtensionGadget::configure(
+        meta,
+        cb,
+        ctx.clone(),
+        parent_data,
+        key_data,
+    );
+}};
+```
+
+Note that some constraints of the leaf are ignored in the case of the modified extension node.
+These are the constraints for the leaf that is included only as a placeholder leaf in the case of the modified extension node -
+for one of the two proofs (`S` or `C`) the last element returned by `getProof` returns the extension node.
+The witness generator then adds a placeholder leaf to the end of the proof to maintain the layout, but the constraints are not needed for this one, see the following code in `account_leaf` and `storage_leaf`:
+
+```
+for is_s in [true, false] {
+    // ifx! {not!(config.is_mod_extension[is_s.idx()].expr()) => {
+    ...
+    }
+}
+```
+
 
 It needs to be checked that the long extension node is in the parent branch (branch above placeholder branch)
 in the `S` proof (or in `C` proof in case of deletion).
