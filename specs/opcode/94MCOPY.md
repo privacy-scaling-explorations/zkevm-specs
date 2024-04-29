@@ -18,7 +18,7 @@ The gas cost of `MCOPY` opcode consists of two parts:
 
 2. State Transition
 
-- rw_counter += 3 stack_reads + ???
+- rw_counter += 3 stack_reads
 - stack_pointer += 3
 - pc += 1
 - gas += 3 + dynamic_gas_cost
