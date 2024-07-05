@@ -2,7 +2,7 @@
 
 This repository is no longer maintained. For details, please refer to the README on [zkevm-circuits](https://github.com/privacy-scaling-explorations/zkevm-circuits/blob/main/README.md)
 
-# Zkevm Specifications
+# [Deprecated] Zkevm Specifications
 
 [![Python package](https://github.com/privacy-scaling-explorations/zkevm-specs/actions/workflows/python-package.yml/badge.svg)](https://github.com/privacy-scaling-explorations/zkevm-specs/actions/workflows/python-package.yml)
 
